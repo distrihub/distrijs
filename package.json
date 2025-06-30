@@ -1,0 +1,47 @@
+{
+  "name": "distrijs",
+  "version": "1.0.0",
+  "description": "JavaScript SDK for Distri Framework",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "samples/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "turbo": "^1.10.0",
+    "typescript": "^5.0.0",
+    "tsup": "^7.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/distrihub/distrijs.git"
+  },
+  "keywords": [
+    "distri",
+    "distributed",
+    "a2a",
+    "protocol",
+    "sdk",
+    "javascript",
+    "typescript",
+    "react"
+  ],
+  "author": "Distri Team",
+  "license": "MIT"
+}

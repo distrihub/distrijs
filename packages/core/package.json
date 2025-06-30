@@ -1,0 +1,48 @@
+{
+  "name": "@distri/core",
+  "version": "1.0.0",
+  "description": "Core types and A2A protocol client for Distri framework",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "eventemitter3": "^5.0.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.0",
+    "tsup": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "distri",
+    "a2a",
+    "protocol",
+    "core"
+  ],
+  "author": "Distri Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/distrihub/distrijs.git",
+    "directory": "packages/core"
+  }
+}
