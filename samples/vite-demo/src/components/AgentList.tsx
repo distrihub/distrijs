@@ -84,7 +84,7 @@ function AgentItem({ agent, isSelected, onSelect }: AgentItemProps) {
       
       {agent.capabilities && agent.capabilities.length > 0 && (
         <div className="agent-item-capabilities">
-          {agent.capabilities.slice(0, 3).map((capability, index) => (
+          {agent.capabilities.slice(0, 3).map((capability: string, index: number) => (
             <span key={index} className="capability-tag">
               {capability}
             </span>

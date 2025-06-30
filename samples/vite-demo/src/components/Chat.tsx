@@ -102,7 +102,7 @@ function Chat({ agentId }: ChatProps) {
       </div>
 
       <div className="chat-messages">
-        {task && task.messages.map((message, index) => (
+        {task && task.messages.map((message: any, index: number) => (
           <MessageItem key={index} message={message} />
         ))}
         
@@ -173,7 +173,7 @@ function MessageItem({ message }: MessageItemProps) {
   }
 
   const renderContent = () => {
-    return message.parts.map((part, index) => {
+    return message.parts.map((part: any, index: number) => {
       switch (part.kind) {
         case 'text':
           return <span key={index}>{part.text}</span>
