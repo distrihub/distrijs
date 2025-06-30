@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useDistri } from '@distri/react'
 import AgentList from './components/AgentList'
 import Chat from './components/Chat'

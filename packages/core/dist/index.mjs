@@ -86,25 +86,25 @@ var DistriClient = class extends EventEmitter {
    * Send a message to an agent using JSON-RPC
    */
   async sendMessage(agentId, params) {
-    const request = {
+    const jsonRpcRequest = {
       jsonrpc: "2.0",
       method: "message/send",
       params,
       id: this.generateRequestId()
     };
-    return this.sendJsonRpcRequest(agentId, request);
+    return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
   }
   /**
    * Send a streaming message to an agent
    */
   async sendStreamingMessage(agentId, params) {
-    const request = {
+    const jsonRpcRequest = {
       jsonrpc: "2.0",
       method: "message/send_streaming",
       params,
       id: this.generateRequestId()
     };
-    return this.sendJsonRpcRequest(agentId, request);
+    return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
   }
   /**
    * Create a task (convenience method)
@@ -143,7 +143,7 @@ var DistriClient = class extends EventEmitter {
    * Cancel a task
    */
   async cancelTask(taskId) {
-    const request = {
+    const jsonRpcRequest = {
       jsonrpc: "2.0",
       method: "task/cancel",
       params: { taskId },
@@ -154,7 +154,7 @@ var DistriClient = class extends EventEmitter {
   /**
    * Subscribe to agent events via Server-Sent Events
    */
-  subscribeToAgent(agentId, options) {
+  subscribeToAgent(agentId) {
     const existingSource = this.eventSources.get(agentId);
     if (existingSource) {
       return existingSource;
@@ -201,7 +201,7 @@ var DistriClient = class extends EventEmitter {
    * Close all connections
    */
   disconnect() {
-    for (const [agentId, eventSource] of this.eventSources) {
+    for (const [, eventSource] of this.eventSources) {
       eventSource.close();
     }
     this.eventSources.clear();

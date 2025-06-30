@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useTask, Task, A2AMessage } from '@distri/react'
+import { useTask, A2AMessage } from '@distri/react'
 import './Chat.css'
 
 interface ChatProps {

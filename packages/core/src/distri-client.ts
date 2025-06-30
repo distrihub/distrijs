@@ -15,11 +15,9 @@ import {
   TaskErrorEvent,
   JsonRpcRequest,
   JsonRpcResponse,
-  ConnectionStatus,
   DistriError,
   ApiError,
-  A2AProtocolError,
-  SubscriptionOptions
+  A2AProtocolError
 } from './types';
 
 /**
@@ -87,28 +85,28 @@ export class DistriClient extends EventEmitter {
    * Send a message to an agent using JSON-RPC
    */
   async sendMessage(agentId: string, params: MessageSendParams): Promise<JsonRpcResponse> {
-    const request: JsonRpcRequest = {
+    const jsonRpcRequest: JsonRpcRequest = {
       jsonrpc: "2.0",
       method: "message/send",
       params,
       id: this.generateRequestId()
     };
 
-    return this.sendJsonRpcRequest(agentId, request);
+    return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
   }
 
   /**
    * Send a streaming message to an agent
    */
   async sendStreamingMessage(agentId: string, params: MessageSendParams): Promise<JsonRpcResponse> {
-    const request: JsonRpcRequest = {
+    const jsonRpcRequest: JsonRpcRequest = {
       jsonrpc: "2.0",
       method: "message/send_streaming",
       params,
       id: this.generateRequestId()
     };
 
-    return this.sendJsonRpcRequest(agentId, request);
+    return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
   }
 
   /**
@@ -152,16 +150,9 @@ export class DistriClient extends EventEmitter {
   /**
    * Cancel a task
    */
-  async cancelTask(taskId: string): Promise<void> {
+  async cancelTask(_taskId: string): Promise<void> {
     // This would be implemented via JSON-RPC to the agent handling the task
     // For now, we'll assume there's a cancel endpoint or method
-    const request: JsonRpcRequest = {
-      jsonrpc: "2.0",
-      method: "task/cancel",
-      params: { taskId },
-      id: this.generateRequestId()
-    };
-
     // Note: We'd need to know which agent is handling this task
     // This is simplified for the example
     throw new DistriError('Task cancellation not yet implemented', 'NOT_IMPLEMENTED');
@@ -170,7 +161,7 @@ export class DistriClient extends EventEmitter {
   /**
    * Subscribe to agent events via Server-Sent Events
    */
-  subscribeToAgent(agentId: string, options?: SubscriptionOptions): EventSource {
+  subscribeToAgent(agentId: string): EventSource {
     const existingSource = this.eventSources.get(agentId);
     if (existingSource) {
       return existingSource;
@@ -227,9 +218,9 @@ export class DistriClient extends EventEmitter {
    * Close all connections
    */
   disconnect(): void {
-    for (const [agentId, eventSource] of this.eventSources) {
+    this.eventSources.forEach((eventSource) => {
       eventSource.close();
-    }
+    });
     this.eventSources.clear();
   }
 
@@ -307,7 +298,7 @@ export class DistriClient extends EventEmitter {
    */
   private async fetch(path: string, options?: RequestInit): Promise<Response> {
     const url = `${this.config.baseUrl}${path}`;
-    let lastError: Error;
+    let lastError: Error | undefined;
 
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
       try {
@@ -335,7 +326,7 @@ export class DistriClient extends EventEmitter {
       }
     }
 
-    throw lastError;
+    throw lastError!;
   }
 
   /**

@@ -1730,3 +1730,127 @@
 2025-06-30T09:08:23.586414Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
 2025-06-30T09:08:34.385967Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("README.md")}
 2025-06-30T09:08:34.385985Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-06-30T09:36:55.686953Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:36:55.686982Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:36:56.085921Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:36:56.085942Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:36:56.885240Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:36:56.885260Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:37:33.585224Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("_tmp_38467_46ac6fefadd25809eece70626dc2c7c0")}
+2025-06-30T09:37:33.585242Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-06-30T09:37:37.785500Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.bundled_j6i46mw2cl.mjs")}
+2025-06-30T09:37:37.785519Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:37:56.585503Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsconfig.json")}
+2025-06-30T09:37:56.585524Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:37:59.385437Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsconfig.json")}
+2025-06-30T09:37:59.385459Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:08.585445Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.bundled_4nx6r0tm86t.mjs")}
+2025-06-30T09:38:08.585468Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:08.636283Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:38:08.685747Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.bundled_4nx6r0tm86t.mjs")}
+2025-06-30T09:38:08.685764Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:08.685800Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:38:23.786349Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsconfig.json")}
+2025-06-30T09:38:23.786372Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:23.786409Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:38:26.485945Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsconfig.json")}
+2025-06-30T09:38:26.485963Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:39.685899Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.ts")}
+2025-06-30T09:38:39.685919Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:40.085604Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.ts")}
+2025-06-30T09:38:40.085626Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:41.785867Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.ts")}
+2025-06-30T09:38:41.785885Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:47.885736Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/tsup.config.bundled_x6eqghvgyt.mjs")}
+2025-06-30T09:38:47.885760Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:38:47.885797Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:39:01.285557Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:01.285578Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:01.685763Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:01.685784Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:03.385256Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:03.385275Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:12.585262Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:12.585283Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:12.985814Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:12.985836Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:14.685351Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:14.685369Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:29.488419Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:29.488448Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:29.785892Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:29.785911Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:39:31.585642Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:39:31.585665Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:40:00.885935Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:40:00.885956Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:40:00.985496Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:40:00.985521Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:40:00.985565Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:40:01.285864Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:40:01.285885Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:40:03.085505Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/core/src/distri-client.ts")}
+2025-06-30T09:40:03.085529Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/core"), path: AnchoredSystemPathBuf("packages/core") }}))
+2025-06-30T09:40:25.185915Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/react/tsup.config.bundled_jtb2rxlaqb8.mjs")}
+2025-06-30T09:40:25.185940Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/react"), path: AnchoredSystemPathBuf("packages/react") }}))
+2025-06-30T09:40:25.285687Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/react/dist")}
+2025-06-30T09:40:25.285714Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/react"), path: AnchoredSystemPathBuf("packages/react") }}))
+2025-06-30T09:40:25.285785Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:40:33.285583Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/react/tsup.config.ts")}
+2025-06-30T09:40:33.285605Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/react"), path: AnchoredSystemPathBuf("packages/react") }}))
+2025-06-30T09:40:33.585207Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/react/tsup.config.ts")}
+2025-06-30T09:40:33.585226Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/react"), path: AnchoredSystemPathBuf("packages/react") }}))
+2025-06-30T09:40:35.385574Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/react/tsup.config.ts")}
+2025-06-30T09:40:35.385595Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/react"), path: AnchoredSystemPathBuf("packages/react") }}))
+2025-06-30T09:40:40.985219Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/react/tsup.config.bundled_73dhz33j4r7.mjs")}
+2025-06-30T09:40:40.985242Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@distri/react"), path: AnchoredSystemPathBuf("packages/react") }}))
+2025-06-30T09:40:41.017961Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:41:18.385543Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/vite.config.ts.timestamp-1751276478380-321ca88d536dc.mjs")}
+2025-06-30T09:41:18.385566Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:41:18.485401Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/vite.config.ts.timestamp-1751276478380-321ca88d536dc.mjs")}
+2025-06-30T09:41:18.485422Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:41:18.485478Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:42:06.285981Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/tsconfig.json")}
+2025-06-30T09:42:06.286002Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:06.286055Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:42:08.085414Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/tsconfig.json")}
+2025-06-30T09:42:08.085435Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:19.785936Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/App.tsx")}
+2025-06-30T09:42:19.785957Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:20.185960Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/App.tsx")}
+2025-06-30T09:42:20.185983Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:20.885192Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/App.tsx")}
+2025-06-30T09:42:20.885209Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:45.285889Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/tsconfig.json")}
+2025-06-30T09:42:45.285911Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:45.285954Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:42:47.085495Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/tsconfig.json")}
+2025-06-30T09:42:47.085516Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:52.886159Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/AgentList.tsx")}
+2025-06-30T09:42:52.886180Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:53.285912Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/AgentList.tsx")}
+2025-06-30T09:42:53.285936Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:42:55.085857Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/AgentList.tsx")}
+2025-06-30T09:42:55.085880Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:01.085504Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/AgentList.tsx")}
+2025-06-30T09:43:01.085528Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:01.485483Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/AgentList.tsx")}
+2025-06-30T09:43:01.485508Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:02.185826Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/AgentList.tsx")}
+2025-06-30T09:43:02.185846Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:19.788276Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/Chat.tsx")}
+2025-06-30T09:43:19.788302Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:20.186165Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/Chat.tsx")}
+2025-06-30T09:43:20.186188Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:21.886074Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/src/components/Chat.tsx")}
+2025-06-30T09:43:21.886093Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:29.085815Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/vite.config.ts.timestamp-1751276609003-9c5fd8913e454.mjs")}
+2025-06-30T09:43:29.085839Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:29.085879Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:43:29.685577Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("samples/vite-demo/dist")}
+2025-06-30T09:43:29.685596Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("distri-vite-demo"), path: AnchoredSystemPathBuf("samples/vite-demo") }}))
+2025-06-30T09:43:29.685628Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-06-30T09:44:13.385492Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("SDK_BUILD_SUMMARY.md")}
+2025-06-30T09:44:13.385509Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-06-30T09:44:13.485483Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("SDK_BUILD_SUMMARY.md")}
+2025-06-30T09:44:13.485500Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
