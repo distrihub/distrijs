@@ -1,0 +1,56 @@
+{
+  "name": "@distri/react",
+  "version": "1.0.0",
+  "description": "React hooks for Distri framework",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup && npm run build:dts",
+    "build:dts": "tsc --declaration --emitDeclarationOnly --jsx react --esModuleInterop --outDir dist src/index.ts",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@distri/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tsup": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "distri",
+    "react",
+    "hooks",
+    "threads",
+    "messages"
+  ],
+  "author": "Distri Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/distrihub/distrijs.git",
+    "directory": "packages/react"
+  }
+}
