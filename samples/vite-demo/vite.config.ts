@@ -11,7 +11,7 @@ export default defineConfig({
       external: [
         // Exclude server-side modules from the browser bundle
         'events',
-        'http', 
+        'http',
         'https',
         'path',
         'fs',
@@ -35,9 +35,6 @@ export default defineConfig({
   optimizeDeps: {
     // Force Vite to include only the client parts
     include: ['@a2a-js/sdk/build/src/types.js'],
-    exclude: [
-      '@a2a-js/sdk/build/src/server/**',
-      '@a2a-js/sdk/build/src/samples/**'
-    ]
+
   }
 })

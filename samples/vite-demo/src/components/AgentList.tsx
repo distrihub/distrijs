@@ -35,7 +35,7 @@ function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
   return (
     <div className="agent-list">
       <div className="agent-list-header">
-        <button 
+        <button
           className="btn btn-refresh"
           onClick={refetch}
           disabled={loading}
@@ -47,13 +47,13 @@ function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
       <div className="agent-list-items">
         {safeAgents.map((agent: AgentCard) => (
           <AgentItem
-            key={agent.url}
+            key={agent.name}
             agent={agent}
-            isSelected={agent.url === selectedAgentId}
-            onSelect={() => onSelectAgent(agent.url)}
+            isSelected={agent.name === selectedAgentId}
+            onSelect={() => onSelectAgent(agent.name)}
           />
         ))}
-        
+
         {safeAgents.length === 0 && !loading && (
           <div className="agent-list-empty">
             No agents available. Make sure your Distri server is running.
@@ -72,7 +72,7 @@ interface AgentItemProps {
 
 function AgentItem({ agent, isSelected, onSelect }: AgentItemProps) {
   return (
-    <div 
+    <div
       className={`agent-item ${isSelected ? 'selected' : ''}`}
       onClick={onSelect}
     >
@@ -82,9 +82,9 @@ function AgentItem({ agent, isSelected, onSelect }: AgentItemProps) {
           <span className="agent-item-version">v{agent.version}</span>
         )}
       </div>
-      
+
       <p className="agent-item-description">{agent.description}</p>
-      
+
       {agent.skills && agent.skills.length > 0 && (
         <div className="agent-item-capabilities">
           {agent.skills.slice(0, 3).map((skill, index: number) => (
