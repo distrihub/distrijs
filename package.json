@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "JavaScript SDK for Distri Framework",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "samples/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
