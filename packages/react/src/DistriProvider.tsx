@@ -4,11 +4,13 @@ import { DistriClient, DistriClientConfig } from '@distri/core';
 interface DistriContextValue {
   client: DistriClient | null;
   error: Error | null;
+  isLoading: boolean;
 }
 
 const DistriContext = createContext<DistriContextValue>({
   client: null,
-  error: null
+  error: null,
+  isLoading: true
 });
 
 interface DistriProviderProps {
@@ -19,29 +21,52 @@ interface DistriProviderProps {
 export function DistriProvider({ config, children }: DistriProviderProps) {
   const [client, setClient] = useState<DistriClient | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let currentClient: DistriClient | null = null;
+
     try {
-      const newClient = new DistriClient(config);
-      setClient(newClient);
+      console.log('[DistriProvider] Initializing client with config:', config);
+      currentClient = new DistriClient(config);
+      setClient(currentClient);
       setError(null);
+      setIsLoading(false);
+      console.log('[DistriProvider] Client initialized successfully');
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to initialize client'));
+      console.error('[DistriProvider] Failed to initialize client:', err);
+      const error = err instanceof Error ? err : new Error('Failed to initialize client');
+      setError(error);
       setClient(null);
+      setIsLoading(false);
     }
 
-    // Cleanup
+    // Cleanup function
     return () => {
-      if (client) {
-        client.disconnect();
+      console.log('[DistriProvider] Cleaning up client');
+      if (currentClient) {
+        currentClient.disconnect();
       }
     };
-  }, [config]);
+  }, [config.baseUrl, config.apiVersion, config.debug]); // Only depend on key config values
 
   const contextValue: DistriContextValue = {
     client,
-    error
+    error,
+    isLoading
   };
+
+  if (error) {
+    console.error('[DistriProvider] Rendering error state:', error.message);
+  }
+
+  if (isLoading) {
+    console.log('[DistriProvider] Rendering loading state');
+  }
+
+  if (client) {
+    console.log('[DistriProvider] Rendering with client available');
+  }
 
   return (
     <DistriContext.Provider value={contextValue}>
@@ -59,9 +84,19 @@ export function useDistri(): DistriContextValue {
 }
 
 export function useDistriClient(): DistriClient {
-  const { client } = useDistri();
+  const { client, error, isLoading } = useDistri();
+  
+  if (isLoading) {
+    throw new Error('Distri client is still loading');
+  }
+  
+  if (error) {
+    throw new Error(`Distri client initialization failed: ${error.message}`);
+  }
+  
   if (!client) {
     throw new Error('Distri client is not initialized');
   }
+  
   return client;
 }

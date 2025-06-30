@@ -4,30 +4,50 @@ import { DistriClient } from "@distri/core";
 import { jsx } from "react/jsx-runtime";
 var DistriContext = createContext({
   client: null,
-  error: null
+  error: null,
+  isLoading: true
 });
 function DistriProvider({ config, children }) {
   const [client, setClient] = useState(null);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
+    let currentClient = null;
     try {
-      const newClient = new DistriClient(config);
-      setClient(newClient);
+      console.log("[DistriProvider] Initializing client with config:", config);
+      currentClient = new DistriClient(config);
+      setClient(currentClient);
       setError(null);
+      setIsLoading(false);
+      console.log("[DistriProvider] Client initialized successfully");
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to initialize client"));
+      console.error("[DistriProvider] Failed to initialize client:", err);
+      const error2 = err instanceof Error ? err : new Error("Failed to initialize client");
+      setError(error2);
       setClient(null);
+      setIsLoading(false);
     }
     return () => {
-      if (client) {
-        client.disconnect();
+      console.log("[DistriProvider] Cleaning up client");
+      if (currentClient) {
+        currentClient.disconnect();
       }
     };
-  }, [config]);
+  }, [config.baseUrl, config.apiVersion, config.debug]);
   const contextValue = {
     client,
-    error
+    error,
+    isLoading
   };
+  if (error) {
+    console.error("[DistriProvider] Rendering error state:", error.message);
+  }
+  if (isLoading) {
+    console.log("[DistriProvider] Rendering loading state");
+  }
+  if (client) {
+    console.log("[DistriProvider] Rendering with client available");
+  }
   return /* @__PURE__ */ jsx(DistriContext.Provider, { value: contextValue, children });
 }
 function useDistri() {
@@ -38,7 +58,13 @@ function useDistri() {
   return context;
 }
 function useDistriClient() {
-  const { client } = useDistri();
+  const { client, error, isLoading } = useDistri();
+  if (isLoading) {
+    throw new Error("Distri client is still loading");
+  }
+  if (error) {
+    throw new Error(`Distri client initialization failed: ${error.message}`);
+  }
   if (!client) {
     throw new Error("Distri client is not initialized");
   }
