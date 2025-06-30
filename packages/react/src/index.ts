@@ -12,6 +12,6 @@ export type {
   DistriClientConfig,
   AgentCard,
   Task,
-  A2AMessage,
-  TaskStatus
+  Message as A2AMessage,
+  TaskState
 } from '@distri/core';

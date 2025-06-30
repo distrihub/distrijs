@@ -1,11 +1,123 @@
 import { EventEmitter } from 'eventemitter3';
-import { AgentCard, Message, TaskStatusUpdateEvent, TextPart, JSONRPCRequest, JSONRPCResponse, MessageSendParams, Task } from '@a2a-js/sdk';
+import { 
+  AgentCard, 
+  Message, 
+  TaskStatusUpdateEvent, 
+  TaskArtifactUpdateEvent, 
+  TextPart, 
+  JSONRPCRequest, 
+  JSONRPCResponse, 
+  MessageSendParams, 
+  Task,
+  TaskState
+} from '@a2a-js/sdk';
 import {
   DistriClientConfig,
   DistriError,
   ApiError,
-  A2AProtocolError
+  A2AProtocolError,
+  ConnectionError
 } from './types';
+
+// Additional event types for SSE
+export interface TextDeltaEvent {
+  type: 'text_delta';
+  task_id: string;
+  delta: string;
+  timestamp: number;
+}
+
+export interface TaskStatusChangedEvent {
+  type: 'task_status_changed';
+  task_id: string;
+  status: TaskState;
+  timestamp: number;
+}
+
+export interface TaskCompletedEvent {
+  type: 'task_completed';
+  task_id: string;
+  timestamp: number;
+}
+
+export interface TaskErrorEvent {
+  type: 'task_error';
+  task_id: string;
+  error: string;
+  timestamp: number;
+}
+
+export interface TaskCanceledEvent {
+  type: 'task_canceled';
+  task_id: string;
+  timestamp: number;
+}
+
+export interface AgentStatusChangedEvent {
+  type: 'agent_status_changed';
+  agent_id: string;
+  status: string;
+  timestamp: number;
+}
+
+export type DistriEvent = 
+  | TextDeltaEvent 
+  | TaskStatusChangedEvent 
+  | TaskCompletedEvent 
+  | TaskErrorEvent 
+  | TaskCanceledEvent 
+  | AgentStatusChangedEvent
+  | TaskStatusUpdateEvent
+  | TaskArtifactUpdateEvent;
+
+// Helper to decode SSE events
+export function decodeSSEEvent(data: string): DistriEvent | null {
+  try {
+    const parsed = JSON.parse(data);
+    
+    // Validate that it has the expected structure
+    if (!parsed || typeof parsed !== 'object' || !parsed.type) {
+      return null;
+    }
+
+    // Basic validation for required fields
+    switch (parsed.type) {
+      case 'text_delta':
+        if (parsed.task_id && typeof parsed.delta === 'string') {
+          return parsed as TextDeltaEvent;
+        }
+        break;
+      case 'task_status_changed':
+        if (parsed.task_id && parsed.status) {
+          return parsed as TaskStatusChangedEvent;
+        }
+        break;
+      case 'task_completed':
+      case 'task_error':
+      case 'task_canceled':
+        if (parsed.task_id) {
+          return parsed as TaskCompletedEvent | TaskErrorEvent | TaskCanceledEvent;
+        }
+        break;
+      case 'agent_status_changed':
+        if (parsed.agent_id) {
+          return parsed as AgentStatusChangedEvent;
+        }
+        break;
+      case 'status-update':
+        // This is from A2A SDK
+        return parsed as TaskStatusUpdateEvent;
+      case 'artifact-update':
+        // This is from A2A SDK
+        return parsed as TaskArtifactUpdateEvent;
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('Failed to decode SSE event:', error);
+    return null;
+  }
+}
 
 /**
  * Main Distri Client for interacting with Distri server
@@ -40,8 +152,9 @@ export class DistriClient extends EventEmitter {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
 
-      const data: AgentCard[] = await response.json();
-      return data;
+      const data = await response.json();
+      // Handle both array response and object with agents property
+      return Array.isArray(data) ? data : data.agents || [];
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch agents', 'FETCH_ERROR', error);
@@ -72,14 +185,10 @@ export class DistriClient extends EventEmitter {
    * Send a message to an agent using JSON-RPC
    */
   async sendMessage(agentId: string, params: MessageSendParams): Promise<JSONRPCResponse> {
-    const jsonRpcRequest: JSONRPCRequest = {
-      jsonrpc: "2.0",
-      method: "message/send",
-      params: {
-        message: params.message,
-        configuration: params.configuration,
-        metadata: params.metadata
-      },
+    const jsonRpcRequest = {
+      jsonrpc: "2.0" as const,
+      method: "message/send" as const,
+      params,
       id: this.generateRequestId()
     };
 
@@ -90,14 +199,10 @@ export class DistriClient extends EventEmitter {
    * Send a streaming message to an agent
    */
   async sendStreamingMessage(agentId: string, params: MessageSendParams): Promise<JSONRPCResponse> {
-    const jsonRpcRequest: JSONRPCRequest = {
-      jsonrpc: "2.0",
-      method: "message/send_streaming",
-      params: {
-        message: params.message,
-        configuration: params.configuration,
-        metadata: params.metadata
-      },
+    const jsonRpcRequest = {
+      jsonrpc: "2.0" as const,
+      method: "message/stream" as const,
+      params,
       id: this.generateRequestId()
     };
 
@@ -107,9 +212,9 @@ export class DistriClient extends EventEmitter {
   /**
    * Create a task (convenience method)
    */
-  async createTask(agentId: string, user_message: Message): Promise<Task> {
+  async createTask(agentId: string, message: Message): Promise<Task> {
     const params: MessageSendParams = {
-      message: user_message,
+      message,
       configuration: {
         acceptedOutputModes: ['text/plain'],
         blocking: true,
@@ -118,7 +223,7 @@ export class DistriClient extends EventEmitter {
 
     const response = await this.sendMessage(agentId, params);
 
-    if (typeof response === 'object' && 'error' in response) {
+    if ('error' in response) {
       throw new A2AProtocolError(response.error.message, response.error);
     }
 
@@ -149,10 +254,6 @@ export class DistriClient extends EventEmitter {
    * Cancel a task
    */
   async cancelTask(_taskId: string): Promise<void> {
-    // This would be implemented via JSON-RPC to the agent handling the task
-    // For now, we'll assume there's a cancel endpoint or method
-    // Note: We'd need to know which agent is handling this task
-    // This is simplified for the example
     throw new DistriError('Task cancellation not yet implemented', 'NOT_IMPLEMENTED');
   }
 
@@ -175,8 +276,10 @@ export class DistriClient extends EventEmitter {
 
     eventSource.onmessage = (event) => {
       try {
-        const data: DistriEvent = JSON.parse(event.data);
-        this.handleEvent(data);
+        const decodedEvent = decodeSSEEvent(event.data);
+        if (decodedEvent) {
+          this.handleEvent(decodedEvent);
+        }
       } catch (error) {
         this.debug('Failed to parse SSE event:', error);
       }
@@ -195,8 +298,6 @@ export class DistriClient extends EventEmitter {
    * Subscribe to task events
    */
   subscribeToTask(taskId: string): void {
-    // In the actual implementation, you might subscribe to specific task events
-    // For now, we'll rely on agent-level subscriptions
     this.emit('task_subscribed', taskId);
   }
 
@@ -225,7 +326,7 @@ export class DistriClient extends EventEmitter {
   /**
    * Send a JSON-RPC request to an agent
    */
-  private async sendJsonRpcRequest(agentId: string, request: JSONRPCRequest): Promise<JSONRPCResponse> {
+  private async sendJsonRpcRequest(agentId: string, request: any): Promise<JSONRPCResponse> {
     try {
       const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`, {
         method: 'POST',
@@ -242,7 +343,7 @@ export class DistriClient extends EventEmitter {
 
       const jsonResponse: JSONRPCResponse = await response.json();
 
-      if (typeof jsonResponse === 'object' && 'error' in jsonResponse) {
+      if ('error' in jsonResponse) {
         throw new A2AProtocolError(jsonResponse.error.message, jsonResponse.error);
       }
 
@@ -255,6 +356,24 @@ export class DistriClient extends EventEmitter {
     }
   }
 
+  /**
+   * Handle incoming SSE events
+   */
+  private handleEvent(event: DistriEvent): void {
+    this.debug('Received event:', event);
+    
+    // Handle different event types
+    if ('type' in event) {
+      // Emit the specific event type for custom events
+      this.emit(event.type, event);
+    } else if ('kind' in event) {
+      // Handle A2A SDK events (TaskStatusUpdateEvent, TaskArtifactUpdateEvent)
+      this.emit(event.kind, event);
+    }
+    
+    // Also emit a generic 'event' for any listeners
+    this.emit('event', event);
+  }
 
   /**
    * Enhanced fetch with retry logic

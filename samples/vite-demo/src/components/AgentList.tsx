@@ -47,10 +47,10 @@ function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
       <div className="agent-list-items">
         {safeAgents.map((agent: AgentCard) => (
           <AgentItem
-            key={agent.id}
+            key={agent.url}
             agent={agent}
-            isSelected={agent.id === selectedAgentId}
-            onSelect={() => onSelectAgent(agent.id)}
+            isSelected={agent.url === selectedAgentId}
+            onSelect={() => onSelectAgent(agent.url)}
           />
         ))}
         
@@ -85,16 +85,16 @@ function AgentItem({ agent, isSelected, onSelect }: AgentItemProps) {
       
       <p className="agent-item-description">{agent.description}</p>
       
-      {agent.capabilities && agent.capabilities.length > 0 && (
+      {agent.skills && agent.skills.length > 0 && (
         <div className="agent-item-capabilities">
-          {agent.capabilities.slice(0, 3).map((capability: string, index: number) => (
+          {agent.skills.slice(0, 3).map((skill, index: number) => (
             <span key={index} className="capability-tag">
-              {capability}
+              {skill.name}
             </span>
           ))}
-          {agent.capabilities.length > 3 && (
+          {agent.skills.length > 3 && (
             <span className="capability-tag more">
-              +{agent.capabilities.length - 3} more
+              +{agent.skills.length - 3} more
             </span>
           )}
         </div>

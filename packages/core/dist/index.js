@@ -24,7 +24,8 @@ __export(src_exports, {
   ApiError: () => ApiError,
   ConnectionError: () => ConnectionError,
   DistriClient: () => DistriClient,
-  DistriError: () => DistriError
+  DistriError: () => DistriError,
+  decodeSSEEvent: () => decodeSSEEvent
 });
 module.exports = __toCommonJS(src_exports);
 
@@ -61,6 +62,46 @@ var ConnectionError = class extends DistriError {
 };
 
 // src/distri-client.ts
+function decodeSSEEvent(data) {
+  try {
+    const parsed = JSON.parse(data);
+    if (!parsed || typeof parsed !== "object" || !parsed.type) {
+      return null;
+    }
+    switch (parsed.type) {
+      case "text_delta":
+        if (parsed.task_id && typeof parsed.delta === "string") {
+          return parsed;
+        }
+        break;
+      case "task_status_changed":
+        if (parsed.task_id && parsed.status) {
+          return parsed;
+        }
+        break;
+      case "task_completed":
+      case "task_error":
+      case "task_canceled":
+        if (parsed.task_id) {
+          return parsed;
+        }
+        break;
+      case "agent_status_changed":
+        if (parsed.agent_id) {
+          return parsed;
+        }
+        break;
+      case "status-update":
+        return parsed;
+      case "artifact-update":
+        return parsed;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Failed to decode SSE event:", error);
+    return null;
+  }
+}
 var DistriClient = class extends import_eventemitter3.EventEmitter {
   constructor(config) {
     super();
@@ -86,7 +127,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
       const data = await response.json();
-      return data.agents;
+      return Array.isArray(data) ? data : data.agents || [];
     } catch (error) {
       if (error instanceof ApiError)
         throw error;
@@ -130,7 +171,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
   async sendStreamingMessage(agentId, params) {
     const jsonRpcRequest = {
       jsonrpc: "2.0",
-      method: "message/send_streaming",
+      method: "message/stream",
       params,
       id: this.generateRequestId()
     };
@@ -139,13 +180,16 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
   /**
    * Create a task (convenience method)
    */
-  async createTask(request) {
+  async createTask(agentId, message) {
     const params = {
-      message: request.message,
-      configuration: request.configuration
+      message,
+      configuration: {
+        acceptedOutputModes: ["text/plain"],
+        blocking: true
+      }
     };
-    const response = await this.sendMessage(request.agentId, params);
-    if (response.error) {
+    const response = await this.sendMessage(agentId, params);
+    if ("error" in response) {
       throw new A2AProtocolError(response.error.message, response.error);
     }
     return response.result;
@@ -191,8 +235,10 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
     };
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        this.handleEvent(data);
+        const decodedEvent = decodeSSEEvent(event.data);
+        if (decodedEvent) {
+          this.handleEvent(decodedEvent);
+        }
       } catch (error) {
         this.debug("Failed to parse SSE event:", error);
       }
@@ -247,7 +293,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
         throw new ApiError(`JSON-RPC request failed: ${response.statusText}`, response.status);
       }
       const jsonResponse = await response.json();
-      if (jsonResponse.error) {
+      if ("error" in jsonResponse) {
         throw new A2AProtocolError(jsonResponse.error.message, jsonResponse.error);
       }
       return jsonResponse;
@@ -263,28 +309,12 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
    */
   handleEvent(event) {
     this.debug("Received event:", event);
-    switch (event.type) {
-      case "task_status_changed":
-        this.emit("task_status_changed", event);
-        break;
-      case "text_delta":
-        this.emit("text_delta", event);
-        break;
-      case "task_completed":
-        this.emit("task_completed", event);
-        break;
-      case "task_error":
-        this.emit("task_error", event);
-        break;
-      case "task_canceled":
-        this.emit("task_canceled", event);
-        break;
-      case "agent_status_changed":
-        this.emit("agent_status_changed", event);
-        break;
-      default:
-        this.emit("event", event);
+    if ("type" in event) {
+      this.emit(event.type, event);
+    } else if ("kind" in event) {
+      this.emit(event.kind, event);
     }
+    this.emit("event", event);
   }
   /**
    * Enhanced fetch with retry logic
@@ -345,7 +375,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
       role,
       parts: [{ kind: "text", text }],
       contextId,
-      timestamp: Date.now()
+      kind: "message"
     };
   }
   /**
@@ -368,6 +398,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
   ApiError,
   ConnectionError,
   DistriClient,
-  DistriError
+  DistriError,
+  decodeSSEEvent
 });
 //# sourceMappingURL=index.js.map

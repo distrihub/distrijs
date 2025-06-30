@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Task, 
-  A2AMessage, 
+  Message as A2AMessage, 
   MessageSendParams, 
-  CreateTaskRequest,
   DistriClient,
   TextDeltaEvent,
   TaskStatusChangedEvent,
@@ -53,17 +52,8 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
       setStreamingText('');
       setIsStreaming(true);
 
-      const request: CreateTaskRequest = {
-        agentId,
-        message,
-        configuration
-      };
-
-      const response = await client.createTask(request);
-      
-      // Get the full task details
-      const fullTask = await client.getTask(response.taskId);
-      setTask(fullTask);
+      const response = await client.createTask(agentId, message);
+      setTask(response);
       
       if (autoSubscribe) {
         subscribeToAgent();
@@ -134,7 +124,7 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
 
       const handleTaskStatusChanged = (event: TaskStatusChangedEvent) => {
         if (task && event.task_id === task.id) {
-          setTask(prev => prev ? { ...prev, status: event.status } : null);
+          setTask(prev => prev ? { ...prev, status: { ...prev.status, state: event.status } } : null);
           
           if (event.status === 'completed' || event.status === 'failed' || event.status === 'canceled') {
             setIsStreaming(false);

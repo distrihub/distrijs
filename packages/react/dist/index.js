@@ -127,13 +127,13 @@ function useAgents() {
       setLoading(false);
     }
   }, [client]);
-  const getAgent = (0, import_react2.useCallback)(async (agentId) => {
+  const getAgent = (0, import_react2.useCallback)(async (agentUrl) => {
     if (!client) {
       throw new Error("Client not available");
     }
     try {
-      const agent = await client.getAgent(agentId);
-      setAgents((prev) => prev.map((a) => a.id === agentId ? agent : a));
+      const agent = await client.getAgent(agentUrl);
+      setAgents((prev) => prev.map((a) => a.url === agentUrl ? agent : a));
       return agent;
     } catch (err) {
       const error2 = err instanceof Error ? err : new Error("Failed to get agent");
@@ -191,14 +191,8 @@ function useTask({ agentId, autoSubscribe = true }) {
       setError(null);
       setStreamingText("");
       setIsStreaming(true);
-      const request = {
-        agentId,
-        message,
-        configuration
-      };
-      const response = await client.createTask(request);
-      const fullTask = await client.getTask(response.taskId);
-      setTask(fullTask);
+      const response = await client.createTask(agentId, message);
+      setTask(response);
       if (autoSubscribe) {
         subscribeToAgent();
       }
@@ -254,7 +248,7 @@ function useTask({ agentId, autoSubscribe = true }) {
       };
       const handleTaskStatusChanged = (event) => {
         if (task && event.task_id === task.id) {
-          setTask((prev) => prev ? { ...prev, status: event.status } : null);
+          setTask((prev) => prev ? { ...prev, status: { ...prev.status, state: event.status } } : null);
           if (event.status === "completed" || event.status === "failed" || event.status === "canceled") {
             setIsStreaming(false);
           }

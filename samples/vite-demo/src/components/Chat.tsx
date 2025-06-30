@@ -102,7 +102,7 @@ function Chat({ agentId }: ChatProps) {
       </div>
 
       <div className="chat-messages">
-        {task && task.messages.map((message: any, index: number) => (
+        {task && task.history && task.history.map((message: A2AMessage, index: number) => (
           <MessageItem key={index} message={message} />
         ))}
         
@@ -152,7 +152,7 @@ function Chat({ agentId }: ChatProps) {
 
       {task && (
         <div className="task-info">
-          <small>Task ID: {task.id} | Status: {task.status}</small>
+          <small>Task ID: {task.id} | Status: {task.status?.state || 'unknown'}</small>
         </div>
       )}
     </div>
@@ -164,39 +164,28 @@ interface MessageItemProps {
 }
 
 function MessageItem({ message }: MessageItemProps) {
-  const formatTime = (timestamp?: number) => {
-    if (!timestamp) return ''
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-  }
-
   const renderContent = () => {
     return message.parts.map((part: any, index: number) => {
       switch (part.kind) {
         case 'text':
           return <span key={index}>{part.text}</span>
-        case 'image':
-          return (
-            <img 
-              key={index} 
-              src={part.image} 
-              alt="Message attachment" 
-              className="message-image"
-            />
-          )
         case 'file':
           return (
             <a 
               key={index} 
-              href={part.file} 
+              href={part.file.uri || '#'} 
               className="message-file"
               target="_blank" 
               rel="noopener noreferrer"
             >
-              📎 File attachment
+              📎 {part.file.name || 'File attachment'}
             </a>
+          )
+        case 'data':
+          return (
+            <pre key={index} className="message-data">
+              {JSON.stringify(part.data, null, 2)}
+            </pre>
           )
         default:
           return null
@@ -210,7 +199,6 @@ function MessageItem({ message }: MessageItemProps) {
         <span className="message-author">
           {message.role === 'user' ? 'You' : 'Assistant'}
         </span>
-        <span className="message-time">{formatTime(message.timestamp)}</span>
       </div>
       
       <div className="message-content">

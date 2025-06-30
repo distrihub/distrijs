@@ -6,7 +6,7 @@ import './App.css'
 
 function App() {
   const { client, error, isLoading } = useDistri()
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [selectedAgentUrl, setSelectedAgentUrl] = useState<string | null>(null)
 
   if (isLoading) {
     return (
@@ -63,14 +63,14 @@ function App() {
         <div className="sidebar">
           <h2>Agents</h2>
           <AgentList 
-            selectedAgentId={selectedAgentId}
-            onSelectAgent={setSelectedAgentId}
+            selectedAgentId={selectedAgentUrl}
+            onSelectAgent={setSelectedAgentUrl}
           />
         </div>
 
         <div className="content">
-          {selectedAgentId ? (
-            <Chat agentId={selectedAgentId} />
+          {selectedAgentUrl ? (
+            <Chat agentId={selectedAgentUrl} />
           ) : (
             <div className="welcome">
               <h2>Welcome to Distri</h2>
