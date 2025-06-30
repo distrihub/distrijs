@@ -6,9 +6,12 @@
     "composite": true,
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules", "**/*.test.*"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "**/*.test.*"
+  ],
 }
