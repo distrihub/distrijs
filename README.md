@@ -436,7 +436,7 @@ git clone https://github.com/distrihub/distri.git
 cd distri
 
 # Build and run the server
-cargo run -- --config test-config.yaml
+cargo run -- --config test-config.yaml serve
 
 # The server will be available at http://localhost:8080
 ```
