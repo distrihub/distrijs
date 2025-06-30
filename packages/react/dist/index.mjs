@@ -74,23 +74,33 @@ function useDistriClient() {
 // src/useAgents.ts
 import { useState as useState2, useEffect as useEffect2, useCallback } from "react";
 function useAgents() {
-  const client = useDistriClient();
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [agents, setAgents] = useState2([]);
   const [loading, setLoading] = useState2(true);
   const [error, setError] = useState2(null);
   const fetchAgents = useCallback(async () => {
+    if (!client) {
+      console.log("[useAgents] Client not available, skipping fetch");
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
+      console.log("[useAgents] Fetching agents...");
       const fetchedAgents = await client.getAgents();
+      console.log("[useAgents] Fetched agents:", fetchedAgents);
       setAgents(fetchedAgents);
     } catch (err) {
+      console.error("[useAgents] Failed to fetch agents:", err);
       setError(err instanceof Error ? err : new Error("Failed to fetch agents"));
     } finally {
       setLoading(false);
     }
   }, [client]);
   const getAgent = useCallback(async (agentId) => {
+    if (!client) {
+      throw new Error("Client not available");
+    }
     try {
       const agent = await client.getAgent(agentId);
       setAgents((prev) => prev.map((a) => a.id === agentId ? agent : a));
@@ -102,12 +112,29 @@ function useAgents() {
     }
   }, [client]);
   useEffect2(() => {
-    fetchAgents();
-  }, [fetchAgents]);
+    if (clientLoading) {
+      console.log("[useAgents] Client is loading, waiting...");
+      setLoading(true);
+      return;
+    }
+    if (clientError) {
+      console.error("[useAgents] Client error:", clientError);
+      setError(clientError);
+      setLoading(false);
+      return;
+    }
+    if (client) {
+      console.log("[useAgents] Client ready, fetching agents");
+      fetchAgents();
+    } else {
+      console.log("[useAgents] No client available");
+      setLoading(false);
+    }
+  }, [clientLoading, clientError, client, fetchAgents]);
   return {
     agents,
-    loading,
-    error,
+    loading: loading || clientLoading,
+    error: error || clientError,
     refetch: fetchAgents,
     getAgent
   };
@@ -119,7 +146,7 @@ import {
   DistriClient as DistriClient2
 } from "@distri/core";
 function useTask({ agentId, autoSubscribe = true }) {
-  const client = useDistriClient();
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [task, setTask] = useState3(null);
   const [loading, setLoading] = useState3(false);
   const [error, setError] = useState3(null);
@@ -127,6 +154,10 @@ function useTask({ agentId, autoSubscribe = true }) {
   const [isStreaming, setIsStreaming] = useState3(false);
   const eventSourceRef = useRef(null);
   const createTask = useCallback2(async (message, configuration) => {
+    if (!client) {
+      setError(new Error("Client not available"));
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -156,6 +187,10 @@ function useTask({ agentId, autoSubscribe = true }) {
     await createTask(message, configuration);
   }, [createTask]);
   const getTask = useCallback2(async (taskId) => {
+    if (!client) {
+      setError(new Error("Client not available"));
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -178,7 +213,7 @@ function useTask({ agentId, autoSubscribe = true }) {
     }
   }, []);
   const subscribeToAgent = useCallback2(() => {
-    if (eventSourceRef.current) {
+    if (!client || eventSourceRef.current) {
       return;
     }
     try {
@@ -225,11 +260,11 @@ function useTask({ agentId, autoSubscribe = true }) {
     }
   }, [client, agentId, task, getTask]);
   useEffect3(() => {
-    if (autoSubscribe && agentId) {
+    if (autoSubscribe && agentId && client && !clientLoading) {
       const cleanup = subscribeToAgent();
       return cleanup;
     }
-  }, [autoSubscribe, agentId, subscribeToAgent]);
+  }, [autoSubscribe, agentId, client, clientLoading, subscribeToAgent]);
   useEffect3(() => {
     return () => {
       if (eventSourceRef.current) {
@@ -239,8 +274,8 @@ function useTask({ agentId, autoSubscribe = true }) {
   }, []);
   return {
     task,
-    loading,
-    error,
+    loading: loading || clientLoading,
+    error: error || clientError,
     streamingText,
     isStreaming,
     sendMessage,

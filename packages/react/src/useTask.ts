@@ -10,7 +10,7 @@ import {
   TaskCompletedEvent,
   TaskErrorEvent
 } from '@distri/core';
-import { useDistriClient } from './DistriProvider';
+import { useDistri } from './DistriProvider';
 
 export interface UseTaskOptions {
   agentId: string;
@@ -30,7 +30,7 @@ export interface UseTaskResult {
 }
 
 export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseTaskResult {
-  const client = useDistriClient();
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -42,6 +42,11 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
     message: A2AMessage, 
     configuration?: MessageSendParams['configuration']
   ) => {
+    if (!client) {
+      setError(new Error('Client not available'));
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -82,6 +87,11 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
   }, [createTask]);
 
   const getTask = useCallback(async (taskId: string) => {
+    if (!client) {
+      setError(new Error('Client not available'));
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -108,8 +118,8 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
   }, []);
 
   const subscribeToAgent = useCallback(() => {
-    if (eventSourceRef.current) {
-      return; // Already subscribed
+    if (!client || eventSourceRef.current) {
+      return; // No client or already subscribed
     }
 
     try {
@@ -167,13 +177,13 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
     }
   }, [client, agentId, task, getTask]);
 
-  // Auto-subscribe when agent changes
+  // Auto-subscribe when agent changes and client is available
   useEffect(() => {
-    if (autoSubscribe && agentId) {
+    if (autoSubscribe && agentId && client && !clientLoading) {
       const cleanup = subscribeToAgent();
       return cleanup;
     }
-  }, [autoSubscribe, agentId, subscribeToAgent]);
+  }, [autoSubscribe, agentId, client, clientLoading, subscribeToAgent]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -186,8 +196,8 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
 
   return {
     task,
-    loading,
-    error,
+    loading: loading || clientLoading,
+    error: error || clientError,
     streamingText,
     isStreaming,
     sendMessage,

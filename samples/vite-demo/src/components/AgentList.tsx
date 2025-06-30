@@ -10,7 +10,10 @@ interface AgentListProps {
 function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
   const { agents, loading, error, refetch } = useAgents()
 
-  if (loading && agents.length === 0) {
+  // Defensive check to ensure agents is always an array
+  const safeAgents = agents || []
+
+  if (loading && safeAgents.length === 0) {
     return (
       <div className="agent-list">
         <div className="agent-list-loading">Loading agents...</div>
@@ -18,7 +21,7 @@ function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
     )
   }
 
-  if (error && agents.length === 0) {
+  if (error && safeAgents.length === 0) {
     return (
       <div className="agent-list">
         <div className="agent-list-error">
@@ -42,7 +45,7 @@ function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
       </div>
 
       <div className="agent-list-items">
-        {agents.map((agent) => (
+        {safeAgents.map((agent: AgentCard) => (
           <AgentItem
             key={agent.id}
             agent={agent}
@@ -51,7 +54,7 @@ function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
           />
         ))}
         
-        {agents.length === 0 && !loading && (
+        {safeAgents.length === 0 && !loading && (
           <div className="agent-list-empty">
             No agents available. Make sure your Distri server is running.
           </div>
