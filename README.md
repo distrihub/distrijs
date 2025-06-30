@@ -1,22 +1,22 @@
 # Distri JavaScript SDK
 
-A comprehensive JavaScript SDK for the Distri distributed framework, providing both core functionality and React hooks for building distributed applications with real-time messaging and thread management.
+A comprehensive JavaScript SDK for the [Distri distributed framework](https://github.com/distrihub/distri), providing both core functionality and React hooks for building applications that interact with AI agents using the A2A (Agent-to-Agent) protocol.
 
 ## Features
 
-- 🌐 **A2A Protocol**: Agent-to-Agent communication using WebSockets
-- 🧵 **Thread Management**: Create, manage, and participate in conversation threads
-- 💬 **Real-time Messaging**: Send and receive messages with real-time updates
-- ⚛️ **React Hooks**: Pre-built hooks for easy React integration
-- 🔄 **Auto-reconnection**: Automatic reconnection with configurable retry logic
-- 📱 **Responsive**: Works across different devices and screen sizes
-- 🎯 **TypeScript**: Full TypeScript support with comprehensive type definitions
+- 🤖 **Agent Communication**: Interact with AI agents using the A2A protocol
+- 📡 **Real-time Updates**: Server-Sent Events (SSE) for live task updates and streaming
+- 🎯 **Task Management**: Create, monitor, and manage agent tasks
+- ⚛️ **React Integration**: Pre-built hooks for seamless React development
+- 🔄 **Auto-retry**: Configurable retry logic with exponential backoff
+- 📱 **Modern API**: Built with TypeScript and modern web standards
+- � **Developer Experience**: Comprehensive error handling and debugging support
 
 ## Packages
 
 This monorepo contains two main packages:
 
-- **`@distri/core`**: Core functionality and A2A protocol implementation
+- **`@distri/core`**: Core HTTP client and A2A protocol implementation
 - **`@distri/react`**: React hooks and context providers
 
 ## Installation
@@ -41,15 +41,11 @@ import { DistriProvider } from '@distri/react'
 import App from './App'
 
 const config = {
-  node: {
-    id: 'my-client',
-    name: 'My Application',
-    endpoint: 'ws://localhost:8080', // Your Distri node endpoint
-    status: 'connecting' as const,
-    capabilities: ['threads', 'messages', 'reactions']
-  },
-  autoConnect: true,
-  debug: process.env.NODE_ENV === 'development'
+  baseUrl: 'http://localhost:8080', // Your Distri server URL
+  apiVersion: 'v1',
+  debug: process.env.NODE_ENV === 'development',
+  timeout: 30000,
+  retryAttempts: 3
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -67,76 +63,73 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 import { DistriClient } from '@distri/core'
 
 const client = new DistriClient({
-  node: {
-    id: 'my-client',
-    name: 'My Application',
-    endpoint: 'ws://localhost:8080',
-    status: 'connecting',
-    capabilities: ['threads', 'messages']
-  },
-  autoConnect: true,
+  baseUrl: 'http://localhost:8080',
+  apiVersion: 'v1',
   debug: true
 })
 
-// Connect and use
-await client.connect()
+// Get available agents
+const agents = await client.getAgents()
+console.log('Available agents:', agents)
 
-// Create a thread
-const thread = await client.createThread({
-  title: 'My First Thread',
-  description: 'A test thread for demonstration'
+// Send a message to an agent
+const message = DistriClient.createMessage(
+  'msg-123',
+  'Hello! Can you help me with a coding problem?',
+  'user'
+)
+
+const params = DistriClient.createMessageParams(message)
+const response = await client.sendMessage('assistant', params)
+
+// Subscribe to real-time updates
+client.subscribeToAgent('assistant')
+client.on('text_delta', (event) => {
+  console.log('Streaming text:', event.delta)
 })
 
-// Send a message
-const message = await client.sendMessage({
-  threadId: thread.id,
-  content: 'Hello, Distri!'
-})
-
-// Listen for new messages
-client.on('message_received', (message) => {
-  console.log('New message:', message)
+client.on('task_completed', (event) => {
+  console.log('Task completed:', event.task_id)
 })
 ```
 
 ## React Hooks
 
-### useThreads
+### useAgents
 
-Manage threads with full CRUD operations:
+Manage and interact with available agents:
 
 ```tsx
 import React from 'react'
-import { useThreads } from '@distri/react'
+import { useAgents } from '@distri/react'
 
-function ThreadList() {
-  const { 
-    threads, 
-    loading, 
-    error, 
-    createThread, 
-    updateThread, 
-    deleteThread 
-  } = useThreads()
+function AgentList() {
+  const { agents, loading, error, refetch, getAgent } = useAgents()
 
-  const handleCreateThread = async () => {
-    await createThread({
-      title: 'New Thread',
-      description: 'Created from React'
-    })
+  const handleRefresh = async () => {
+    await refetch()
   }
 
-  if (loading) return <div>Loading threads...</div>
+  const handleSelectAgent = async (agentId: string) => {
+    const agent = await getAgent(agentId)
+    console.log('Selected agent:', agent)
+  }
+
+  if (loading) return <div>Loading agents...</div>
   if (error) return <div>Error: {error.message}</div>
 
   return (
     <div>
-      <button onClick={handleCreateThread}>Create Thread</button>
-      {threads.map(thread => (
-        <div key={thread.id}>
-          <h3>{thread.title}</h3>
-          <p>{thread.description}</p>
-          <span>{thread.participants.length} participants</span>
+      <button onClick={handleRefresh}>Refresh Agents</button>
+      {agents.map(agent => (
+        <div key={agent.id} onClick={() => handleSelectAgent(agent.id)}>
+          <h3>{agent.name}</h3>
+          <p>{agent.description}</p>
+          <div>
+            {agent.capabilities?.map(cap => (
+              <span key={cap}>{cap}</span>
+            ))}
+          </div>
         </div>
       ))}
     </div>
@@ -144,62 +137,77 @@ function ThreadList() {
 }
 ```
 
-### useMessages
+### useTask
 
-Handle messages within a thread:
+Handle agent tasks with real-time streaming:
 
 ```tsx
 import React, { useState } from 'react'
-import { useMessages } from '@distri/react'
+import { useTask } from '@distri/react'
 
-function Chat({ threadId }: { threadId: string }) {
+function AgentChat({ agentId }: { agentId: string }) {
   const { 
-    messages, 
+    task, 
     loading, 
     error, 
+    streamingText, 
+    isStreaming, 
     sendMessage, 
-    addReaction 
-  } = useMessages({ 
-    threadId,
-    autoSubscribe: true 
-  })
+    clearTask 
+  } = useTask({ agentId, autoSubscribe: true })
   
-  const [newMessage, setNewMessage] = useState('')
+  const [input, setInput] = useState('')
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!input.trim()) return
     
-    await sendMessage({ content: newMessage })
-    setNewMessage('')
-  }
-
-  const handleAddReaction = async (messageId: string, emoji: string) => {
-    await addReaction(messageId, emoji)
+    await sendMessage(input)
+    setInput('')
   }
 
   return (
     <div>
       <div className="messages">
-        {messages.map(message => (
-          <div key={message.id}>
-            <strong>User {message.authorId.slice(-4)}</strong>
-            <p>{message.content}</p>
-            <button onClick={() => handleAddReaction(message.id, '👍')}>
-              👍
-            </button>
+        {task?.messages.map((message, index) => (
+          <div key={index} className={`message ${message.role}`}>
+            <strong>{message.role === 'user' ? 'You' : 'Assistant'}:</strong>
+            {message.parts.map((part, i) => (
+              <span key={i}>
+                {part.kind === 'text' && part.text}
+              </span>
+            ))}
           </div>
         ))}
+        
+        {/* Show streaming text in real-time */}
+        {isStreaming && streamingText && (
+          <div className="message streaming">
+            <strong>Assistant:</strong> {streamingText}
+            <span className="cursor">|</span>
+          </div>
+        )}
       </div>
       
       <form onSubmit={handleSendMessage}>
         <input
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="Type your message..."
+          disabled={isStreaming}
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={!input.trim() || isStreaming}>
+          {isStreaming ? 'Streaming...' : 'Send'}
+        </button>
       </form>
+      
+      {task && (
+        <div className="task-status">
+          Task: {task.id} | Status: {task.status}
+        </div>
+      )}
+      
+      <button onClick={clearTask}>Clear Chat</button>
     </div>
   )
 }
@@ -207,35 +215,37 @@ function Chat({ threadId }: { threadId: string }) {
 
 ### useDistri
 
-Access the Distri client and connection status:
+Access the Distri client and handle errors:
 
 ```tsx
 import React from 'react'
 import { useDistri, useDistriClient } from '@distri/react'
 
 function ConnectionStatus() {
-  const { connectionStatus, error } = useDistri()
+  const { error } = useDistri()
   
-  return (
-    <div>
-      Status: <span className={connectionStatus}>{connectionStatus}</span>
-      {error && <div>Error: {error.message}</div>}
-    </div>
-  )
+  if (error) {
+    return <div className="error">Connection Error: {error.message}</div>
+  }
+  
+  return <div className="status">Connected to Distri</div>
 }
 
-function DataComponent() {
+function CustomComponent() {
   const client = useDistriClient()
   
   const handleCustomAction = async () => {
-    // Use the client directly for custom operations
-    const result = await client.request('custom.method', { data: 'example' })
-    console.log(result)
+    try {
+      const agents = await client.getAgents()
+      console.log('Found agents:', agents)
+    } catch (error) {
+      console.error('Failed to get agents:', error)
+    }
   }
   
   return (
     <button onClick={handleCustomAction}>
-      Perform Custom Action
+      Get Available Agents
     </button>
   )
 }
@@ -245,71 +255,64 @@ function DataComponent() {
 
 ### DistriClient
 
-The main client class for interacting with Distri nodes.
+The main client for interacting with the Distri server.
+
+#### Constructor
+
+```typescript
+const client = new DistriClient({
+  baseUrl: 'http://localhost:8080',    // Required: Distri server URL
+  apiVersion?: 'v1',                   // API version (default: 'v1')
+  timeout?: 30000,                     // Request timeout in ms (default: 30000)
+  retryAttempts?: 3,                   // Retry attempts (default: 3)
+  retryDelay?: 1000,                   // Retry delay in ms (default: 1000)
+  debug?: false,                       // Enable debug logging (default: false)
+  headers?: {}                         // Additional headers
+})
+```
 
 #### Methods
 
-- `connect()` - Connect to the Distri network
-- `disconnect()` - Disconnect from the network
-- `getConnectionStatus()` - Get current connection status
+**Agent Management:**
+- `getAgents()` - Get all available agents
+- `getAgent(agentId)` - Get specific agent details
 
-**Thread Management:**
-- `getThreads()` - Fetch all threads
-- `getThread(id)` - Get a specific thread
-- `createThread(data)` - Create a new thread
-- `updateThread(id, updates)` - Update thread properties
-- `deleteThread(id)` - Delete a thread
-- `joinThread(id)` - Join an existing thread
-- `leaveThread(id)` - Leave a thread
+**Task Management:**
+- `sendMessage(agentId, params)` - Send a message to an agent
+- `sendStreamingMessage(agentId, params)` - Send a streaming message
+- `createTask(request)` - Create a new task
+- `getTask(taskId)` - Get task details
+- `cancelTask(taskId)` - Cancel a task (if supported)
 
-**Message Management:**
-- `getMessages(threadId, options)` - Get messages for a thread
-- `sendMessage(data)` - Send a new message
-- `editMessage(id, content)` - Edit an existing message
-- `deleteMessage(id)` - Delete a message
-- `addReaction(messageId, emoji)` - Add reaction to message
-- `removeReaction(messageId, emoji)` - Remove reaction from message
+**Real-time Updates:**
+- `subscribeToAgent(agentId)` - Subscribe to agent events via SSE
+- `unsubscribeFromAgent(agentId)` - Unsubscribe from agent events
+- `disconnect()` - Close all connections
 
-**Subscriptions:**
-- `subscribeToThread(threadId)` - Subscribe to thread events
-- `subscribeToUser(userId)` - Subscribe to user events
-- `subscribeToEvents(eventTypes)` - Subscribe to specific event types
+**Helper Methods:**
+- `DistriClient.createMessage(id, text, role, contextId?)` - Create A2A message
+- `DistriClient.createMessageParams(message, config?)` - Create message parameters
 
 #### Events
 
-The client emits the following events:
-
-- `connection_status_changed` - Connection status changes
-- `message_received` - New message received
-- `thread_created` - New thread created
-- `thread_updated` - Thread updated
-- `user_joined` - User joined a thread
-- `user_left` - User left a thread
-- `error` - Error occurred
-
-### A2AClient
-
-Low-level A2A protocol client for direct protocol communication.
+The client emits events for real-time updates:
 
 ```typescript
-import { A2AClient } from '@distri/core'
-
-const a2aClient = new A2AClient(node, {
-  autoConnect: true,
-  reconnectAttempts: 3,
-  reconnectDelay: 5000,
-  heartbeatInterval: 30000,
-  timeout: 10000
+client.on('text_delta', (event: TextDeltaEvent) => {
+  console.log('Streaming text:', event.delta)
 })
 
-// Send raw A2A requests
-const result = await a2aClient.request('method.name', { param: 'value' })
+client.on('task_status_changed', (event: TaskStatusChangedEvent) => {
+  console.log('Task status:', event.status)
+})
 
-// Subscribe to channels
-await a2aClient.subscribe({ threadId: 'thread-id' })
+client.on('task_completed', (event: TaskCompletedEvent) => {
+  console.log('Task completed:', event.task_id)
+})
 
-// Publish messages
-await a2aClient.publish('channel', { data: 'message' })
+client.on('task_error', (event: TaskErrorEvent) => {
+  console.log('Task error:', event.error)
+})
 ```
 
 ## Configuration
@@ -318,31 +321,43 @@ await a2aClient.publish('channel', { data: 'message' })
 
 ```typescript
 interface DistriClientConfig {
-  node: DistriNode
-  autoConnect?: boolean          // Default: true
-  reconnectAttempts?: number     // Default: 3
-  reconnectDelay?: number        // Default: 5000ms
-  heartbeatInterval?: number     // Default: 30000ms
-  timeout?: number              // Default: 10000ms
-  encryption?: {
-    enabled: boolean
-    algorithm?: string
-  }
-  debug?: boolean               // Default: false
+  baseUrl: string                      // Distri server URL
+  apiVersion?: string                  // API version (default: 'v1')
+  timeout?: number                     // Request timeout (default: 30000ms)
+  retryAttempts?: number              // Retry attempts (default: 3)
+  retryDelay?: number                 // Retry delay (default: 1000ms)
+  debug?: boolean                     // Debug logging (default: false)
+  headers?: Record<string, string>    // Additional headers
 }
 ```
 
-### DistriNode
+### AgentCard
 
 ```typescript
-interface DistriNode {
-  id: string                    // Unique identifier for this client
-  name: string                  // Human-readable name
-  endpoint: string              // WebSocket endpoint (ws:// or wss://)
-  publicKey?: string            // Optional public key for encryption
-  status: 'online' | 'offline' | 'connecting'
-  capabilities: string[]        // Supported capabilities
-  metadata?: Record<string, any> // Additional metadata
+interface AgentCard {
+  id: string                          // Unique agent identifier
+  name: string                        // Human-readable name
+  description: string                 // Agent description
+  version?: string                    // Agent version
+  capabilities?: string[]             // Agent capabilities
+  metadata?: Record<string, any>      // Additional metadata
+}
+```
+
+### Task
+
+```typescript
+interface Task {
+  id: string                          // Task identifier
+  agentId: string                     // Associated agent
+  status: TaskStatus                  // Current status
+  contextId?: string                  // Context identifier
+  createdAt: number                   // Creation timestamp
+  updatedAt: number                   // Last update timestamp
+  messages: A2AMessage[]              // Conversation messages
+  artifacts?: TaskArtifact[]          // Task artifacts
+  error?: string                      // Error message if failed
+  metadata?: Record<string, any>      // Additional metadata
 }
 ```
 
@@ -361,12 +376,14 @@ npm install
 npm run dev
 ```
 
+Visit `http://localhost:3000` to see the demo.
+
 The sample includes:
-- Thread creation and management
-- Real-time messaging
-- Message reactions
-- Connection status monitoring
-- Responsive UI design
+- Agent discovery and selection
+- Real-time chat interface with streaming
+- Task management and monitoring
+- Error handling and retry logic
+- Modern responsive UI
 
 ## Development
 
@@ -407,14 +424,52 @@ distrijs/
 
 - Node.js 18+
 - React 16.8+ (for React hooks)
-- Modern browser with WebSocket support
+- Distri server running (see [Distri repository](https://github.com/distrihub/distri))
 
-## Browser Support
+## Distri Server Setup
 
-- Chrome 88+
-- Firefox 84+
-- Safari 14+
-- Edge 88+
+To use this SDK, you need a running Distri server. Follow the setup instructions in the [main Distri repository](https://github.com/distrihub/distri):
+
+```bash
+# Clone the Distri repository
+git clone https://github.com/distrihub/distri.git
+cd distri
+
+# Build and run the server
+cargo run -- --config test-config.yaml
+
+# The server will be available at http://localhost:8080
+```
+
+## API Endpoints
+
+The SDK communicates with these Distri server endpoints:
+
+- `GET /api/v1/agents` - List all agents
+- `GET /api/v1/agents/{id}` - Get agent details
+- `POST /api/v1/agents/{id}` - Send JSON-RPC requests
+- `GET /api/v1/agents/{id}/events` - SSE event stream
+- `GET /api/v1/tasks/{id}` - Get task details
+
+## Error Handling
+
+The SDK provides comprehensive error handling:
+
+```typescript
+import { DistriError, ApiError, A2AProtocolError } from '@distri/core'
+
+try {
+  await client.sendMessage('agent-id', params)
+} catch (error) {
+  if (error instanceof ApiError) {
+    console.log('HTTP Error:', error.statusCode, error.message)
+  } else if (error instanceof A2AProtocolError) {
+    console.log('Protocol Error:', error.message)
+  } else if (error instanceof DistriError) {
+    console.log('Distri Error:', error.code, error.message)
+  }
+}
+```
 
 ## Contributing
 
@@ -430,18 +485,13 @@ MIT License - see LICENSE file for details.
 
 ## Support
 
-- 📖 [Documentation](https://docs.distri.ai)
-- 💬 [Community Discord](https://discord.gg/distri)
+- 📖 [Distri Documentation](https://www.distri.dev)
+- 💬 [GitHub Discussions](https://github.com/distrihub/distri/discussions)
 - 🐛 [Issue Tracker](https://github.com/distrihub/distrijs/issues)
-- 📧 [Email Support](mailto:support@distri.ai)
+- 📧 [Distri Community](https://github.com/distrihub/distri)
 
-## Roadmap
+## Related Projects
 
-- [ ] End-to-end encryption support
-- [ ] File upload and sharing
-- [ ] Voice and video messaging
-- [ ] Advanced search and filtering
-- [ ] Mobile React Native SDK
-- [ ] Vue.js bindings
-- [ ] Angular bindings
+- [Distri Framework](https://github.com/distrihub/distri) - The main Distri framework
+- [MCP Protocol](https://github.com/modelcontextprotocol/specification) - Model Context Protocol specification
 

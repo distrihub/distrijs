@@ -1,397 +1,398 @@
 import { EventEmitter } from 'eventemitter3';
-import { A2AClient } from './a2a-client';
 import {
   DistriClientConfig,
-  Thread,
-  Message,
-  User,
+  AgentCard,
+  AgentListResponse,
+  Task,
+  A2AMessage,
+  MessageSendParams,
+  CreateTaskRequest,
+  CreateTaskResponse,
   DistriEvent,
-  DistriEventType,
+  TextDeltaEvent,
+  TaskStatusChangedEvent,
+  TaskCompletedEvent,
+  TaskErrorEvent,
+  JsonRpcRequest,
+  JsonRpcResponse,
   ConnectionStatus,
+  DistriError,
+  ApiError,
+  A2AProtocolError,
   SubscriptionOptions
 } from './types';
 
 /**
- * Main Distri Client
- * Provides high-level API for interacting with Distri framework
+ * Main Distri Client for interacting with Distri server
+ * Uses HTTP API with JSON-RPC and Server-Sent Events
  */
 export class DistriClient extends EventEmitter {
-  private a2aClient: A2AClient;
-  private cache = {
-    threads: new Map<string, Thread>(),
-    messages: new Map<string, Message>(),
-    users: new Map<string, User>()
-  };
+  private config: Required<DistriClientConfig>;
+  private eventSources = new Map<string, EventSource>();
+  private requestIdCounter = 0;
 
   constructor(config: DistriClientConfig) {
     super();
     
-    this.a2aClient = new A2AClient(config.node, {
-      autoConnect: config.autoConnect,
-      reconnectAttempts: config.reconnectAttempts,
-      reconnectDelay: config.reconnectDelay,
-      heartbeatInterval: config.heartbeatInterval,
-      timeout: config.timeout,
-      debug: config.debug
-    });
-
-    this.setupEventHandlers();
+    this.config = {
+      baseUrl: config.baseUrl.replace(/\/$/, ''),
+      apiVersion: config.apiVersion || 'v1',
+      timeout: config.timeout || 30000,
+      retryAttempts: config.retryAttempts || 3,
+      retryDelay: config.retryDelay || 1000,
+      debug: config.debug || false,
+      headers: config.headers || {}
+    };
   }
 
   /**
-   * Connect to Distri network
+   * Get all available agents
    */
-  async connect(): Promise<void> {
-    await this.a2aClient.connect();
+  async getAgents(): Promise<AgentCard[]> {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents`);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
+      }
+      
+      const data: AgentListResponse = await response.json();
+      return data.agents;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to fetch agents', 'FETCH_ERROR', error);
+    }
   }
 
   /**
-   * Disconnect from Distri network
+   * Get specific agent card
+   */
+  async getAgent(agentId: string): Promise<AgentCard> {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Agent not found: ${agentId}`, 404);
+        }
+        throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to fetch agent ${agentId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Send a message to an agent using JSON-RPC
+   */
+  async sendMessage(agentId: string, params: MessageSendParams): Promise<JsonRpcResponse> {
+    const request: JsonRpcRequest = {
+      jsonrpc: "2.0",
+      method: "message/send",
+      params,
+      id: this.generateRequestId()
+    };
+
+    return this.sendJsonRpcRequest(agentId, request);
+  }
+
+  /**
+   * Send a streaming message to an agent
+   */
+  async sendStreamingMessage(agentId: string, params: MessageSendParams): Promise<JsonRpcResponse> {
+    const request: JsonRpcRequest = {
+      jsonrpc: "2.0",
+      method: "message/send_streaming",
+      params,
+      id: this.generateRequestId()
+    };
+
+    return this.sendJsonRpcRequest(agentId, request);
+  }
+
+  /**
+   * Create a task (convenience method)
+   */
+  async createTask(request: CreateTaskRequest): Promise<CreateTaskResponse> {
+    const params: MessageSendParams = {
+      message: request.message,
+      configuration: request.configuration
+    };
+
+    const response = await this.sendMessage(request.agentId, params);
+    
+    if (response.error) {
+      throw new A2AProtocolError(response.error.message, response.error);
+    }
+
+    return response.result as CreateTaskResponse;
+  }
+
+  /**
+   * Get task details
+   */
+  async getTask(taskId: string): Promise<Task> {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/tasks/${taskId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Task not found: ${taskId}`, 404);
+        }
+        throw new ApiError(`Failed to fetch task: ${response.statusText}`, response.status);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to fetch task ${taskId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Cancel a task
+   */
+  async cancelTask(taskId: string): Promise<void> {
+    // This would be implemented via JSON-RPC to the agent handling the task
+    // For now, we'll assume there's a cancel endpoint or method
+    const request: JsonRpcRequest = {
+      jsonrpc: "2.0",
+      method: "task/cancel",
+      params: { taskId },
+      id: this.generateRequestId()
+    };
+
+    // Note: We'd need to know which agent is handling this task
+    // This is simplified for the example
+    throw new DistriError('Task cancellation not yet implemented', 'NOT_IMPLEMENTED');
+  }
+
+  /**
+   * Subscribe to agent events via Server-Sent Events
+   */
+  subscribeToAgent(agentId: string, options?: SubscriptionOptions): EventSource {
+    const existingSource = this.eventSources.get(agentId);
+    if (existingSource) {
+      return existingSource;
+    }
+
+    const url = `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}/events`;
+    const eventSource = new EventSource(url);
+
+    eventSource.onopen = () => {
+      this.debug(`Connected to agent ${agentId} event stream`);
+      this.emit('agent_stream_connected', agentId);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data: DistriEvent = JSON.parse(event.data);
+        this.handleEvent(data);
+      } catch (error) {
+        this.debug('Failed to parse SSE event:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      this.debug(`SSE error for agent ${agentId}:`, error);
+      this.emit('agent_stream_error', agentId, error);
+    };
+
+    this.eventSources.set(agentId, eventSource);
+    return eventSource;
+  }
+
+  /**
+   * Subscribe to task events
+   */
+  subscribeToTask(taskId: string): void {
+    // In the actual implementation, you might subscribe to specific task events
+    // For now, we'll rely on agent-level subscriptions
+    this.emit('task_subscribed', taskId);
+  }
+
+  /**
+   * Unsubscribe from agent events
+   */
+  unsubscribeFromAgent(agentId: string): void {
+    const eventSource = this.eventSources.get(agentId);
+    if (eventSource) {
+      eventSource.close();
+      this.eventSources.delete(agentId);
+      this.emit('agent_stream_disconnected', agentId);
+    }
+  }
+
+  /**
+   * Close all connections
    */
   disconnect(): void {
-    this.a2aClient.disconnect();
+    for (const [agentId, eventSource] of this.eventSources) {
+      eventSource.close();
+    }
+    this.eventSources.clear();
   }
 
   /**
-   * Get connection status
+   * Send a JSON-RPC request to an agent
    */
-  getConnectionStatus(): ConnectionStatus {
-    return this.a2aClient.getConnectionStatus();
-  }
-
-  // Thread Management
-
-  /**
-   * Get all threads
-   */
-  async getThreads(): Promise<Thread[]> {
-    const threads = await this.a2aClient.request<Thread[]>('threads.list');
-    
-    // Update cache
-    threads.forEach(thread => {
-      this.cache.threads.set(thread.id, thread);
-    });
-    
-    return threads;
-  }
-
-  /**
-   * Get a specific thread by ID
-   */
-  async getThread(threadId: string): Promise<Thread | null> {
+  private async sendJsonRpcRequest(agentId: string, request: JsonRpcRequest): Promise<JsonRpcResponse> {
     try {
-      const thread = await this.a2aClient.request<Thread>('threads.get', { id: threadId });
-      this.cache.threads.set(thread.id, thread);
-      return thread;
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.config.headers
+        },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        throw new ApiError(`JSON-RPC request failed: ${response.statusText}`, response.status);
+      }
+
+      const jsonResponse: JsonRpcResponse = await response.json();
+      
+      if (jsonResponse.error) {
+        throw new A2AProtocolError(jsonResponse.error.message, jsonResponse.error);
+      }
+
+      return jsonResponse;
     } catch (error) {
-      return null;
+      if (error instanceof ApiError || error instanceof A2AProtocolError) {
+        throw error;
+      }
+      throw new DistriError('JSON-RPC request failed', 'RPC_ERROR', error);
     }
   }
 
   /**
-   * Create a new thread
+   * Handle incoming SSE events
    */
-  async createThread(data: {
-    title: string;
-    description?: string;
-    participants?: string[];
-    tags?: string[];
-    metadata?: Record<string, any>;
-  }): Promise<Thread> {
-    const thread = await this.a2aClient.request<Thread>('threads.create', data);
-    this.cache.threads.set(thread.id, thread);
-    return thread;
-  }
+  private handleEvent(event: DistriEvent): void {
+    this.debug('Received event:', event);
 
-  /**
-   * Update thread
-   */
-  async updateThread(threadId: string, updates: Partial<Thread>): Promise<Thread> {
-    const thread = await this.a2aClient.request<Thread>('threads.update', {
-      id: threadId,
-      ...updates
-    });
-    this.cache.threads.set(thread.id, thread);
-    return thread;
-  }
-
-  /**
-   * Delete thread
-   */
-  async deleteThread(threadId: string): Promise<void> {
-    await this.a2aClient.request('threads.delete', { id: threadId });
-    this.cache.threads.delete(threadId);
-  }
-
-  /**
-   * Join a thread
-   */
-  async joinThread(threadId: string): Promise<void> {
-    await this.a2aClient.request('threads.join', { id: threadId });
-  }
-
-  /**
-   * Leave a thread
-   */
-  async leaveThread(threadId: string): Promise<void> {
-    await this.a2aClient.request('threads.leave', { id: threadId });
-  }
-
-  // Message Management
-
-  /**
-   * Get messages for a thread
-   */
-  async getMessages(threadId: string, options?: {
-    limit?: number;
-    offset?: number;
-    before?: number;
-    after?: number;
-  }): Promise<Message[]> {
-    const messages = await this.a2aClient.request<Message[]>('messages.list', {
-      threadId,
-      ...options
-    });
-
-    // Update cache
-    messages.forEach(message => {
-      this.cache.messages.set(message.id, message);
-    });
-
-    return messages;
-  }
-
-  /**
-   * Get a specific message by ID
-   */
-  async getMessage(messageId: string): Promise<Message | null> {
-    try {
-      const message = await this.a2aClient.request<Message>('messages.get', { id: messageId });
-      this.cache.messages.set(message.id, message);
-      return message;
-    } catch (error) {
-      return null;
+    switch (event.type) {
+      case 'task_status_changed':
+        this.emit('task_status_changed', event as TaskStatusChangedEvent);
+        break;
+      
+      case 'text_delta':
+        this.emit('text_delta', event as TextDeltaEvent);
+        break;
+      
+      case 'task_completed':
+        this.emit('task_completed', event as TaskCompletedEvent);
+        break;
+      
+      case 'task_error':
+        this.emit('task_error', event as TaskErrorEvent);
+        break;
+      
+      case 'task_canceled':
+        this.emit('task_canceled', event);
+        break;
+      
+      case 'agent_status_changed':
+        this.emit('agent_status_changed', event);
+        break;
+      
+      default:
+        this.emit('event', event);
     }
   }
 
   /**
-   * Send a message to a thread
+   * Enhanced fetch with retry logic
    */
-  async sendMessage(data: {
-    threadId: string;
-    content: string;
-    contentType?: 'text' | 'markdown' | 'json' | 'file';
-    replyTo?: string;
-    attachments?: any[];
-    metadata?: Record<string, any>;
-  }): Promise<Message> {
-    const message = await this.a2aClient.request<Message>('messages.create', data);
-    this.cache.messages.set(message.id, message);
-    return message;
+  private async fetch(path: string, options?: RequestInit): Promise<Response> {
+    const url = `${this.config.baseUrl}${path}`;
+    let lastError: Error;
+
+    for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            ...this.config.headers,
+            ...options?.headers
+          }
+        });
+
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        if (attempt < this.config.retryAttempts) {
+          this.debug(`Request failed (attempt ${attempt + 1}), retrying in ${this.config.retryDelay}ms...`);
+          await this.delay(this.config.retryDelay);
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   /**
-   * Edit a message
+   * Generate unique request ID
    */
-  async editMessage(messageId: string, content: string): Promise<Message> {
-    const message = await this.a2aClient.request<Message>('messages.update', {
-      id: messageId,
-      content
-    });
-    this.cache.messages.set(message.id, message);
-    return message;
+  private generateRequestId(): string {
+    return `req-${Date.now()}-${++this.requestIdCounter}`;
   }
 
   /**
-   * Delete a message
+   * Delay utility
    */
-  async deleteMessage(messageId: string): Promise<void> {
-    await this.a2aClient.request('messages.delete', { id: messageId });
-    this.cache.messages.delete(messageId);
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
-   * Add reaction to a message
+   * Debug logging
    */
-  async addReaction(messageId: string, emoji: string): Promise<void> {
-    await this.a2aClient.request('messages.react', {
-      id: messageId,
-      emoji,
-      action: 'add'
-    });
-  }
-
-  /**
-   * Remove reaction from a message
-   */
-  async removeReaction(messageId: string, emoji: string): Promise<void> {
-    await this.a2aClient.request('messages.react', {
-      id: messageId,
-      emoji,
-      action: 'remove'
-    });
-  }
-
-  // User Management
-
-  /**
-   * Get current user
-   */
-  async getCurrentUser(): Promise<User> {
-    const user = await this.a2aClient.request<User>('users.me');
-    this.cache.users.set(user.id, user);
-    return user;
-  }
-
-  /**
-   * Get user by ID
-   */
-  async getUser(userId: string): Promise<User | null> {
-    try {
-      const user = await this.a2aClient.request<User>('users.get', { id: userId });
-      this.cache.users.set(user.id, user);
-      return user;
-    } catch (error) {
-      return null;
+  private debug(...args: any[]): void {
+    if (this.config.debug) {
+      console.log('[DistriClient]', ...args);
     }
   }
 
   /**
-   * Update current user profile
+   * Helper method to create A2A messages
    */
-  async updateProfile(updates: Partial<User>): Promise<User> {
-    const user = await this.a2aClient.request<User>('users.update', updates);
-    this.cache.users.set(user.id, user);
-    return user;
+  static createMessage(
+    messageId: string,
+    text: string,
+    role: 'user' | 'assistant' | 'system' = 'user',
+    contextId?: string
+  ): A2AMessage {
+    return {
+      messageId,
+      role,
+      parts: [{ kind: 'text', text }],
+      contextId,
+      timestamp: Date.now()
+    };
   }
 
   /**
-   * Get users in a thread
+   * Helper method to create message send parameters
    */
-  async getThreadUsers(threadId: string): Promise<User[]> {
-    const users = await this.a2aClient.request<User[]>('threads.users', { id: threadId });
-    
-    // Update cache
-    users.forEach(user => {
-      this.cache.users.set(user.id, user);
-    });
-    
-    return users;
-  }
-
-  // Subscriptions and Events
-
-  /**
-   * Subscribe to thread events
-   */
-  async subscribeToThread(threadId: string): Promise<void> {
-    await this.a2aClient.subscribe({ threadId });
-  }
-
-  /**
-   * Unsubscribe from thread events
-   */
-  async unsubscribeFromThread(threadId: string): Promise<void> {
-    await this.a2aClient.unsubscribe({ threadId });
-  }
-
-  /**
-   * Subscribe to user events
-   */
-  async subscribeToUser(userId: string): Promise<void> {
-    await this.a2aClient.subscribe({ userId });
-  }
-
-  /**
-   * Subscribe to specific event types
-   */
-  async subscribeToEvents(eventTypes: DistriEventType[]): Promise<void> {
-    await this.a2aClient.subscribe({ eventTypes });
-  }
-
-  // Cache Management
-
-  /**
-   * Get cached thread
-   */
-  getCachedThread(threadId: string): Thread | undefined {
-    return this.cache.threads.get(threadId);
-  }
-
-  /**
-   * Get cached message
-   */
-  getCachedMessage(messageId: string): Message | undefined {
-    return this.cache.messages.get(messageId);
-  }
-
-  /**
-   * Get cached user
-   */
-  getCachedUser(userId: string): User | undefined {
-    return this.cache.users.get(userId);
-  }
-
-  /**
-   * Clear all cache
-   */
-  clearCache(): void {
-    this.cache.threads.clear();
-    this.cache.messages.clear();
-    this.cache.users.clear();
-  }
-
-  /**
-   * Get all cached threads
-   */
-  getCachedThreads(): Thread[] {
-    return Array.from(this.cache.threads.values());
-  }
-
-  /**
-   * Get cached messages for a thread
-   */
-  getCachedMessages(threadId: string): Message[] {
-    return Array.from(this.cache.messages.values())
-      .filter(message => message.threadId === threadId)
-      .sort((a, b) => a.timestamp - b.timestamp);
-  }
-
-  private setupEventHandlers(): void {
-    // Forward A2A client events
-    this.a2aClient.on('connection_status_changed', (status) => {
-      this.emit('connection_status_changed', status);
-    });
-
-    this.a2aClient.on('error', (error) => {
-      this.emit('error', error);
-    });
-
-    // Handle specific events
-    this.a2aClient.on('message_received', (data) => {
-      const message: Message = data.message;
-      this.cache.messages.set(message.id, message);
-      this.emit('message_received', message);
-    });
-
-    this.a2aClient.on('thread_created', (data) => {
-      const thread: Thread = data.thread;
-      this.cache.threads.set(thread.id, thread);
-      this.emit('thread_created', thread);
-    });
-
-    this.a2aClient.on('thread_updated', (data) => {
-      const thread: Thread = data.thread;
-      this.cache.threads.set(thread.id, thread);
-      this.emit('thread_updated', thread);
-    });
-
-    this.a2aClient.on('user_joined', (data) => {
-      this.emit('user_joined', data);
-    });
-
-    this.a2aClient.on('user_left', (data) => {
-      this.emit('user_left', data);
-    });
+  static createMessageParams(
+    message: A2AMessage,
+    configuration?: MessageSendParams['configuration']
+  ): MessageSendParams {
+    return {
+      message,
+      configuration: {
+        acceptedOutputModes: ['text/plain'],
+        blocking: true,
+        ...configuration
+      }
+    };
   }
 }

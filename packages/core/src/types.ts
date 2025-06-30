@@ -1,161 +1,177 @@
-// Core Distri Types
+// Distri Framework Types - Based on A2A Protocol and SSE
 
 /**
- * Distri Node Configuration
+ * Agent Card - Distri Agent Discovery and Metadata
  */
-export interface DistriNode {
+export interface AgentCard {
   id: string;
   name: string;
-  endpoint: string;
-  publicKey?: string;
-  status: 'online' | 'offline' | 'connecting';
-  capabilities: string[];
+  description: string;
+  version?: string;
+  capabilities?: string[];
   metadata?: Record<string, any>;
 }
 
 /**
- * A2A Protocol Message Types
+ * JSON-RPC Request for A2A Protocol
  */
-export type A2AMessageType = 
-  | 'handshake'
-  | 'auth'
-  | 'request'
-  | 'response'
-  | 'error'
-  | 'ping'
-  | 'pong'
-  | 'subscribe'
-  | 'unsubscribe'
-  | 'publish'
-  | 'notification';
-
-/**
- * Base A2A Protocol Message
- */
-export interface A2AMessage<T = any> {
-  id: string;
-  type: A2AMessageType;
-  from: string;
-  to?: string;
-  timestamp: number;
-  data: T;
-  signature?: string;
+export interface JsonRpcRequest {
+  jsonrpc: "2.0";
+  method: string;
+  params?: any;
+  id: string | number;
 }
 
 /**
- * A2A Request Message
+ * JSON-RPC Response
  */
-export interface A2ARequest extends A2AMessage {
-  type: 'request';
-  data: {
-    method: string;
-    params?: any;
-    endpoint?: string;
+export interface JsonRpcResponse<T = any> {
+  jsonrpc: "2.0";
+  result?: T;
+  error?: {
+    code: number;
+    message: string;
+    data?: any;
+  };
+  id: string | number;
+}
+
+/**
+ * Message Parts for A2A Protocol
+ */
+export type MessagePart = 
+  | { kind: "text"; text: string }
+  | { kind: "image"; image: string; mimeType?: string }
+  | { kind: "file"; file: string; mimeType?: string };
+
+/**
+ * A2A Message Structure
+ */
+export interface A2AMessage {
+  messageId: string;
+  role: "user" | "assistant" | "system";
+  parts: MessagePart[];
+  contextId?: string;
+  timestamp?: number;
+}
+
+/**
+ * Message Send Parameters
+ */
+export interface MessageSendParams {
+  message: A2AMessage;
+  configuration?: {
+    acceptedOutputModes?: string[];
+    blocking?: boolean;
+    maxTokens?: number;
+    temperature?: number;
+    [key: string]: any;
   };
 }
 
 /**
- * A2A Response Message
+ * Message Send Streaming Parameters
  */
-export interface A2AResponse extends A2AMessage {
-  type: 'response';
-  data: {
-    result?: any;
-    error?: {
-      code: number;
-      message: string;
-      details?: any;
-    };
+export interface MessageSendStreamingParams extends MessageSendParams {
+  streamingConfiguration?: {
+    chunkSize?: number;
+    flushInterval?: number;
   };
 }
 
 /**
- * Thread Types
+ * Task Status
  */
-export interface Thread {
+export type TaskStatus = 
+  | "submitted"
+  | "working" 
+  | "completed"
+  | "failed"
+  | "canceled";
+
+/**
+ * Task Structure
+ */
+export interface Task {
   id: string;
-  title: string;
-  description?: string;
+  agentId: string;
+  status: TaskStatus;
+  contextId?: string;
   createdAt: number;
   updatedAt: number;
-  authorId: string;
-  participants: string[];
-  status: 'active' | 'archived' | 'locked';
-  tags?: string[];
+  messages: A2AMessage[];
+  artifacts?: TaskArtifact[];
+  error?: string;
   metadata?: Record<string, any>;
 }
 
 /**
- * Message Types
+ * Task Artifact
  */
-export interface Message {
+export interface TaskArtifact {
   id: string;
-  threadId: string;
-  authorId: string;
-  content: string;
-  contentType: 'text' | 'markdown' | 'json' | 'file';
-  timestamp: number;
-  editedAt?: number;
-  replyTo?: string;
-  attachments?: Attachment[];
-  reactions?: Reaction[];
-  metadata?: Record<string, any>;
-}
-
-/**
- * Attachment Type
- */
-export interface Attachment {
-  id: string;
-  name: string;
   type: string;
-  size: number;
-  url: string;
-  hash?: string;
+  content: string | ArrayBuffer;
+  mimeType?: string;
+  metadata?: Record<string, any>;
 }
 
 /**
- * Reaction Type
+ * Server-Sent Event Types
  */
-export interface Reaction {
-  emoji: string;
-  userId: string;
+export type DistriEventType = 
+  | "task_status_changed"
+  | "text_delta"
+  | "task_completed"
+  | "task_error"
+  | "task_canceled"
+  | "agent_status_changed";
+
+/**
+ * SSE Event Data
+ */
+export interface DistriEvent {
+  type: DistriEventType;
+  task_id?: string;
+  agent_id?: string;
+  data?: any;
   timestamp: number;
 }
 
 /**
- * User/Participant Types
+ * Text Delta Event
  */
-export interface User {
-  id: string;
-  name: string;
-  avatar?: string;
-  email?: string;
-  publicKey?: string;
-  status: 'online' | 'offline' | 'away' | 'busy';
-  lastSeen?: number;
-  profile?: UserProfile;
+export interface TextDeltaEvent extends DistriEvent {
+  type: "text_delta";
+  task_id: string;
+  delta: string;
 }
 
 /**
- * User Profile
+ * Task Status Changed Event
  */
-export interface UserProfile {
-  bio?: string;
-  location?: string;
-  website?: string;
-  social?: Record<string, string>;
-  preferences?: UserPreferences;
+export interface TaskStatusChangedEvent extends DistriEvent {
+  type: "task_status_changed";
+  task_id: string;
+  status: TaskStatus;
 }
 
 /**
- * User Preferences
+ * Task Completed Event
  */
-export interface UserPreferences {
-  notifications: boolean;
-  theme: 'light' | 'dark' | 'auto';
-  language: string;
-  timezone: string;
+export interface TaskCompletedEvent extends DistriEvent {
+  type: "task_completed";
+  task_id: string;
+  result?: any;
+}
+
+/**
+ * Task Error Event
+ */
+export interface TaskErrorEvent extends DistriEvent {
+  type: "task_error";
+  task_id: string;
+  error: string;
 }
 
 /**
@@ -164,51 +180,40 @@ export interface UserPreferences {
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 /**
- * Event Types
- */
-export type DistriEventType = 
-  | 'connection_status_changed'
-  | 'message_received'
-  | 'thread_created'
-  | 'thread_updated'
-  | 'user_joined'
-  | 'user_left'
-  | 'error';
-
-/**
- * Distri Event
- */
-export interface DistriEvent<T = any> {
-  type: DistriEventType;
-  data: T;
-  timestamp: number;
-}
-
-/**
- * Client Configuration
+ * Distri Client Configuration
  */
 export interface DistriClientConfig {
-  node: DistriNode;
-  autoConnect?: boolean;
-  reconnectAttempts?: number;
-  reconnectDelay?: number;
-  heartbeatInterval?: number;
+  baseUrl: string;
+  apiVersion?: string;
   timeout?: number;
-  encryption?: {
-    enabled: boolean;
-    algorithm?: string;
-  };
+  retryAttempts?: number;
+  retryDelay?: number;
   debug?: boolean;
+  headers?: Record<string, string>;
 }
 
 /**
- * Subscription Options
+ * Agent List Response
  */
-export interface SubscriptionOptions {
-  threadId?: string;
-  userId?: string;
-  eventTypes?: DistriEventType[];
-  filter?: (event: DistriEvent) => boolean;
+export interface AgentListResponse {
+  agents: AgentCard[];
+}
+
+/**
+ * Task Creation Request
+ */
+export interface CreateTaskRequest {
+  agentId: string;
+  message: A2AMessage;
+  configuration?: MessageSendParams['configuration'];
+}
+
+/**
+ * Task Creation Response
+ */
+export interface CreateTaskResponse {
+  taskId: string;
+  status: TaskStatus;
 }
 
 /**
@@ -232,6 +237,13 @@ export class A2AProtocolError extends DistriError {
   }
 }
 
+export class ApiError extends DistriError {
+  constructor(message: string, public statusCode: number, details?: any) {
+    super(message, 'API_ERROR', details);
+    this.name = 'ApiError';
+  }
+}
+
 export class ConnectionError extends DistriError {
   constructor(message: string, details?: any) {
     super(message, 'CONNECTION_ERROR', details);
@@ -239,9 +251,11 @@ export class ConnectionError extends DistriError {
   }
 }
 
-export class AuthenticationError extends DistriError {
-  constructor(message: string, details?: any) {
-    super(message, 'AUTHENTICATION_ERROR', details);
-    this.name = 'AuthenticationError';
-  }
+/**
+ * Event Subscription Options
+ */
+export interface SubscriptionOptions {
+  agentId?: string;
+  taskId?: string;
+  eventTypes?: DistriEventType[];
 }

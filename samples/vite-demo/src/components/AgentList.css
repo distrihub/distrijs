@@ -1,79 +1,78 @@
-.thread-list {
+.agent-list {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.thread-list-header {
+.agent-list-header {
   padding: 1rem;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.btn-create {
+.btn-refresh {
   width: 100%;
-  background: #28a745;
+  background: #007bff;
 }
 
-.btn-create:hover {
-  background: #218838;
+.btn-refresh:hover:not(:disabled) {
+  background: #0056b3;
 }
 
-.create-thread-form {
-  padding: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f8f9fa;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.form-actions .btn {
-  flex: 1;
-}
-
-.thread-list-items {
+.agent-list-items {
   flex: 1;
   overflow-y: auto;
 }
 
-.thread-list-loading,
-.thread-list-error,
-.thread-list-empty {
+.agent-list-loading,
+.agent-list-error,
+.agent-list-empty {
   padding: 2rem 1rem;
   text-align: center;
   color: #666;
 }
 
-.thread-list-error {
+.agent-list-error {
   color: #721c24;
 }
 
-.thread-item {
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  background: #c82333;
+}
+
+.agent-item {
   padding: 1rem;
   border-bottom: 1px solid #e0e0e0;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.thread-item:hover {
+.agent-item:hover {
   background: #f8f9fa;
 }
 
-.thread-item.selected {
+.agent-item.selected {
   background: #e3f2fd;
   border-left: 4px solid #2196f3;
 }
 
-.thread-item-header {
+.agent-item-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 0.5rem;
 }
 
-.thread-item-title {
+.agent-item-name {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
@@ -85,13 +84,16 @@
   white-space: nowrap;
 }
 
-.thread-item-date {
+.agent-item-version {
   font-size: 0.75rem;
   color: #666;
+  background: #f5f5f5;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
   white-space: nowrap;
 }
 
-.thread-item-description {
+.agent-item-description {
   margin: 0 0 0.5rem 0;
   font-size: 0.875rem;
   color: #666;
@@ -102,36 +104,23 @@
   overflow: hidden;
 }
 
-.thread-item-meta {
+.agent-item-capabilities {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.capability-tag {
   font-size: 0.75rem;
-  color: #666;
-}
-
-.participant-count {
-  font-weight: 500;
-}
-
-.thread-status {
+  background: #e8f4fd;
+  color: #1976d2;
   padding: 0.125rem 0.5rem;
   border-radius: 12px;
-  font-weight: 500;
-  text-transform: capitalize;
+  border: 1px solid #bbdefb;
 }
 
-.thread-status.active {
-  background: #d4edda;
-  color: #155724;
-}
-
-.thread-status.archived {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.thread-status.locked {
-  background: #ffeaa7;
-  color: #856404;
+.capability-tag.more {
+  background: #f5f5f5;
+  color: #666;
+  border-color: #e0e0e0;
 }

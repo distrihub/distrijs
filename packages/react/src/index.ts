@@ -1,18 +1,17 @@
 // Main exports for @distri/react package
 
 export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
-export { useThreads } from './useThreads';
-export { useMessages } from './useMessages';
+export { useAgents } from './useAgents';
+export { useTask } from './useTask';
 
-export type { UseThreadsResult } from './useThreads';
-export type { UseMessagesOptions, UseMessagesResult } from './useMessages';
+export type { UseAgentsResult } from './useAgents';
+export type { UseTaskOptions, UseTaskResult } from './useTask';
 
 // Re-export types from core for convenience
 export type {
   DistriClientConfig,
-  DistriNode,
-  Thread,
-  Message,
-  User,
-  ConnectionStatus
+  AgentCard,
+  Task,
+  A2AMessage,
+  TaskStatus
 } from '@distri/core';

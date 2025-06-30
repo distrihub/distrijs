@@ -1,16 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useMessages, Message } from '@distri/react'
+import { useTask, Task, A2AMessage } from '@distri/react'
 import './Chat.css'
 
 interface ChatProps {
-  threadId: string
+  agentId: string
 }
 
-function Chat({ threadId }: ChatProps) {
-  const { messages, loading, error, sendMessage, addReaction, removeReaction } = useMessages({ 
-    threadId,
-    autoSubscribe: true 
-  })
+function Chat({ agentId }: ChatProps) {
+  const { 
+    task, 
+    loading, 
+    error, 
+    streamingText, 
+    isStreaming, 
+    sendMessage, 
+    clearTask 
+  } = useTask({ agentId, autoSubscribe: true })
+  
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -22,7 +28,7 @@ function Chat({ threadId }: ChatProps) {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [task, streamingText])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,7 +37,7 @@ function Chat({ threadId }: ChatProps) {
 
     try {
       setSending(true)
-      await sendMessage({ content })
+      await sendMessage(content)
       setNewMessage('')
       // Reset textarea height
       if (textareaRef.current) {
@@ -59,29 +65,24 @@ function Chat({ threadId }: ChatProps) {
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
   }
 
-  const handleReaction = async (messageId: string, emoji: string) => {
-    try {
-      // For demo purposes, we'll just add reactions
-      // In a real app, you'd check if the user already reacted
-      await addReaction(messageId, emoji)
-    } catch (err) {
-      console.error('Failed to add reaction:', err)
-    }
+  const handleClearTask = () => {
+    clearTask()
+    setNewMessage('')
   }
 
-  if (loading && messages.length === 0) {
+  if (loading && !task) {
     return (
       <div className="chat">
-        <div className="chat-loading">Loading messages...</div>
+        <div className="chat-loading">Initializing chat...</div>
       </div>
     )
   }
 
-  if (error && messages.length === 0) {
+  if (error && !task) {
     return (
       <div className="chat">
         <div className="chat-error">
-          Failed to load messages: {error.message}
+          Failed to initialize chat: {error.message}
         </div>
       </div>
     )
@@ -89,18 +90,38 @@ function Chat({ threadId }: ChatProps) {
 
   return (
     <div className="chat">
+      <div className="chat-header">
+        <h2>Chat with Agent</h2>
+        <div className="chat-actions">
+          {task && (
+            <button onClick={handleClearTask} className="btn btn-secondary">
+              Clear Chat
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="chat-messages">
-        {messages.map((message) => (
-          <MessageItem
-            key={message.id}
-            message={message}
-            onReaction={(emoji) => handleReaction(message.id, emoji)}
-          />
+        {task && task.messages.map((message, index) => (
+          <MessageItem key={index} message={message} />
         ))}
         
-        {messages.length === 0 && !loading && (
+        {isStreaming && streamingText && (
+          <div className="message-item streaming">
+            <div className="message-header">
+              <span className="message-author">Assistant</span>
+              <span className="message-time">Streaming...</span>
+            </div>
+            <div className="message-content streaming-content">
+              {streamingText}
+              <span className="cursor">|</span>
+            </div>
+          </div>
+        )}
+        
+        {!task && !loading && (
           <div className="chat-empty">
-            No messages yet. Start the conversation!
+            Start a conversation by sending a message!
           </div>
         )}
         
@@ -116,101 +137,89 @@ function Chat({ threadId }: ChatProps) {
             value={newMessage}
             onChange={handleTextareaChange}
             onKeyPress={handleKeyPress}
-            disabled={sending}
+            disabled={sending || isStreaming}
             rows={1}
           />
           <button
             type="submit"
             className="chat-send-btn"
-            disabled={!newMessage.trim() || sending}
+            disabled={!newMessage.trim() || sending || isStreaming}
           >
-            {sending ? '...' : 'Send'}
+            {sending ? 'Sending...' : isStreaming ? 'Streaming...' : 'Send'}
           </button>
         </div>
       </form>
+
+      {task && (
+        <div className="task-info">
+          <small>Task ID: {task.id} | Status: {task.status}</small>
+        </div>
+      )}
     </div>
   )
 }
 
 interface MessageItemProps {
-  message: Message
-  onReaction: (emoji: string) => void
+  message: A2AMessage
 }
 
-function MessageItem({ message, onReaction }: MessageItemProps) {
-  const [showReactions, setShowReactions] = useState(false)
-
-  const formatTime = (timestamp: number) => {
+function MessageItem({ message }: MessageItemProps) {
+  const formatTime = (timestamp?: number) => {
+    if (!timestamp) return ''
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit' 
     })
   }
 
-  const formatContent = (content: string, contentType: string) => {
-    if (contentType === 'markdown') {
-      // Simple markdown rendering (in a real app, use a proper markdown library)
-      return content
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-    }
-    return content
+  const renderContent = () => {
+    return message.parts.map((part, index) => {
+      switch (part.kind) {
+        case 'text':
+          return <span key={index}>{part.text}</span>
+        case 'image':
+          return (
+            <img 
+              key={index} 
+              src={part.image} 
+              alt="Message attachment" 
+              className="message-image"
+            />
+          )
+        case 'file':
+          return (
+            <a 
+              key={index} 
+              href={part.file} 
+              className="message-file"
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              📎 File attachment
+            </a>
+          )
+        default:
+          return null
+      }
+    })
   }
 
-  const commonReactions = ['👍', '❤️', '😄', '😮', '😢', '😡']
-
   return (
-    <div className="message-item">
+    <div className={`message-item ${message.role}`}>
       <div className="message-header">
-        <span className="message-author">User {message.authorId.slice(-4)}</span>
+        <span className="message-author">
+          {message.role === 'user' ? 'You' : 'Assistant'}
+        </span>
         <span className="message-time">{formatTime(message.timestamp)}</span>
       </div>
       
-      <div 
-        className="message-content"
-        dangerouslySetInnerHTML={{ 
-          __html: formatContent(message.content, message.contentType) 
-        }}
-      />
-      
-      {message.editedAt && (
-        <span className="message-edited">(edited)</span>
-      )}
-
-      <div className="message-actions">
-        <button
-          className="reaction-btn"
-          onClick={() => setShowReactions(!showReactions)}
-        >
-          😊
-        </button>
-        
-        {showReactions && (
-          <div className="reaction-picker">
-            {commonReactions.map((emoji) => (
-              <button
-                key={emoji}
-                className="reaction-option"
-                onClick={() => {
-                  onReaction(emoji)
-                  setShowReactions(false)
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="message-content">
+        {renderContent()}
       </div>
-
-      {message.reactions && message.reactions.length > 0 && (
-        <div className="message-reactions">
-          {message.reactions.map((reaction, index) => (
-            <span key={index} className="reaction">
-              {reaction.emoji}
-            </span>
-          ))}
+      
+      {message.contextId && (
+        <div className="message-context">
+          Context: {message.contextId}
         </div>
       )}
     </div>

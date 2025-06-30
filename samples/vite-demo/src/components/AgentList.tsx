@@ -1,0 +1,103 @@
+import React from 'react'
+import { useAgents, AgentCard } from '@distri/react'
+import './AgentList.css'
+
+interface AgentListProps {
+  selectedAgentId: string | null
+  onSelectAgent: (agentId: string) => void
+}
+
+function AgentList({ selectedAgentId, onSelectAgent }: AgentListProps) {
+  const { agents, loading, error, refetch } = useAgents()
+
+  if (loading && agents.length === 0) {
+    return (
+      <div className="agent-list">
+        <div className="agent-list-loading">Loading agents...</div>
+      </div>
+    )
+  }
+
+  if (error && agents.length === 0) {
+    return (
+      <div className="agent-list">
+        <div className="agent-list-error">
+          Failed to load agents: {error.message}
+          <button onClick={refetch} className="retry-btn">Retry</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="agent-list">
+      <div className="agent-list-header">
+        <button 
+          className="btn btn-refresh"
+          onClick={refetch}
+          disabled={loading}
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
+      <div className="agent-list-items">
+        {agents.map((agent) => (
+          <AgentItem
+            key={agent.id}
+            agent={agent}
+            isSelected={agent.id === selectedAgentId}
+            onSelect={() => onSelectAgent(agent.id)}
+          />
+        ))}
+        
+        {agents.length === 0 && !loading && (
+          <div className="agent-list-empty">
+            No agents available. Make sure your Distri server is running.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface AgentItemProps {
+  agent: AgentCard
+  isSelected: boolean
+  onSelect: () => void
+}
+
+function AgentItem({ agent, isSelected, onSelect }: AgentItemProps) {
+  return (
+    <div 
+      className={`agent-item ${isSelected ? 'selected' : ''}`}
+      onClick={onSelect}
+    >
+      <div className="agent-item-header">
+        <h3 className="agent-item-name">{agent.name}</h3>
+        {agent.version && (
+          <span className="agent-item-version">v{agent.version}</span>
+        )}
+      </div>
+      
+      <p className="agent-item-description">{agent.description}</p>
+      
+      {agent.capabilities && agent.capabilities.length > 0 && (
+        <div className="agent-item-capabilities">
+          {agent.capabilities.slice(0, 3).map((capability, index) => (
+            <span key={index} className="capability-tag">
+              {capability}
+            </span>
+          ))}
+          {agent.capabilities.length > 3 && (
+            <span className="capability-tag more">
+              +{agent.capabilities.length - 3} more
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default AgentList

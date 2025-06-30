@@ -1,15 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { DistriClient, DistriClientConfig, ConnectionStatus } from '@distri/core';
+import { DistriClient, DistriClientConfig } from '@distri/core';
 
 interface DistriContextValue {
   client: DistriClient | null;
-  connectionStatus: ConnectionStatus;
   error: Error | null;
 }
 
 const DistriContext = createContext<DistriContextValue>({
   client: null,
-  connectionStatus: 'disconnected',
   error: null
 });
 
@@ -20,39 +18,28 @@ interface DistriProviderProps {
 
 export function DistriProvider({ config, children }: DistriProviderProps) {
   const [client, setClient] = useState<DistriClient | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const newClient = new DistriClient(config);
-    setClient(newClient);
-
-    // Set up event listeners
-    const handleConnectionStatusChange = (status: ConnectionStatus) => {
-      setConnectionStatus(status);
-    };
-
-    const handleError = (err: Error) => {
-      setError(err);
-    };
-
-    newClient.on('connection_status_changed', handleConnectionStatusChange);
-    newClient.on('error', handleError);
-
-    // Initialize connection status
-    setConnectionStatus(newClient.getConnectionStatus());
+    try {
+      const newClient = new DistriClient(config);
+      setClient(newClient);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to initialize client'));
+      setClient(null);
+    }
 
     // Cleanup
     return () => {
-      newClient.off('connection_status_changed', handleConnectionStatusChange);
-      newClient.off('error', handleError);
-      newClient.disconnect();
+      if (client) {
+        client.disconnect();
+      }
     };
   }, [config]);
 
   const contextValue: DistriContextValue = {
     client,
-    connectionStatus,
     error
   };
 
