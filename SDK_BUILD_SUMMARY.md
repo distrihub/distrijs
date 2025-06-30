@@ -50,12 +50,30 @@ After resolving the build issues, we also cleaned up the repository:
 - **Force pushed the cleaned branch**: Updated the remote repository to remove the bloated node_modules files
 - **Verified .gitignore**: Confirmed that `node_modules/` is properly ignored to prevent future commits
 
+## Final Resolution
+After several iterations, we successfully resolved all build and TypeScript issues:
+
+### TypeScript Declaration Generation Fix
+- **Issue**: tsup's DTS generation had project configuration conflicts
+- **Solution**: Added manual TypeScript declaration generation using postbuild scripts
+- **Implementation**: 
+  - Core package: `"build": "tsup && npm run build:dts"`
+  - React package: `"build": "tsup && npm run build:dts"`  
+  - Manual generation: `tsc --declaration --emitDeclarationOnly --outDir dist src/index.ts`
+
+### Workspace Build Resolution
+- **Fixed**: "Could not find a declaration file for module '@distri/react'" errors
+- **Result**: All packages build successfully with proper TypeScript declarations
+- **Verified**: Full workspace build via Turbo works without errors
+
 ## Current Status
-- The Vite project no longer shows the dep-scan import error
-- The SDK packages are properly built and can be imported
-- TypeScript IntelliSense should work correctly
-- The demo application can be built for production
-- **Repository is cleaned up**: node_modules is no longer tracked in git, reducing repository size significantly
+- ✅ The Vite project no longer shows the dep-scan import error
+- ✅ The SDK packages are properly built and can be imported
+- ✅ TypeScript IntelliSense works correctly with proper .d.ts files
+- ✅ The demo application builds successfully for production
+- ✅ Full workspace build (pnpm build) works via Turbo
+- ✅ **Repository is cleaned up**: node_modules is no longer tracked in git
+- ✅ **TypeScript declarations**: Generated reliably as part of build process
 
 ## Next Steps
 To start the development server:
