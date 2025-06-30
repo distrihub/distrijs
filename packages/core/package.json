@@ -25,6 +25,7 @@
     "README.md"
   ],
   "dependencies": {
+    "@a2a-js/sdk": "^0.2.2",
     "eventemitter3": "^5.0.1",
     "uuid": "^9.0.0"
   },

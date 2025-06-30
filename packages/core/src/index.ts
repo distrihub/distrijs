@@ -7,11 +7,8 @@ export * from './types';
 // Re-export commonly used types for convenience
 export type {
   DistriClientConfig,
-  AgentCard,
-  Task,
   A2AMessage,
   MessageSendParams,
-  DistriEvent,
-  TaskStatus,
-  SubscriptionOptions
 } from './types';
+
+export * from "@a2a-js/sdk";

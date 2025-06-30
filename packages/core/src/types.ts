@@ -1,17 +1,6 @@
 // Distri Framework Types - Based on A2A Protocol and SSE
 
-/**
- * Agent Card - Distri Agent Discovery and Metadata
- */
-export interface AgentCard {
-  id: string;
-  name: string;
-  description: string;
-  version?: string;
-  capabilities?: string[];
-  metadata?: Record<string, any>;
-}
-
+import { TaskStatus } from "@a2a-js/sdk";
 /**
  * JSON-RPC Request for A2A Protocol
  */
@@ -39,7 +28,7 @@ export interface JsonRpcResponse<T = any> {
 /**
  * Message Parts for A2A Protocol
  */
-export type MessagePart = 
+export type MessagePart =
   | { kind: "text"; text: string }
   | { kind: "image"; image: string; mimeType?: string }
   | { kind: "file"; file: string; mimeType?: string };
@@ -79,100 +68,6 @@ export interface MessageSendStreamingParams extends MessageSendParams {
   };
 }
 
-/**
- * Task Status
- */
-export type TaskStatus = 
-  | "submitted"
-  | "working" 
-  | "completed"
-  | "failed"
-  | "canceled";
-
-/**
- * Task Structure
- */
-export interface Task {
-  id: string;
-  agentId: string;
-  status: TaskStatus;
-  contextId?: string;
-  createdAt: number;
-  updatedAt: number;
-  messages: A2AMessage[];
-  artifacts?: TaskArtifact[];
-  error?: string;
-  metadata?: Record<string, any>;
-}
-
-/**
- * Task Artifact
- */
-export interface TaskArtifact {
-  id: string;
-  type: string;
-  content: string | ArrayBuffer;
-  mimeType?: string;
-  metadata?: Record<string, any>;
-}
-
-/**
- * Server-Sent Event Types
- */
-export type DistriEventType = 
-  | "task_status_changed"
-  | "text_delta"
-  | "task_completed"
-  | "task_error"
-  | "task_canceled"
-  | "agent_status_changed";
-
-/**
- * SSE Event Data
- */
-export interface DistriEvent {
-  type: DistriEventType;
-  task_id?: string;
-  agent_id?: string;
-  data?: any;
-  timestamp: number;
-}
-
-/**
- * Text Delta Event
- */
-export interface TextDeltaEvent extends DistriEvent {
-  type: "text_delta";
-  task_id: string;
-  delta: string;
-}
-
-/**
- * Task Status Changed Event
- */
-export interface TaskStatusChangedEvent extends DistriEvent {
-  type: "task_status_changed";
-  task_id: string;
-  status: TaskStatus;
-}
-
-/**
- * Task Completed Event
- */
-export interface TaskCompletedEvent extends DistriEvent {
-  type: "task_completed";
-  task_id: string;
-  result?: any;
-}
-
-/**
- * Task Error Event
- */
-export interface TaskErrorEvent extends DistriEvent {
-  type: "task_error";
-  task_id: string;
-  error: string;
-}
 
 /**
  * Connection Status
@@ -191,14 +86,6 @@ export interface DistriClientConfig {
   debug?: boolean;
   headers?: Record<string, string>;
 }
-
-/**
- * Agent List Response
- */
-export interface AgentListResponse {
-  agents: AgentCard[];
-}
-
 /**
  * Task Creation Request
  */
@@ -249,13 +136,4 @@ export class ConnectionError extends DistriError {
     super(message, 'CONNECTION_ERROR', details);
     this.name = 'ConnectionError';
   }
-}
-
-/**
- * Event Subscription Options
- */
-export interface SubscriptionOptions {
-  agentId?: string;
-  taskId?: string;
-  eventTypes?: DistriEventType[];
 }

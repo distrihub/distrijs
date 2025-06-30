@@ -1,18 +1,12 @@
 import { EventEmitter } from 'eventemitter3';
+import { Message, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
 import {
   DistriClientConfig,
-  AgentCard,
-  AgentListResponse,
-  Task,
   A2AMessage,
   MessageSendParams,
   CreateTaskRequest,
   CreateTaskResponse,
-  DistriEvent,
-  TextDeltaEvent,
-  TaskStatusChangedEvent,
-  TaskCompletedEvent,
-  TaskErrorEvent,
+
   JsonRpcRequest,
   JsonRpcResponse,
   DistriError,
@@ -31,7 +25,7 @@ export class DistriClient extends EventEmitter {
 
   constructor(config: DistriClientConfig) {
     super();
-    
+
     this.config = {
       baseUrl: config.baseUrl.replace(/\/$/, ''),
       apiVersion: config.apiVersion || 'v1',
@@ -52,9 +46,9 @@ export class DistriClient extends EventEmitter {
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
-      
-      const data: AgentListResponse = await response.json();
-      return data.agents;
+
+      const data: AgentCard[] = await response.json();
+      return data;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch agents', 'FETCH_ERROR', error);
@@ -73,7 +67,7 @@ export class DistriClient extends EventEmitter {
         }
         throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
       }
-      
+
       return await response.json();
     } catch (error) {
       if (error instanceof ApiError) throw error;
@@ -119,7 +113,7 @@ export class DistriClient extends EventEmitter {
     };
 
     const response = await this.sendMessage(request.agentId, params);
-    
+
     if (response.error) {
       throw new A2AProtocolError(response.error.message, response.error);
     }
@@ -139,7 +133,7 @@ export class DistriClient extends EventEmitter {
         }
         throw new ApiError(`Failed to fetch task: ${response.statusText}`, response.status);
       }
-      
+
       return await response.json();
     } catch (error) {
       if (error instanceof ApiError) throw error;
@@ -243,7 +237,7 @@ export class DistriClient extends EventEmitter {
       }
 
       const jsonResponse: JsonRpcResponse = await response.json();
-      
+
       if (jsonResponse.error) {
         throw new A2AProtocolError(jsonResponse.error.message, jsonResponse.error);
       }
@@ -267,27 +261,27 @@ export class DistriClient extends EventEmitter {
       case 'task_status_changed':
         this.emit('task_status_changed', event as TaskStatusChangedEvent);
         break;
-      
+
       case 'text_delta':
         this.emit('text_delta', event as TextDeltaEvent);
         break;
-      
+
       case 'task_completed':
         this.emit('task_completed', event as TaskCompletedEvent);
         break;
-      
+
       case 'task_error':
         this.emit('task_error', event as TaskErrorEvent);
         break;
-      
+
       case 'task_canceled':
         this.emit('task_canceled', event);
         break;
-      
+
       case 'agent_status_changed':
         this.emit('agent_status_changed', event);
         break;
-      
+
       default:
         this.emit('event', event);
     }
@@ -318,7 +312,7 @@ export class DistriClient extends EventEmitter {
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         if (attempt < this.config.retryAttempts) {
           this.debug(`Request failed (attempt ${attempt + 1}), retrying in ${this.config.retryDelay}ms...`);
           await this.delay(this.config.retryDelay);
