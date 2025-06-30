@@ -4,7 +4,7 @@ node_modules/
 .pnp.js
 
 # Build outputs
-dist/
+# dist/ # Temporarily allow dist folders to fix TypeScript declarations
 build/
 .next/
 out/
