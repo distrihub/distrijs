@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AgentCard } from '@distri/core';
+import { DistriAgent } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
 export interface UseAgentsResult {
-  agents: AgentCard[];
+  agents: DistriAgent[];
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-  getAgent: (agentId: string) => Promise<AgentCard>;
+  getAgent: (agentId: string) => Promise<DistriAgent>;
 }
 
 export function useAgents(): UseAgentsResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agents, setAgents] = useState<AgentCard[]>([]);
+  const [agents, setAgents] = useState<DistriAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -37,7 +37,7 @@ export function useAgents(): UseAgentsResult {
     }
   }, [client]);
 
-  const getAgent = useCallback(async (agentId: string): Promise<AgentCard> => {
+  const getAgent = useCallback(async (agentId: string): Promise<DistriAgent> => {
     if (!client) {
       throw new Error('Client not available');
     }

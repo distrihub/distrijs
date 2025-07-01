@@ -1,4 +1,29 @@
 // Distri Framework Types - Based on A2A Protocol and SSE
+import { AgentCard, Message } from '@a2a-js/sdk';
+
+/**
+ * Distri-specific Agent type that wraps A2A AgentCard
+ */
+export interface DistriAgent {
+  id: string;
+  name: string;
+  description: string;
+  status: 'online' | 'offline';
+  card: AgentCard;
+}
+
+/**
+ * Distri Thread type for conversation management
+ */
+export interface DistriThread {
+  id: string;
+  title: string;
+  agent_id: string;
+  agent_name: string;
+  updated_at: string;
+  message_count: number;
+  last_message?: string;
+}
 
 export interface Agent {
   id: string;
@@ -22,8 +47,6 @@ export interface ChatProps {
   agent: Agent;
   onThreadUpdate?: () => void;
 }
-
-
 
 /**
  * Connection Status
@@ -77,3 +100,6 @@ export class ConnectionError extends DistriError {
     this.name = 'ConnectionError';
   }
 }
+
+// Re-export A2A types for convenience
+export type { AgentCard, Message, Task, TaskStatus, MessageSendParams } from '@a2a-js/sdk';

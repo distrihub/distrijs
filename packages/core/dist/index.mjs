@@ -1,5 +1,8 @@
 // src/distri-client.ts
 import { EventEmitter } from "eventemitter3";
+import {
+  A2AClient
+} from "@a2a-js/sdk";
 
 // src/types.ts
 var DistriError = class extends Error {
@@ -34,8 +37,8 @@ var ConnectionError = class extends DistriError {
 var DistriClient = class extends EventEmitter {
   constructor(config) {
     super();
-    this.eventSources = /* @__PURE__ */ new Map();
-    this.requestIdCounter = 0;
+    this.agentClients = /* @__PURE__ */ new Map();
+    this.agentCards = /* @__PURE__ */ new Map();
     this.config = {
       baseUrl: config.baseUrl.replace(/\/$/, ""),
       apiVersion: config.apiVersion || "v1",
@@ -45,9 +48,10 @@ var DistriClient = class extends EventEmitter {
       debug: config.debug || false,
       headers: config.headers || {}
     };
+    this.debug("DistriClient initialized with config:", this.config);
   }
   /**
-   * Get all available agents
+   * Get all available agents from the Distri server
    */
   async getAgents() {
     try {
@@ -55,8 +59,18 @@ var DistriClient = class extends EventEmitter {
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
-      const data = await response.json();
-      return data.agents;
+      const agentCards = await response.json();
+      agentCards.forEach((card) => {
+        this.agentCards.set(card.name, card);
+      });
+      const distriAgents = agentCards.map((card) => ({
+        id: card.name,
+        name: card.name,
+        description: card.description,
+        status: "online",
+        card
+      }));
+      return distriAgents;
     } catch (error) {
       if (error instanceof ApiError)
         throw error;
@@ -64,7 +78,7 @@ var DistriClient = class extends EventEmitter {
     }
   }
   /**
-   * Get specific agent card
+   * Get specific agent by ID
    */
   async getAgent(agentId) {
     try {
@@ -75,7 +89,15 @@ var DistriClient = class extends EventEmitter {
         }
         throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
       }
-      return await response.json();
+      const card = await response.json();
+      this.agentCards.set(agentId, card);
+      return {
+        id: card.name,
+        name: card.name,
+        description: card.description,
+        status: "online",
+        card
+      };
     } catch (error) {
       if (error instanceof ApiError)
         throw error;
@@ -83,178 +105,150 @@ var DistriClient = class extends EventEmitter {
     }
   }
   /**
-   * Send a message to an agent using JSON-RPC
+   * Get or create A2AClient for an agent
+   */
+  getA2AClient(agentId) {
+    if (!this.agentClients.has(agentId)) {
+      const agentCard = this.agentCards.get(agentId);
+      if (!agentCard) {
+        throw new DistriError(`Agent card not found for ${agentId}. Call getAgent() first.`, "AGENT_NOT_FOUND");
+      }
+      const agentUrl = agentCard.url || `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
+      const client = new A2AClient(agentUrl);
+      this.agentClients.set(agentId, client);
+      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+    }
+    return this.agentClients.get(agentId);
+  }
+  /**
+   * Send a message to an agent
    */
   async sendMessage(agentId, params) {
-    const jsonRpcRequest = {
-      jsonrpc: "2.0",
-      method: "message/send",
-      params,
-      id: this.generateRequestId()
-    };
-    return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
+    try {
+      const client = this.getA2AClient(agentId);
+      const response = await client.sendMessage(params);
+      if ("error" in response && response.error) {
+        throw new A2AProtocolError(response.error.message, response.error);
+      }
+      if ("result" in response) {
+        const result = response.result;
+        this.debug(`Message sent to ${agentId}, got ${result.kind}:`, result);
+        return result;
+      }
+      throw new DistriError("Invalid response format", "INVALID_RESPONSE");
+    } catch (error) {
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
+      throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
+    }
   }
   /**
    * Send a streaming message to an agent
    */
-  async sendStreamingMessage(agentId, params) {
-    const jsonRpcRequest = {
-      jsonrpc: "2.0",
-      method: "message/send_streaming",
-      params,
-      id: this.generateRequestId()
-    };
-    return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
-  }
-  /**
-   * Create a task (convenience method)
-   */
-  async createTask(request) {
-    const params = {
-      message: request.message,
-      configuration: request.configuration
-    };
-    const response = await this.sendMessage(request.agentId, params);
-    if (response.error) {
-      throw new A2AProtocolError(response.error.message, response.error);
+  async *sendMessageStream(agentId, params) {
+    try {
+      const client = this.getA2AClient(agentId);
+      const stream = client.sendMessageStream(params);
+      for await (const event of stream) {
+        this.debug(`Stream event from ${agentId}:`, event);
+        if (event.kind === "status-update") {
+          this.emit("task_status_update", event);
+        } else if (event.kind === "artifact-update") {
+          this.emit("task_artifact_update", event);
+        } else if (event.kind === "task") {
+          this.emit("task_created", event);
+        } else if (event.kind === "message") {
+          this.emit("message_received", event);
+        }
+        yield event;
+      }
+    } catch (error) {
+      throw new DistriError(`Failed to stream message to agent ${agentId}`, "STREAM_MESSAGE_ERROR", error);
     }
-    return response.result;
   }
   /**
    * Get task details
    */
-  async getTask(taskId) {
+  async getTask(agentId, taskId) {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/tasks/${taskId}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new ApiError(`Task not found: ${taskId}`, 404);
-        }
-        throw new ApiError(`Failed to fetch task: ${response.statusText}`, response.status);
+      const client = this.getA2AClient(agentId);
+      const response = await client.getTask({ id: taskId });
+      if ("error" in response && response.error) {
+        throw new A2AProtocolError(response.error.message, response.error);
       }
-      return await response.json();
+      if ("result" in response) {
+        const result = response.result;
+        this.debug(`Got task ${taskId} from ${agentId}:`, result);
+        return result;
+      }
+      throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof ApiError)
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
         throw error;
-      throw new DistriError(`Failed to fetch task ${taskId}`, "FETCH_ERROR", error);
+      throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
   /**
    * Cancel a task
    */
-  async cancelTask(_taskId) {
-    throw new DistriError("Task cancellation not yet implemented", "NOT_IMPLEMENTED");
-  }
-  /**
-   * Subscribe to agent events via Server-Sent Events
-   */
-  subscribeToAgent(agentId) {
-    const existingSource = this.eventSources.get(agentId);
-    if (existingSource) {
-      return existingSource;
+  async cancelTask(agentId, taskId) {
+    try {
+      const client = this.getA2AClient(agentId);
+      await client.cancelTask({ id: taskId });
+      this.debug(`Cancelled task ${taskId} on agent ${agentId}`);
+    } catch (error) {
+      throw new DistriError(`Failed to cancel task ${taskId} on agent ${agentId}`, "CANCEL_TASK_ERROR", error);
     }
-    const url = `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}/events`;
-    const eventSource = new EventSource(url);
-    eventSource.onopen = () => {
-      this.debug(`Connected to agent ${agentId} event stream`);
-      this.emit("agent_stream_connected", agentId);
-    };
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.handleEvent(data);
-      } catch (error) {
-        this.debug("Failed to parse SSE event:", error);
+  }
+  /**
+   * Get threads from Distri server
+   */
+  async getThreads() {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/threads`);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch threads: ${response.statusText}`, response.status);
       }
-    };
-    eventSource.onerror = (error) => {
-      this.debug(`SSE error for agent ${agentId}:`, error);
-      this.emit("agent_stream_error", agentId, error);
-    };
-    this.eventSources.set(agentId, eventSource);
-    return eventSource;
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError)
+        throw error;
+      throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
+    }
   }
   /**
-   * Subscribe to task events
+   * Get thread messages
    */
-  subscribeToTask(taskId) {
-    this.emit("task_subscribed", taskId);
-  }
-  /**
-   * Unsubscribe from agent events
-   */
-  unsubscribeFromAgent(agentId) {
-    const eventSource = this.eventSources.get(agentId);
-    if (eventSource) {
-      eventSource.close();
-      this.eventSources.delete(agentId);
-      this.emit("agent_stream_disconnected", agentId);
+  async getThreadMessages(threadId) {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}/messages`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return [];
+        }
+        throw new ApiError(`Failed to fetch thread messages: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError)
+        throw error;
+      throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
   /**
    * Close all connections
    */
   disconnect() {
-    this.eventSources.forEach((eventSource) => {
-      eventSource.close();
-    });
-    this.eventSources.clear();
+    this.agentClients.clear();
+    this.agentCards.clear();
+    this.removeAllListeners();
+    this.debug("DistriClient disconnected");
   }
   /**
-   * Send a JSON-RPC request to an agent
+   * Get the base URL for making direct requests
    */
-  async sendJsonRpcRequest(agentId, request) {
-    try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...this.config.headers
-        },
-        body: JSON.stringify(request)
-      });
-      if (!response.ok) {
-        throw new ApiError(`JSON-RPC request failed: ${response.statusText}`, response.status);
-      }
-      const jsonResponse = await response.json();
-      if (jsonResponse.error) {
-        throw new A2AProtocolError(jsonResponse.error.message, jsonResponse.error);
-      }
-      return jsonResponse;
-    } catch (error) {
-      if (error instanceof ApiError || error instanceof A2AProtocolError) {
-        throw error;
-      }
-      throw new DistriError("JSON-RPC request failed", "RPC_ERROR", error);
-    }
-  }
-  /**
-   * Handle incoming SSE events
-   */
-  handleEvent(event) {
-    this.debug("Received event:", event);
-    switch (event.type) {
-      case "task_status_changed":
-        this.emit("task_status_changed", event);
-        break;
-      case "text_delta":
-        this.emit("text_delta", event);
-        break;
-      case "task_completed":
-        this.emit("task_completed", event);
-        break;
-      case "task_error":
-        this.emit("task_error", event);
-        break;
-      case "task_canceled":
-        this.emit("task_canceled", event);
-        break;
-      case "agent_status_changed":
-        this.emit("agent_status_changed", event);
-        break;
-      default:
-        this.emit("event", event);
-    }
+  get baseUrl() {
+    return this.config.baseUrl;
   }
   /**
    * Enhanced fetch with retry logic
@@ -287,12 +281,6 @@ var DistriClient = class extends EventEmitter {
     throw lastError;
   }
   /**
-   * Generate unique request ID
-   */
-  generateRequestId() {
-    return `req-${Date.now()}-${++this.requestIdCounter}`;
-  }
-  /**
    * Delay utility
    */
   delay(ms) {
@@ -309,13 +297,14 @@ var DistriClient = class extends EventEmitter {
   /**
    * Helper method to create A2A messages
    */
-  static createMessage(messageId, text, role = "user", contextId) {
+  static createMessage(messageId, text, role = "user", contextId, taskId) {
     return {
       messageId,
       role,
       parts: [{ kind: "text", text }],
       contextId,
-      timestamp: Date.now()
+      taskId,
+      kind: "message"
     };
   }
   /**
@@ -326,12 +315,16 @@ var DistriClient = class extends EventEmitter {
       message,
       configuration: {
         acceptedOutputModes: ["text/plain"],
-        blocking: true,
+        blocking: false,
+        // Default to non-blocking for streaming
         ...configuration
       }
     };
   }
 };
+
+// src/index.ts
+export * from "@a2a-js/sdk";
 export {
   A2AProtocolError,
   ApiError,

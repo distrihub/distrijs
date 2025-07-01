@@ -1,36 +1,36 @@
 {
   "name": "@distri/core",
-  "version": "1.0.0",
-  "description": "Core types and A2A protocol client for Distri framework",
+  "version": "0.1.0",
+  "description": "Core utilities and types for Distri Framework",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
-    "build": "tsup && npm run build:dts",
-    "build:dts": "tsc --declaration --emitDeclarationOnly --outDir dist src/index.ts",
+    "build": "tsup",
     "dev": "tsup --watch",
-    "lint": "eslint src --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "lint": "eslint src --ext ts",
+    "type-check": "tsc --noEmit"
   },
   "files": [
     "dist",
     "README.md"
   ],
   "dependencies": {
-    "@a2a-js/sdk": "^0.2.2",
-    "eventemitter3": "^5.0.1",
-    "uuid": "^9.0.0"
+    "@a2a-js/sdk": "https://github.com/hujiulong/a2a-js.git#main",
+    "eventemitter3": "^5.0.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
     "tsup": "^7.0.0",
     "typescript": "^5.0.0"
   },

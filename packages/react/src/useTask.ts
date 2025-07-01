@@ -1,14 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Task, 
-  A2AMessage, 
+  Message, 
   MessageSendParams, 
-  CreateTaskRequest,
-  DistriClient,
-  TextDeltaEvent,
-  TaskStatusChangedEvent,
-  TaskCompletedEvent,
-  TaskErrorEvent
+  TaskStatusUpdateEvent,
+  TaskArtifactUpdateEvent,
+  DistriClient
 } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
@@ -21,12 +18,13 @@ export interface UseTaskResult {
   task: Task | null;
   loading: boolean;
   error: Error | null;
-  streamingText: string;
+  messages: Message[];
   isStreaming: boolean;
   sendMessage: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
-  createTask: (message: A2AMessage, configuration?: MessageSendParams['configuration']) => Promise<void>;
+  sendMessageStream: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
   getTask: (taskId: string) => Promise<void>;
   clearTask: () => void;
+  clearMessages: () => void;
 }
 
 export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseTaskResult {
@@ -34,12 +32,12 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [streamingText, setStreamingText] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const createTask = useCallback(async (
-    message: A2AMessage, 
+  const sendMessage = useCallback(async (
+    text: string, 
     configuration?: MessageSendParams['configuration']
   ) => {
     if (!client) {
@@ -50,41 +48,115 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
     try {
       setLoading(true);
       setError(null);
-      setStreamingText('');
-      setIsStreaming(true);
 
-      const request: CreateTaskRequest = {
-        agentId,
-        message,
-        configuration
-      };
+      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const message = DistriClient.createMessage(messageId, text, 'user');
+      
+      // Add user message to local state immediately
+      setMessages(prev => [...prev, message]);
 
-      const response = await client.createTask(request);
+      const params = DistriClient.createMessageParams(message, configuration);
+      const result = await client.sendMessage(agentId, params);
       
-      // Get the full task details
-      const fullTask = await client.getTask(response.taskId);
-      setTask(fullTask);
-      
-      if (autoSubscribe) {
-        subscribeToAgent();
+      if (result.kind === 'task') {
+        setTask(result as Task);
+      } else if (result.kind === 'message') {
+        setMessages(prev => [...prev, result as Message]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to create task'));
-      setIsStreaming(false);
+      setError(err instanceof Error ? err : new Error('Failed to send message'));
     } finally {
       setLoading(false);
     }
-  }, [client, agentId, autoSubscribe]);
+  }, [client, agentId]);
 
-  const sendMessage = useCallback(async (
+  const sendMessageStream = useCallback(async (
     text: string,
     configuration?: MessageSendParams['configuration']
   ) => {
-    const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const message = DistriClient.createMessage(messageId, text, 'user');
-    
-    await createTask(message, configuration);
-  }, [createTask]);
+    if (!client) {
+      setError(new Error('Client not available'));
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      setIsStreaming(true);
+
+      // Cancel any existing stream
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const message = DistriClient.createMessage(messageId, text, 'user');
+      
+      // Add user message to local state immediately
+      setMessages(prev => [...prev, message]);
+
+             const params = DistriClient.createMessageParams(message, {
+         blocking: false,
+         acceptedOutputModes: ['text/plain'],
+         ...configuration
+       });
+
+      const stream = client.sendMessageStream(agentId, params);
+      let currentMessage: Message | null = null;
+
+      for await (const event of stream) {
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
+        }
+
+        if (event.kind === 'task') {
+          setTask(event as Task);
+        } else if (event.kind === 'status-update') {
+          const statusEvent = event as TaskStatusUpdateEvent;
+          if (statusEvent.status.message) {
+            currentMessage = statusEvent.status.message;
+            setMessages(prev => {
+              const existing = prev.find(m => m.messageId === currentMessage!.messageId);
+              if (existing) {
+                return prev.map(m => m.messageId === currentMessage!.messageId ? currentMessage! : m);
+              } else {
+                return [...prev, currentMessage!];
+              }
+            });
+          }
+          
+          if (statusEvent.final) {
+            setIsStreaming(false);
+            break;
+          }
+        } else if (event.kind === 'artifact-update') {
+          const artifactEvent = event as TaskArtifactUpdateEvent;
+          // Handle artifact updates if needed
+          console.log('Artifact update:', artifactEvent);
+        } else if (event.kind === 'message') {
+          const messageEvent = event as Message;
+          setMessages(prev => {
+            const existing = prev.find(m => m.messageId === messageEvent.messageId);
+            if (existing) {
+              return prev.map(m => m.messageId === messageEvent.messageId ? messageEvent : m);
+            } else {
+              return [...prev, messageEvent];
+            }
+          });
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Stream was cancelled, not an error
+        return;
+      }
+      setError(err instanceof Error ? err : new Error('Failed to stream message'));
+    } finally {
+      setLoading(false);
+      setIsStreaming(false);
+    }
+  }, [client, agentId]);
 
   const getTask = useCallback(async (taskId: string) => {
     if (!client) {
@@ -96,100 +168,35 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
       setLoading(true);
       setError(null);
       
-      const fetchedTask = await client.getTask(taskId);
+      const fetchedTask = await client.getTask(agentId, taskId);
       setTask(fetchedTask);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch task'));
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, [client, agentId]);
 
   const clearTask = useCallback(() => {
     setTask(null);
-    setStreamingText('');
-    setIsStreaming(false);
     setError(null);
+    setIsStreaming(false);
     
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   }, []);
 
-  const subscribeToAgent = useCallback(() => {
-    if (!client || eventSourceRef.current) {
-      return; // No client or already subscribed
-    }
-
-    try {
-      const eventSource = client.subscribeToAgent(agentId);
-      eventSourceRef.current = eventSource;
-
-      const handleTextDelta = (event: TextDeltaEvent) => {
-        if (task && event.task_id === task.id) {
-          setStreamingText(prev => prev + event.delta);
-        }
-      };
-
-      const handleTaskStatusChanged = (event: TaskStatusChangedEvent) => {
-        if (task && event.task_id === task.id) {
-          setTask(prev => prev ? { ...prev, status: event.status } : null);
-          
-          if (event.status === 'completed' || event.status === 'failed' || event.status === 'canceled') {
-            setIsStreaming(false);
-          }
-        }
-      };
-
-      const handleTaskCompleted = (event: TaskCompletedEvent) => {
-        if (task && event.task_id === task.id) {
-          setIsStreaming(false);
-          // Optionally refresh the full task to get the complete result
-          getTask(event.task_id);
-        }
-      };
-
-      const handleTaskError = (event: TaskErrorEvent) => {
-        if (task && event.task_id === task.id) {
-          setError(new Error(event.error));
-          setIsStreaming(false);
-        }
-      };
-
-      // Subscribe to events
-      client.on('text_delta', handleTextDelta);
-      client.on('task_status_changed', handleTaskStatusChanged);
-      client.on('task_completed', handleTaskCompleted);
-      client.on('task_error', handleTaskError);
-
-      // Store cleanup function
-      const cleanup = () => {
-        client.off('text_delta', handleTextDelta);
-        client.off('task_status_changed', handleTaskStatusChanged);
-        client.off('task_completed', handleTaskCompleted);
-        client.off('task_error', handleTaskError);
-      };
-
-      return cleanup;
-    } catch (err) {
-      console.warn('Failed to subscribe to agent events:', err);
-    }
-  }, [client, agentId, task, getTask]);
-
-  // Auto-subscribe when agent changes and client is available
-  useEffect(() => {
-    if (autoSubscribe && agentId && client && !clientLoading) {
-      const cleanup = subscribeToAgent();
-      return cleanup;
-    }
-  }, [autoSubscribe, agentId, client, clientLoading, subscribeToAgent]);
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
@@ -198,11 +205,12 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
     task,
     loading: loading || clientLoading,
     error: error || clientError,
-    streamingText,
+    messages,
     isStreaming,
     sendMessage,
-    createTask,
+    sendMessageStream,
     getTask,
-    clearTask
+    clearTask,
+    clearMessages
   };
 }

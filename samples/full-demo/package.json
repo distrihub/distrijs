@@ -10,7 +10,9 @@
     "lint": "eslint src --ext js,jsx,ts,tsx"
   },
   "dependencies": {
-    "@a2a-js/sdk": "^0.2.2",
+    "@distri/core": "workspace:*",
+    "@distri/react": "workspace:*",
+    "@a2a-js/sdk": "https://github.com/hujiulong/a2a-js.git#main",
     "@ag-ui/core": "latest",
     "@tailwindcss/typography": "^0.5.16",
     "@types/react-syntax-highlighter": "^15.5.13",
