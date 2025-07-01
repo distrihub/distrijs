@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useDistri } from '@distri/react'
 import { 
   X, 
   Clock, 
@@ -39,10 +38,8 @@ interface MockTaskDetails {
 }
 
 function TaskDetailsDialog({ taskId, onClose }: TaskDetailsDialogProps) {
-  const { client } = useDistri()
   const [task, setTask] = useState<MockTaskDetails | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     // Mock task details for demonstration
@@ -211,11 +208,6 @@ function TaskDetailsDialog({ taskId, onClose }: TaskDetailsDialogProps) {
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
               <p className="text-gray-500 mt-4">Loading task details...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <div className="text-red-500 mb-4">Error loading task details</div>
-              <p className="text-gray-600">{error.message}</p>
             </div>
           ) : task ? (
             <div className="p-6 space-y-6">

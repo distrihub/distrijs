@@ -9,6 +9,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      external: ['events', 'http', 'path', 'fs', 'net', 'url', 'querystring', 'buffer', 'stream', 'util', 'async_hooks', 'crypto', 'zlib', 'string_decoder']
+    }
+  },
+  define: {
+    global: 'globalThis',
+  },
+  optimizeDeps: {
+    exclude: ['@a2a-js/sdk']
   }
 })

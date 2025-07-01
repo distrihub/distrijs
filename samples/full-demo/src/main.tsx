@@ -6,9 +6,9 @@ import './index.css'
 
 // Demo configuration - in a real app, this would come from environment variables
 const config = {
-  baseUrl: import.meta.env.VITE_DISTRI_BASE_URL || 'http://localhost:8080',
+  baseUrl: (import.meta as any).env?.VITE_DISTRI_BASE_URL || 'http://localhost:8080',
   apiVersion: 'v1',
-  debug: import.meta.env.DEV || false,
+  debug: (import.meta as any).env?.DEV || false,
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000

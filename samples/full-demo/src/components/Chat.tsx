@@ -6,9 +6,6 @@ import {
   Trash2, 
   Copy, 
   Download,
-  Image,
-  FileText,
-  RotateCcw,
   MessageSquare,
   Clock,
   CheckCircle2,
@@ -19,11 +16,11 @@ import clsx from 'clsx'
 import MessageRenderer from './MessageRenderer'
 
 interface ChatProps {
-  agentId: string
+  agentUrl: string
   onTaskCreated?: (taskId: string) => void
 }
 
-function Chat({ agentId, onTaskCreated }: ChatProps) {
+function Chat({ agentUrl, onTaskCreated }: ChatProps) {
   const { 
     task, 
     loading, 
@@ -32,7 +29,7 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
     isStreaming, 
     sendMessage, 
     clearTask 
-  } = useTask({ agentId, autoSubscribe: true })
+  } = useTask({ agentId: agentUrl, autoSubscribe: true })
   
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -101,9 +98,9 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
   }
 
   const handleCopyConversation = async () => {
-    if (!task) return
+    if (!task || !task.history) return
     
-    const conversationText = task.messages.map((msg: any) => {
+    const conversationText = task.history.map((msg: any) => {
       const role = msg.role === 'user' ? 'You' : 'Assistant'
       const content = msg.parts.map((part: any) => {
         if (part.kind === 'text') return part.text
@@ -127,9 +124,9 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
     
     const conversationData = {
       taskId: task.id,
-      agentId: agentId,
+      agentUrl: agentUrl,
       timestamp: new Date().toISOString(),
-      messages: task.messages
+      messages: task.history
     }
     
     const blob = new Blob([JSON.stringify(conversationData, null, 2)], {
@@ -149,10 +146,11 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
   const getTaskStatusIcon = () => {
     if (!task) return null
     
-    switch (task.status) {
-      case 'pending':
+    const state = task.status?.state || 'unknown'
+    switch (state) {
+      case 'submitted':
         return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'running':
+      case 'working':
         return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
       case 'completed':
         return <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -168,11 +166,12 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
   const getTaskStatusText = () => {
     if (!task) return 'No active task'
     
-    switch (task.status) {
-      case 'pending':
-        return 'Task pending...'
-      case 'running':
-        return 'Task running...'
+    const state = task.status?.state || 'unknown'
+    switch (state) {
+      case 'submitted':
+        return 'Task submitted...'
+      case 'working':
+        return 'Task working...'
       case 'completed':
         return 'Task completed'
       case 'failed':
@@ -180,7 +179,7 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
       case 'canceled':
         return 'Task canceled'
       default:
-        return `Status: ${task.status}`
+        return `Status: ${state}`
     }
   }
 
@@ -275,9 +274,9 @@ function Chat({ agentId, onTaskCreated }: ChatProps) {
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50"
       >
-        {task && task.messages.length > 0 ? (
+        {task && task.history && task.history.length > 0 ? (
           <div className="space-y-4 p-4">
-            {task.messages.map((message: any, index: number) => (
+            {task.history.map((message: any, index: number) => (
               <MessageItem key={index} message={message} />
             ))}
             
@@ -374,7 +373,7 @@ interface MessageItemProps {
 function MessageItem({ message }: MessageItemProps) {
   const [showCopied, setShowCopied] = useState(false)
   
-  const formatTime = (timestamp?: number) => {
+  const formatTime = (timestamp?: string) => {
     if (!timestamp) return ''
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -435,7 +434,7 @@ function MessageItem({ message }: MessageItemProps) {
                 'text-xs',
                 isUser ? 'text-primary-200' : 'text-gray-500'
               )}>
-                {formatTime(message.timestamp)}
+                {formatTime((message as any).timestamp)}
               </span>
             </div>
             

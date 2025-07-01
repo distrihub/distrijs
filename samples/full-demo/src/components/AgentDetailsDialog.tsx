@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useAgents } from '@distri/react'
 import { X, Zap, Globe, Code, Database, MessageSquare } from 'lucide-react'
-import clsx from 'clsx'
 
 interface AgentDetailsDialogProps {
-  agentId: string
+  agentUrl: string
   onClose: () => void
 }
 
-function AgentDetailsDialog({ agentId, onClose }: AgentDetailsDialogProps) {
+function AgentDetailsDialog({ agentUrl, onClose }: AgentDetailsDialogProps) {
   const { getAgent } = useAgents()
   const [agent, setAgent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -18,7 +17,7 @@ function AgentDetailsDialog({ agentId, onClose }: AgentDetailsDialogProps) {
     const fetchAgent = async () => {
       try {
         setLoading(true)
-        const agentData = await getAgent(agentId)
+        const agentData = await getAgent(agentUrl)
         setAgent(agentData)
       } catch (err) {
         setError(err as Error)
@@ -28,7 +27,7 @@ function AgentDetailsDialog({ agentId, onClose }: AgentDetailsDialogProps) {
     }
 
     fetchAgent()
-  }, [agentId, getAgent])
+  }, [agentUrl, getAgent])
 
   const getCapabilityIcon = (capability: string) => {
     if (capability.toLowerCase().includes('code')) return <Code className="w-4 h-4" />
@@ -36,6 +35,24 @@ function AgentDetailsDialog({ agentId, onClose }: AgentDetailsDialogProps) {
     if (capability.toLowerCase().includes('web')) return <Globe className="w-4 h-4" />
     if (capability.toLowerCase().includes('chat')) return <MessageSquare className="w-4 h-4" />
     return <Zap className="w-4 h-4" />
+  }
+
+  // Helper function to get capability names from agent capabilities object
+  const getCapabilityNames = (agent: any): string[] => {
+    const caps: string[] = []
+    if (agent.capabilities?.streaming) caps.push('Streaming')
+    if (agent.capabilities?.pushNotifications) caps.push('Push Notifications')
+    if (agent.capabilities?.stateTransitionHistory) caps.push('State History')
+    if (agent.capabilities?.extensions?.length) caps.push('Extensions')
+    
+    // Also include skills as capabilities
+    if (agent.skills) {
+      agent.skills.forEach((skill: any) => {
+        skill.tags?.forEach((tag: string) => caps.push(tag))
+      })
+    }
+    
+    return caps
   }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -82,8 +99,8 @@ function AgentDetailsDialog({ agentId, onClose }: AgentDetailsDialogProps) {
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Agent ID:</span>
-                    <span className="ml-2 text-gray-600 font-mono">{agent.id}</span>
+                    <span className="font-medium text-gray-700">Agent URL:</span>
+                    <span className="ml-2 text-gray-600 font-mono break-all">{agent.url}</span>
                   </div>
                   {agent.version && (
                     <div>
@@ -95,17 +112,44 @@ function AgentDetailsDialog({ agentId, onClose }: AgentDetailsDialogProps) {
               </div>
 
               {/* Capabilities */}
-              {agent.capabilities && agent.capabilities.length > 0 && (
+              {(() => {
+                const capabilities = getCapabilityNames(agent)
+                return capabilities.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 mb-3">Capabilities</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {capabilities.map((capability: string, index: number) => (
+                        <div 
+                          key={index}
+                          className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg"
+                        >
+                          {getCapabilityIcon(capability)}
+                          <span className="text-gray-700">{capability}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Skills */}
+              {agent.skills && agent.skills.length > 0 && (
                 <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Capabilities</h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {agent.capabilities.map((capability: string, index: number) => (
-                      <div 
-                        key={index}
-                        className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg"
-                      >
-                        {getCapabilityIcon(capability)}
-                        <span className="text-gray-700">{capability}</span>
+                  <h4 className="text-md font-medium text-gray-900 mb-3">Skills</h4>
+                  <div className="space-y-3">
+                    {agent.skills.map((skill: any, index: number) => (
+                      <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                        <h5 className="font-medium text-gray-900">{skill.name}</h5>
+                        <p className="text-sm text-gray-600 mt-1">{skill.description}</p>
+                        {skill.tags && skill.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {skill.tags.map((tag: string, tagIndex: number) => (
+                              <span key={tagIndex} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

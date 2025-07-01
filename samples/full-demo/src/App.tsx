@@ -11,7 +11,7 @@ import TaskDetailsDialog from './components/TaskDetailsDialog'
 
 function App() {
   const { client, error, isLoading } = useDistri()
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [selectedAgentUrl, setSelectedAgentUrl] = useState<string | null>(null)
   const [showTaskMonitor, setShowTaskMonitor] = useState(false)
   const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<string | null>(null)
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<string | null>(null)
@@ -177,8 +177,8 @@ function App() {
           </div>
           <div className="flex-1 overflow-hidden">
             <AgentList 
-              selectedAgentId={selectedAgentId}
-              onSelectAgent={setSelectedAgentId}
+              selectedAgentUrl={selectedAgentUrl}
+              onSelectAgent={setSelectedAgentUrl}
               onViewAgentDetails={setSelectedAgentForDetails}
             />
           </div>
@@ -186,9 +186,9 @@ function App() {
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          {selectedAgentId ? (
+          {selectedAgentUrl ? (
             <Chat 
-              agentId={selectedAgentId} 
+              agentUrl={selectedAgentUrl} 
               onTaskCreated={(taskId) => setSelectedTaskForDetails(taskId)}
             />
           ) : (
@@ -215,7 +215,7 @@ function App() {
         {/* Task Monitor Sidebar */}
         {showTaskMonitor && (
           <div className="w-80 bg-white border-l border-gray-200">
-            <TaskMonitor onViewTaskDetails={setSelectedTaskForDetails} />
+            <TaskMonitor />
           </div>
         )}
       </div>
@@ -223,7 +223,7 @@ function App() {
       {/* Dialogs */}
       {selectedAgentForDetails && (
         <AgentDetailsDialog 
-          agentId={selectedAgentForDetails}
+          agentUrl={selectedAgentForDetails}
           onClose={() => setSelectedAgentForDetails(null)}
         />
       )}

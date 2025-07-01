@@ -1,80 +1,92 @@
-import React, { useState, useEffect } from 'react'
-import { useDistri } from '@distri/react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { 
-  Activity, 
   Clock, 
   CheckCircle2, 
   AlertCircle, 
   Pause,
-  RefreshCw,
-  Eye,
-  MoreHorizontal
+  MoreHorizontal,
+  Trash2,
+  Info
 } from 'lucide-react'
 import clsx from 'clsx'
+import TaskDetailsDialog from './TaskDetailsDialog'
 
-interface TaskMonitorProps {
-  onViewTaskDetails: (taskId: string) => void
+interface TaskStatus {
+  state: 'pending' | 'running' | 'completed' | 'failed' | 'canceled'
 }
 
-interface MockTask {
+interface Task {
   id: string
   agentId: string
   agentName: string
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'canceled'
+  status: TaskStatus
   createdAt: Date
-  updatedAt: Date
-  progress?: number
   lastMessage?: string
+  progress?: number
 }
 
-function TaskMonitor({ onViewTaskDetails }: TaskMonitorProps) {
-  const { client } = useDistri()
-  const [tasks, setTasks] = useState<MockTask[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
+function TaskMonitor() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'running' | 'completed' | 'failed'>('all')
 
-  // Mock tasks for demonstration
-  useEffect(() => {
-    const mockTasks: MockTask[] = [
+  const loadTasks = useCallback(async () => {
+    // Mock tasks for demonstration
+    const mockTasks: Task[] = [
       {
         id: 'task-1',
         agentId: 'agent-1',
         agentName: 'Code Assistant',
-        status: 'completed',
+        status: { state: 'completed' },
         createdAt: new Date(Date.now() - 1000 * 60 * 30),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 15),
-        progress: 100,
-        lastMessage: 'Generated React component successfully'
+        lastMessage: 'Generated React component successfully',
+        progress: 100
       },
       {
         id: 'task-2',
-        agentId: 'agent-2',
+        agentId: 'agent-2', 
         agentName: 'Data Analyst',
-        status: 'running',
-        createdAt: new Date(Date.now() - 1000 * 60 * 10),
-        updatedAt: new Date(Date.now() - 1000 * 30),
-        progress: 65,
-        lastMessage: 'Processing dataset...'
+        status: { state: 'running' },
+        createdAt: new Date(Date.now() - 1000 * 60 * 15),
+        lastMessage: 'Analyzing dataset...',
+        progress: 65
       },
       {
         id: 'task-3',
         agentId: 'agent-1',
         agentName: 'Code Assistant',
-        status: 'pending',
+        status: { state: 'pending' },
         createdAt: new Date(Date.now() - 1000 * 60 * 5),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 5),
-        lastMessage: 'Waiting for execution...'
+        lastMessage: 'Waiting to start...',
+        progress: 0
+      },
+      {
+        id: 'task-4',
+        agentId: 'agent-3',
+        agentName: 'Web Scraper',
+        status: { state: 'failed' },
+        createdAt: new Date(Date.now() - 1000 * 60 * 45),
+        lastMessage: 'Failed to connect to target website',
+        progress: 25
       }
     ]
+    
     setTasks(mockTasks)
   }, [])
 
-  const getStatusIcon = (status: MockTask['status']) => {
-    switch (status) {
+  useEffect(() => {
+    loadTasks()
+    // Set up polling for task updates
+    const interval = setInterval(loadTasks, 5000)
+    return () => clearInterval(interval)
+  }, [loadTasks])
+
+  const getStatusIcon = (status: TaskStatus) => {
+    switch (status.state) {
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-500" />
       case 'running':
-        return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+        return <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       case 'completed':
         return <CheckCircle2 className="w-4 h-4 text-green-500" />
       case 'failed':
@@ -84,204 +96,199 @@ function TaskMonitor({ onViewTaskDetails }: TaskMonitorProps) {
     }
   }
 
-  const getStatusColor = (status: MockTask['status']) => {
-    switch (status) {
+  const getStatusColor = (status: TaskStatus) => {
+    switch (status.state) {
       case 'pending':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+        return 'text-yellow-600 bg-yellow-50'
       case 'running':
-        return 'text-blue-600 bg-blue-50 border-blue-200'
+        return 'text-blue-600 bg-blue-50'
       case 'completed':
-        return 'text-green-600 bg-green-50 border-green-200'
+        return 'text-green-600 bg-green-50'
       case 'failed':
-        return 'text-red-600 bg-red-50 border-red-200'
+        return 'text-red-600 bg-red-50'
       case 'canceled':
-        return 'text-gray-600 bg-gray-50 border-gray-200'
+        return 'text-gray-600 bg-gray-50'
     }
+  }
+
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'all') return true
+    return task.status.state === filter
+  })
+
+  const handleCancelTask = async (taskId: string) => {
+    // Mock task cancellation
+    setTasks(prev => prev.map(task => 
+      task.id === taskId 
+        ? { ...task, status: { state: 'canceled' }, lastMessage: 'Task cancelled by user' }
+        : task
+    ))
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    // Mock task deletion
+    setTasks(prev => prev.filter(task => task.id !== taskId))
   }
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diff = now.getTime() - date.getTime()
+    const minutes = Math.floor(diff / (1000 * 60))
+    const hours = Math.floor(minutes / 60)
     
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    
-    const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    
-    const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}d ago`
+    if (hours > 0) {
+      return `${hours}h ago`
+    } else if (minutes > 0) {
+      return `${minutes}m ago`
+    } else {
+      return 'Just now'
+    }
   }
-
-  const refreshTasks = () => {
-    setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-    }, 1000)
-  }
-
-  const runningTasks = tasks.filter(t => t.status === 'running')
-  const completedTasks = tasks.filter(t => t.status === 'completed')
-  const failedTasks = tasks.filter(t => t.status === 'failed')
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Activity className="w-5 h-5 text-primary-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Task Monitor</h2>
-          </div>
-          <button
-            onClick={refreshTasks}
-            disabled={loading}
-            className="btn btn-ghost btn-sm"
-          >
-            <RefreshCw className={clsx('w-4 h-4', loading && 'animate-spin')} />
-          </button>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <div className="text-center">
-            <div className="text-lg font-semibold text-blue-600">{runningTasks.length}</div>
-            <div className="text-xs text-gray-500">Running</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-green-600">{completedTasks.length}</div>
-            <div className="text-xs text-gray-500">Completed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-red-600">{failedTasks.length}</div>
-            <div className="text-xs text-gray-500">Failed</div>
-          </div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-900">Task Monitor</h2>
+        <div className="flex items-center space-x-2">
+          {/* Filter buttons */}
+          {['all', 'running', 'completed', 'failed'].map((filterOption) => (
+            <button
+              key={filterOption}
+              onClick={() => setFilter(filterOption as any)}
+              className={clsx(
+                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                filter === filterOption
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
+              {filterOption !== 'all' && (
+                <span className="ml-1 text-xs">
+                  ({tasks.filter(t => t.status.state === filterOption).length})
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Task List */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {tasks.length === 0 ? (
-          <div className="h-full flex items-center justify-center p-4">
-            <div className="text-center space-y-3">
-              <Activity className="w-12 h-12 text-gray-300 mx-auto" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">No tasks yet</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Tasks will appear here when you start conversations
-                </p>
+      <div className="space-y-3">
+        {filteredTasks.length > 0 ? (
+          filteredTasks.map((task) => (
+            <div 
+              key={task.id}
+              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 flex-1">
+                  {getStatusIcon(task.status)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">
+                        Task {task.id}
+                      </h3>
+                      <span className={clsx(
+                        'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+                        getStatusColor(task.status)
+                      )}>
+                        {task.status.state.charAt(0).toUpperCase() + task.status.state.slice(1)}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-1">
+                      <span className="text-sm text-gray-500">
+                        Agent: {task.agentName}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {formatTimeAgo(task.createdAt)}
+                      </span>
+                    </div>
+                    {task.lastMessage && (
+                      <p className="text-sm text-gray-600 mt-1 truncate">
+                        {task.lastMessage}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  {/* Progress bar for running tasks */}
+                  {task.status.state === 'running' && task.progress !== undefined && (
+                    <div className="w-20">
+                      <div className="text-xs text-gray-500 text-right mb-1">
+                        {task.progress}%
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div 
+                          className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${task.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Actions */}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setSelectedTaskId(task.id)}
+                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      title="View details"
+                    >
+                      <Info className="w-4 h-4 text-gray-400" />
+                    </button>
+                    
+                    {task.status.state === 'running' && (
+                      <button
+                        onClick={() => handleCancelTask(task.id)}
+                        className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                        title="Cancel task"
+                      >
+                        <Pause className="w-4 h-4 text-gray-400" />
+                      </button>
+                    )}
+                    
+                    {(task.status.state === 'completed' || task.status.state === 'failed' || task.status.state === 'canceled') && (
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="p-1.5 hover:bg-red-100 rounded-md transition-colors"
+                        title="Delete task"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    )}
+                    
+                    <button className="p-1.5 hover:bg-gray-100 rounded-md transition-colors">
+                      <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ))
         ) : (
-          <div className="p-3 space-y-3">
-            {tasks.map((task) => (
-              <TaskItem 
-                key={task.id}
-                task={task}
-                onViewDetails={() => onViewTaskDetails(task.id)}
-                getStatusIcon={getStatusIcon}
-                getStatusColor={getStatusColor}
-                formatTimeAgo={formatTimeAgo}
-              />
-            ))}
+          <div className="text-center py-8">
+            <p className="text-gray-500">No tasks found</p>
+            {filter !== 'all' && (
+              <button
+                onClick={() => setFilter('all')}
+                className="text-primary-600 hover:text-primary-700 text-sm mt-2"
+              >
+                View all tasks
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-gray-200 bg-gray-50">
-        <div className="text-xs text-gray-500 text-center">
-          {tasks.length} total tasks
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface TaskItemProps {
-  task: MockTask
-  onViewDetails: () => void
-  getStatusIcon: (status: MockTask['status']) => React.ReactNode
-  getStatusColor: (status: MockTask['status']) => string
-  formatTimeAgo: (date: Date) => string
-}
-
-function TaskItem({ 
-  task, 
-  onViewDetails, 
-  getStatusIcon, 
-  getStatusColor, 
-  formatTimeAgo 
-}: TaskItemProps) {
-  return (
-    <div className="card p-3 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2 mb-2">
-            {getStatusIcon(task.status)}
-            <span className={clsx(
-              'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border',
-              getStatusColor(task.status)
-            )}>
-              {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-            </span>
-          </div>
-          
-          <div className="mb-2">
-            <h3 className="text-sm font-medium text-gray-900 truncate">
-              {task.agentName}
-            </h3>
-            <p className="text-xs text-gray-500">
-              Task ID: {task.id.substring(0, 8)}...
-            </p>
-          </div>
-          
-          {task.lastMessage && (
-            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-              {task.lastMessage}
-            </p>
-          )}
-          
-          {task.progress !== undefined && task.status === 'running' && (
-            <div className="mb-2">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-gray-500">Progress</span>
-                <span className="text-gray-700">{task.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${task.progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Created {formatTimeAgo(task.createdAt)}</span>
-            <span>Updated {formatTimeAgo(task.updatedAt)}</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-1 ml-2">
-          <button
-            onClick={onViewDetails}
-            className="p-1 rounded hover:bg-gray-100 transition-colors"
-            title="View details"
-          >
-            <Eye className="w-4 h-4 text-gray-400" />
-          </button>
-          <button
-            className="p-1 rounded hover:bg-gray-100 transition-colors"
-            title="More options"
-          >
-            <MoreHorizontal className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-      </div>
+      {/* Task Details Dialog */}
+      {selectedTaskId && (
+        <TaskDetailsDialog
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
     </div>
   )
 }

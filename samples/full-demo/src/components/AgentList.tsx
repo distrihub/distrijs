@@ -15,12 +15,12 @@ import {
 import clsx from 'clsx'
 
 interface AgentListProps {
-  selectedAgentId: string | null
-  onSelectAgent: (agentId: string) => void
-  onViewAgentDetails?: (agentId: string) => void
+  selectedAgentUrl: string | null
+  onSelectAgent: (agentUrl: string) => void
+  onViewAgentDetails?: (agentUrl: string) => void
 }
 
-function AgentList({ selectedAgentId, onSelectAgent, onViewAgentDetails }: AgentListProps) {
+function AgentList({ selectedAgentUrl, onSelectAgent, onViewAgentDetails }: AgentListProps) {
   const { agents, loading, error, refetch } = useAgents()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterByCapability, setFilterByCapability] = useState<string | null>(null)
@@ -28,29 +28,40 @@ function AgentList({ selectedAgentId, onSelectAgent, onViewAgentDetails }: Agent
   // Defensive check to ensure agents is always an array
   const safeAgents = agents || []
 
+  // Helper function to get capability names from agent capabilities object
+  const getCapabilityNames = (agent: AgentCard): string[] => {
+    const caps: string[] = []
+    if (agent.capabilities?.streaming) caps.push('Streaming')
+    if (agent.capabilities?.pushNotifications) caps.push('Push Notifications')
+    if (agent.capabilities?.stateTransitionHistory) caps.push('State History')
+    if (agent.capabilities?.extensions?.length) caps.push('Extensions')
+    
+    // Also include skills as capabilities
+    if (agent.skills) {
+      agent.skills.forEach(skill => {
+        skill.tags?.forEach(tag => caps.push(tag))
+      })
+    }
+    
+    return caps
+  }
+
   // Filter agents based on search term and capability filter
   const filteredAgents = safeAgents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agent.description.toLowerCase().includes(searchTerm.toLowerCase())
     
+    const agentCapabilities = getCapabilityNames(agent)
     const matchesCapability = !filterByCapability || 
-                             agent.capabilities?.includes(filterByCapability)
+                             agentCapabilities.includes(filterByCapability)
     
     return matchesSearch && matchesCapability
   })
 
   // Get unique capabilities for filter dropdown
   const allCapabilities = Array.from(
-    new Set(safeAgents.flatMap(agent => agent.capabilities || []))
+    new Set(safeAgents.flatMap(agent => getCapabilityNames(agent)))
   ).sort()
-
-  const getCapabilityIcon = (capability: string) => {
-    if (capability.toLowerCase().includes('code')) return <Code className="w-3 h-3" />
-    if (capability.toLowerCase().includes('data')) return <Database className="w-3 h-3" />
-    if (capability.toLowerCase().includes('web')) return <Globe className="w-3 h-3" />
-    if (capability.toLowerCase().includes('chat')) return <MessageSquare className="w-3 h-3" />
-    return <Zap className="w-3 h-3" />
-  }
 
   if (loading && safeAgents.length === 0) {
     return (
@@ -183,11 +194,12 @@ function AgentList({ selectedAgentId, onSelectAgent, onViewAgentDetails }: Agent
           <div className="p-2 space-y-2">
             {filteredAgents.map((agent: AgentCard) => (
               <AgentItem
-                key={agent.id}
+                key={agent.url}
                 agent={agent}
-                isSelected={agent.id === selectedAgentId}
-                onSelect={() => onSelectAgent(agent.id)}
-                onViewDetails={onViewAgentDetails ? () => onViewAgentDetails(agent.id) : undefined}
+                isSelected={agent.url === selectedAgentUrl}
+                onSelect={() => onSelectAgent(agent.url)}
+                onViewDetails={onViewAgentDetails ? () => onViewAgentDetails(agent.url) : undefined}
+                capabilities={getCapabilityNames(agent)}
               />
             ))}
           </div>
@@ -217,14 +229,15 @@ interface AgentItemProps {
   isSelected: boolean
   onSelect: () => void
   onViewDetails?: () => void
+  capabilities: string[]
 }
 
-function AgentItem({ agent, isSelected, onSelect, onViewDetails }: AgentItemProps) {
+function AgentItem({ agent, isSelected, onSelect, onViewDetails, capabilities }: AgentItemProps) {
   const getCapabilityIcon = (capability: string) => {
     if (capability.toLowerCase().includes('code')) return <Code className="w-3 h-3" />
     if (capability.toLowerCase().includes('data')) return <Database className="w-3 h-3" />
     if (capability.toLowerCase().includes('web')) return <Globe className="w-3 h-3" />
-    if (capability.toLowerCase().includes('chat')) return <MessageSquare className="w-3 h-3" />
+    if (capability.toLowerCase().includes('chat') || capability.toLowerCase().includes('streaming')) return <MessageSquare className="w-3 h-3" />
     return <Zap className="w-3 h-3" />
   }
 
@@ -258,9 +271,9 @@ function AgentItem({ agent, isSelected, onSelect, onViewDetails }: AgentItemProp
             {agent.description}
           </p>
           
-          {agent.capabilities && agent.capabilities.length > 0 && (
+          {capabilities && capabilities.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {agent.capabilities.slice(0, 3).map((capability: string, index: number) => (
+              {capabilities.slice(0, 3).map((capability: string, index: number) => (
                 <div 
                   key={index} 
                   className="flex items-center space-x-1 bg-gray-100 rounded px-2 py-1"
@@ -271,9 +284,9 @@ function AgentItem({ agent, isSelected, onSelect, onViewDetails }: AgentItemProp
                   </span>
                 </div>
               ))}
-              {agent.capabilities.length > 3 && (
+              {capabilities.length > 3 && (
                 <span className="text-xs text-gray-500 px-2 py-1">
-                  +{agent.capabilities.length - 3}
+                  +{capabilities.length - 3}
                 </span>
               )}
             </div>
