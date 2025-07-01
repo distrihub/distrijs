@@ -37,16 +37,17 @@ export function useAgents(): UseAgentsResult {
     }
   }, [client]);
 
-  const getAgent = useCallback(async (agentId: string): Promise<AgentCard> => {
+  const getAgent = useCallback(async (agentUrl: string): Promise<AgentCard> => {
     if (!client) {
       throw new Error('Client not available');
     }
 
     try {
-      const agent = await client.getAgent(agentId);
+      const agent = await client.getAgent(agentUrl);
       
       // Update the agent in our local state if it exists
-      setAgents(prev => prev.map(a => a.id === agentId ? agent : a));
+      // Since AgentCard doesn't have an id property, we'll use url as the identifier
+      setAgents(prev => prev.map(a => a.url === agentUrl ? agent : a));
       
       return agent;
     } catch (err) {

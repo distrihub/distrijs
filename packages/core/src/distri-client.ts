@@ -4,7 +4,13 @@ import {
   DistriClientConfig,
   DistriError,
   ApiError,
-  A2AProtocolError
+  A2AProtocolError,
+  DistriEvent,
+  TextDeltaEvent,
+  TaskStatusChangedEvent,
+  TaskCompletedEvent,
+  TaskErrorEvent,
+  CreateTaskRequest
 } from './types';
 
 /**
@@ -107,22 +113,27 @@ export class DistriClient extends EventEmitter {
   /**
    * Create a task (convenience method)
    */
-  async createTask(agentId: string, user_message: Message): Promise<Task> {
+  async createTask(request: CreateTaskRequest): Promise<{ taskId: string }> {
     const params: MessageSendParams = {
-      message: user_message,
+      message: request.message,
       configuration: {
         acceptedOutputModes: ['text/plain'],
-        blocking: true,
+        blocking: false, // For streaming responses
+        ...request.configuration
       }
     };
 
-    const response = await this.sendMessage(agentId, params);
+    const response = await this.sendStreamingMessage(request.agentId, params);
 
     if (typeof response === 'object' && 'error' in response) {
       throw new A2AProtocolError(response.error.message, response.error);
     }
 
-    return response.result as Task;
+    // Extract task ID from response
+    const result = response.result as any;
+    const taskId = result?.task_id || result?.taskId || this.generateRequestId();
+    
+    return { taskId };
   }
 
   /**
@@ -223,6 +234,31 @@ export class DistriClient extends EventEmitter {
   }
 
   /**
+   * Handle incoming SSE events
+   */
+  private handleEvent(event: DistriEvent): void {
+    this.debug('Received event:', event);
+    
+    switch (event.type) {
+      case 'text_delta':
+        this.emit('text_delta', event as TextDeltaEvent);
+        break;
+      case 'task_status_changed':
+        this.emit('task_status_changed', event as TaskStatusChangedEvent);
+        break;
+      case 'task_completed':
+        this.emit('task_completed', event as TaskCompletedEvent);
+        break;
+      case 'task_error':
+        this.emit('task_error', event as TaskErrorEvent);
+        break;
+      default:
+        this.emit('unknown_event', event);
+        break;
+    }
+  }
+
+  /**
    * Send a JSON-RPC request to an agent
    */
   private async sendJsonRpcRequest(agentId: string, request: JSONRPCRequest): Promise<JSONRPCResponse> {
@@ -254,7 +290,6 @@ export class DistriClient extends EventEmitter {
       throw new DistriError('JSON-RPC request failed', 'RPC_ERROR', error);
     }
   }
-
 
   /**
    * Enhanced fetch with retry logic

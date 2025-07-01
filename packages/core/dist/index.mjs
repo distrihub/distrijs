@@ -56,7 +56,7 @@ var DistriClient = class extends EventEmitter {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
       const data = await response.json();
-      return data.agents;
+      return data;
     } catch (error) {
       if (error instanceof ApiError)
         throw error;
@@ -89,7 +89,11 @@ var DistriClient = class extends EventEmitter {
     const jsonRpcRequest = {
       jsonrpc: "2.0",
       method: "message/send",
-      params,
+      params: {
+        message: params.message,
+        configuration: params.configuration,
+        metadata: params.metadata
+      },
       id: this.generateRequestId()
     };
     return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
@@ -101,7 +105,11 @@ var DistriClient = class extends EventEmitter {
     const jsonRpcRequest = {
       jsonrpc: "2.0",
       method: "message/send_streaming",
-      params,
+      params: {
+        message: params.message,
+        configuration: params.configuration,
+        metadata: params.metadata
+      },
       id: this.generateRequestId()
     };
     return this.sendJsonRpcRequest(agentId, jsonRpcRequest);
@@ -112,13 +120,20 @@ var DistriClient = class extends EventEmitter {
   async createTask(request) {
     const params = {
       message: request.message,
-      configuration: request.configuration
+      configuration: {
+        acceptedOutputModes: ["text/plain"],
+        blocking: false,
+        // For streaming responses
+        ...request.configuration
+      }
     };
-    const response = await this.sendMessage(request.agentId, params);
-    if (response.error) {
+    const response = await this.sendStreamingMessage(request.agentId, params);
+    if (typeof response === "object" && "error" in response) {
       throw new A2AProtocolError(response.error.message, response.error);
     }
-    return response.result;
+    const result = response.result;
+    const taskId = result?.task_id || result?.taskId || this.generateRequestId();
+    return { taskId };
   }
   /**
    * Get task details
@@ -201,6 +216,29 @@ var DistriClient = class extends EventEmitter {
     this.eventSources.clear();
   }
   /**
+   * Handle incoming SSE events
+   */
+  handleEvent(event) {
+    this.debug("Received event:", event);
+    switch (event.type) {
+      case "text_delta":
+        this.emit("text_delta", event);
+        break;
+      case "task_status_changed":
+        this.emit("task_status_changed", event);
+        break;
+      case "task_completed":
+        this.emit("task_completed", event);
+        break;
+      case "task_error":
+        this.emit("task_error", event);
+        break;
+      default:
+        this.emit("unknown_event", event);
+        break;
+    }
+  }
+  /**
    * Send a JSON-RPC request to an agent
    */
   async sendJsonRpcRequest(agentId, request) {
@@ -217,7 +255,7 @@ var DistriClient = class extends EventEmitter {
         throw new ApiError(`JSON-RPC request failed: ${response.statusText}`, response.status);
       }
       const jsonResponse = await response.json();
-      if (jsonResponse.error) {
+      if (typeof jsonResponse === "object" && "error" in jsonResponse) {
         throw new A2AProtocolError(jsonResponse.error.message, jsonResponse.error);
       }
       return jsonResponse;
@@ -226,34 +264,6 @@ var DistriClient = class extends EventEmitter {
         throw error;
       }
       throw new DistriError("JSON-RPC request failed", "RPC_ERROR", error);
-    }
-  }
-  /**
-   * Handle incoming SSE events
-   */
-  handleEvent(event) {
-    this.debug("Received event:", event);
-    switch (event.type) {
-      case "task_status_changed":
-        this.emit("task_status_changed", event);
-        break;
-      case "text_delta":
-        this.emit("text_delta", event);
-        break;
-      case "task_completed":
-        this.emit("task_completed", event);
-        break;
-      case "task_error":
-        this.emit("task_error", event);
-        break;
-      case "task_canceled":
-        this.emit("task_canceled", event);
-        break;
-      case "agent_status_changed":
-        this.emit("agent_status_changed", event);
-        break;
-      default:
-        this.emit("event", event);
     }
   }
   /**
@@ -315,7 +325,7 @@ var DistriClient = class extends EventEmitter {
       role,
       parts: [{ kind: "text", text }],
       contextId,
-      timestamp: Date.now()
+      kind: "message"
     };
   }
   /**
@@ -332,6 +342,9 @@ var DistriClient = class extends EventEmitter {
     };
   }
 };
+
+// src/index.ts
+export * from "@a2a-js/sdk";
 export {
   A2AProtocolError,
   ApiError,

@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Task, 
-  A2AMessage, 
+  Message as A2AMessage, 
   MessageSendParams, 
   CreateTaskRequest,
   DistriClient,
   TextDeltaEvent,
   TaskStatusChangedEvent,
   TaskCompletedEvent,
-  TaskErrorEvent
+  TaskErrorEvent,
+  TaskStatus
 } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
@@ -134,7 +135,12 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
 
       const handleTaskStatusChanged = (event: TaskStatusChangedEvent) => {
         if (task && event.task_id === task.id) {
-          setTask(prev => prev ? { ...prev, status: event.status } : null);
+          // Create a proper TaskStatus object
+          const newStatus: TaskStatus = {
+            state: event.status as any, // Type assertion for the status
+            timestamp: new Date().toISOString()
+          };
+          setTask(prev => prev ? { ...prev, status: newStatus } : null);
           
           if (event.status === 'completed' || event.status === 'failed' || event.status === 'canceled') {
             setIsStreaming(false);
