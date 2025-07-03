@@ -1,24 +1,22 @@
 {
   "name": "@distri/react",
-  "version": "1.0.0",
-  "description": "React hooks for Distri framework",
+  "version": "0.1.0",
+  "description": "React hooks and components for Distri Framework",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
-    "build": "tsup && npm run build:dts",
-    "build:dts": "tsc --declaration --emitDeclarationOnly --jsx react --esModuleInterop --outDir dist src/index.ts",
+    "build": "tsup",
     "dev": "tsup --watch",
-    "lint": "eslint src --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "lint": "eslint src --ext ts,tsx",
+    "type-check": "tsc --noEmit"
   },
   "files": [
     "dist",
@@ -28,14 +26,14 @@
     "@distri/core": "workspace:*"
   },
   "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
+    "react": "^18.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0",
     "tsup": "^7.0.0",
     "typescript": "^5.0.0"
   },
