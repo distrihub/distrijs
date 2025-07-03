@@ -1,110 +1,42 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, Settings, Activity, Loader2, Plus, Bot } from 'lucide-react';
+import { DistriProvider, useAgents, useThreads, DistriAgent, DistriThread } from '@distri/react';
 import Chat from './components/Chat';
 import AgentList from './components/AgentList';
 import TaskMonitor from './components/TaskMonitor';
-import { v4 as uuidv4 } from 'uuid';
 
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  status: 'online' | 'offline';
-}
-
-interface Thread {
-  id: string;
-  title: string;
-  agent_id: string;
-  agent_name: string;
-  updated_at: string;
-  message_count: number;
-  last_message?: string;
-}
-
-function App() {
-  const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [loading, setLoading] = useState(true);
+function AppContent() {
+  const { agents, loading: agentsLoading, refetch: refetchAgents } = useAgents();
+  const { threads, loading: threadsLoading, createThread, deleteThread, updateThread } = useThreads();
+  
+  const [selectedThread, setSelectedThread] = useState<DistriThread | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'agents' | 'tasks'>('chat');
   const [creatingThread, setCreatingThread] = useState(false);
 
+  const loading = agentsLoading || threadsLoading;
+
+  // Auto-select first agent when agents load
   useEffect(() => {
-    Promise.all([fetchAgents(), fetchThreads()]).finally(() => setLoading(false));
-  }, []);
-
-  const fetchAgents = async () => {
-    try {
-      const response = await fetch('/api/v1/agents');
-      const agentCards = await response.json();
-
-      const formattedAgents: Agent[] = agentCards.map((card: any) => ({
-        id: card.name,
-        name: card.name,
-        description: card.description,
-        status: 'online' as const,
-      }));
-
-      setAgents(formattedAgents);
-      if (formattedAgents.length > 0 && !selectedAgent) {
-        setSelectedAgent(formattedAgents[0]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch agents:', error);
+    if (agents.length > 0 && !selectedAgent) {
+      setSelectedAgent(agents[0]);
     }
-  };
+  }, [agents, selectedAgent]);
 
-  const fetchThreads = async () => {
-    try {
-      const response = await fetch('/api/v1/threads');
-      if (response.ok) {
-        const threadList = await response.json();
-
-        // Merge server threads with any local threads that may not be persisted yet
-        setThreads((currentThreads: Thread[]) => {
-          const serverThreadIds = new Set(threadList.map((t: Thread) => t.id));
-          const localThreads = currentThreads.filter(t => !serverThreadIds.has(t.id));
-
-          // Combine server threads with local threads, server threads first
-          return [...threadList, ...localThreads];
-        });
-
-        // Select the first thread if none is selected
-        if (threadList.length > 0 && !selectedThread) {
-          setSelectedThread(threadList[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch threads:', error);
-      // If we can't fetch from server, keep the current threads (likely local ones)
+  // Auto-select first thread when threads load
+  useEffect(() => {
+    if (threads.length > 0 && !selectedThread) {
+      setSelectedThread(threads[0]);
     }
-  };
+  }, [threads, selectedThread]);
 
   const createNewThread = async () => {
     if (!selectedAgent || creatingThread) return;
 
     setCreatingThread(true);
     try {
-      // Create thread summary locally first
-      const newThreadId = uuidv4();
-      const threadSummary: Thread = {
-        id: newThreadId,
-        title: 'New conversation',
-        agent_id: selectedAgent.id,
-        agent_name: selectedAgent.name,
-        updated_at: new Date().toISOString(),
-        message_count: 0,
-        last_message: undefined,
-      };
-
-      // Add to local state immediately for better UX
-      setThreads((prev: Thread[]) => [threadSummary, ...prev]);
-      setSelectedThread(threadSummary);
-
-      // The actual thread will be created in the backend when the first message is sent
-      // with the thread.id as contextId, ensuring the backend uses our thread ID
+      const newThread = createThread(selectedAgent.id, 'New conversation');
+      setSelectedThread(newThread);
     } catch (error) {
       console.error('Failed to create thread:', error);
     } finally {
@@ -112,7 +44,7 @@ function App() {
     }
   };
 
-  const startChatWithAgent = async (agent: Agent) => {
+  const startChatWithAgent = async (agent: DistriAgent) => {
     // Set the selected agent
     setSelectedAgent(agent);
 
@@ -120,65 +52,25 @@ function App() {
     setActiveTab('chat');
 
     // Create a new thread for this agent
-    const newThreadId = uuidv4();
-    const threadSummary: Thread = {
-      id: newThreadId,
-      title: `Chat with ${agent.name}`,
-      agent_id: agent.id,
-      agent_name: agent.name,
-      updated_at: new Date().toISOString(),
-      message_count: 0,
-      last_message: undefined,
-    };
-
-    // Add to local state immediately for better UX
-    setThreads((prev: Thread[]) => [threadSummary, ...prev]);
-    setSelectedThread(threadSummary);
+    const newThread = createThread(agent.id, `Chat with ${agent.name}`);
+    setSelectedThread(newThread);
   };
 
-  const deleteThread = async (threadId: string) => {
+  const handleDeleteThread = async (threadId: string) => {
     try {
-      const response = await fetch(`/api/v1/threads/${threadId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setThreads((prev: Thread[]) => prev.filter((thread: Thread) => thread.id !== threadId));
-        if (selectedThread?.id === threadId) {
-          const remainingThreads = threads.filter(thread => thread.id !== threadId);
-          setSelectedThread(remainingThreads.length > 0 ? remainingThreads[0] : null);
-        }
+      await deleteThread(threadId);
+      if (selectedThread?.id === threadId) {
+        const remainingThreads = threads.filter(thread => thread.id !== threadId);
+        setSelectedThread(remainingThreads.length > 0 ? remainingThreads[0] : null);
       }
     } catch (error) {
       console.error('Failed to delete thread:', error);
     }
   };
 
-  const updateSpecificThread = async (threadId: string) => {
+  const handleThreadUpdate = async (threadId: string) => {
     try {
-      const response = await fetch(`/api/v1/threads/${threadId}`);
-      if (response.ok) {
-        const updatedThread = await response.json();
-        const threadSummary: Thread = {
-          id: updatedThread.id,
-          title: updatedThread.title,
-          agent_id: updatedThread.agent_id,
-          agent_name: agents.find((a: Agent) => a.id === updatedThread.agent_id)?.name || updatedThread.agent_id,
-          updated_at: updatedThread.updated_at,
-          message_count: updatedThread.message_count,
-          last_message: updatedThread.last_message,
-        };
-
-        setThreads((prev: Thread[]) =>
-          prev.map((thread: Thread) =>
-            thread.id === threadId ? threadSummary : thread
-          )
-        );
-
-        if (selectedThread?.id === threadId) {
-          setSelectedThread(threadSummary);
-        }
-      }
+      await updateThread(threadId);
     } catch (error) {
       console.error('Failed to update thread:', error);
     }
@@ -347,7 +239,7 @@ function App() {
                 <Chat
                   thread={selectedThread}
                   agent={selectedAgent}
-                  onThreadUpdate={() => updateSpecificThread(selectedThread.id)}
+                  onThreadUpdate={() => handleThreadUpdate(selectedThread.id)}
                 />
               </div>
             )}
@@ -371,7 +263,7 @@ function App() {
               <div className="h-full">
                 <AgentList
                   agents={agents}
-                  onRefresh={fetchAgents}
+                  onRefresh={refetchAgents}
                   onStartChat={startChatWithAgent}
                 />
               </div>
@@ -386,6 +278,17 @@ function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <DistriProvider config={{
+      baseUrl: 'http://localhost:8080',
+      debug: true
+    }}>
+      <AppContent />
+    </DistriProvider>
   );
 }
 

@@ -1,37 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, User, Bot } from 'lucide-react';
-import { Message, TaskStatusUpdateEvent, TextPart } from '@a2a-js/sdk';
+import { useTask, useThreadMessages, DistriAgent, DistriThread } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
 
-const apiUrl = 'http://localhost:8080';
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  status: 'online' | 'offline';
-}
-
-interface Thread {
-  id: string;
-  title: string;
-  agent_id: string;
-  agent_name: string;
-  updated_at: string;
-  message_count: number;
-  last_message?: string;
-}
-
 interface ChatProps {
-  thread: Thread;
-  agent: Agent;
+  thread: DistriThread;
+  agent: DistriAgent;
   onThreadUpdate?: () => void;
 }
 
 const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Use the new hooks
+  const { 
+    messages: taskMessages, 
+    loading: taskLoading, 
+    error: taskError,
+    isStreaming,
+    sendMessageStream,
+    clearMessages 
+  } = useTask({ agentId: agent.id });
+  
+  const { 
+    messages: threadMessages, 
+    loading: threadLoading,
+    refetch: refetchMessages 
+  } = useThreadMessages({ threadId: thread.id });
+
+  // Combine task messages (current conversation) with thread messages (historical)
+  const allMessages = [...threadMessages, ...taskMessages];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,162 +38,38 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [allMessages]);
 
   // Load thread messages when thread changes
   useEffect(() => {
-    if (thread) {
-      loadThreadMessages();
+    if (thread.id) {
+      refetchMessages();
+      clearMessages(); // Clear task messages when switching threads
     }
-  }, [thread.id]);
-
-  const loadThreadMessages = async () => {
-    try {
-      const response = await fetch(`${apiUrl}/api/v1/threads/${thread.id}/messages`);
-      if (response.ok) {
-        const threadMessages = await response.json();
-        setMessages(threadMessages);
-      } else {
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error('Failed to load thread messages:', error);
-      setMessages([]);
-    }
-  };
+  }, [thread.id, refetchMessages, clearMessages]);
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || taskLoading || isStreaming) return;
 
-    const userMessage: Message = {
-      kind: 'message',
-      messageId: Date.now().toString(),
-      role: 'user',
-      parts: [{ kind: 'text', text: input.trim() }],
-      contextId: thread.id,
-      taskId: undefined,
-      referenceTaskIds: [],
-      extensions: [],
-      metadata: undefined,
-    };
-
-    setMessages((prev: Message[]) => [...prev, userMessage]);
+    const messageText = input.trim();
     setInput('');
-    setIsLoading(true);
 
-    console.log("messages", messages)
     try {
-      // Send message using A2A protocol with message/send_streaming method and thread.id as contextId
-      const response = await fetch(`${apiUrl}/api/v1/agents/${agent.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'message/stream',
-          params: {
-            message: userMessage,
-            configuration: {
-              acceptedOutputModes: ['text/plain'],
-              blocking: false, // Use non-blocking for streaming
-            },
-          },
-          id: userMessage.messageId,
-        }),
+      // Use streaming for real-time updates
+      await sendMessageStream(messageText, {
+        contextId: thread.id, // Associate with the thread
+        acceptedOutputModes: ['text/plain'],
+        blocking: false
       });
 
-      if (!response.body) throw new Error('No response body');
-
-      // Set up streaming reader for SSE/JSON-RPC
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let done = false;
-
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        if (streamDone) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process all complete SSE events in the buffer
-        let eventEnd;
-        while ((eventEnd = buffer.indexOf('\n\n')) !== -1) {
-          const eventStr = buffer.slice(0, eventEnd);
-          buffer = buffer.slice(eventEnd + 2);
-
-          // Extract all data: lines and join them
-          const dataLines = eventStr
-            .split('\n')
-            .filter(line => line.startsWith('data:'))
-            .map(line => line.slice(5).trim());
-          if (dataLines.length === 0) continue;
-          const jsonStr = dataLines.join('');
-          if (!jsonStr) continue;
-
-          try {
-            const json = JSON.parse(jsonStr);
-            if (json.error) {
-              throw new Error(json.error.message);
-            }
-            const result = json.result;
-            if (!result) continue;
-
-            // Handle A2A streaming responses
-
-            let message = undefined;
-            if (result.kind === 'message') {
-              message = (result as Message);
-            } else if (result.kind === 'status-update') {
-              message = (result as TaskStatusUpdateEvent).status.message as Message;
-            }
-
-            if (!message) continue;
-            setMessages((prev: Message[]) => {
-              if (prev.find(msg => msg.messageId === message.messageId)) {
-                return prev.map(msg => {
-                  if (msg.messageId === message.messageId) {
-                    return {
-                      ...msg,
-                      parts: [...msg.parts, ...message.parts],
-                    };
-                  }
-                  return msg;
-                });
-              } else {
-                return [...prev, message];
-              }
-            });
-            if (result.final) {
-              done = true;
-              // Optionally update thread in parent component
-              if (onThreadUpdate) {
-                onThreadUpdate();
-              }
-              console.log(messages);
-            }
-          } catch (err) {
-
-            done = true;
-          }
-        }
+      // Update thread after successful message
+      if (onThreadUpdate) {
+        onThreadUpdate();
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      const errorMessage: Message = {
-        kind: 'message',
-        messageId: `${Date.now()}-error`,
-        role: 'agent',
-        parts: [{ kind: 'text', text: `Error: ${error instanceof Error ? error.message : 'Failed to send message'}` }],
-        contextId: thread.id,
-        taskId: undefined,
-        referenceTaskIds: [],
-        extensions: [],
-        metadata: undefined,
-      };
-      setMessages((prev: Message[]) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      // Re-add the input text if sending failed
+      setInput(messageText);
     }
   };
 
@@ -204,6 +79,8 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
       sendMessage();
     }
   };
+
+  const loading = taskLoading || threadLoading;
 
   return (
     <div className="bg-white rounded-lg shadow h-full flex flex-col">
@@ -218,64 +95,63 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
             <p className="text-sm text-gray-500">with {agent.name}</p>
           </div>
         </div>
-        <div className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-green-400' : 'bg-gray-400'
-          }`} />
+        <div className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-green-400' : 'bg-gray-400'}`} />
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {allMessages.length === 0 && !loading && (
           <div className="text-center py-8">
             <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Continue your conversation with {agent.name}</p>
+            <p className="text-gray-500">Start a conversation with {agent.name}</p>
             <p className="text-sm text-gray-400 mt-1">
               Thread: "{thread.title}"
             </p>
           </div>
         )}
 
-        {messages.filter(message => message.parts.length > 0).map((message) => {
-          // Determine if this is an error message (starts with 'Error:')
-          const isError = message.parts[0].kind === 'text' && message.parts[0].text.startsWith('Error:');
+        {allMessages.filter(message => message.parts && message.parts.length > 0).map((message, index) => {
+          // Determine if this is an error message
+          const messageText = message.parts?.[0]?.text || '';
+          const isError = messageText.startsWith('Error:');
+          
           return (
             <div
-              key={message.messageId}
+              key={message.messageId || `msg-${index}`}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : isError
+                className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                  message.role === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : isError
                     ? 'bg-red-100 text-red-800 border border-red-300'
                     : 'bg-gray-100 text-gray-900'
-                  }`}
+                }`}
               >
                 <div className="flex items-start space-x-2">
                   {message.role === 'agent' && (
-                    <Bot className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isError ? 'text-red-600' : ''}`}
-                    />
+                    <Bot className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isError ? 'text-red-600' : ''}`} />
                   )}
                   {message.role === 'user' && (
                     <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   )}
                   <div className="flex-1">
                     <MessageRenderer
-                      content={message.parts.map((part) => {
-                        if (part.kind === 'text') {
-                          return part.text;
-                        }
-                        return '';
-                      }).join('')}
+                      content={messageText}
                       className={isError ? 'font-semibold' : ''}
                     />
-                    <p className={`text-xs mt-1 ${message.role === 'user'
-                      ? 'text-blue-200'
-                      : isError
-                        ? 'text-red-600'
-                        : 'text-gray-500'
+                    {message.metadata?.timestamp && (
+                      <p className={`text-xs mt-1 ${
+                        message.role === 'user'
+                          ? 'text-blue-200'
+                          : isError
+                          ? 'text-red-600'
+                          : 'text-gray-500'
                       }`}>
-                      {message.metadata?.timestamp ? new Date(message.metadata.timestamp as string).toLocaleTimeString() : ''}
-                    </p>
+                        {new Date(message.metadata.timestamp as string).toLocaleTimeString()}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -283,9 +159,22 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
           );
         })}
 
-        {isLoading && (
+        {(loading || isStreaming) && (
           <div className="flex justify-start">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="flex items-center space-x-2 text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">
+                {isStreaming ? 'Agent is responding...' : 'Loading...'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {taskError && (
+          <div className="flex justify-start">
+            <div className="max-w-[70%] rounded-lg px-4 py-2 bg-red-100 text-red-800 border border-red-300">
+              <p className="text-sm font-medium">Error: {taskError.message}</p>
+            </div>
           </div>
         )}
 
@@ -302,14 +191,14 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
             placeholder={`Message ${agent.name}...`}
             className="flex-1 border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={1}
-            disabled={isLoading}
+            disabled={loading || isStreaming}
           />
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || loading || isStreaming}
             className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
           >
-            {isLoading ? (
+            {loading || isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Send className="h-4 w-4" />
