@@ -103,3 +103,4 @@ temp/
 # Local development
 .local
 .cache/
+samples/full-demo/dist/

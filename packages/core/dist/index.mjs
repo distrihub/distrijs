@@ -2,7 +2,7 @@
 import { EventEmitter } from "eventemitter3";
 import {
   A2AClient
-} from "@a2a-js/sdk";
+} from "@a2a-js/sdk/client";
 
 // src/types.ts
 var DistriError = class extends Error {
@@ -324,7 +324,7 @@ var DistriClient = class extends EventEmitter {
 };
 
 // src/index.ts
-export * from "@a2a-js/sdk";
+export * from "@a2a-js/sdk/client";
 export {
   A2AProtocolError,
   ApiError,

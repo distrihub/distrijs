@@ -23,7 +23,6 @@
     "README.md"
   ],
   "dependencies": {
-    "@a2a-js/sdk": "https://github.com/hujiulong/a2a-js.git#main",
     "eventemitter3": "^5.0.1"
   },
   "devDependencies": {

@@ -31,7 +31,7 @@ module.exports = __toCommonJS(src_exports);
 
 // src/distri-client.ts
 var import_eventemitter3 = require("eventemitter3");
-var import_sdk = require("@a2a-js/sdk");
+var import_client = require("@a2a-js/sdk/client");
 
 // src/types.ts
 var DistriError = class extends Error {
@@ -143,7 +143,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
         throw new DistriError(`Agent card not found for ${agentId}. Call getAgent() first.`, "AGENT_NOT_FOUND");
       }
       const agentUrl = agentCard.url || `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
-      const client = new import_sdk.A2AClient(agentUrl);
+      const client = new import_client.A2AClient(agentUrl);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
@@ -353,7 +353,7 @@ var DistriClient = class extends import_eventemitter3.EventEmitter {
 };
 
 // src/index.ts
-__reExport(src_exports, require("@a2a-js/sdk"), module.exports);
+__reExport(src_exports, require("@a2a-js/sdk/client"), module.exports);
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   A2AProtocolError,
@@ -361,6 +361,6 @@ __reExport(src_exports, require("@a2a-js/sdk"), module.exports);
   ConnectionError,
   DistriClient,
   DistriError,
-  ...require("@a2a-js/sdk")
+  ...require("@a2a-js/sdk/client")
 });
 //# sourceMappingURL=index.js.map

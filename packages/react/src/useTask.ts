@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  Task, 
-  Message, 
-  MessageSendParams, 
+import {
+  Task,
+  Message,
+  MessageSendParams,
   TaskStatusUpdateEvent,
   TaskArtifactUpdateEvent,
   DistriClient
@@ -11,7 +11,6 @@ import { useDistri } from './DistriProvider';
 
 export interface UseTaskOptions {
   agentId: string;
-  autoSubscribe?: boolean;
 }
 
 export interface UseTaskResult {
@@ -27,7 +26,7 @@ export interface UseTaskResult {
   clearMessages: () => void;
 }
 
-export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseTaskResult {
+export function useTask({ agentId }: UseTaskOptions): UseTaskResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +36,7 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (
-    text: string, 
+    text: string,
     configuration?: MessageSendParams['configuration']
   ) => {
     if (!client) {
@@ -51,13 +50,13 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
 
       const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const message = DistriClient.createMessage(messageId, text, 'user');
-      
+
       // Add user message to local state immediately
       setMessages(prev => [...prev, message]);
 
       const params = DistriClient.createMessageParams(message, configuration);
       const result = await client.sendMessage(agentId, params);
-      
+
       if (result.kind === 'task') {
         setTask(result as Task);
       } else if (result.kind === 'message') {
@@ -92,15 +91,15 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
 
       const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const message = DistriClient.createMessage(messageId, text, 'user');
-      
+
       // Add user message to local state immediately
       setMessages(prev => [...prev, message]);
 
-             const params = DistriClient.createMessageParams(message, {
-         blocking: false,
-         acceptedOutputModes: ['text/plain'],
-         ...configuration
-       });
+      const params = DistriClient.createMessageParams(message, {
+        blocking: false,
+        acceptedOutputModes: ['text/plain'],
+        ...configuration
+      });
 
       const stream = client.sendMessageStream(agentId, params);
       let currentMessage: Message | null = null;
@@ -125,7 +124,7 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
               }
             });
           }
-          
+
           if (statusEvent.final) {
             setIsStreaming(false);
             break;
@@ -167,7 +166,7 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
     try {
       setLoading(true);
       setError(null);
-      
+
       const fetchedTask = await client.getTask(agentId, taskId);
       setTask(fetchedTask);
     } catch (err) {
@@ -181,7 +180,7 @@ export function useTask({ agentId, autoSubscribe = true }: UseTaskOptions): UseT
     setTask(null);
     setError(null);
     setIsStreaming(false);
-    
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@a2a-js/sdk':
-        specifier: https://github.com/hujiulong/a2a-js.git#main
-        version: https://codeload.github.com/hujiulong/a2a-js/tar.gz/d99f6cf4905c49bd179e3238ce9cc882f9964382
+        specifier: https://github.com/v3g42/a2a-js.git#86c9de0
+        version: https://codeload.github.com/v3g42/a2a-js/tar.gz/86c9de0
     devDependencies:
       turbo:
         specifier: ^1.10.0
@@ -21,9 +21,6 @@ importers:
 
   packages/core:
     dependencies:
-      '@a2a-js/sdk':
-        specifier: https://github.com/hujiulong/a2a-js.git#main
-        version: https://codeload.github.com/hujiulong/a2a-js/tar.gz/d99f6cf4905c49bd179e3238ce9cc882f9964382
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -77,9 +74,6 @@ importers:
 
   samples/full-demo:
     dependencies:
-      '@a2a-js/sdk':
-        specifier: https://github.com/hujiulong/a2a-js.git#main
-        version: https://codeload.github.com/hujiulong/a2a-js/tar.gz/d99f6cf4905c49bd179e3238ce9cc882f9964382
       '@ag-ui/core':
         specifier: latest
         version: 0.0.30
@@ -159,8 +153,8 @@ importers:
 
 packages:
 
-  '@a2a-js/sdk@https://codeload.github.com/hujiulong/a2a-js/tar.gz/d99f6cf4905c49bd179e3238ce9cc882f9964382':
-    resolution: {tarball: https://codeload.github.com/hujiulong/a2a-js/tar.gz/d99f6cf4905c49bd179e3238ce9cc882f9964382}
+  '@a2a-js/sdk@https://codeload.github.com/v3g42/a2a-js/tar.gz/86c9de0':
+    resolution: {tarball: https://codeload.github.com/v3g42/a2a-js/tar.gz/86c9de0}
     version: 0.2.1
     engines: {node: '>=18'}
 
@@ -2794,7 +2788,7 @@ packages:
 
 snapshots:
 
-  '@a2a-js/sdk@https://codeload.github.com/hujiulong/a2a-js/tar.gz/d99f6cf4905c49bd179e3238ce9cc882f9964382':
+  '@a2a-js/sdk@https://codeload.github.com/v3g42/a2a-js/tar.gz/86c9de0':
     dependencies:
       '@types/cors': 2.8.19
       '@types/express': 5.0.3

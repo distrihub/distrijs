@@ -1,37 +1,33 @@
-import { EventEmitter } from 'eventemitter3';
-import { 
-  A2AClient, 
-  AgentCard, 
-  Message, 
-  MessageSendParams, 
+
+import {
+  A2AClient,
+  AgentCard,
+  Message,
+  MessageSendParams,
   Task,
-  TaskStatusUpdateEvent,
-  TaskArtifactUpdateEvent,
   SendMessageResponse,
   GetTaskResponse,
-  SendMessageSuccessResponse,
-  GetTaskSuccessResponse
-} from '@a2a-js/sdk';
+
+} from '@a2a-js/sdk/client';
 import {
   DistriClientConfig,
   DistriError,
   ApiError,
   A2AProtocolError,
   DistriAgent,
-  DistriThread
+  DistriThread,
+  A2AStreamEventData
 } from './types';
 
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
  */
-export class DistriClient extends EventEmitter {
+export class DistriClient {
   private config: Required<DistriClientConfig>;
   private agentClients = new Map<string, A2AClient>();
   private agentCards = new Map<string, AgentCard>();
 
   constructor(config: DistriClientConfig) {
-    super();
-
     this.config = {
       baseUrl: config.baseUrl.replace(/\/$/, ''),
       apiVersion: config.apiVersion || 'v1',
@@ -56,7 +52,7 @@ export class DistriClient extends EventEmitter {
       }
 
       const agentCards: AgentCard[] = await response.json();
-      
+
       // Cache agent cards for later A2AClient creation
       agentCards.forEach(card => {
         this.agentCards.set(card.name, card);
@@ -155,27 +151,11 @@ export class DistriClient extends EventEmitter {
   /**
    * Send a streaming message to an agent
    */
-  async* sendMessageStream(agentId: string, params: MessageSendParams): AsyncIterable<Task | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Message> {
+  async* sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData> {
     try {
       const client = this.getA2AClient(agentId);
       const stream = client.sendMessageStream(params);
-
-      for await (const event of stream) {
-        this.debug(`Stream event from ${agentId}:`, event);
-        
-        // Emit events for listeners
-        if ((event as TaskStatusUpdateEvent).kind === 'status-update') {
-          this.emit('task_status_update', event as TaskStatusUpdateEvent);
-        } else if ((event as TaskArtifactUpdateEvent).kind === 'artifact-update') {
-          this.emit('task_artifact_update', event as TaskArtifactUpdateEvent);
-        } else if ((event as Task).kind === 'task') {
-          this.emit('task_created', event as Task);
-        } else if ((event as Message).kind === 'message') {
-          this.emit('message_received', event as Message);
-        }
-
-        yield event;
-      }
+      return stream;
     } catch (error) {
       throw new DistriError(`Failed to stream message to agent ${agentId}`, 'STREAM_MESSAGE_ERROR', error);
     }
@@ -254,16 +234,6 @@ export class DistriClient extends EventEmitter {
       if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, 'FETCH_ERROR', error);
     }
-  }
-
-  /**
-   * Close all connections
-   */
-  disconnect(): void {
-    this.agentClients.clear();
-    this.agentCards.clear();
-    this.removeAllListeners();
-    this.debug('DistriClient disconnected');
   }
 
   /**
