@@ -103,11 +103,23 @@ export function useTask({ agentId }: UseTaskOptions): UseTaskResult {
 
       const stream = client.sendMessageStream(agentId, params);
       let currentMessage: Message | null = null;
+      
+      // Initialize a response message for streaming
+      const responseMessageId = `resp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const initialResponseMessage: Message = {
+        messageId: responseMessageId,
+        role: 'agent',
+        parts: [{ kind: 'text', text: '' }],
+        contextId: configuration?.contextId,
+        kind: 'message'
+      };
 
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
           break;
         }
+
+        console.log('Stream event:', event); // Debug logging
 
         if (event.kind === 'task') {
           setTask(event as Task);
@@ -143,6 +155,39 @@ export function useTask({ agentId }: UseTaskOptions): UseTaskResult {
               return [...prev, messageEvent];
             }
           });
+        } else if ((event as any).kind === 'text_delta' || (event as any).delta) {
+          // Handle streaming text delta events
+          const deltaEvent = event as any;
+          const delta = deltaEvent.delta || deltaEvent.text || '';
+          
+          if (delta) {
+            // Use currentMessage or initialize with the initial response message
+            if (!currentMessage) {
+              currentMessage = { ...initialResponseMessage };
+              setMessages(prev => [...prev, currentMessage!]);
+            }
+            
+            // Accumulate text deltas into the current message
+            const updatedMessage = {
+              ...currentMessage,
+              parts: currentMessage.parts.map((part: any, index: number) => {
+                if (index === 0 && part.kind === 'text') {
+                  return {
+                    ...part,
+                    text: (part.text || '') + delta
+                  };
+                }
+                return part;
+              })
+            };
+            currentMessage = updatedMessage;
+            setMessages(prev => {
+              return prev.map(m => m.messageId === currentMessage!.messageId ? currentMessage! : m);
+            });
+          }
+        } else {
+          // Handle any other event types that might contain text content
+          console.log('Unhandled stream event:', event);
         }
       }
     } catch (err) {

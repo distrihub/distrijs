@@ -11,6 +11,7 @@ interface ChatProps {
 
 const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
   const [input, setInput] = useState('');
+  const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Use the new hooks
@@ -32,27 +33,72 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
   // Combine task messages (current conversation) with thread messages (historical)
   const allMessages = [...threadMessages, ...taskMessages];
 
+  // Helper function to extract text from message parts
+  const extractTextFromMessage = (message: any): string => {
+    if (!message?.parts || !Array.isArray(message.parts)) {
+      return '';
+    }
+    
+    return message.parts
+      .filter((part: any) => part?.kind === 'text' && part?.text)
+      .map((part: any) => part.text)
+      .join(' ') || '';
+  };
+
+  // Helper function to check if message has valid content
+  const hasValidContent = (message: any): boolean => {
+    if (!message) return false;
+    
+    // Check if message has text parts with content
+    const textContent = extractTextFromMessage(message);
+    if (textContent.trim()) return true;
+    
+    // Check for other types of content parts
+    if (message.parts && Array.isArray(message.parts)) {
+      return message.parts.some((part: any) => 
+        part && (part.kind === 'text' || part.kind === 'image' || part.kind === 'tool_use')
+      );
+    }
+    
+    return false;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [allMessages]);
+  }, [allMessages, streamingText]);
 
   // Load thread messages when thread changes
   useEffect(() => {
     if (thread.id) {
       refetchMessages();
       clearMessages(); // Clear task messages when switching threads
+      setStreamingText(''); // Clear any streaming text
     }
   }, [thread.id, refetchMessages, clearMessages]);
+
+  // Handle streaming text accumulation
+  useEffect(() => {
+    if (isStreaming && taskMessages.length > 0) {
+      const lastMessage = taskMessages[taskMessages.length - 1];
+      if (lastMessage?.role === 'agent') {
+        const currentText = extractTextFromMessage(lastMessage);
+        setStreamingText(currentText);
+      }
+    } else {
+      setStreamingText('');
+    }
+  }, [isStreaming, taskMessages]);
 
   const sendMessage = async () => {
     if (!input.trim() || taskLoading || isStreaming) return;
 
     const messageText = input.trim();
     setInput('');
+    setStreamingText(''); // Clear any existing streaming text
 
     try {
       // Use streaming for real-time updates
@@ -100,7 +146,7 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {allMessages.length === 0 && !loading && (
+        {allMessages.length === 0 && !loading && !isStreaming && (
           <div className="text-center py-8">
             <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Start a conversation with {agent.name}</p>
@@ -110,10 +156,10 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
           </div>
         )}
 
-        {allMessages.filter(message => message.parts && message.parts.length > 0).map((message, index) => {
-          // Determine if this is an error message
-          const messageText = message.parts?.[0]?.text || '';
-          const isError = messageText.startsWith('Error:');
+        {allMessages.filter(hasValidContent).map((message, index) => {
+          // Extract text from message parts properly
+          const messageText = extractTextFromMessage(message);
+          const isError = messageText.startsWith('Error:') || messageText.includes('error') && message.role === 'agent';
           
           return (
             <div
@@ -159,7 +205,22 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
           );
         })}
 
-        {(loading || isStreaming) && (
+        {/* Show streaming text in real-time */}
+        {isStreaming && streamingText && (
+          <div className="flex justify-start">
+            <div className="max-w-[70%] bg-gray-100 text-gray-900 rounded-lg px-4 py-2">
+              <div className="flex items-start space-x-2">
+                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <MessageRenderer content={streamingText} />
+                  <span className="inline-block w-2 h-4 bg-gray-500 animate-pulse ml-1">|</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(loading || isStreaming) && !streamingText && (
           <div className="flex justify-start">
             <div className="flex items-center space-x-2 text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -173,7 +234,12 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
         {taskError && (
           <div className="flex justify-start">
             <div className="max-w-[70%] rounded-lg px-4 py-2 bg-red-100 text-red-800 border border-red-300">
-              <p className="text-sm font-medium">Error: {taskError.message}</p>
+              <div className="flex items-start space-x-2">
+                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Error: {taskError.message}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
