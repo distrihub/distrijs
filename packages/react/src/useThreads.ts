@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { DistriThread, Message } from '@distri/core';
+import { DistriThread } from '@distri/core';
 import { useDistri } from './DistriProvider';
+import { uuidv4 } from 'packages/core/src/distri-client';
 
 export interface UseThreadsResult {
   threads: DistriThread[];
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-  createThread: (agentId: string, title: string) => DistriThread;
+  createThread: (agentId: string, title: string, id?: string) => DistriThread;
   deleteThread: (threadId: string) => Promise<void>;
-  updateThread: (threadId: string) => Promise<void>;
+  updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 
 export function useThreads(): UseThreadsResult {
@@ -39,9 +40,9 @@ export function useThreads(): UseThreadsResult {
     }
   }, [client]);
 
-  const createThread = useCallback((agentId: string, title: string): DistriThread => {
+  const createThread = useCallback((agentId: string, title: string, id?: string): DistriThread => {
     const newThread: DistriThread = {
-      id: `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: id || uuidv4(),
       title,
       agent_id: agentId,
       agent_name: agentId, // Will be updated when we have agent info
@@ -60,10 +61,13 @@ export function useThreads(): UseThreadsResult {
     }
 
     try {
-             // Try to delete from server (may not exist yet for local threads)
-       const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
-         method: 'DELETE',
-       });
+      // Try to delete from server (may not exist yet for local threads)
+      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete thread');
+      }
 
       // Remove from local state regardless of server response
       setThreads(prev => prev.filter(thread => thread.id !== threadId));
@@ -74,20 +78,28 @@ export function useThreads(): UseThreadsResult {
     }
   }, [client]);
 
-  const updateThread = useCallback(async (threadId: string) => {
+  const updateThread = useCallback(async (threadId: string, localId?: string) => {
     if (!client) {
       return;
     }
 
-         try {
-       const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
-       if (response.ok) {
+    try {
+      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
+      if (response.ok) {
         const updatedThread = await response.json();
-        setThreads(prev =>
-          prev.map(thread =>
+        setThreads(prev => {
+          // If a local thread with localId exists, replace it with the backend thread
+          if (localId && prev.some(thread => thread.id === localId)) {
+            return [
+              updatedThread,
+              ...prev.filter(thread => thread.id !== localId && thread.id !== threadId)
+            ];
+          }
+          // Otherwise, just update by threadId
+          return prev.map(thread =>
             thread.id === threadId ? updatedThread : thread
-          )
-        );
+          );
+        });
       }
     } catch (err) {
       console.warn('Failed to update thread:', err);
@@ -130,53 +142,4 @@ export function useThreads(): UseThreadsResult {
 
 export interface UseThreadMessagesOptions {
   threadId: string | null;
-}
-
-export interface UseThreadMessagesResult {
-  messages: Message[];
-  loading: boolean;
-  error: Error | null;
-  refetch: () => Promise<void>;
-}
-
-export function useThreadMessages({ threadId }: UseThreadMessagesOptions): UseThreadMessagesResult {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchMessages = useCallback(async () => {
-    if (!client || !threadId) {
-      setMessages([]);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const fetchedMessages = await client.getThreadMessages(threadId);
-      setMessages(fetchedMessages);
-    } catch (err) {
-      console.error('[useThreadMessages] Failed to fetch messages:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
-      setMessages([]); // Clear messages on error
-    } finally {
-      setLoading(false);
-    }
-  }, [client, threadId]);
-
-  useEffect(() => {
-    if (!clientLoading && !clientError && threadId) {
-      fetchMessages();
-    } else {
-      setMessages([]);
-    }
-  }, [clientLoading, clientError, threadId, fetchMessages]);
-
-  return {
-    messages,
-    loading: loading || clientLoading,
-    error: error || clientError,
-    refetch: fetchMessages
-  };
 }

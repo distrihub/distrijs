@@ -283,12 +283,6 @@ const client = new DistriClient({
 - `createTask(request)` - Create a new task
 - `getTask(taskId)` - Get task details
 - `cancelTask(taskId)` - Cancel a task (if supported)
-
-**Real-time Updates:**
-- `subscribeToAgent(agentId)` - Subscribe to agent events via SSE
-- `unsubscribeFromAgent(agentId)` - Unsubscribe from agent events
-- `disconnect()` - Close all connections
-
 **Helper Methods:**
 - `DistriClient.createMessage(id, text, role, contextId?)` - Create A2A message
 - `DistriClient.createMessageParams(message, config?)` - Create message parameters

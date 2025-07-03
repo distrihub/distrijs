@@ -1,36 +1,63 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, User, Bot } from 'lucide-react';
-import { useTask, useThreadMessages, DistriAgent, DistriThread } from '@distri/react';
+import { Send, Loader2, User, Bot, Square } from 'lucide-react';
+import { useChat, DistriAgent, DistriThread } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
+import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
 
 interface ChatProps {
-  thread: DistriThread;
+  thread: DistriThread | null;
   agent: DistriAgent;
   onThreadUpdate?: () => void;
+  setThreadId?: (threadId: string) => void;
+  refreshThreads?: () => void;
+  onBackendThreadId?: (localId: string, backendThread: DistriThread) => void;
 }
 
-const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
+const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId, refreshThreads, onBackendThreadId }) => {
   const [input, setInput] = useState('');
+  const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Use the new hooks
-  const { 
-    messages: taskMessages, 
-    loading: taskLoading, 
-    error: taskError,
+  const {
+    messages,
+    loading,
+    refreshMessages,
+    error,
     isStreaming,
     sendMessageStream,
-    clearMessages 
-  } = useTask({ agentId: agent.id });
-  
-  const { 
-    messages: threadMessages, 
-    loading: threadLoading,
-    refetch: refetchMessages 
-  } = useThreadMessages({ threadId: thread.id });
+  } = useChat({ agentId: agent.id, contextId: thread?.id });
 
-  // Combine task messages (current conversation) with thread messages (historical)
-  const allMessages = [...threadMessages, ...taskMessages];
+  // Helper function to extract text from message parts
+  const extractTextFromMessage = (message: any): string => {
+    if (!message?.parts || !Array.isArray(message.parts)) {
+      return '';
+    }
+
+    return message.parts
+      .filter((part: any) => part?.kind === 'text' && part?.text)
+      .map((part: any) => part.text)
+      .join(' ') || '';
+  };
+
+  // Helper function to check if message has valid content
+  const hasValidContent = (message: any): boolean => {
+    if (!message) return false;
+
+    // Check if message has text parts with content
+    const textContent = extractTextFromMessage(message);
+    if (textContent.trim()) return true;
+
+    // Check for other types of content parts
+    if (message.parts && Array.isArray(message.parts)) {
+      return message.parts.some((part: any) =>
+        part && (part.kind === 'text' || part.kind === 'image' || part.kind === 'tool_use')
+      );
+    }
+
+    return false;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -38,26 +65,69 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [allMessages]);
+  }, [messages, streamingText]);
 
   // Load thread messages when thread changes
   useEffect(() => {
-    if (thread.id) {
-      refetchMessages();
-      clearMessages(); // Clear task messages when switching threads
+    // Only refresh if the thread id actually changes (not during streaming)
+    if (thread?.id) {
+      refreshMessages();
+      setStreamingText(''); // Only clear streaming text when a new thread is selected
     }
-  }, [thread.id, refetchMessages, clearMessages]);
+    // Do NOT refresh on every message or streaming update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread?.id]);
+
+  // Handle streaming text accumulation
+  useEffect(() => {
+    if (isStreaming && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'agent') {
+        const currentText = extractTextFromMessage(lastMessage);
+        setStreamingText(currentText);
+      }
+    } else {
+      setStreamingText('');
+    }
+  }, [isStreaming, messages]);
+
+  // After sending the first message in a new thread, detect the backend thread id from the first agent message and update parent
+  useEffect(() => {
+    if (thread && typeof thread.id === 'string' && messages.length > 0) {
+      // Find the first agent message with a contextId
+      const agentMsg = messages.find(m => m.role === 'agent' && typeof m.contextId === 'string' && m.contextId);
+      if (agentMsg && setThreadId && typeof agentMsg.contextId === 'string') {
+        setThreadId(agentMsg.contextId);
+        if (refreshThreads) refreshThreads();
+        // If onBackendThreadId is provided, call it with the local id and backend thread
+        if (onBackendThreadId) {
+          // Construct a minimal backendThread object
+          const backendThread = {
+            id: agentMsg.contextId as string,
+            title: 'New Conversation',
+            agent_id: agent.id,
+            agent_name: agent.name,
+            updated_at: new Date().toISOString(),
+            message_count: 1,
+            last_message: '',
+          };
+          onBackendThreadId(thread.id, backendThread);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, thread]);
 
   const sendMessage = async () => {
-    if (!input.trim() || taskLoading || isStreaming) return;
+    if (!input.trim() || loading || isStreaming) return;
 
     const messageText = input.trim();
     setInput('');
+    setStreamingText(''); // Clear any existing streaming text
 
     try {
-      // Use streaming for real-time updates
+      // Always send the message; backend will create thread if needed
       await sendMessageStream(messageText, {
-        contextId: thread.id, // Associate with the thread
         acceptedOutputModes: ['text/plain'],
         blocking: false
       });
@@ -80,7 +150,38 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
     }
   };
 
-  const loading = taskLoading || threadLoading;
+  // Build toolcall status hashmap
+  function buildToolCallStatus(messages: any[]): Record<string, ToolCallState> {
+    const status: Record<string, any> = {};
+    messages.forEach((msg) => {
+      const meta = msg.metadata;
+      if (meta?.tool_call && meta.tool_call_id) {
+        if (!status[meta.tool_call_id]) {
+          status[meta.tool_call_id] = {
+            tool_call_id: meta.tool_call_id,
+            tool_name: meta.tool_name,
+            args: '',
+            result: undefined,
+            running: true,
+          };
+        }
+        if (meta.event_type === 'start' && meta.tool_name) {
+          status[meta.tool_call_id].tool_name = meta.tool_name;
+        }
+        if (meta.event_type === 'args' && msg.parts?.[0]?.text) {
+          status[meta.tool_call_id].args += msg.parts[0].text;
+        }
+        if (meta.event_type === 'result') {
+          status[meta.tool_call_id].running = false;
+          status[meta.tool_call_id].result = meta.result;
+        }
+        if (meta.event_type === 'end') {
+          status[meta.tool_call_id].running = false;
+        }
+      }
+    });
+    return status;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow h-full flex flex-col">
@@ -91,7 +192,7 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
             <Bot className="h-4 w-4 text-white" />
           </div>
           <div>
-            <h3 className="font-medium text-gray-900">{thread.title}</h3>
+            <h3 className="font-medium text-gray-900">{thread?.title}</h3>
             <p className="text-sm text-gray-500">with {agent.name}</p>
           </div>
         </div>
@@ -100,80 +201,84 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {allMessages.length === 0 && !loading && (
-          <div className="text-center py-8">
-            <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Start a conversation with {agent.name}</p>
-            <p className="text-sm text-gray-400 mt-1">
-              Thread: "{thread.title}"
-            </p>
+        {(!thread && messages.length === 0 && !loading && !isStreaming) && (
+          <div className="flex flex-col items-center justify-center h-full py-8">
+            <MessageRenderer content={''} className="" />
+            <div className="flex flex-col items-center mt-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8s-9-3.582-9-8 4.03-8 9-8 9 3.582 9 8z" /></svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Start a new conversation</h3>
+              <p className="text-gray-500 text-sm">Type a message to begin chatting with {agent.name}.</p>
+            </div>
           </div>
         )}
 
-        {allMessages.filter(message => message.parts && message.parts.length > 0).map((message, index) => {
-          // Determine if this is an error message
-          const messageText = message.parts?.[0]?.text || '';
-          const isError = messageText.startsWith('Error:');
-          
-          return (
-            <div
-              key={message.messageId || `msg-${index}`}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+        {(() => {
+          const toolCallStatus = buildToolCallStatus(messages);
+          return messages.filter(hasValidContent).map((message, index) => {
+            const meta = message.metadata;
+            if (meta?.tool_call && meta.tool_call_id) {
+              return (
+                <div key={message.messageId || `msg-${index}`} className="flex justify-start">
+                  <ToolCallRenderer toolCall={toolCallStatus[meta.tool_call_id as keyof typeof toolCallStatus]} />
+                </div>
+              );
+            }
+            // Extract text from message parts properly
+            const messageText = extractTextFromMessage(message);
+            const isError = messageText.startsWith('Error:') || (messageText.includes('error') && message.role === 'agent');
+
+            return (
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
+                key={message.messageId || `msg-${index}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
                     ? 'bg-blue-600 text-white'
                     : isError
-                    ? 'bg-red-100 text-red-800 border border-red-300'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
-              >
-                <div className="flex items-start space-x-2">
-                  {message.role === 'agent' && (
-                    <Bot className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isError ? 'text-red-600' : ''}`} />
-                  )}
-                  {message.role === 'user' && (
-                    <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <MessageRenderer
-                      content={messageText}
-                      className={isError ? 'font-semibold' : ''}
-                    />
-                    {message.metadata?.timestamp && (
-                      <p className={`text-xs mt-1 ${
-                        message.role === 'user'
-                          ? 'text-blue-200'
-                          : isError
-                          ? 'text-red-600'
-                          : 'text-gray-500'
-                      }`}>
-                        {new Date(message.metadata.timestamp as string).toLocaleTimeString()}
-                      </p>
+                      ? 'bg-red-100 text-red-800 border border-red-300'
+                      : 'bg-gray-100 text-gray-900'
+                    }`}
+                >
+                  <div className="flex items-start space-x-2">
+                    {message.role === 'agent' && (
+                      <Bot className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isError ? 'text-red-600' : ''}`} />
                     )}
+                    {message.role === 'user' && (
+                      <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <MessageRenderer
+                        content={messageText}
+                        className={isError ? 'font-semibold' : ''}
+                        metadata={message.metadata}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
 
-        {(loading || isStreaming) && (
+        {loading && !isStreaming && !streamingText && (
           <div className="flex justify-start">
             <div className="flex items-center space-x-2 text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">
-                {isStreaming ? 'Agent is responding...' : 'Loading...'}
-              </span>
+              <span className="text-sm">Loading...</span>
             </div>
           </div>
         )}
 
-        {taskError && (
+        {error && (
           <div className="flex justify-start">
             <div className="max-w-[70%] rounded-lg px-4 py-2 bg-red-100 text-red-800 border border-red-300">
-              <p className="text-sm font-medium">Error: {taskError.message}</p>
+              <div className="flex items-start space-x-2">
+                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Error: {error.message}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -193,17 +298,31 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
             rows={1}
             disabled={loading || isStreaming}
           />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || loading || isStreaming}
-            className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
-          >
-            {loading || isStreaming ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </button>
+          {isStreaming ? (
+            <button
+              onClick={() => {
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                }
+              }}
+              className="bg-orange-100 text-orange-500 rounded-lg px-4 py-2 hover:bg-orange-200 flex items-center justify-center"
+              title="Stop streaming"
+            >
+              <Square className="h-5 w-5 animate-pulse" />
+            </button>
+          ) : (
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || loading}
+              className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

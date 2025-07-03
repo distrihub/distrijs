@@ -22,10 +22,9 @@ var src_exports = {};
 __export(src_exports, {
   DistriProvider: () => DistriProvider,
   useAgents: () => useAgents,
+  useChat: () => useChat,
   useDistri: () => useDistri,
   useDistriClient: () => useDistriClient,
-  useTask: () => useTask,
-  useThreadMessages: () => useThreadMessages,
   useThreads: () => useThreads
 });
 module.exports = __toCommonJS(src_exports);
@@ -59,12 +58,6 @@ function DistriProvider({ config, children }) {
       setClient(null);
       setIsLoading(false);
     }
-    return () => {
-      console.log("[DistriProvider] Cleaning up client");
-      if (currentClient) {
-        currentClient.disconnect();
-      }
-    };
   }, [config.baseUrl, config.apiVersion, config.debug]);
   const contextValue = {
     client,
@@ -172,18 +165,44 @@ function useAgents() {
   };
 }
 
-// src/useTask.ts
+// src/useChat.ts
 var import_react3 = require("react");
 var import_core2 = require("@distri/core");
-function useTask({ agentId, autoSubscribe = true }) {
+function useChat({ agentId, contextId }) {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [task, setTask] = (0, import_react3.useState)(null);
   const [loading, setLoading] = (0, import_react3.useState)(false);
   const [error, setError] = (0, import_react3.useState)(null);
   const [messages, setMessages] = (0, import_react3.useState)([]);
   const [isStreaming, setIsStreaming] = (0, import_react3.useState)(false);
   const abortControllerRef = (0, import_react3.useRef)(null);
-  const sendMessage = (0, import_react3.useCallback)(async (text, configuration) => {
+  const fetchMessages = (0, import_react3.useCallback)(async () => {
+    if (!client || !contextId) {
+      setMessages([]);
+      return;
+    }
+    console.log("inside: fetchMessages", client, contextId);
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedMessages = await client.getThreadMessages(contextId);
+      setMessages(fetchedMessages);
+    } catch (err) {
+      console.error("[useThreadMessages] Failed to fetch messages:", err);
+      setError(err instanceof Error ? err : new Error("Failed to fetch messages"));
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [client, contextId]);
+  (0, import_react3.useEffect)(() => {
+    console.log("useEffect", clientLoading, clientError, contextId, !clientLoading && !clientError && contextId);
+    if (!clientLoading && !clientError && contextId) {
+      fetchMessages();
+    } else {
+      setMessages([]);
+    }
+  }, [clientLoading, clientError, contextId, fetchMessages]);
+  const sendMessage = (0, import_react3.useCallback)(async (input, configuration) => {
     if (!client) {
       setError(new Error("Client not available"));
       return;
@@ -191,23 +210,45 @@ function useTask({ agentId, autoSubscribe = true }) {
     try {
       setLoading(true);
       setError(null);
-      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const message = import_core2.DistriClient.createMessage(messageId, text, "user");
-      setMessages((prev) => [...prev, message]);
-      const params = import_core2.DistriClient.createMessageParams(message, configuration);
+      const userMessage = import_core2.DistriClient.initMessage(input, "user", contextId);
+      setMessages((prev) => [...prev, userMessage]);
+      const params = import_core2.DistriClient.initMessageParams(userMessage, configuration);
       const result = await client.sendMessage(agentId, params);
-      if (result.kind === "task") {
-        setTask(result);
-      } else if (result.kind === "message") {
-        setMessages((prev) => [...prev, result]);
+      let message = void 0;
+      if (result.kind === "message") {
+        message = result;
+      } else if (result.kind === "task") {
+        message = result.status.message;
       }
+      if (!message) {
+        throw new Error("Invalid response format");
+      }
+      setMessages((prev) => {
+        console.log("message", message.messageId);
+        if (prev.find((msg) => msg.messageId === message.messageId)) {
+          console.log("message found", message.messageId);
+          return prev.map((msg) => {
+            if (msg.messageId === message.messageId) {
+              return {
+                ...msg,
+                parts: [...msg.parts, ...message.parts]
+              };
+            }
+            return msg;
+          });
+        } else {
+          console.log("message not found", message.messageId);
+          return [...prev, message];
+        }
+      });
     } catch (err) {
+      console.error(err);
       setError(err instanceof Error ? err : new Error("Failed to send message"));
     } finally {
       setLoading(false);
     }
   }, [client, agentId]);
-  const sendMessageStream = (0, import_react3.useCallback)(async (text, configuration) => {
+  const sendMessageStream = (0, import_react3.useCallback)(async (input, configuration) => {
     if (!client) {
       setError(new Error("Client not available"));
       return;
@@ -220,52 +261,46 @@ function useTask({ agentId, autoSubscribe = true }) {
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
-      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const message = import_core2.DistriClient.createMessage(messageId, text, "user");
-      setMessages((prev) => [...prev, message]);
-      const params = import_core2.DistriClient.createMessageParams(message, {
+      const userMessage = import_core2.DistriClient.initMessage(input, "user", contextId);
+      setMessages((prev) => [...prev, userMessage]);
+      console.log("userMessage", userMessage);
+      const params = import_core2.DistriClient.initMessageParams(userMessage, {
         blocking: false,
         acceptedOutputModes: ["text/plain"],
         ...configuration
       });
-      const stream = client.sendMessageStream(agentId, params);
-      let currentMessage = null;
+      const stream = await client.sendMessageStream(agentId, params);
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
           break;
         }
-        if (event.kind === "task") {
-          setTask(event);
+        console.log("Stream event:", event);
+        let message = void 0;
+        if (event.kind === "message") {
+          message = event;
         } else if (event.kind === "status-update") {
-          const statusEvent = event;
-          if (statusEvent.status.message) {
-            currentMessage = statusEvent.status.message;
-            setMessages((prev) => {
-              const existing = prev.find((m) => m.messageId === currentMessage.messageId);
-              if (existing) {
-                return prev.map((m) => m.messageId === currentMessage.messageId ? currentMessage : m);
-              } else {
-                return [...prev, currentMessage];
+          message = event.status.message;
+        }
+        if (!message)
+          continue;
+        setMessages((prev) => {
+          if (prev.find((msg) => msg.messageId === message.messageId)) {
+            return prev.map((msg) => {
+              if (msg.messageId === message.messageId) {
+                return {
+                  ...msg,
+                  parts: [...msg.parts, ...message.parts]
+                };
               }
+              return msg;
             });
+          } else {
+            return [...prev, message];
           }
-          if (statusEvent.final) {
-            setIsStreaming(false);
-            break;
-          }
-        } else if (event.kind === "artifact-update") {
-          const artifactEvent = event;
-          console.log("Artifact update:", artifactEvent);
-        } else if (event.kind === "message") {
-          const messageEvent = event;
-          setMessages((prev) => {
-            const existing = prev.find((m) => m.messageId === messageEvent.messageId);
-            if (existing) {
-              return prev.map((m) => m.messageId === messageEvent.messageId ? messageEvent : m);
-            } else {
-              return [...prev, messageEvent];
-            }
-          });
+        });
+        if (event.kind === "status-update" && event.final) {
+          setIsStreaming(false);
+          break;
         }
       }
     } catch (err) {
@@ -278,31 +313,6 @@ function useTask({ agentId, autoSubscribe = true }) {
       setIsStreaming(false);
     }
   }, [client, agentId]);
-  const getTask = (0, import_react3.useCallback)(async (taskId) => {
-    if (!client) {
-      setError(new Error("Client not available"));
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const fetchedTask = await client.getTask(agentId, taskId);
-      setTask(fetchedTask);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to fetch task"));
-    } finally {
-      setLoading(false);
-    }
-  }, [client, agentId]);
-  const clearTask = (0, import_react3.useCallback)(() => {
-    setTask(null);
-    setError(null);
-    setIsStreaming(false);
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
   const clearMessages = (0, import_react3.useCallback)(() => {
     setMessages([]);
   }, []);
@@ -314,21 +324,35 @@ function useTask({ agentId, autoSubscribe = true }) {
     };
   }, []);
   return {
-    task,
     loading: loading || clientLoading,
     error: error || clientError,
     messages,
     isStreaming,
     sendMessage,
     sendMessageStream,
-    getTask,
-    clearTask,
-    clearMessages
+    clearMessages,
+    refreshMessages: fetchMessages
   };
 }
 
 // src/useThreads.ts
 var import_react4 = require("react");
+
+// ../core/src/distri-client.ts
+function uuidv4() {
+  if (typeof crypto?.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  array[6] = array[6] & 15 | 64;
+  array[8] = array[8] & 63 | 128;
+  return [...array].map(
+    (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
+  ).join("");
+}
+
+// src/useThreads.ts
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [threads, setThreads] = (0, import_react4.useState)([]);
@@ -355,7 +379,7 @@ function useThreads() {
   }, [client]);
   const createThread = (0, import_react4.useCallback)((agentId, title) => {
     const newThread = {
-      id: `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: uuidv4(),
       title,
       agent_id: agentId,
       agent_name: agentId,
@@ -375,6 +399,9 @@ function useThreads() {
       const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
         method: "DELETE"
       });
+      if (!response.ok) {
+        throw new Error("Failed to delete thread");
+      }
       setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
     } catch (err) {
       setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
@@ -429,51 +456,13 @@ function useThreads() {
     updateThread
   };
 }
-function useThreadMessages({ threadId }) {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [messages, setMessages] = (0, import_react4.useState)([]);
-  const [loading, setLoading] = (0, import_react4.useState)(false);
-  const [error, setError] = (0, import_react4.useState)(null);
-  const fetchMessages = (0, import_react4.useCallback)(async () => {
-    if (!client || !threadId) {
-      setMessages([]);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const fetchedMessages = await client.getThreadMessages(threadId);
-      setMessages(fetchedMessages);
-    } catch (err) {
-      console.error("[useThreadMessages] Failed to fetch messages:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch messages"));
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [client, threadId]);
-  (0, import_react4.useEffect)(() => {
-    if (!clientLoading && !clientError && threadId) {
-      fetchMessages();
-    } else {
-      setMessages([]);
-    }
-  }, [clientLoading, clientError, threadId, fetchMessages]);
-  return {
-    messages,
-    loading: loading || clientLoading,
-    error: error || clientError,
-    refetch: fetchMessages
-  };
-}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DistriProvider,
   useAgents,
+  useChat,
   useDistri,
   useDistriClient,
-  useTask,
-  useThreadMessages,
   useThreads
 });
 //# sourceMappingURL=index.js.map
