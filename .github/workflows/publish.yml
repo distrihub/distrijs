@@ -1,0 +1,142 @@
+name: Publish Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0 or 1.0.0-beta.1)'
+        required: true
+        type: string
+      tag:
+        description: 'npm tag (latest, beta, alpha, next)'
+        required: true
+        default: 'latest'
+        type: choice
+        options:
+          - latest
+          - beta
+          - alpha
+          - next
+      dry_run:
+        description: 'Dry run (skip actual publishing)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run tests and lint
+        run: |
+          pnpm lint
+          pnpm type-check
+
+      - name: Set version
+        run: |
+          echo "Setting version to ${{ github.event.inputs.version }}"
+          
+          # Set version in all packages
+          pnpm -r version ${{ github.event.inputs.version }} --no-git-tag-version
+          
+          # Update workspace dependency in react package
+          cd packages/react
+          pnpm pkg set dependencies.@distri/core=${{ github.event.inputs.version }}
+          cd ../..
+
+      - name: Build packages with new version
+        run: pnpm build
+
+      - name: Publish to npm (dry run)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: |
+          echo "🧪 DRY RUN - Would publish:"
+          echo "  @distri/core@${{ github.event.inputs.version }} with tag ${{ github.event.inputs.tag }}"
+          echo "  @distri/react@${{ github.event.inputs.version }} with tag ${{ github.event.inputs.tag }}"
+          
+          cd packages/core
+          npm publish --dry-run --tag ${{ github.event.inputs.tag }} --access public
+          cd ../..
+          
+          cd packages/react
+          npm publish --dry-run --tag ${{ github.event.inputs.tag }} --access public
+          cd ../..
+
+      - name: Publish to npm
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        run: |
+          echo "🚀 Publishing packages:"
+          echo "  @distri/core@${{ github.event.inputs.version }} with tag ${{ github.event.inputs.tag }}"
+          echo "  @distri/react@${{ github.event.inputs.version }} with tag ${{ github.event.inputs.tag }}"
+          
+          # Publish core first
+          cd packages/core
+          npm publish --tag ${{ github.event.inputs.tag }} --access public
+          cd ../..
+          
+          # Then publish react
+          cd packages/react
+          npm publish --tag ${{ github.event.inputs.tag }} --access public
+          cd ../..
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create Git tag
+        if: ${{ github.event.inputs.dry_run == 'false' && github.event.inputs.tag == 'latest' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .
+          git commit -m "chore: publish v${{ github.event.inputs.version }}"
+          git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+          git push origin main --follow-tags
+
+      - name: Summary
+        run: |
+          echo "## 📦 Publication Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ github.event.inputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Packages Published" >> $GITHUB_STEP_SUMMARY
+          echo "- [@distri/core@${{ github.event.inputs.version }}](https://www.npmjs.com/package/@distri/core)" >> $GITHUB_STEP_SUMMARY
+          echo "- [@distri/react@${{ github.event.inputs.version }}](https://www.npmjs.com/package/@distri/react)" >> $GITHUB_STEP_SUMMARY

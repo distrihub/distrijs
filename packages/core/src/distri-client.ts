@@ -7,7 +7,7 @@ import {
   SendMessageResponse,
   GetTaskResponse,
 
-} from '@a2a-js/sdk/client';
+} from '@a2a-js/sdk';
 import {
   DistriClientConfig,
   DistriError,
