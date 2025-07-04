@@ -1,5 +1,6 @@
-import { AgentCard, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Task, MessageSendParams } from '@a2a-js/sdk/client';
-export * from '@a2a-js/sdk/client';
+import { MessageSendParams, Message as Message$1, Task as Task$1 } from '@a2a-js/sdk';
+export * from '@a2a-js/sdk';
+import { AgentCard, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Task } from '@a2a-js/sdk/client';
 export { AgentCard, Message, MessageSendParams, Task, TaskArtifactUpdateEvent, TaskStatus, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
 
 /**
@@ -104,7 +105,7 @@ declare class DistriClient {
     /**
      * Send a message to an agent
      */
-    sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task>;
+    sendMessage(agentId: string, params: MessageSendParams): Promise<Message$1 | Task$1>;
     /**
      * Send a streaming message to an agent
      */
@@ -112,7 +113,7 @@ declare class DistriClient {
     /**
      * Get task details
      */
-    getTask(agentId: string, taskId: string): Promise<Task>;
+    getTask(agentId: string, taskId: string): Promise<Task$1>;
     /**
      * Cancel a task
      */
@@ -124,7 +125,7 @@ declare class DistriClient {
     /**
      * Get thread messages
      */
-    getThreadMessages(threadId: string): Promise<Message[]>;
+    getThreadMessages(threadId: string): Promise<Message$1[]>;
     /**
      * Get the base URL for making direct requests
      */
@@ -144,11 +145,11 @@ declare class DistriClient {
     /**
      * Helper method to create A2A messages
      */
-    static initMessage(input: string, role?: 'agent' | 'user', contextId?: string, messageId?: string, taskId?: string): Message;
+    static initMessage(input: string, role?: 'agent' | 'user', contextId?: string, messageId?: string, taskId?: string): Message$1;
     /**
      * Helper method to create message send parameters
      */
-    static initMessageParams(message: Message, configuration?: MessageSendParams['configuration']): MessageSendParams;
+    static initMessageParams(message: Message$1, configuration?: MessageSendParams['configuration']): MessageSendParams;
 }
 
 export { A2AProtocolError, type A2AStreamEventData, type Agent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriThread, type Thread };
