@@ -4,6 +4,7 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
   get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
 }) : x)(function(x) {
@@ -30,6 +31,10 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
 
 // ../../node_modules/.pnpm/depd@2.0.0/node_modules/depd/index.js
 var require_depd = __commonJS({
@@ -1362,7 +1367,7 @@ var require_src = __commonJS({
 var require_destroy = __commonJS({
   "../../node_modules/.pnpm/destroy@1.2.0/node_modules/destroy/index.js"(exports, module) {
     "use strict";
-    var EventEmitter = __require("events").EventEmitter;
+    var EventEmitter2 = __require("events").EventEmitter;
     var ReadStream = __require("fs").ReadStream;
     var Stream = __require("stream");
     var Zlib = __require("zlib");
@@ -1424,7 +1429,7 @@ var require_destroy = __commonJS({
       return stream instanceof Stream && typeof stream.destroy === "function";
     }
     function isEventEmitter(val) {
-      return val instanceof EventEmitter;
+      return val instanceof EventEmitter2;
     }
     function isFsReadStream(stream) {
       return stream instanceof ReadStream;
@@ -22514,7 +22519,7 @@ var require_express = __commonJS({
   "../../node_modules/.pnpm/express@4.21.2/node_modules/express/lib/express.js"(exports, module) {
     "use strict";
     var bodyParser = require_body_parser();
-    var EventEmitter = __require("events").EventEmitter;
+    var EventEmitter2 = __require("events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
     var Route = require_route();
@@ -22526,7 +22531,7 @@ var require_express = __commonJS({
       var app = function(req2, res2, next) {
         app.handle(req2, res2, next);
       };
-      mixin(app, EventEmitter.prototype, false);
+      mixin(app, EventEmitter2.prototype, false);
       mixin(app, proto, false);
       app.request = Object.create(req, {
         app: { configurable: true, enumerable: true, writable: true, value: app }
@@ -22586,323 +22591,1541 @@ var require_express2 = __commonJS({
   }
 });
 
-// src/DistriProvider.tsx
-import { createContext, useContext, useEffect, useState } from "react";
-import { DistriClient } from "@distri/core";
-import { jsx } from "react/jsx-runtime";
-var DistriContext = createContext({
-  client: null,
-  error: null,
-  isLoading: true
-});
-function DistriProvider({ config, children }) {
-  const [client, setClient] = useState(null);
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  useEffect(() => {
-    let currentClient = null;
+// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+86c9de0/node_modules/@a2a-js/sdk/dist/chunk-MMZDL2A3.js
+var A2AClient = class {
+  // To be populated from AgentCard after fetching
+  /**
+   * Constructs an A2AClient instance.
+   * It initiates fetching the agent card from the provided agent baseUrl.
+   * The Agent Card is expected at `${agentBaseUrl}/.well-known/agent.json`.
+   * The `url` field from the Agent Card will be used as the RPC service endpoint.
+   * @param agentBaseUrl The base URL of the A2A agent (e.g., https://agent.example.com).
+   */
+  constructor(agentBaseUrl) {
+    __publicField(this, "agentBaseUrl");
+    __publicField(this, "agentCardPromise");
+    __publicField(this, "requestIdCounter", 1);
+    __publicField(this, "serviceEndpointUrl");
+    this.agentBaseUrl = agentBaseUrl.replace(/\/$/, "");
+    this.agentCardPromise = this._fetchAndCacheAgentCard();
+  }
+  /**
+   * Fetches the Agent Card from the agent's well-known URI and caches its service endpoint URL.
+   * This method is called by the constructor.
+   * @returns A Promise that resolves to the AgentCard.
+   */
+  async _fetchAndCacheAgentCard() {
+    const agentCardUrl = `${this.agentBaseUrl}/.well-known/agent.json`;
     try {
-      console.log("[DistriProvider] Initializing client with config:", config);
-      currentClient = new DistriClient(config);
-      setClient(currentClient);
-      setError(null);
-      setIsLoading(false);
-      console.log("[DistriProvider] Client initialized successfully");
-    } catch (err) {
-      console.error("[DistriProvider] Failed to initialize client:", err);
-      const error2 = err instanceof Error ? err : new Error("Failed to initialize client");
-      setError(error2);
-      setClient(null);
-      setIsLoading(false);
-    }
-  }, [config.baseUrl, config.apiVersion, config.debug]);
-  const contextValue = {
-    client,
-    error,
-    isLoading
-  };
-  if (error) {
-    console.error("[DistriProvider] Rendering error state:", error.message);
-  }
-  if (isLoading) {
-    console.log("[DistriProvider] Rendering loading state");
-  }
-  if (client) {
-    console.log("[DistriProvider] Rendering with client available");
-  }
-  return /* @__PURE__ */ jsx(DistriContext.Provider, { value: contextValue, children });
-}
-function useDistri() {
-  const context = useContext(DistriContext);
-  if (!context) {
-    throw new Error("useDistri must be used within a DistriProvider");
-  }
-  return context;
-}
-function useDistriClient() {
-  const { client, error, isLoading } = useDistri();
-  if (isLoading) {
-    throw new Error("Distri client is still loading");
-  }
-  if (error) {
-    throw new Error(`Distri client initialization failed: ${error.message}`);
-  }
-  if (!client) {
-    throw new Error("Distri client is not initialized");
-  }
-  return client;
-}
-
-// src/useAgents.ts
-import { useState as useState2, useEffect as useEffect2, useCallback } from "react";
-function useAgents() {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agents, setAgents] = useState2([]);
-  const [loading, setLoading] = useState2(true);
-  const [error, setError] = useState2(null);
-  const fetchAgents = useCallback(async () => {
-    if (!client) {
-      console.log("[useAgents] Client not available, skipping fetch");
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      console.log("[useAgents] Fetching agents...");
-      const fetchedAgents = await client.getAgents();
-      console.log("[useAgents] Fetched agents:", fetchedAgents);
-      setAgents(fetchedAgents);
-    } catch (err) {
-      console.error("[useAgents] Failed to fetch agents:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch agents"));
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
-  const getAgent = useCallback(async (agentId) => {
-    if (!client) {
-      throw new Error("Client not available");
-    }
-    try {
-      const agent = await client.getAgent(agentId);
-      setAgents((prev) => prev.map((a) => a.id === agentId ? agent : a));
-      return agent;
-    } catch (err) {
-      const error2 = err instanceof Error ? err : new Error("Failed to get agent");
-      setError(error2);
-      throw error2;
-    }
-  }, [client]);
-  useEffect2(() => {
-    if (clientLoading) {
-      console.log("[useAgents] Client is loading, waiting...");
-      setLoading(true);
-      return;
-    }
-    if (clientError) {
-      console.error("[useAgents] Client error:", clientError);
-      setError(clientError);
-      setLoading(false);
-      return;
-    }
-    if (client) {
-      console.log("[useAgents] Client ready, fetching agents");
-      fetchAgents();
-    } else {
-      console.log("[useAgents] No client available");
-      setLoading(false);
-    }
-  }, [clientLoading, clientError, client, fetchAgents]);
-  return {
-    agents,
-    loading: loading || clientLoading,
-    error: error || clientError,
-    refetch: fetchAgents,
-    getAgent
-  };
-}
-
-// src/useChat.ts
-import { useState as useState3, useEffect as useEffect3, useCallback as useCallback2, useRef } from "react";
-import {
-  DistriClient as DistriClient2
-} from "@distri/core";
-function useChat({ agentId, contextId }) {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [loading, setLoading] = useState3(false);
-  const [error, setError] = useState3(null);
-  const [messages, setMessages] = useState3([]);
-  const [isStreaming, setIsStreaming] = useState3(false);
-  const abortControllerRef = useRef(null);
-  const fetchMessages = useCallback2(async () => {
-    if (!client || !contextId) {
-      setMessages([]);
-      return;
-    }
-    console.log("inside: fetchMessages", client, contextId);
-    try {
-      setLoading(true);
-      setError(null);
-      const fetchedMessages = await client.getThreadMessages(contextId);
-      console.log("fetchedMessages", fetchedMessages);
-      setMessages(fetchedMessages);
-    } catch (err) {
-      console.error("[useThreadMessages] Failed to fetch messages:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch messages"));
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [client, contextId]);
-  useEffect3(() => {
-    console.log("useEffect", clientLoading, clientError, contextId, !clientLoading && !clientError && contextId);
-    if (!clientLoading && !clientError && contextId) {
-      console.log("fetching messages", contextId);
-      fetchMessages();
-    } else {
-      setMessages([]);
-    }
-  }, [clientLoading, clientError, contextId, fetchMessages]);
-  const sendMessage = useCallback2(async (input, configuration) => {
-    if (!client) {
-      setError(new Error("Client not available"));
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const userMessage = DistriClient2.initMessage(input, "user", contextId);
-      setMessages((prev) => [...prev, userMessage]);
-      const params = DistriClient2.initMessageParams(userMessage, configuration);
-      const result = await client.sendMessage(agentId, params);
-      let message = void 0;
-      if (result.kind === "message") {
-        message = result;
-      } else if (result.kind === "task") {
-        message = result.status.message;
-      }
-      if (!message) {
-        throw new Error("Invalid response format");
-      }
-      setMessages((prev) => {
-        console.log("message", message.messageId);
-        if (prev.find((msg) => msg.messageId === message.messageId)) {
-          console.log("message found", message.messageId);
-          return prev.map((msg) => {
-            if (msg.messageId === message.messageId) {
-              return {
-                ...msg,
-                parts: [...msg.parts, ...message.parts]
-              };
-            }
-            return msg;
-          });
-        } else {
-          console.log("message not found", message.messageId);
-          return [...prev, message];
-        }
+      const response = await fetch(agentCardUrl, {
+        headers: { "Accept": "application/json" }
       });
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err : new Error("Failed to send message"));
-    } finally {
-      setLoading(false);
-    }
-  }, [client, agentId]);
-  const sendMessageStream = useCallback2(async (input, configuration) => {
-    if (!client) {
-      setError(new Error("Client not available"));
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      setIsStreaming(true);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Agent Card from ${agentCardUrl}: ${response.status} ${response.statusText}`);
       }
-      abortControllerRef.current = new AbortController();
-      const userMessage = DistriClient2.initMessage(input, "user", contextId);
-      setMessages((prev) => [...prev, userMessage]);
-      console.log("userMessage", userMessage);
-      const params = DistriClient2.initMessageParams(userMessage, {
-        blocking: false,
-        acceptedOutputModes: ["text/plain"],
-        ...configuration
+      const agentCard = await response.json();
+      if (!agentCard.url) {
+        throw new Error("Fetched Agent Card does not contain a valid 'url' for the service endpoint.");
+      }
+      this.serviceEndpointUrl = agentCard.url;
+      return agentCard;
+    } catch (error) {
+      console.error("Error fetching or parsing Agent Card:");
+      throw error;
+    }
+  }
+  /**
+   * Retrieves the Agent Card.
+   * If an `agentBaseUrl` is provided, it fetches the card from that specific URL.
+   * Otherwise, it returns the card fetched and cached during client construction.
+   * @param agentBaseUrl Optional. The base URL of the agent to fetch the card from.
+   * If provided, this will fetch a new card, not use the cached one from the constructor's URL.
+   * @returns A Promise that resolves to the AgentCard.
+   */
+  async getAgentCard(agentBaseUrl) {
+    if (agentBaseUrl) {
+      const specificAgentBaseUrl = agentBaseUrl.replace(/\/$/, "");
+      const agentCardUrl = `${specificAgentBaseUrl}/.well-known/agent.json`;
+      const response = await fetch(agentCardUrl, {
+        headers: { "Accept": "application/json" }
       });
-      const stream = await client.sendMessageStream(agentId, params);
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
-        console.log("Stream event:", event);
-        let message = void 0;
-        if (event.kind === "message") {
-          message = event;
-        } else if (event.kind === "status-update") {
-          message = event.status.message;
-        }
-        if (!message)
-          continue;
-        setMessages((prev) => {
-          if (prev.find((msg) => msg.messageId === message.messageId)) {
-            return prev.map((msg) => {
-              if (msg.messageId === message.messageId) {
-                return {
-                  ...msg,
-                  parts: [...msg.parts, ...message.parts]
-                };
-              }
-              return msg;
-            });
-          } else {
-            return [...prev, message];
-          }
-        });
-        if (event.kind === "status-update" && event.final) {
-          setIsStreaming(false);
-          break;
-        }
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Agent Card from ${agentCardUrl}: ${response.status} ${response.statusText}`);
       }
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        return;
-      }
-      setError(err instanceof Error ? err : new Error("Failed to stream message"));
-    } finally {
-      setLoading(false);
-      setIsStreaming(false);
+      return await response.json();
     }
-  }, [client, agentId]);
-  const clearMessages = useCallback2(() => {
-    setMessages([]);
-  }, []);
-  useEffect3(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+    return this.agentCardPromise;
+  }
+  /**
+   * Gets the RPC service endpoint URL. Ensures the agent card has been fetched first.
+   * @returns A Promise that resolves to the service endpoint URL string.
+   */
+  async _getServiceEndpoint() {
+    if (this.serviceEndpointUrl) {
+      return this.serviceEndpointUrl;
+    }
+    await this.agentCardPromise;
+    if (!this.serviceEndpointUrl) {
+      throw new Error("Agent Card URL for RPC endpoint is not available. Fetching might have failed.");
+    }
+    return this.serviceEndpointUrl;
+  }
+  /**
+   * Helper method to make a generic JSON-RPC POST request.
+   * @param method The RPC method name.
+   * @param params The parameters for the RPC method.
+   * @returns A Promise that resolves to the RPC response.
+   */
+  async _postRpcRequest(method, params) {
+    const endpoint = await this._getServiceEndpoint();
+    const requestId = this.requestIdCounter++;
+    const rpcRequest = {
+      jsonrpc: "2.0",
+      method,
+      params,
+      // Cast because TParams structure varies per method
+      id: requestId
     };
-  }, []);
-  return {
-    loading: loading || clientLoading,
-    error: error || clientError,
-    messages,
-    isStreaming,
-    sendMessage,
-    sendMessageStream,
-    clearMessages,
-    refreshMessages: fetchMessages
-  };
+    const httpResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+        // Expect JSON response for non-streaming requests
+      },
+      body: JSON.stringify(rpcRequest)
+    });
+    if (!httpResponse.ok) {
+      let errorBodyText = "(empty or non-JSON response)";
+      try {
+        errorBodyText = await httpResponse.text();
+        const errorJson = JSON.parse(errorBodyText);
+        if (!errorJson.jsonrpc && errorJson.error) {
+          throw new Error(`RPC error for ${method}: ${errorJson.error.message} (Code: ${errorJson.error.code}, HTTP Status: ${httpResponse.status}) Data: ${JSON.stringify(errorJson.error.data)}`);
+        } else if (!errorJson.jsonrpc) {
+          throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
+        }
+      } catch (e) {
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
+          throw e;
+        throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
+      }
+    }
+    const rpcResponse = await httpResponse.json();
+    if (rpcResponse.id !== requestId) {
+      console.error(`CRITICAL: RPC response ID mismatch for method ${method}. Expected ${requestId}, got ${rpcResponse.id}. This may lead to incorrect response handling.`);
+    }
+    return rpcResponse;
+  }
+  /**
+   * Sends a message to the agent.
+   * The behavior (blocking/non-blocking) and push notification configuration
+   * are specified within the `params.configuration` object.
+   * Optionally, `params.message.contextId` or `params.message.taskId` can be provided.
+   * @param params The parameters for sending the message, including the message content and configuration.
+   * @returns A Promise resolving to SendMessageResponse, which can be a Message, Task, or an error.
+   */
+  async sendMessage(params) {
+    return this._postRpcRequest("message/send", params);
+  }
+  /**
+   * Sends a message to the agent and streams back responses using Server-Sent Events (SSE).
+   * Push notification configuration can be specified in `params.configuration`.
+   * Optionally, `params.message.contextId` or `params.message.taskId` can be provided.
+   * Requires the agent to support streaming (`capabilities.streaming: true` in AgentCard).
+   * @param params The parameters for sending the message.
+   * @returns An AsyncGenerator yielding A2AStreamEventData (Message, Task, TaskStatusUpdateEvent, or TaskArtifactUpdateEvent).
+   * The generator throws an error if streaming is not supported or if an HTTP/SSE error occurs.
+   */
+  async *sendMessageStream(params) {
+    const agentCard = await this.agentCardPromise;
+    if (!agentCard.capabilities?.streaming) {
+      throw new Error("Agent does not support streaming (AgentCard.capabilities.streaming is not true).");
+    }
+    const endpoint = await this._getServiceEndpoint();
+    const clientRequestId = this.requestIdCounter++;
+    const rpcRequest = {
+      // This is the initial JSON-RPC request to establish the stream
+      jsonrpc: "2.0",
+      method: "message/stream",
+      params,
+      id: clientRequestId
+    };
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream"
+        // Crucial for SSE
+      },
+      body: JSON.stringify(rpcRequest)
+    });
+    if (!response.ok) {
+      let errorBody = "";
+      try {
+        errorBody = await response.text();
+        const errorJson = JSON.parse(errorBody);
+        if (errorJson.error) {
+          throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
+        }
+      } catch (e) {
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
+        throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
+      }
+      throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
+    }
+    if (!response.headers.get("Content-Type")?.startsWith("text/event-stream")) {
+      throw new Error("Invalid response Content-Type for SSE stream. Expected 'text/event-stream'.");
+    }
+    yield* this._parseA2ASseStream(response, clientRequestId);
+  }
+  /**
+   * Sets or updates the push notification configuration for a given task.
+   * Requires the agent to support push notifications (`capabilities.pushNotifications: true` in AgentCard).
+   * @param params Parameters containing the taskId and the TaskPushNotificationConfig.
+   * @returns A Promise resolving to SetTaskPushNotificationConfigResponse.
+   */
+  async setTaskPushNotificationConfig(params) {
+    const agentCard = await this.agentCardPromise;
+    if (!agentCard.capabilities?.pushNotifications) {
+      throw new Error("Agent does not support push notifications (AgentCard.capabilities.pushNotifications is not true).");
+    }
+    return this._postRpcRequest(
+      "tasks/pushNotificationConfig/set",
+      params
+    );
+  }
+  /**
+   * Gets the push notification configuration for a given task.
+   * @param params Parameters containing the taskId.
+   * @returns A Promise resolving to GetTaskPushNotificationConfigResponse.
+   */
+  async getTaskPushNotificationConfig(params) {
+    return this._postRpcRequest(
+      "tasks/pushNotificationConfig/get",
+      params
+    );
+  }
+  /**
+   * Retrieves a task by its ID.
+   * @param params Parameters containing the taskId and optional historyLength.
+   * @returns A Promise resolving to GetTaskResponse, which contains the Task object or an error.
+   */
+  async getTask(params) {
+    return this._postRpcRequest("tasks/get", params);
+  }
+  /**
+   * Cancels a task by its ID.
+   * @param params Parameters containing the taskId.
+   * @returns A Promise resolving to CancelTaskResponse, which contains the updated Task object or an error.
+   */
+  async cancelTask(params) {
+    return this._postRpcRequest("tasks/cancel", params);
+  }
+  /**
+   * Resubscribes to a task's event stream using Server-Sent Events (SSE).
+   * This is used if a previous SSE connection for an active task was broken.
+   * Requires the agent to support streaming (`capabilities.streaming: true` in AgentCard).
+   * @param params Parameters containing the taskId.
+   * @returns An AsyncGenerator yielding A2AStreamEventData (Message, Task, TaskStatusUpdateEvent, or TaskArtifactUpdateEvent).
+   */
+  async *resubscribeTask(params) {
+    const agentCard = await this.agentCardPromise;
+    if (!agentCard.capabilities?.streaming) {
+      throw new Error("Agent does not support streaming (required for tasks/resubscribe).");
+    }
+    const endpoint = await this._getServiceEndpoint();
+    const clientRequestId = this.requestIdCounter++;
+    const rpcRequest = {
+      // Initial JSON-RPC request to establish the stream
+      jsonrpc: "2.0",
+      method: "tasks/resubscribe",
+      params,
+      id: clientRequestId
+    };
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream"
+      },
+      body: JSON.stringify(rpcRequest)
+    });
+    if (!response.ok) {
+      let errorBody = "";
+      try {
+        errorBody = await response.text();
+        const errorJson = JSON.parse(errorBody);
+        if (errorJson.error) {
+          throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
+        }
+      } catch (e) {
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
+        throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
+      }
+      throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
+    }
+    if (!response.headers.get("Content-Type")?.startsWith("text/event-stream")) {
+      throw new Error("Invalid response Content-Type for SSE stream on resubscribe. Expected 'text/event-stream'.");
+    }
+    yield* this._parseA2ASseStream(response, clientRequestId);
+  }
+  /**
+   * Parses an HTTP response body as an A2A Server-Sent Event stream.
+   * Each 'data' field of an SSE event is expected to be a JSON-RPC 2.0 Response object,
+   * specifically a SendStreamingMessageResponse (or similar structure for resubscribe).
+   * @param response The HTTP Response object whose body is the SSE stream.
+   * @param originalRequestId The ID of the client's JSON-RPC request that initiated this stream.
+   * Used to validate the `id` in the streamed JSON-RPC responses.
+   * @returns An AsyncGenerator yielding the `result` field of each valid JSON-RPC success response from the stream.
+   */
+  async *_parseA2ASseStream(response, originalRequestId) {
+    if (!response.body) {
+      throw new Error("SSE response body is undefined. Cannot read stream.");
+    }
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    let eventDataBuffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (eventDataBuffer.trim()) {
+            const result = this._processSseEventData(eventDataBuffer, originalRequestId);
+            yield result;
+          }
+          break;
+        }
+        buffer += value;
+        let lineEndIndex;
+        while ((lineEndIndex = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.substring(0, lineEndIndex).trim();
+          buffer = buffer.substring(lineEndIndex + 1);
+          if (line === "") {
+            if (eventDataBuffer) {
+              const result = this._processSseEventData(eventDataBuffer, originalRequestId);
+              yield result;
+              eventDataBuffer = "";
+            }
+          } else if (line.startsWith("data:")) {
+            eventDataBuffer += line.substring(5).trimStart() + "\n";
+          } else if (line.startsWith(":")) {
+          } else if (line.includes(":")) {
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error reading or parsing SSE stream:", error.message);
+      throw error;
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  /**
+   * Processes a single SSE event's data string, expecting it to be a JSON-RPC response.
+   * @param jsonData The string content from one or more 'data:' lines of an SSE event.
+   * @param originalRequestId The ID of the client's request that initiated the stream.
+   * @returns The `result` field of the parsed JSON-RPC success response.
+   * @throws Error if data is not valid JSON, not a valid JSON-RPC response, an error response, or ID mismatch.
+   */
+  _processSseEventData(jsonData, originalRequestId) {
+    if (!jsonData.trim()) {
+      throw new Error("Attempted to process empty SSE event data.");
+    }
+    try {
+      const sseJsonRpcResponse = JSON.parse(jsonData.replace(/\n$/, ""));
+      const a2aStreamResponse = sseJsonRpcResponse;
+      if (a2aStreamResponse.id !== originalRequestId) {
+        console.warn(`SSE Event's JSON-RPC response ID mismatch. Client request ID: ${originalRequestId}, event response ID: ${a2aStreamResponse.id}.`);
+      }
+      if (this.isErrorResponse(a2aStreamResponse)) {
+        const err = a2aStreamResponse.error;
+        throw new Error(`SSE event contained an error: ${err.message} (Code: ${err.code}) Data: ${JSON.stringify(err.data)}`);
+      }
+      if (!("result" in a2aStreamResponse) || typeof a2aStreamResponse.result === "undefined") {
+        throw new Error(`SSE event JSON-RPC response is missing 'result' field. Data: ${jsonData}`);
+      }
+      const successResponse = a2aStreamResponse;
+      return successResponse.result;
+    } catch (e) {
+      if (e.message.startsWith("SSE event contained an error") || e.message.startsWith("SSE event JSON-RPC response is missing 'result' field")) {
+        throw e;
+      }
+      console.error("Failed to parse SSE event data string or unexpected JSON-RPC structure:", jsonData, e);
+      throw new Error(`Failed to parse SSE event data: "${jsonData.substring(0, 100)}...". Original error: ${e.message}`);
+    }
+  }
+  isErrorResponse(response) {
+    return "error" in response;
+  }
+};
+
+// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+86c9de0/node_modules/@a2a-js/sdk/dist/index.js
+import { EventEmitter } from "events";
+
+// ../../node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm/stringify.js
+var byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
 }
 
-// src/useThreads.ts
-import { useState as useState4, useEffect as useEffect4, useCallback as useCallback3 } from "react";
+// ../../node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm/rng.js
+import { randomFillSync } from "crypto";
+var rnds8Pool = new Uint8Array(256);
+var poolPtr = rnds8Pool.length;
+function rng() {
+  if (poolPtr > rnds8Pool.length - 16) {
+    randomFillSync(rnds8Pool);
+    poolPtr = 0;
+  }
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+}
+
+// ../../node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm/native.js
+import { randomUUID } from "crypto";
+var native_default = { randomUUID };
+
+// ../../node_modules/.pnpm/uuid@11.1.0/node_modules/uuid/dist/esm/v4.js
+function v4(options, buf, offset) {
+  if (native_default.randomUUID && !buf && !options) {
+    return native_default.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random ?? options.rng?.() ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  if (buf) {
+    offset = offset || 0;
+    if (offset < 0 || offset + 16 > buf.length) {
+      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+    }
+    for (let i = 0; i < 16; ++i) {
+      buf[offset + i] = rnds[i];
+    }
+    return buf;
+  }
+  return unsafeStringify(rnds);
+}
+var v4_default = v4;
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+86c9de0/node_modules/@a2a-js/sdk/dist/index.js
 var import_express = __toESM(require_express2(), 1);
+var RequestContext = class {
+  constructor(userMessage, taskId, contextId, task, referenceTasks) {
+    __publicField(this, "userMessage");
+    __publicField(this, "task");
+    __publicField(this, "referenceTasks");
+    __publicField(this, "taskId");
+    __publicField(this, "contextId");
+    this.userMessage = userMessage;
+    this.taskId = taskId;
+    this.contextId = contextId;
+    this.task = task;
+    this.referenceTasks = referenceTasks;
+  }
+};
+var DefaultExecutionEventBus = class extends EventEmitter {
+  constructor() {
+    super();
+  }
+  publish(event) {
+    this.emit("event", event);
+  }
+  finished() {
+    this.emit("finished");
+  }
+};
+var DefaultExecutionEventBusManager = class {
+  constructor() {
+    __publicField(this, "taskIdToBus", /* @__PURE__ */ new Map());
+  }
+  /**
+   * Creates or retrieves an existing ExecutionEventBus based on the taskId.
+   * @param taskId The ID of the task.
+   * @returns An instance of IExecutionEventBus.
+   */
+  createOrGetByTaskId(taskId) {
+    if (!this.taskIdToBus.has(taskId)) {
+      this.taskIdToBus.set(taskId, new DefaultExecutionEventBus());
+    }
+    return this.taskIdToBus.get(taskId);
+  }
+  /**
+   * Retrieves an existing ExecutionEventBus based on the taskId.
+   * @param taskId The ID of the task.
+   * @returns An instance of IExecutionEventBus or undefined if not found.
+   */
+  getByTaskId(taskId) {
+    return this.taskIdToBus.get(taskId);
+  }
+  /**
+   * Removes the event bus for a given taskId.
+   * This should be called when an execution flow is complete to free resources.
+   * @param taskId The ID of the task.
+   */
+  cleanupByTaskId(taskId) {
+    const bus = this.taskIdToBus.get(taskId);
+    if (bus) {
+      bus.removeAllListeners();
+    }
+    this.taskIdToBus.delete(taskId);
+  }
+};
+var A2AError = class _A2AError extends Error {
+  // Optional task ID context
+  constructor(code, message, data, taskId) {
+    super(message);
+    __publicField(this, "code");
+    __publicField(this, "data");
+    __publicField(this, "taskId");
+    this.name = "A2AError";
+    this.code = code;
+    this.data = data;
+    this.taskId = taskId;
+  }
+  /**
+   * Formats the error into a standard JSON-RPC error object structure.
+   */
+  toJSONRPCError() {
+    const errorObject = {
+      code: this.code,
+      message: this.message
+    };
+    if (this.data !== void 0) {
+      errorObject.data = this.data;
+    }
+    return errorObject;
+  }
+  // Static factory methods for common errors
+  static parseError(message, data) {
+    return new _A2AError(-32700, message, data);
+  }
+  static invalidRequest(message, data) {
+    return new _A2AError(-32600, message, data);
+  }
+  static methodNotFound(method) {
+    return new _A2AError(
+      -32601,
+      `Method not found: ${method}`
+    );
+  }
+  static invalidParams(message, data) {
+    return new _A2AError(-32602, message, data);
+  }
+  static internalError(message, data) {
+    return new _A2AError(-32603, message, data);
+  }
+  static taskNotFound(taskId) {
+    return new _A2AError(
+      -32001,
+      `Task not found: ${taskId}`,
+      void 0,
+      taskId
+    );
+  }
+  static taskNotCancelable(taskId) {
+    return new _A2AError(
+      -32002,
+      `Task not cancelable: ${taskId}`,
+      void 0,
+      taskId
+    );
+  }
+  static pushNotificationNotSupported() {
+    return new _A2AError(
+      -32003,
+      "Push Notification is not supported"
+    );
+  }
+  static unsupportedOperation(operation) {
+    return new _A2AError(
+      -32004,
+      `Unsupported operation: ${operation}`
+    );
+  }
+};
+var ExecutionEventQueue = class {
+  constructor(eventBus) {
+    __publicField(this, "eventBus");
+    __publicField(this, "eventQueue", []);
+    __publicField(this, "resolvePromise");
+    __publicField(this, "stopped", false);
+    __publicField(this, "boundHandleEvent");
+    __publicField(this, "handleEvent", (event) => {
+      if (this.stopped)
+        return;
+      this.eventQueue.push(event);
+      if (this.resolvePromise) {
+        this.resolvePromise();
+        this.resolvePromise = void 0;
+      }
+    });
+    __publicField(this, "handleFinished", () => {
+      this.stop();
+    });
+    this.eventBus = eventBus;
+    this.eventBus.on("event", this.handleEvent);
+    this.eventBus.on("finished", this.handleFinished);
+  }
+  /**
+   * Provides an async generator that yields events from the event bus.
+   * Stops when a Message event is received or a TaskStatusUpdateEvent with final=true is received.
+   */
+  async *events() {
+    while (!this.stopped || this.eventQueue.length > 0) {
+      if (this.eventQueue.length > 0) {
+        const event = this.eventQueue.shift();
+        yield event;
+        if (event.kind === "message" || event.kind === "status-update" && event.final) {
+          this.handleFinished();
+          break;
+        }
+      } else if (!this.stopped) {
+        await new Promise((resolve) => {
+          this.resolvePromise = resolve;
+        });
+      }
+    }
+  }
+  /**
+   * Stops the event queue from processing further events.
+   */
+  stop() {
+    this.stopped = true;
+    if (this.resolvePromise) {
+      this.resolvePromise();
+      this.resolvePromise = void 0;
+    }
+    this.eventBus.off("event", this.handleEvent);
+    this.eventBus.off("finished", this.handleFinished);
+  }
+};
+var ResultManager = class {
+  // Stores the message if it's the final result
+  constructor(taskStore) {
+    __publicField(this, "taskStore");
+    __publicField(this, "currentTask");
+    __publicField(this, "latestUserMessage");
+    // To add to history if a new task is created
+    __publicField(this, "finalMessageResult");
+    this.taskStore = taskStore;
+  }
+  setContext(latestUserMessage) {
+    this.latestUserMessage = latestUserMessage;
+  }
+  /**
+   * Processes an agent execution event and updates the task store.
+   * @param event The agent execution event.
+   */
+  async processEvent(event) {
+    if (event.kind === "message") {
+      this.finalMessageResult = event;
+    } else if (event.kind === "task") {
+      const taskEvent = event;
+      this.currentTask = { ...taskEvent };
+      if (this.latestUserMessage) {
+        if (!this.currentTask.history?.find((msg) => msg.messageId === this.latestUserMessage.messageId)) {
+          this.currentTask.history = [this.latestUserMessage, ...this.currentTask.history || []];
+        }
+      }
+      await this.saveCurrentTask();
+    } else if (event.kind === "status-update") {
+      const updateEvent = event;
+      if (this.currentTask && this.currentTask.id === updateEvent.taskId) {
+        this.currentTask.status = updateEvent.status;
+        if (updateEvent.status.message) {
+          if (!this.currentTask.history?.find((msg) => msg.messageId === updateEvent.status.message.messageId)) {
+            this.currentTask.history = [...this.currentTask.history || [], updateEvent.status.message];
+          }
+        }
+        await this.saveCurrentTask();
+      } else if (!this.currentTask && updateEvent.taskId) {
+        const loaded = await this.taskStore.load(updateEvent.taskId);
+        if (loaded) {
+          this.currentTask = loaded;
+          this.currentTask.status = updateEvent.status;
+          if (updateEvent.status.message) {
+            if (!this.currentTask.history?.find((msg) => msg.messageId === updateEvent.status.message.messageId)) {
+              this.currentTask.history = [...this.currentTask.history || [], updateEvent.status.message];
+            }
+          }
+          await this.saveCurrentTask();
+        } else {
+          console.warn(`ResultManager: Received status update for unknown task ${updateEvent.taskId}`);
+        }
+      }
+    } else if (event.kind === "artifact-update") {
+      const artifactEvent = event;
+      if (this.currentTask && this.currentTask.id === artifactEvent.taskId) {
+        if (!this.currentTask.artifacts) {
+          this.currentTask.artifacts = [];
+        }
+        const existingArtifactIndex = this.currentTask.artifacts.findIndex(
+          (art) => art.artifactId === artifactEvent.artifact.artifactId
+        );
+        if (existingArtifactIndex !== -1) {
+          if (artifactEvent.append) {
+            const existingArtifact = this.currentTask.artifacts[existingArtifactIndex];
+            existingArtifact.parts.push(...artifactEvent.artifact.parts);
+            if (artifactEvent.artifact.description)
+              existingArtifact.description = artifactEvent.artifact.description;
+            if (artifactEvent.artifact.name)
+              existingArtifact.name = artifactEvent.artifact.name;
+            if (artifactEvent.artifact.metadata)
+              existingArtifact.metadata = { ...existingArtifact.metadata, ...artifactEvent.artifact.metadata };
+          } else {
+            this.currentTask.artifacts[existingArtifactIndex] = artifactEvent.artifact;
+          }
+        } else {
+          this.currentTask.artifacts.push(artifactEvent.artifact);
+        }
+        await this.saveCurrentTask();
+      } else if (!this.currentTask && artifactEvent.taskId) {
+        const loaded = await this.taskStore.load(artifactEvent.taskId);
+        if (loaded) {
+          this.currentTask = loaded;
+          if (!this.currentTask.artifacts)
+            this.currentTask.artifacts = [];
+          const existingArtifactIndex = this.currentTask.artifacts.findIndex(
+            (art) => art.artifactId === artifactEvent.artifact.artifactId
+          );
+          if (existingArtifactIndex !== -1) {
+            if (artifactEvent.append) {
+              this.currentTask.artifacts[existingArtifactIndex].parts.push(...artifactEvent.artifact.parts);
+            } else {
+              this.currentTask.artifacts[existingArtifactIndex] = artifactEvent.artifact;
+            }
+          } else {
+            this.currentTask.artifacts.push(artifactEvent.artifact);
+          }
+          await this.saveCurrentTask();
+        } else {
+          console.warn(`ResultManager: Received artifact update for unknown task ${artifactEvent.taskId}`);
+        }
+      }
+    }
+  }
+  async saveCurrentTask() {
+    if (this.currentTask) {
+      await this.taskStore.save(this.currentTask);
+    }
+  }
+  /**
+   * Gets the final result, which could be a Message or a Task.
+   * This should be called after the event stream has been fully processed.
+   * @returns The final Message or the current Task.
+   */
+  getFinalResult() {
+    if (this.finalMessageResult) {
+      return this.finalMessageResult;
+    }
+    return this.currentTask;
+  }
+  /**
+   * Gets the task currently being managed by this ResultManager instance.
+   * This task could be one that was started with or one created during agent execution.
+   * @returns The current Task or undefined if no task is active.
+   */
+  getCurrentTask() {
+    return this.currentTask;
+  }
+};
+var terminalStates = ["completed", "failed", "canceled", "rejected"];
+var DefaultRequestHandler = class {
+  constructor(agentCard, taskStore, agentExecutor, eventBusManager = new DefaultExecutionEventBusManager()) {
+    __publicField(this, "agentCard");
+    __publicField(this, "taskStore");
+    __publicField(this, "agentExecutor");
+    __publicField(this, "eventBusManager");
+    // Store for push notification configurations (could be part of TaskStore or separate)
+    __publicField(this, "pushNotificationConfigs", /* @__PURE__ */ new Map());
+    this.agentCard = agentCard;
+    this.taskStore = taskStore;
+    this.agentExecutor = agentExecutor;
+    this.eventBusManager = eventBusManager;
+  }
+  async getAgentCard() {
+    return this.agentCard;
+  }
+  async _createRequestContext(incomingMessage, taskId, isStream) {
+    let task;
+    let referenceTasks;
+    if (incomingMessage.taskId) {
+      task = await this.taskStore.load(incomingMessage.taskId);
+      if (!task) {
+        throw A2AError.taskNotFound(incomingMessage.taskId);
+      }
+      if (terminalStates.includes(task.status.state)) {
+        throw A2AError.invalidRequest(`Task ${task.id} is in a terminal state (${task.status.state}) and cannot be modified.`);
+      }
+    }
+    if (incomingMessage.referenceTaskIds && incomingMessage.referenceTaskIds.length > 0) {
+      referenceTasks = [];
+      for (const refId of incomingMessage.referenceTaskIds) {
+        const refTask = await this.taskStore.load(refId);
+        if (refTask) {
+          referenceTasks.push(refTask);
+        } else {
+          console.warn(`Reference task ${refId} not found.`);
+        }
+      }
+    }
+    const messageForContext = { ...incomingMessage };
+    if (!messageForContext.contextId) {
+      messageForContext.contextId = task?.contextId || v4_default();
+    }
+    const contextId = incomingMessage.contextId || v4_default();
+    return new RequestContext(
+      messageForContext,
+      taskId,
+      contextId,
+      task,
+      referenceTasks
+    );
+  }
+  async _processEvents(taskId, resultManager, eventQueue, options) {
+    let firstResultSent = false;
+    try {
+      for await (const event of eventQueue.events()) {
+        await resultManager.processEvent(event);
+        if (options?.firstResultResolver && !firstResultSent) {
+          if (event.kind === "message" || event.kind === "task") {
+            options.firstResultResolver(event);
+            firstResultSent = true;
+          }
+        }
+      }
+      if (options?.firstResultRejector && !firstResultSent) {
+        options.firstResultRejector(A2AError.internalError("Execution finished before a message or task was produced."));
+      }
+    } catch (error) {
+      console.error(`Event processing loop failed for task ${taskId}:`, error);
+      if (options?.firstResultRejector && !firstResultSent) {
+        options.firstResultRejector(error);
+      }
+      throw error;
+    } finally {
+      this.eventBusManager.cleanupByTaskId(taskId);
+    }
+  }
+  async sendMessage(params) {
+    const incomingMessage = params.message;
+    if (!incomingMessage.messageId) {
+      throw A2AError.invalidParams("message.messageId is required.");
+    }
+    const isBlocking = params.configuration?.blocking !== false;
+    const taskId = incomingMessage.taskId || v4_default();
+    const resultManager = new ResultManager(this.taskStore);
+    resultManager.setContext(incomingMessage);
+    const requestContext = await this._createRequestContext(incomingMessage, taskId, false);
+    const finalMessageForAgent = requestContext.userMessage;
+    const eventBus = this.eventBusManager.createOrGetByTaskId(taskId);
+    const eventQueue = new ExecutionEventQueue(eventBus);
+    this.agentExecutor.execute(requestContext, eventBus).catch((err) => {
+      console.error(`Agent execution failed for message ${finalMessageForAgent.messageId}:`, err);
+      const errorTask = {
+        id: requestContext.task?.id || v4_default(),
+        // Use existing task ID or generate new
+        contextId: finalMessageForAgent.contextId,
+        status: {
+          state: "failed",
+          message: {
+            kind: "message",
+            role: "agent",
+            messageId: v4_default(),
+            parts: [{ kind: "text", text: `Agent execution error: ${err.message}` }],
+            taskId: requestContext.task?.id,
+            contextId: finalMessageForAgent.contextId
+          },
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        history: requestContext.task?.history ? [...requestContext.task.history] : [],
+        kind: "task"
+      };
+      if (finalMessageForAgent) {
+        if (!errorTask.history?.find((m) => m.messageId === finalMessageForAgent.messageId)) {
+          errorTask.history?.push(finalMessageForAgent);
+        }
+      }
+      eventBus.publish(errorTask);
+      eventBus.publish({
+        // And publish a final status update
+        kind: "status-update",
+        taskId: errorTask.id,
+        contextId: errorTask.contextId,
+        status: errorTask.status,
+        final: true
+      });
+      eventBus.finished();
+    });
+    if (isBlocking) {
+      await this._processEvents(taskId, resultManager, eventQueue);
+      const finalResult = resultManager.getFinalResult();
+      if (!finalResult) {
+        throw A2AError.internalError("Agent execution finished without a result, and no task context found.");
+      }
+      return finalResult;
+    } else {
+      return new Promise((resolve, reject) => {
+        this._processEvents(taskId, resultManager, eventQueue, {
+          firstResultResolver: resolve,
+          firstResultRejector: reject
+        });
+      });
+    }
+  }
+  async *sendMessageStream(params) {
+    const incomingMessage = params.message;
+    if (!incomingMessage.messageId) {
+      throw A2AError.invalidParams("message.messageId is required for streaming.");
+    }
+    const taskId = incomingMessage.taskId || v4_default();
+    const resultManager = new ResultManager(this.taskStore);
+    resultManager.setContext(incomingMessage);
+    const requestContext = await this._createRequestContext(incomingMessage, taskId, true);
+    const finalMessageForAgent = requestContext.userMessage;
+    const eventBus = this.eventBusManager.createOrGetByTaskId(taskId);
+    const eventQueue = new ExecutionEventQueue(eventBus);
+    this.agentExecutor.execute(requestContext, eventBus).catch((err) => {
+      console.error(`Agent execution failed for stream message ${finalMessageForAgent.messageId}:`, err);
+      const errorTaskStatus = {
+        kind: "status-update",
+        taskId: requestContext.task?.id || v4_default(),
+        // Use existing or a placeholder
+        contextId: finalMessageForAgent.contextId,
+        status: {
+          state: "failed",
+          message: {
+            kind: "message",
+            role: "agent",
+            messageId: v4_default(),
+            parts: [{ kind: "text", text: `Agent execution error: ${err.message}` }],
+            taskId: requestContext.task?.id,
+            contextId: finalMessageForAgent.contextId
+          },
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        final: true
+        // This will terminate the stream for the client
+      };
+      eventBus.publish(errorTaskStatus);
+    });
+    try {
+      for await (const event of eventQueue.events()) {
+        await resultManager.processEvent(event);
+        yield event;
+      }
+    } finally {
+      this.eventBusManager.cleanupByTaskId(taskId);
+    }
+  }
+  async getTask(params) {
+    const task = await this.taskStore.load(params.id);
+    if (!task) {
+      throw A2AError.taskNotFound(params.id);
+    }
+    if (params.historyLength !== void 0 && params.historyLength >= 0) {
+      if (task.history) {
+        task.history = task.history.slice(-params.historyLength);
+      }
+    } else {
+      task.history = [];
+    }
+    return task;
+  }
+  async cancelTask(params) {
+    const task = await this.taskStore.load(params.id);
+    if (!task) {
+      throw A2AError.taskNotFound(params.id);
+    }
+    const nonCancelableStates = ["completed", "failed", "canceled", "rejected"];
+    if (nonCancelableStates.includes(task.status.state)) {
+      throw A2AError.taskNotCancelable(params.id);
+    }
+    const eventBus = this.eventBusManager.getByTaskId(params.id);
+    if (eventBus) {
+      await this.agentExecutor.cancelTask(params.id, eventBus);
+    } else {
+      task.status = {
+        state: "canceled",
+        message: {
+          // Optional: Add a system message indicating cancellation
+          kind: "message",
+          role: "agent",
+          messageId: v4_default(),
+          parts: [{ kind: "text", text: "Task cancellation requested by user." }],
+          taskId: task.id,
+          contextId: task.contextId
+        },
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      task.history = [...task.history || [], task.status.message];
+      await this.taskStore.save(task);
+    }
+    const latestTask = await this.taskStore.load(params.id);
+    return latestTask;
+  }
+  async setTaskPushNotificationConfig(params) {
+    if (!this.agentCard.capabilities.pushNotifications) {
+      throw A2AError.pushNotificationNotSupported();
+    }
+    const taskAndHistory = await this.taskStore.load(params.taskId);
+    if (!taskAndHistory) {
+      throw A2AError.taskNotFound(params.taskId);
+    }
+    this.pushNotificationConfigs.set(params.taskId, params.pushNotificationConfig);
+    return params;
+  }
+  async getTaskPushNotificationConfig(params) {
+    if (!this.agentCard.capabilities.pushNotifications) {
+      throw A2AError.pushNotificationNotSupported();
+    }
+    const taskAndHistory = await this.taskStore.load(params.id);
+    if (!taskAndHistory) {
+      throw A2AError.taskNotFound(params.id);
+    }
+    const config = this.pushNotificationConfigs.get(params.id);
+    if (!config) {
+      throw A2AError.internalError(`Push notification config not found for task ${params.id}.`);
+    }
+    return { taskId: params.id, pushNotificationConfig: config };
+  }
+  async *resubscribe(params) {
+    if (!this.agentCard.capabilities.streaming) {
+      throw A2AError.unsupportedOperation("Streaming (and thus resubscription) is not supported.");
+    }
+    const task = await this.taskStore.load(params.id);
+    if (!task) {
+      throw A2AError.taskNotFound(params.id);
+    }
+    yield task;
+    const finalStates = ["completed", "failed", "canceled", "rejected"];
+    if (finalStates.includes(task.status.state)) {
+      return;
+    }
+    const eventBus = this.eventBusManager.getByTaskId(params.id);
+    if (!eventBus) {
+      console.warn(`Resubscribe: No active event bus for task ${params.id}.`);
+      return;
+    }
+    const eventQueue = new ExecutionEventQueue(eventBus);
+    try {
+      for await (const event of eventQueue.events()) {
+        if (event.kind === "status-update" && event.taskId === params.id) {
+          yield event;
+        } else if (event.kind === "artifact-update" && event.taskId === params.id) {
+          yield event;
+        } else if (event.kind === "task" && event.id === params.id) {
+          yield event;
+        }
+      }
+    } finally {
+      eventQueue.stop();
+    }
+  }
+};
+var InMemoryTaskStore = class {
+  constructor() {
+    __publicField(this, "store", /* @__PURE__ */ new Map());
+  }
+  async load(taskId) {
+    const entry = this.store.get(taskId);
+    return entry ? { ...entry } : void 0;
+  }
+  async save(task) {
+    this.store.set(task.id, { ...task });
+  }
+};
+var JsonRpcTransportHandler = class {
+  constructor(requestHandler) {
+    __publicField(this, "requestHandler");
+    this.requestHandler = requestHandler;
+  }
+  /**
+   * Handles an incoming JSON-RPC request.
+   * For streaming methods, it returns an AsyncGenerator of JSONRPCResult.
+   * For non-streaming methods, it returns a Promise of a single JSONRPCMessage (Result or ErrorResponse).
+   */
+  async handle(requestBody) {
+    let rpcRequest;
+    try {
+      if (typeof requestBody === "string") {
+        rpcRequest = JSON.parse(requestBody);
+      } else if (typeof requestBody === "object" && requestBody !== null) {
+        rpcRequest = requestBody;
+      } else {
+        throw A2AError.parseError("Invalid request body type.");
+      }
+      if (rpcRequest.jsonrpc !== "2.0" || !rpcRequest.method || typeof rpcRequest.method !== "string") {
+        throw A2AError.invalidRequest(
+          "Invalid JSON-RPC request structure."
+        );
+      }
+    } catch (error) {
+      const a2aError = error instanceof A2AError ? error : A2AError.parseError(error.message || "Failed to parse JSON request.");
+      return {
+        jsonrpc: "2.0",
+        id: typeof rpcRequest?.id !== "undefined" ? rpcRequest.id : null,
+        error: a2aError.toJSONRPCError()
+      };
+    }
+    const { method, params = {}, id: requestId = null } = rpcRequest;
+    try {
+      if (method === "message/stream" || method === "tasks/resubscribe") {
+        const agentCard = await this.requestHandler.getAgentCard();
+        if (!agentCard.capabilities.streaming) {
+          throw A2AError.unsupportedOperation(`Method ${method} requires streaming capability.`);
+        }
+        const agentEventStream = method === "message/stream" ? this.requestHandler.sendMessageStream(params) : this.requestHandler.resubscribe(params);
+        return async function* jsonRpcEventStream() {
+          try {
+            for await (const event of agentEventStream) {
+              yield {
+                jsonrpc: "2.0",
+                id: requestId,
+                // Use the original request ID for all streamed responses
+                result: event
+              };
+            }
+          } catch (streamError) {
+            console.error(`Error in agent event stream for ${method} (request ${requestId}):`, streamError);
+            throw streamError;
+          }
+        }();
+      } else {
+        let result;
+        switch (method) {
+          case "message/send":
+            result = await this.requestHandler.sendMessage(params);
+            break;
+          case "tasks/get":
+            result = await this.requestHandler.getTask(params);
+            break;
+          case "tasks/cancel":
+            result = await this.requestHandler.cancelTask(params);
+            break;
+          case "tasks/pushNotificationConfig/set":
+            result = await this.requestHandler.setTaskPushNotificationConfig(
+              params
+            );
+            break;
+          case "tasks/pushNotificationConfig/get":
+            result = await this.requestHandler.getTaskPushNotificationConfig(
+              params
+            );
+            break;
+          default:
+            throw A2AError.methodNotFound(method);
+        }
+        return {
+          jsonrpc: "2.0",
+          id: requestId,
+          result
+        };
+      }
+    } catch (error) {
+      const a2aError = error instanceof A2AError ? error : A2AError.internalError(error.message || "An unexpected error occurred.");
+      return {
+        jsonrpc: "2.0",
+        id: requestId,
+        error: a2aError.toJSONRPCError()
+      };
+    }
+  }
+};
+var A2AExpressApp = class {
+  constructor(requestHandler) {
+    __publicField(this, "requestHandler");
+    // Kept for getAgentCard
+    __publicField(this, "jsonRpcTransportHandler");
+    this.requestHandler = requestHandler;
+    this.jsonRpcTransportHandler = new JsonRpcTransportHandler(requestHandler);
+  }
+  /**
+   * Adds A2A routes to an existing Express app.
+   * @param app Optional existing Express app.
+   * @param baseUrl The base URL for A2A endpoints (e.g., "/a2a/api").
+   * @returns The Express app with A2A routes.
+   */
+  setupRoutes(app, baseUrl = "") {
+    app.use(import_express.default.json());
+    app.get(`${baseUrl}/.well-known/agent.json`, async (req, res) => {
+      try {
+        const agentCard = await this.requestHandler.getAgentCard();
+        res.json(agentCard);
+      } catch (error) {
+        console.error("Error fetching agent card:", error);
+        res.status(500).json({ error: "Failed to retrieve agent card" });
+      }
+    });
+    app.post(baseUrl, async (req, res) => {
+      try {
+        const rpcResponseOrStream = await this.jsonRpcTransportHandler.handle(req.body);
+        if (typeof rpcResponseOrStream?.[Symbol.asyncIterator] === "function") {
+          const stream = rpcResponseOrStream;
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+          res.flushHeaders();
+          try {
+            for await (const event of stream) {
+              res.write(`id: ${(/* @__PURE__ */ new Date()).getTime()}
+`);
+              res.write(`data: ${JSON.stringify(event)}
 
-// ../core/src/distri-client.ts
+`);
+            }
+          } catch (streamError) {
+            console.error(`Error during SSE streaming (request ${req.body?.id}):`, streamError);
+            const a2aError = streamError instanceof A2AError ? streamError : A2AError.internalError(streamError.message || "Streaming error.");
+            const errorResponse = {
+              jsonrpc: "2.0",
+              id: req.body?.id || null,
+              // Use original request ID if available
+              error: a2aError.toJSONRPCError()
+            };
+            if (!res.headersSent) {
+              res.status(500).json(errorResponse);
+            } else {
+              res.write(`id: ${(/* @__PURE__ */ new Date()).getTime()}
+`);
+              res.write(`event: error
+`);
+              res.write(`data: ${JSON.stringify(errorResponse)}
+
+`);
+            }
+          } finally {
+            if (!res.writableEnded) {
+              res.end();
+            }
+          }
+        } else {
+          const rpcResponse = rpcResponseOrStream;
+          res.status(200).json(rpcResponse);
+        }
+      } catch (error) {
+        console.error("Unhandled error in A2AExpressApp POST handler:", error);
+        const a2aError = error instanceof A2AError ? error : A2AError.internalError("General processing error.");
+        const errorResponse = {
+          jsonrpc: "2.0",
+          id: req.body?.id || null,
+          error: a2aError.toJSONRPCError()
+        };
+        if (!res.headersSent) {
+          res.status(500).json(errorResponse);
+        } else if (!res.writableEnded) {
+          res.end();
+        }
+      }
+    });
+    return app;
+  }
+};
+
+// src/types.ts
+var DistriError = class extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "DistriError";
+  }
+};
+var A2AProtocolError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "A2A_PROTOCOL_ERROR", details);
+    this.name = "A2AProtocolError";
+  }
+};
+var ApiError = class extends DistriError {
+  constructor(message, statusCode, details) {
+    super(message, "API_ERROR", details);
+    this.statusCode = statusCode;
+    this.name = "ApiError";
+  }
+};
+var ConnectionError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "CONNECTION_ERROR", details);
+    this.name = "ConnectionError";
+  }
+};
+
+// src/distri-client.ts
+var DistriClient = class {
+  constructor(config) {
+    this.agentClients = /* @__PURE__ */ new Map();
+    this.agentCards = /* @__PURE__ */ new Map();
+    this.config = {
+      baseUrl: config.baseUrl.replace(/\/$/, ""),
+      apiVersion: config.apiVersion || "v1",
+      timeout: config.timeout || 3e4,
+      retryAttempts: config.retryAttempts || 3,
+      retryDelay: config.retryDelay || 1e3,
+      debug: config.debug || false,
+      headers: config.headers || {}
+    };
+    this.debug("DistriClient initialized with config:", this.config);
+  }
+  /**
+   * Get all available agents from the Distri server
+   */
+  async getAgents() {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents`);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
+      }
+      const agentCards = await response.json();
+      agentCards.forEach((card) => {
+        this.agentCards.set(card.name, card);
+      });
+      const distriAgents = agentCards.map((card) => ({
+        id: card.name,
+        name: card.name,
+        description: card.description,
+        status: "online",
+        card
+      }));
+      return distriAgents;
+    } catch (error) {
+      if (error instanceof ApiError)
+        throw error;
+      throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
+    }
+  }
+  /**
+   * Get specific agent by ID
+   */
+  async getAgent(agentId) {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Agent not found: ${agentId}`, 404);
+        }
+        throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
+      }
+      const card = await response.json();
+      this.agentCards.set(agentId, card);
+      return {
+        id: card.name,
+        name: card.name,
+        description: card.description,
+        status: "online",
+        card
+      };
+    } catch (error) {
+      if (error instanceof ApiError)
+        throw error;
+      throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
+    }
+  }
+  /**
+   * Get or create A2AClient for an agent
+   */
+  getA2AClient(agentId) {
+    if (!this.agentClients.has(agentId)) {
+      const agentCard = this.agentCards.get(agentId);
+      if (!agentCard) {
+        throw new DistriError(`Agent card not found for ${agentId}. Call getAgent() first.`, "AGENT_NOT_FOUND");
+      }
+      const agentUrl = agentCard.url || `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
+      const client = new A2AClient(agentUrl);
+      this.agentClients.set(agentId, client);
+      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+    }
+    return this.agentClients.get(agentId);
+  }
+  /**
+   * Send a message to an agent
+   */
+  async sendMessage(agentId, params) {
+    try {
+      const client = this.getA2AClient(agentId);
+      const response = await client.sendMessage(params);
+      if ("error" in response && response.error) {
+        throw new A2AProtocolError(response.error.message, response.error);
+      }
+      if ("result" in response) {
+        const result = response.result;
+        this.debug(`Message sent to ${agentId}, got ${result.kind}:`, result);
+        return result;
+      }
+      throw new DistriError("Invalid response format", "INVALID_RESPONSE");
+    } catch (error) {
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
+      throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
+    }
+  }
+  /**
+   * Send a streaming message to an agent
+   */
+  async *sendMessageStream(agentId, params) {
+    try {
+      const client = this.getA2AClient(agentId);
+      yield* await client.sendMessageStream(params);
+    } catch (error) {
+      throw new DistriError(`Failed to stream message to agent ${agentId}`, "STREAM_MESSAGE_ERROR", error);
+    }
+  }
+  /**
+   * Get task details
+   */
+  async getTask(agentId, taskId) {
+    try {
+      const client = this.getA2AClient(agentId);
+      const response = await client.getTask({ id: taskId });
+      if ("error" in response && response.error) {
+        throw new A2AProtocolError(response.error.message, response.error);
+      }
+      if ("result" in response) {
+        const result = response.result;
+        this.debug(`Got task ${taskId} from ${agentId}:`, result);
+        return result;
+      }
+      throw new DistriError("Invalid response format", "INVALID_RESPONSE");
+    } catch (error) {
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
+      throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
+    }
+  }
+  /**
+   * Cancel a task
+   */
+  async cancelTask(agentId, taskId) {
+    try {
+      const client = this.getA2AClient(agentId);
+      await client.cancelTask({ id: taskId });
+      this.debug(`Cancelled task ${taskId} on agent ${agentId}`);
+    } catch (error) {
+      throw new DistriError(`Failed to cancel task ${taskId} on agent ${agentId}`, "CANCEL_TASK_ERROR", error);
+    }
+  }
+  /**
+   * Get threads from Distri server
+   */
+  async getThreads() {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/threads`);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch threads: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError)
+        throw error;
+      throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
+    }
+  }
+  /**
+   * Get thread messages
+   */
+  async getThreadMessages(threadId) {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}/messages`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return [];
+        }
+        throw new ApiError(`Failed to fetch thread messages: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError)
+        throw error;
+      throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
+    }
+  }
+  /**
+   * Get the base URL for making direct requests
+   */
+  get baseUrl() {
+    return this.config.baseUrl;
+  }
+  /**
+   * Enhanced fetch with retry logic
+   */
+  async fetch(path, options) {
+    const url = `${this.config.baseUrl}${path}`;
+    let lastError;
+    for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            ...this.config.headers,
+            ...options?.headers
+          }
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt < this.config.retryAttempts) {
+          this.debug(`Request failed (attempt ${attempt + 1}), retrying in ${this.config.retryDelay}ms...`);
+          await this.delay(this.config.retryDelay);
+        }
+      }
+    }
+    throw lastError;
+  }
+  /**
+   * Delay utility
+   */
+  delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  /**
+   * Debug logging
+   */
+  debug(...args) {
+    if (this.config.debug) {
+      console.log("[DistriClient]", ...args);
+    }
+  }
+  /**
+   * Helper method to create A2A messages
+   */
+  static initMessage(input, role = "user", contextId, messageId, taskId) {
+    return {
+      messageId: messageId || uuidv4(),
+      role,
+      parts: [{ kind: "text", text: input.trim() }],
+      contextId,
+      taskId: taskId || uuidv4(),
+      kind: "message"
+    };
+  }
+  /**
+   * Helper method to create message send parameters
+   */
+  static initMessageParams(message, configuration) {
+    return {
+      message,
+      configuration: {
+        acceptedOutputModes: ["text/plain"],
+        blocking: false,
+        // Default to non-blocking for streaming
+        ...configuration
+      }
+    };
+  }
+};
 function uuidv4() {
   if (typeof crypto?.randomUUID === "function") {
     return crypto.randomUUID();
@@ -22915,118 +24138,22 @@ function uuidv4() {
     (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
   ).join("");
 }
-
-// src/useThreads.ts
-function useThreads() {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = useState4([]);
-  const [loading, setLoading] = useState4(true);
-  const [error, setError] = useState4(null);
-  const fetchThreads = useCallback3(async () => {
-    if (!client) {
-      console.log("[useThreads] Client not available, skipping fetch");
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      console.log("[useThreads] Fetching threads...");
-      const fetchedThreads = await client.getThreads();
-      console.log("[useThreads] Fetched threads:", fetchedThreads);
-      setThreads(fetchedThreads);
-    } catch (err) {
-      console.error("[useThreads] Failed to fetch threads:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch threads"));
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
-  const createThread = useCallback3((agentId, title) => {
-    const newThread = {
-      id: uuidv4(),
-      title,
-      agent_id: agentId,
-      agent_name: agentId,
-      // Will be updated when we have agent info
-      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-      message_count: 0,
-      last_message: void 0
-    };
-    setThreads((prev) => [newThread, ...prev]);
-    return newThread;
-  }, []);
-  const deleteThread = useCallback3(async (threadId) => {
-    if (!client) {
-      throw new Error("Client not available");
-    }
-    try {
-      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
-        method: "DELETE"
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete thread");
-      }
-      setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
-    } catch (err) {
-      setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
-      console.warn("Failed to delete thread from server, but removed locally:", err);
-    }
-  }, [client]);
-  const updateThread = useCallback3(async (threadId) => {
-    if (!client) {
-      return;
-    }
-    try {
-      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
-      if (response.ok) {
-        const updatedThread = await response.json();
-        setThreads(
-          (prev) => prev.map(
-            (thread) => thread.id === threadId ? updatedThread : thread
-          )
-        );
-      }
-    } catch (err) {
-      console.warn("Failed to update thread:", err);
-    }
-  }, [client]);
-  useEffect4(() => {
-    if (clientLoading) {
-      console.log("[useThreads] Client is loading, waiting...");
-      setLoading(true);
-      return;
-    }
-    if (clientError) {
-      console.error("[useThreads] Client error:", clientError);
-      setError(clientError);
-      setLoading(false);
-      return;
-    }
-    if (client) {
-      console.log("[useThreads] Client ready, fetching threads");
-      fetchThreads();
-    } else {
-      console.log("[useThreads] No client available");
-      setLoading(false);
-    }
-  }, [clientLoading, clientError, client, fetchThreads]);
-  return {
-    threads,
-    loading: loading || clientLoading,
-    error: error || clientError,
-    refetch: fetchThreads,
-    createThread,
-    deleteThread,
-    updateThread
-  };
-}
 export {
-  DistriProvider,
-  useAgents,
-  useChat,
-  useDistri,
-  useDistriClient,
-  useThreads
+  A2AClient,
+  A2AError,
+  A2AExpressApp,
+  A2AProtocolError,
+  ApiError,
+  ConnectionError,
+  DefaultExecutionEventBus,
+  DefaultExecutionEventBusManager,
+  DefaultRequestHandler,
+  DistriClient,
+  DistriError,
+  InMemoryTaskStore,
+  JsonRpcTransportHandler,
+  RequestContext,
+  ResultManager
 };
 /*! Bundled license information:
 
