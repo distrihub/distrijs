@@ -1,15 +1,20 @@
-import React from 'react';
-import { RefreshCw, Play, Bot, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { RefreshCw, Play, Bot, CheckCircle, XCircle, Edit, Eye } from 'lucide-react';
 import { DistriAgent } from '@distri/react';
+import AgentEditForm from './AgentEditForm';
+import AgentDetailsDialog from './AgentDetailsDialog';
 
 interface AgentListProps {
   agents: DistriAgent[];
   onRefresh: () => Promise<void>;
   onStartChat: (agent: DistriAgent) => void;
+  onUpdateAgent?: (agent: DistriAgent) => Promise<void>;
 }
 
-const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat }) => {
+const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, onUpdateAgent }) => {
   const [refreshing, setRefreshing] = React.useState(false);
+  const [editingAgent, setEditingAgent] = useState<DistriAgent | null>(null);
+  const [viewingAgent, setViewingAgent] = useState<DistriAgent | null>(null);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -17,6 +22,48 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat })
       await onRefresh();
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleEditAgent = (agent: DistriAgent) => {
+    setEditingAgent(agent);
+  };
+
+  const handleViewAgent = (agent: DistriAgent) => {
+    setViewingAgent(agent);
+  };
+
+  const handleSaveAgent = async (agent: DistriAgent) => {
+    if (onUpdateAgent) {
+      try {
+        await onUpdateAgent(agent);
+        await onRefresh(); // Refresh the list after updating
+      } catch (error) {
+        console.error('Failed to update agent:', error);
+        throw error; // Re-throw to let the dialog handle the error
+      }
+    }
+  };
+
+  const handleUpdateAgent = async (agentId: string) => {
+    try {
+      // Make API call to update agent
+      const response = await fetch(`/api/v1/agents/${agentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editingAgent),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update agent: ${response.statusText}`);
+      }
+
+      await onRefresh(); // Refresh the list after updating
+    } catch (error) {
+      console.error('Failed to update agent:', error);
+      throw error;
     }
   };
 
@@ -77,20 +124,59 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat })
                   <div className="text-xs text-gray-400">
                     {agent.card?.version && `v${agent.card.version}`}
                   </div>
-                  <button
-                    onClick={() => onStartChat(agent)}
-                    disabled={agent.status !== 'online'}
-                    className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Play className="h-3 w-3" />
-                    <span>Chat</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleViewAgent(agent)}
+                      className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                      title="View Details"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => handleEditAgent(agent)}
+                      className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                      title="Edit Agent"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => onStartChat(agent)}
+                      disabled={agent.status !== 'online'}
+                      className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Play className="h-3 w-3" />
+                      <span>Chat</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      {editingAgent && (
+        <AgentEditForm
+          agent={editingAgent}
+          isOpen={!!editingAgent}
+          onClose={() => setEditingAgent(null)}
+          onSave={handleSaveAgent}
+        />
+      )}
+
+      {/* Details Dialog */}
+      {viewingAgent && (
+        <AgentDetailsDialog
+          agent={viewingAgent}
+          isOpen={!!viewingAgent}
+          onClose={() => setViewingAgent(null)}
+          onStartChat={(agent) => {
+            setViewingAgent(null);
+            onStartChat(agent);
+          }}
+        />
+      )}
     </div>
   );
 };

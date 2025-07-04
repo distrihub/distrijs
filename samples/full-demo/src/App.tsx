@@ -271,6 +271,28 @@ function AppContent() {
                   agents={agents}
                   onRefresh={refetchAgents}
                   onStartChat={startChatWithAgent}
+                  onUpdateAgent={async (agent) => {
+                    try {
+                      // Make API call to update agent
+                      const response = await fetch(`/api/v1/agents/${agent.id}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(agent.card),
+                      });
+
+                      if (!response.ok) {
+                        throw new Error(`Failed to update agent: ${response.statusText}`);
+                      }
+
+                      // Refresh the agents list
+                      await refetchAgents();
+                    } catch (error) {
+                      console.error('Failed to update agent:', error);
+                      throw error;
+                    }
+                  }}
                 />
               </div>
             )}
