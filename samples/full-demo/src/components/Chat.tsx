@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, User, Bot } from 'lucide-react';
-import { useTask, useThreadMessages, DistriAgent, DistriThread } from '@distri/react';
+import { useChat, DistriAgent, DistriThread } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
 
 interface ChatProps {
@@ -11,26 +11,48 @@ interface ChatProps {
 
 const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
   const [input, setInput] = useState('');
+  const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Use the new hooks
-  const { 
-    messages: taskMessages, 
-    loading: taskLoading, 
-    error: taskError,
+  const {
+    messages,
+    loading,
+    refreshMessages,
+    error,
     isStreaming,
     sendMessageStream,
-    clearMessages 
-  } = useTask({ agentId: agent.id });
-  
-  const { 
-    messages: threadMessages, 
-    loading: threadLoading,
-    refetch: refetchMessages 
-  } = useThreadMessages({ threadId: thread.id });
+  } = useChat({ agentId: agent.id, contextId: thread.id });
 
-  // Combine task messages (current conversation) with thread messages (historical)
-  const allMessages = [...threadMessages, ...taskMessages];
+  // Helper function to extract text from message parts
+  const extractTextFromMessage = (message: any): string => {
+    if (!message?.parts || !Array.isArray(message.parts)) {
+      return '';
+    }
+
+    return message.parts
+      .filter((part: any) => part?.kind === 'text' && part?.text)
+      .map((part: any) => part.text)
+      .join(' ') || '';
+  };
+
+  // Helper function to check if message has valid content
+  const hasValidContent = (message: any): boolean => {
+    if (!message) return false;
+
+    // Check if message has text parts with content
+    const textContent = extractTextFromMessage(message);
+    if (textContent.trim()) return true;
+
+    // Check for other types of content parts
+    if (message.parts && Array.isArray(message.parts)) {
+      return message.parts.some((part: any) =>
+        part && (part.kind === 'text' || part.kind === 'image' || part.kind === 'tool_use')
+      );
+    }
+
+    return false;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -38,26 +60,40 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [allMessages]);
+  }, [messages, streamingText]);
 
   // Load thread messages when thread changes
   useEffect(() => {
     if (thread.id) {
-      refetchMessages();
-      clearMessages(); // Clear task messages when switching threads
+      console.log('refreshing messages', thread.id);
+      refreshMessages();
+      setStreamingText(''); // Clear any streaming text
     }
-  }, [thread.id, refetchMessages, clearMessages]);
+  }, [thread.id, refreshMessages]);
+
+  // Handle streaming text accumulation
+  useEffect(() => {
+    if (isStreaming && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'agent') {
+        const currentText = extractTextFromMessage(lastMessage);
+        setStreamingText(currentText);
+      }
+    } else {
+      setStreamingText('');
+    }
+  }, [isStreaming, messages]);
 
   const sendMessage = async () => {
-    if (!input.trim() || taskLoading || isStreaming) return;
+    if (!input.trim() || loading || isStreaming) return;
 
     const messageText = input.trim();
     setInput('');
+    setStreamingText(''); // Clear any existing streaming text
 
     try {
       // Use streaming for real-time updates
       await sendMessageStream(messageText, {
-        contextId: thread.id, // Associate with the thread
         acceptedOutputModes: ['text/plain'],
         blocking: false
       });
@@ -80,8 +116,6 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
     }
   };
 
-  const loading = taskLoading || threadLoading;
-
   return (
     <div className="bg-white rounded-lg shadow h-full flex flex-col">
       {/* Chat Header */}
@@ -100,7 +134,7 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {allMessages.length === 0 && !loading && (
+        {messages.length === 0 && !loading && !isStreaming && (
           <div className="text-center py-8">
             <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Start a conversation with {agent.name}</p>
@@ -110,24 +144,23 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
           </div>
         )}
 
-        {allMessages.filter(message => message.parts && message.parts.length > 0).map((message, index) => {
-          // Determine if this is an error message
-          const messageText = message.parts?.[0]?.text || '';
-          const isError = messageText.startsWith('Error:');
-          
+        {messages.filter(hasValidContent).map((message, index) => {
+          // Extract text from message parts properly
+          const messageText = extractTextFromMessage(message);
+          const isError = messageText.startsWith('Error:') || messageText.includes('error') && message.role === 'agent';
+
           return (
             <div
               key={message.messageId || `msg-${index}`}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : isError
+                className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : isError
                     ? 'bg-red-100 text-red-800 border border-red-300'
                     : 'bg-gray-100 text-gray-900'
-                }`}
+                  }`}
               >
                 <div className="flex items-start space-x-2">
                   {message.role === 'agent' && (
@@ -141,17 +174,7 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
                       content={messageText}
                       className={isError ? 'font-semibold' : ''}
                     />
-                    {message.metadata?.timestamp && (
-                      <p className={`text-xs mt-1 ${
-                        message.role === 'user'
-                          ? 'text-blue-200'
-                          : isError
-                          ? 'text-red-600'
-                          : 'text-gray-500'
-                      }`}>
-                        {new Date(message.metadata.timestamp as string).toLocaleTimeString()}
-                      </p>
-                    )}
+
                   </div>
                 </div>
               </div>
@@ -159,7 +182,7 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
           );
         })}
 
-        {(loading || isStreaming) && (
+        {(loading || isStreaming) && !streamingText && (
           <div className="flex justify-start">
             <div className="flex items-center space-x-2 text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -170,10 +193,15 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate }) => {
           </div>
         )}
 
-        {taskError && (
+        {error && (
           <div className="flex justify-start">
             <div className="max-w-[70%] rounded-lg px-4 py-2 bg-red-100 text-red-800 border border-red-300">
-              <p className="text-sm font-medium">Error: {taskError.message}</p>
+              <div className="flex items-start space-x-2">
+                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Error: {error.message}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}

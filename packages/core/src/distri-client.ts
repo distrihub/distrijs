@@ -1,4 +1,3 @@
-
 import {
   A2AClient,
   AgentCard,
@@ -18,7 +17,6 @@ import {
   DistriThread,
   A2AStreamEventData
 } from './types';
-
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
  */
@@ -154,8 +152,7 @@ export class DistriClient {
   async* sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData> {
     try {
       const client = this.getA2AClient(agentId);
-      const stream = client.sendMessageStream(params);
-      return stream;
+      yield* await client.sendMessageStream(params);
     } catch (error) {
       throw new DistriError(`Failed to stream message to agent ${agentId}`, 'STREAM_MESSAGE_ERROR', error);
     }
@@ -298,19 +295,20 @@ export class DistriClient {
   /**
    * Helper method to create A2A messages
    */
-  static createMessage(
-    messageId: string,
-    text: string,
+  static initMessage(
+
+    input: string,
     role: 'agent' | 'user' = 'user',
     contextId?: string,
+    messageId?: string,
     taskId?: string
   ): Message {
     return {
-      messageId,
+      messageId: messageId || uuidv4(),
       role,
-      parts: [{ kind: 'text', text }],
+      parts: [{ kind: 'text', text: input.trim() }],
       contextId,
-      taskId,
+      taskId: taskId || uuidv4(),
       kind: 'message'
     };
   }
@@ -318,7 +316,7 @@ export class DistriClient {
   /**
    * Helper method to create message send parameters
    */
-  static createMessageParams(
+  static initMessageParams(
     message: Message,
     configuration?: MessageSendParams['configuration']
   ): MessageSendParams {
@@ -331,4 +329,18 @@ export class DistriClient {
       }
     };
   }
+}
+export function uuidv4(): string {
+  if (typeof crypto?.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  // Per RFC4122 v4
+  array[6] = (array[6] & 0x0f) | 0x40;
+  array[8] = (array[8] & 0x3f) | 0x80;
+  return [...array].map((b, i) =>
+    ([4, 6, 8, 10].includes(i) ? '-' : '') + b.toString(16).padStart(2, '0')
+  ).join('');
 }
