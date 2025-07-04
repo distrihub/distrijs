@@ -2,12 +2,11 @@
 
 export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
 export { useAgents } from './useAgents';
-export { useTask } from './useTask';
-export { useThreads, useThreadMessages } from './useThreads';
+export { useChat } from './useChat';
+export { useThreads } from './useThreads';
 
 export type { UseAgentsResult } from './useAgents';
-export type { UseTaskOptions, UseTaskResult } from './useTask';
-export type { UseThreadsResult, UseThreadMessagesOptions, UseThreadMessagesResult } from './useThreads';
+export type { UseChatOptions, UseChatResult } from './useChat';
 
 // Re-export types from core for convenience
 export type {
