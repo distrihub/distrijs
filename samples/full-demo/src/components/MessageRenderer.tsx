@@ -2,13 +2,28 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
 
 interface MessageRendererProps {
   content: string;
   className?: string;
+  metadata?: any;
 }
 
-const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = "" }) => {
+const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = "", metadata }) => {
+  // ToolCall detection: expects tool_call in metadata
+  if (metadata?.tool_call) {
+    // Compose a ToolCallState from metadata and content (args)
+    const toolCall: ToolCallState = {
+      tool_call_id: metadata.tool_call_id,
+      tool_name: metadata.tool_name,
+      args: content || '',
+      running: metadata.event_type !== 'result' && metadata.event_type !== 'end',
+      result: metadata.result,
+    };
+    return <ToolCallRenderer toolCall={toolCall} />;
+  }
+
   // Check if content looks like markdown (has markdown syntax)
   const hasMarkdownSyntax = (text: string): boolean => {
     const markdownPatterns = [
@@ -22,7 +37,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = 
       /^\s*>\s+/m, // Blockquotes
       /\[.*?\]\(.*?\)/g, // Links
     ];
-    
+
     return markdownPatterns.some(pattern => pattern.test(text));
   };
 
@@ -44,7 +59,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = 
             const match = /language-(\w+)/.exec(codeClassName || '');
             const language = match ? match[1] : '';
             const isInline = !match;
-            
+
             return !isInline && language ? (
               <SyntaxHighlighter
                 style={tomorrow as any}
