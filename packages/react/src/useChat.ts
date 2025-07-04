@@ -31,7 +31,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-
   const fetchMessages = useCallback(async () => {
     if (!client || !contextId) {
       setMessages([]);
@@ -44,7 +43,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
       setLoading(true);
       setError(null);
       const fetchedMessages = await client.getThreadMessages(contextId);
-      console.log('fetchedMessages', fetchedMessages);
       setMessages(fetchedMessages);
     } catch (err) {
       console.error('[useThreadMessages] Failed to fetch messages:', err);
@@ -58,7 +56,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
   useEffect(() => {
     console.log('useEffect', clientLoading, clientError, contextId, !clientLoading && !clientError && contextId);
     if (!clientLoading && !clientError && contextId) {
-      console.log('fetching messages', contextId);
       fetchMessages();
     } else {
       setMessages([]);
@@ -231,6 +228,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
     sendMessage,
     sendMessageStream,
     clearMessages,
-    refreshMessages: fetchMessages
+    refreshMessages: fetchMessages,
   };
 }

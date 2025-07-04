@@ -1,20 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Settings, Activity, Loader2, Plus, Bot } from 'lucide-react';
 import { DistriProvider, useAgents, useThreads, DistriAgent, DistriThread } from '@distri/react';
+import { uuidv4 } from '@distri/core';
 import Chat from './components/Chat';
 import AgentList from './components/AgentList';
 import TaskMonitor from './components/TaskMonitor';
 
 function AppContent() {
   const { agents, loading: agentsLoading, refetch: refetchAgents } = useAgents();
-  const { threads, loading: threadsLoading, createThread, deleteThread, updateThread } = useThreads();
-  
+  const { threads, loading: threadsLoading, createThread, deleteThread, updateThread, refetch: refetchThreads } = useThreads();
+
   const [selectedThread, setSelectedThread] = useState<DistriThread | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'agents' | 'tasks'>('chat');
-  const [creatingThread, setCreatingThread] = useState(false);
 
   const loading = agentsLoading || threadsLoading;
+
+  const localThreadIdRef = useRef<string | null>(null);
+  const [threadIdMap, setThreadIdMap] = useState<Record<string, string>>({});
 
   // Auto-select first agent when agents load
   useEffect(() => {
@@ -30,29 +33,28 @@ function AppContent() {
     }
   }, [threads, selectedThread]);
 
-  const createNewThread = async () => {
-    if (!selectedAgent || creatingThread) return;
+  // Helper to replace local thread with backend thread everywhere
+  const handleBackendThreadId = (localId: string, backendThread: DistriThread) => {
+    setThreadIdMap(prev => ({ ...prev, [localId]: backendThread.id }));
+    setSelectedThread(backendThread);
+    // Replace in thread list by refetching or updating threads state if needed
+    refetchThreads();
+  };
 
-    setCreatingThread(true);
-    try {
-      const newThread = createThread(selectedAgent.id, 'New conversation');
-      setSelectedThread(newThread);
-    } catch (error) {
-      console.error('Failed to create thread:', error);
-    } finally {
-      setCreatingThread(false);
-    }
+  const createNewThread = () => {
+    if (!selectedAgent) return;
+    const localId = uuidv4();
+    localThreadIdRef.current = localId;
+    const newThread = { ...createThread(selectedAgent.id, `Untitled Conversation`), id: localId };
+    setSelectedThread(newThread);
   };
 
   const startChatWithAgent = async (agent: DistriAgent) => {
-    // Set the selected agent
     setSelectedAgent(agent);
-
-    // Switch to chat tab
     setActiveTab('chat');
-
-    // Create a new thread for this agent
-    const newThread = createThread(agent.id, `Chat with ${agent.name}`);
+    const localId = uuidv4();
+    localThreadIdRef.current = localId;
+    const newThread = { ...createThread(agent.id, `New Conversation with ${agent.name}`), id: localId };
     setSelectedThread(newThread);
   };
 
@@ -173,14 +175,10 @@ function AppContent() {
                   <h2 className="text-lg font-medium text-gray-900">Conversations</h2>
                   <button
                     onClick={createNewThread}
-                    disabled={!selectedAgent || creatingThread}
+                    disabled={!selectedAgent}
                     className="flex items-center space-x-1 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {creatingThread ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
+                    <Plus className="h-4 w-4" />
                     <span>New</span>
                   </button>
                 </div>
@@ -198,7 +196,9 @@ function AppContent() {
                       {threads.map((thread) => (
                         <div
                           key={thread.id}
-                          onClick={() => setSelectedThread(thread)}
+                          onClick={() => {
+                            setSelectedThread(thread);
+                          }}
                           className={`p-3 rounded-lg cursor-pointer transition-colors border ${selectedThread?.id === thread.id
                             ? 'bg-blue-50 border-blue-200'
                             : 'hover:bg-gray-50 border-transparent'
@@ -234,28 +234,34 @@ function AppContent() {
 
           {/* Main Content Area */}
           <div className={`flex-1 h-full ${activeTab === 'chat' ? '' : 'max-w-6xl'}`}>
-            {activeTab === 'chat' && selectedThread && selectedAgent && (
+            {activeTab === 'chat' && selectedAgent && (
               <div className="h-full">
                 <Chat
                   thread={selectedThread}
                   agent={selectedAgent}
-                  onThreadUpdate={() => handleThreadUpdate(selectedThread.id)}
+                  onThreadUpdate={selectedThread ? () => handleThreadUpdate(selectedThread.id) : undefined}
+                  setThreadId={(threadId) => {
+                    // Try to find the thread in the list
+                    let found = threads.find(t => t.id === threadId);
+                    if (!found) {
+                      // If not found, create a placeholder so chat doesn't reset
+                      found = {
+                        id: threadId,
+                        title: 'New Conversation',
+                        agent_id: selectedAgent?.id || '',
+                        agent_name: selectedAgent?.name || '',
+                        updated_at: new Date().toISOString(),
+                        message_count: 1,
+                        last_message: '',
+                      };
+                    }
+                    setSelectedThread(found);
+                    refetchThreads();
+                    updateThread(threadId);
+                    localThreadIdRef.current = null;
+                  }}
+                  onBackendThreadId={handleBackendThreadId}
                 />
-              </div>
-            )}
-
-            {activeTab === 'chat' && !selectedThread && (
-              <div className="bg-white rounded-lg shadow p-12 text-center h-full flex flex-col justify-center">
-                <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {selectedAgent ? 'Start a conversation' : 'Select an agent'}
-                </h3>
-                <p className="text-gray-500">
-                  {selectedAgent
-                    ? 'Click "New" to create your first conversation'
-                    : 'Choose an agent from the dropdown to begin'
-                  }
-                </p>
               </div>
             )}
 

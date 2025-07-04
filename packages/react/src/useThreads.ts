@@ -8,9 +8,9 @@ export interface UseThreadsResult {
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-  createThread: (agentId: string, title: string) => DistriThread;
+  createThread: (agentId: string, title: string, id?: string) => DistriThread;
   deleteThread: (threadId: string) => Promise<void>;
-  updateThread: (threadId: string) => Promise<void>;
+  updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 
 export function useThreads(): UseThreadsResult {
@@ -40,9 +40,9 @@ export function useThreads(): UseThreadsResult {
     }
   }, [client]);
 
-  const createThread = useCallback((agentId: string, title: string): DistriThread => {
+  const createThread = useCallback((agentId: string, title: string, id?: string): DistriThread => {
     const newThread: DistriThread = {
-      id: uuidv4(),
+      id: id || uuidv4(),
       title,
       agent_id: agentId,
       agent_name: agentId, // Will be updated when we have agent info
@@ -78,7 +78,7 @@ export function useThreads(): UseThreadsResult {
     }
   }, [client]);
 
-  const updateThread = useCallback(async (threadId: string) => {
+  const updateThread = useCallback(async (threadId: string, localId?: string) => {
     if (!client) {
       return;
     }
@@ -87,11 +87,19 @@ export function useThreads(): UseThreadsResult {
       const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
       if (response.ok) {
         const updatedThread = await response.json();
-        setThreads(prev =>
-          prev.map(thread =>
+        setThreads(prev => {
+          // If a local thread with localId exists, replace it with the backend thread
+          if (localId && prev.some(thread => thread.id === localId)) {
+            return [
+              updatedThread,
+              ...prev.filter(thread => thread.id !== localId && thread.id !== threadId)
+            ];
+          }
+          // Otherwise, just update by threadId
+          return prev.map(thread =>
             thread.id === threadId ? updatedThread : thread
-          )
-        );
+          );
+        });
       }
     } catch (err) {
       console.warn('Failed to update thread:', err);
