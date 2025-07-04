@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { DistriClient, DistriClientConfig } from '@distri/core';
 
 interface DistriContextValue {
@@ -41,13 +41,6 @@ export function DistriProvider({ config, children }: DistriProviderProps) {
       setIsLoading(false);
     }
 
-    // Cleanup function
-    return () => {
-      console.log('[DistriProvider] Cleaning up client');
-      if (currentClient) {
-        currentClient.disconnect();
-      }
-    };
   }, [config.baseUrl, config.apiVersion, config.debug]); // Only depend on key config values
 
   const contextValue: DistriContextValue = {
@@ -85,18 +78,18 @@ export function useDistri(): DistriContextValue {
 
 export function useDistriClient(): DistriClient {
   const { client, error, isLoading } = useDistri();
-  
+
   if (isLoading) {
     throw new Error('Distri client is still loading');
   }
-  
+
   if (error) {
     throw new Error(`Distri client initialization failed: ${error.message}`);
   }
-  
+
   if (!client) {
     throw new Error('Distri client is not initialized');
   }
-  
+
   return client;
 }
