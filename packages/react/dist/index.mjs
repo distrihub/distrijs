@@ -22744,7 +22744,6 @@ function useChat({ agentId, contextId }) {
       setLoading(true);
       setError(null);
       const fetchedMessages = await client.getThreadMessages(contextId);
-      console.log("fetchedMessages", fetchedMessages);
       setMessages(fetchedMessages);
     } catch (err) {
       console.error("[useThreadMessages] Failed to fetch messages:", err);
@@ -22757,7 +22756,6 @@ function useChat({ agentId, contextId }) {
   useEffect3(() => {
     console.log("useEffect", clientLoading, clientError, contextId, !clientLoading && !clientError && contextId);
     if (!clientLoading && !clientError && contextId) {
-      console.log("fetching messages", contextId);
       fetchMessages();
     } else {
       setMessages([]);
@@ -22941,9 +22939,9 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const createThread = useCallback3((agentId, title) => {
+  const createThread = useCallback3((agentId, title, id) => {
     const newThread = {
-      id: uuidv4(),
+      id: id || uuidv4(),
       title,
       agent_id: agentId,
       agent_name: agentId,
@@ -22972,7 +22970,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = useCallback3(async (threadId) => {
+  const updateThread = useCallback3(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -22980,11 +22978,17 @@ function useThreads() {
       const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
       if (response.ok) {
         const updatedThread = await response.json();
-        setThreads(
-          (prev) => prev.map(
+        setThreads((prev) => {
+          if (localId && prev.some((thread) => thread.id === localId)) {
+            return [
+              updatedThread,
+              ...prev.filter((thread) => thread.id !== localId && thread.id !== threadId)
+            ];
+          }
+          return prev.map(
             (thread) => thread.id === threadId ? updatedThread : thread
-          )
-        );
+          );
+        });
       }
     } catch (err) {
       console.warn("Failed to update thread:", err);

@@ -22607,7 +22607,8 @@ __export(src_exports, {
   InMemoryTaskStore: () => InMemoryTaskStore,
   JsonRpcTransportHandler: () => JsonRpcTransportHandler,
   RequestContext: () => RequestContext,
-  ResultManager: () => ResultManager
+  ResultManager: () => ResultManager,
+  uuidv4: () => uuidv4
 });
 module.exports = __toCommonJS(src_exports);
 
@@ -24174,7 +24175,8 @@ function uuidv4() {
   InMemoryTaskStore,
   JsonRpcTransportHandler,
   RequestContext,
-  ResultManager
+  ResultManager,
+  uuidv4
 });
 /*! Bundled license information:
 

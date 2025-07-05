@@ -1,12 +1,38 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Settings, Activity, Loader2, Plus, Bot } from 'lucide-react';
+import { MessageSquare, Settings, Activity, Loader2, Plus, Bot, Globe } from 'lucide-react';
 import { DistriProvider, useAgents, useThreads, DistriAgent, DistriThread } from '@distri/react';
 import { uuidv4 } from '@distri/core';
 import Chat from './components/Chat';
 import AgentList from './components/AgentList';
 import TaskMonitor from './components/TaskMonitor';
 
-function AppContent() {
+// Environment configuration
+const ENVIRONMENTS = {
+  development: {
+    name: 'Development',
+    baseUrl: 'http://localhost:8080',
+    color: 'bg-green-100 text-green-800'
+  },
+  staging: {
+    name: 'Staging',
+    baseUrl: 'https://staging-api.distri.ai',
+    color: 'bg-yellow-100 text-yellow-800'
+  },
+  production: {
+    name: 'Production',
+    baseUrl: 'https://api.distri.ai',
+    color: 'bg-blue-100 text-blue-800'
+  }
+} as const;
+
+type Environment = keyof typeof ENVIRONMENTS;
+
+interface AppContentProps {
+  currentEnvironment: Environment;
+  setCurrentEnvironment: (env: Environment) => void;
+}
+
+function AppContent({ currentEnvironment, setCurrentEnvironment }: AppContentProps) {
   const { agents, loading: agentsLoading, refetch: refetchAgents } = useAgents();
   const { threads, loading: threadsLoading, createThread, deleteThread, updateThread, refetch: refetchThreads } = useThreads();
 
@@ -78,6 +104,15 @@ function AppContent() {
     }
   };
 
+  const handleEnvironmentChange = (env: Environment) => {
+    setCurrentEnvironment(env);
+    // Clear current state when switching environments
+    setSelectedThread(null);
+    setSelectedAgent(null);
+    // Note: This would typically require a page reload or provider reinitialization
+    // For demo purposes, we'll just update the state
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -103,10 +138,32 @@ function AppContent() {
                 <h1 className="text-2xl font-bold text-gray-900">Distri</h1>
                 <span className="text-sm text-gray-500">AI Agent Platform</span>
               </button>
+              
+              {/* Environment Indicator */}
+              <div className={`px-2 py-1 rounded text-xs font-medium ${ENVIRONMENTS[currentEnvironment].color}`}>
+                {ENVIRONMENTS[currentEnvironment].name}
+              </div>
             </div>
 
-            {/* Agent Selector - only show on chat tab */}
+            {/* Right side controls */}
             <div className="flex items-center space-x-4">
+              {/* Environment Selector */}
+              <div className="flex items-center space-x-2">
+                <Globe className="h-4 w-4 text-gray-600" />
+                <select
+                  value={currentEnvironment}
+                  onChange={(e) => handleEnvironmentChange(e.target.value as Environment)}
+                  className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(ENVIRONMENTS).map(([key, env]) => (
+                    <option key={key} value={key}>
+                      {env.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Agent Selector - only show on chat tab */}
               {activeTab === 'chat' && (
                 <div className="flex items-center space-x-2">
                   <Bot className="h-4 w-4 text-gray-600" />
@@ -288,12 +345,14 @@ function AppContent() {
 }
 
 function App() {
+  const [currentEnvironment, setCurrentEnvironment] = useState<Environment>('development');
+
   return (
     <DistriProvider config={{
-      baseUrl: 'http://localhost:8080',
-      debug: true
+      baseUrl: ENVIRONMENTS[currentEnvironment].baseUrl,
+      debug: currentEnvironment === 'development'
     }}>
-      <AppContent />
+      <AppContent currentEnvironment={currentEnvironment} setCurrentEnvironment={setCurrentEnvironment} />
     </DistriProvider>
   );
 }

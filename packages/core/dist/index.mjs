@@ -24153,7 +24153,8 @@ export {
   InMemoryTaskStore,
   JsonRpcTransportHandler,
   RequestContext,
-  ResultManager
+  ResultManager,
+  uuidv4
 };
 /*! Bundled license information:
 

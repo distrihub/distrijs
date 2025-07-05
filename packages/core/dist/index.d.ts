@@ -151,5 +151,6 @@ declare class DistriClient {
      */
     static initMessageParams(message: Message$1, configuration?: MessageSendParams['configuration']): MessageSendParams;
 }
+declare function uuidv4(): string;
 
-export { A2AProtocolError, type A2AStreamEventData, type Agent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriThread, type Thread };
+export { A2AProtocolError, type A2AStreamEventData, type Agent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriThread, type Thread, uuidv4 };
