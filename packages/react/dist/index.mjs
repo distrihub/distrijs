@@ -229,6 +229,7 @@ function useChat({ agentId, contextId }) {
       setError(null);
       setIsStreaming(true);
       if (abortControllerRef.current) {
+        console.log("aborting existing stream");
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
@@ -243,6 +244,7 @@ function useChat({ agentId, contextId }) {
       const stream = await client.sendMessageStream(agentId, params);
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
+          console.log("abort signal received");
           break;
         }
         console.log("Stream event:", event);
@@ -294,6 +296,11 @@ function useChat({ agentId, contextId }) {
       }
     };
   }, []);
+  const abort = useCallback2(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
   return {
     loading: loading || clientLoading,
     error: error || clientError,
@@ -302,28 +309,13 @@ function useChat({ agentId, contextId }) {
     sendMessage,
     sendMessageStream,
     clearMessages,
-    refreshMessages: fetchMessages
+    refreshMessages: fetchMessages,
+    abort
   };
 }
 
 // src/useThreads.ts
 import { useState as useState4, useEffect as useEffect4, useCallback as useCallback3 } from "react";
-
-// ../core/src/distri-client.ts
-function uuidv4() {
-  if (typeof crypto?.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  array[6] = array[6] & 15 | 64;
-  array[8] = array[8] & 63 | 128;
-  return [...array].map(
-    (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
-  ).join("");
-}
-
-// src/useThreads.ts
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [threads, setThreads] = useState4([]);
@@ -348,20 +340,18 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const createThread = useCallback3((agentId, title, id) => {
-    const newThread = {
-      id: id || uuidv4(),
-      title,
-      agent_id: agentId,
-      agent_name: agentId,
-      // Will be updated when we have agent info
-      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-      message_count: 0,
-      last_message: void 0
-    };
-    setThreads((prev) => [newThread, ...prev]);
-    return newThread;
-  }, []);
+  const fetchThread = useCallback3(async (threadId) => {
+    if (!client) {
+      throw new Error("Client not available");
+    }
+    try {
+      const response = await client.getThread(threadId);
+      return response;
+    } catch (err) {
+      console.error("[useThreads] Failed to fetch thread:", err);
+      throw err;
+    }
+  }, [client]);
   const deleteThread = useCallback3(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
@@ -428,8 +418,8 @@ function useThreads() {
     loading: loading || clientLoading,
     error: error || clientError,
     refetch: fetchThreads,
-    createThread,
     deleteThread,
+    fetchThread,
     updateThread
   };
 }
