@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Bot, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { DistriAgent } from '@distri/react';
-import { AgentCard } from '@distri/core';
+import { AgentCard, AgentProvider, AgentSkill } from '@distri/core';
 
 interface AgentEditDialogProps {
   agent: DistriAgent;
@@ -15,11 +15,11 @@ interface ValidationError {
   message: string;
 }
 
-const AgentEditDialog: React.FC<AgentEditDialogProps> = ({ 
-  agent, 
-  isOpen, 
-  onClose, 
-  onSave 
+const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
+  agent,
+  isOpen,
+  onClose,
+  onSave
 }) => {
   const [formData, setFormData] = useState<AgentCard>({
     name: '',
@@ -71,7 +71,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
           url: agent.card?.provider?.url || ''
         }
       });
-      
+
       // Fetch schema for validation
       fetchSchema();
     }
@@ -79,7 +79,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
 
   const fetchSchema = async () => {
     try {
-      const response = await fetch(`/api/v1/agents/${agent.id}/schema`);
+      const response = await fetch(`/api/v1/schema/agent`);
       if (response.ok) {
         const agentSchema = await response.json();
         setSchema(agentSchema);
@@ -143,7 +143,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -170,14 +170,14 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => {
       const newData = { ...prev };
-      
+
       // Handle nested field updates
       if (field.includes('.')) {
         const [parent, child] = field.split('.');
         if (parent === 'capabilities') {
           newData.capabilities = { ...newData.capabilities, [child]: value };
         } else if (parent === 'provider') {
-          newData.provider = { ...newData.provider, [child]: value };
+          newData.provider = { ...newData.provider, [child]: value } as AgentProvider;
         }
       } else {
         // Handle top-level fields
@@ -191,7 +191,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
         else if (field === 'defaultOutputModes') newData.defaultOutputModes = value;
         else if (field === 'skills') newData.skills = value;
       }
-      
+
       return newData;
     });
 
@@ -227,7 +227,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
   const updateSkill = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      skills: prev.skills?.map((skill, i) => 
+      skills: prev.skills?.map((skill, i) =>
         i === index ? { ...skill, [field]: value } : skill
       ) || []
     }));
@@ -245,7 +245,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
     placeholder?: string;
   }) => {
     const error = getFieldError(field);
-    
+
     let value = '';
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -281,9 +281,8 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
             onChange={(e) => handleInputChange(field, e.target.value)}
             placeholder={placeholder}
             rows={3}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              error ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-500' : 'border-gray-300'
+              }`}
           />
         ) : (
           <input
@@ -291,9 +290,8 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
             value={value}
             onChange={(e) => handleInputChange(field, e.target.value)}
             placeholder={placeholder}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              error ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-500' : 'border-gray-300'
+              }`}
           />
         )}
         {error && (
@@ -314,7 +312,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
     let values: string[] = [];
     if (field === 'defaultInputModes') values = formData.defaultInputModes || [];
     else if (field === 'defaultOutputModes') values = formData.defaultOutputModes || [];
-    
+
     const [newValue, setNewValue] = useState('');
 
     const addValue = () => {
@@ -426,7 +424,7 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
               <h3 className="text-lg font-medium text-gray-900">Provider Information</h3>
               <InputField label="Organization" field="provider.organization" placeholder="Organization name" />
               <InputField label="Provider URL" field="provider.url" placeholder="https://provider.example.com" />
-              
+
               <h3 className="text-lg font-medium text-gray-900 mt-6">Capabilities</h3>
               <div className="space-y-3">
                 <label className="flex items-center">
@@ -462,14 +460,14 @@ const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
 
           {/* Input/Output Modes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ArrayField 
-              label="Input Modes" 
-              field="defaultInputModes" 
+            <ArrayField
+              label="Input Modes"
+              field="defaultInputModes"
               placeholder="text/plain, application/json, etc."
             />
-            <ArrayField 
-              label="Output Modes" 
-              field="defaultOutputModes" 
+            <ArrayField
+              label="Output Modes"
+              field="defaultOutputModes"
               placeholder="text/plain, application/json, etc."
             />
           </div>

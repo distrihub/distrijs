@@ -15,11 +15,11 @@ interface ValidationError {
   message: string;
 }
 
-const AgentEditForm: React.FC<AgentEditFormProps> = ({ 
-  agent, 
-  isOpen, 
-  onClose, 
-  onSave 
+const AgentEditForm: React.FC<AgentEditFormProps> = ({
+  agent,
+  isOpen,
+  onClose,
+  onSave
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -37,7 +37,7 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
 
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [loading, setLoading] = useState(false);
-  const { schema, validateForm: validateWithSchema } = useAgentSchema(agent?.id || null);
+  const { schema, validateForm: validateWithSchema } = useAgentSchema();
 
   useEffect(() => {
     if (isOpen && agent) {
@@ -108,7 +108,7 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -123,10 +123,10 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
           ...agent.card,
           name: formData.name,
           description: formData.description,
-          version: formData.version || undefined,
-          iconUrl: formData.iconUrl || undefined,
-          documentationUrl: formData.documentationUrl || undefined,
-          url: formData.url || undefined,
+          version: formData.version || '',
+          iconUrl: formData.iconUrl || '',
+          documentationUrl: formData.documentationUrl || '',
+          url: formData.url || '',
           capabilities: {
             ...agent.card?.capabilities,
             streaming: formData.streaming,
@@ -181,9 +181,8 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
             onChange={(e) => handleInputChange(field, e.target.value)}
             placeholder={placeholder}
             rows={3}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              error ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-500' : 'border-gray-300'
+              }`}
           />
         ) : (
           <input
@@ -191,9 +190,8 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
             value={value}
             onChange={(e) => handleInputChange(field, e.target.value)}
             placeholder={placeholder}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              error ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-500' : 'border-gray-300'
+              }`}
           />
         )}
         {error && (
