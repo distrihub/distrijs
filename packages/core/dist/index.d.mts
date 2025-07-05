@@ -53,12 +53,7 @@ interface ModelSettings {
     response_format?: any;
 }
 type McpServerType = 'tool' | 'agent';
-type ModelProviderType = 'openai' | 'aigateway';
-
-export interface ModelProvider {
-    provider: ModelProviderType;
-    value?: any;
-}
+type ModelProvider = 'openai' | 'aigateway';
 /**
  * Distri Thread type for conversation management
  */
