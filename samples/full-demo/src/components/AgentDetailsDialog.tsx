@@ -1,74 +1,36 @@
 import React from 'react';
-import { X, Bot, CheckCircle, XCircle, MessageSquare, Settings, ExternalLink } from 'lucide-react';
-
-interface AgentCapabilities {
-  streaming?: boolean;
-  pushNotifications?: boolean;
-  stateTransitionHistory?: boolean;
-  extensions?: any[];
-}
-
-interface AgentSkill {
-  id: string;
-  name: string;
-  description: string;
-  tags: string[];
-  examples?: string[];
-}
-
-interface AgentCard {
-  name: string;
-  description: string;
-  version?: string;
-  iconUrl?: string;
-  documentationUrl?: string;
-  url?: string;
-  capabilities?: AgentCapabilities;
-  defaultInputModes?: string[];
-  defaultOutputModes?: string[];
-  skills?: AgentSkill[];
-  provider?: {
-    organization: string;
-    url: string;
-  };
-}
-
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  status: 'online' | 'offline';
-}
+import { X, Bot, MessageSquare, ExternalLink } from 'lucide-react';
+import { AgentCard } from '@distri/core';
 
 interface AgentDetailsDialogProps {
-  agent: Agent;
+  agentId: string;
   isOpen: boolean;
   onClose: () => void;
-  onStartChat?: (agent: Agent) => void;
+  onStartChat?: () => void;
 }
 
-const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({ 
-  agent, 
-  isOpen, 
-  onClose, 
-  onStartChat 
+const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
+  agentId,
+  isOpen,
+  onClose,
+  onStartChat
 }) => {
   const [agentCard, setAgentCard] = React.useState<AgentCard | null>(null);
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (isOpen && agent) {
+    if (isOpen && agentId) {
       fetchAgentCard();
     }
-  }, [isOpen, agent]);
+  }, [isOpen, agentId]);
 
   const fetchAgentCard = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/v1/agents/${agent.id}`);
+      const response = await fetch(`/api/v1/agents/${agentId}/.well-known/agent.json`);
       if (response.ok) {
-        const card = await response.json();
-        setAgentCard(card);
+        const agentCard = await response.json();
+        setAgentCard(agentCard);
       }
     } catch (error) {
       console.error('Failed to fetch agent card:', error);
@@ -80,17 +42,17 @@ const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
   // Determine agent type based on A2A capabilities
   const getAgentType = (): string => {
     if (!agentCard) return 'Custom Agent';
-    
+
     // Check if it's a Distri agent
     if (agentCard.provider?.organization === 'Distri' || agentCard.url?.includes('distri')) {
       return 'Distri Agent';
     }
-    
+
     // Check if it's a remote agent (has external URL)
     if (agentCard.url && !agentCard.url.includes('localhost')) {
       return 'Remote Agent';
     }
-    
+
     return 'Custom Agent';
   };
 
@@ -119,19 +81,7 @@ const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{agent.name}</h2>
-              <div className="flex items-center space-x-2 mt-1">
-                {agent.status === 'online' ? (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-red-500" />
-                )}
-                <span className={`text-sm capitalize ${
-                  agent.status === 'online' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {agent.status}
-                </span>
-              </div>
+              <h2 className="text-xl font-semibold text-gray-900">{agentCard?.name}</h2>
             </div>
           </div>
           <button
@@ -164,7 +114,7 @@ const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
                   )}
                 </div>
                 <p className="text-gray-700 leading-relaxed">
-                  {agentCard?.description || agent.description}
+                  {agentCard?.description}
                 </p>
               </div>
 
@@ -198,21 +148,18 @@ const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          agentCard.capabilities.streaming ? 'bg-green-400' : 'bg-gray-300'
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${agentCard.capabilities.streaming ? 'bg-green-400' : 'bg-gray-300'
+                          }`} />
                         <span className="text-sm">Streaming</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          agentCard.capabilities.pushNotifications ? 'bg-green-400' : 'bg-gray-300'
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${agentCard.capabilities.pushNotifications ? 'bg-green-400' : 'bg-gray-300'
+                          }`} />
                         <span className="text-sm">Push Notifications</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          agentCard.capabilities.stateTransitionHistory ? 'bg-green-400' : 'bg-gray-300'
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${agentCard.capabilities.stateTransitionHistory ? 'bg-green-400' : 'bg-gray-300'
+                          }`} />
                         <span className="text-sm">State History</span>
                       </div>
                     </div>
@@ -317,7 +264,7 @@ const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t bg-gray-50">
           <div className="text-sm text-gray-500">
-            ID: {agent.id}
+            ID: {agentId}
           </div>
           <div className="flex space-x-3">
             <button
@@ -328,11 +275,11 @@ const AgentDetailsDialog: React.FC<AgentDetailsDialogProps> = ({
             </button>
             {onStartChat && (
               <button
-                onClick={() => onStartChat(agent)}
+                onClick={onStartChat}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 <MessageSquare className="h-4 w-4" />
-                <span>Chat with {agent.name}</span>
+                <span>Chat with {agentCard?.name}</span>
               </button>
             )}
           </div>

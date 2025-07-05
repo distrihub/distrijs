@@ -58,17 +58,6 @@ function AppContent() {
     setSelectedThread(newThread);
   };
 
-  const handleDeleteThread = async (threadId: string) => {
-    try {
-      await deleteThread(threadId);
-      if (selectedThread?.id === threadId) {
-        const remainingThreads = threads.filter(thread => thread.id !== threadId);
-        setSelectedThread(remainingThreads.length > 0 ? remainingThreads[0] : null);
-      }
-    } catch (error) {
-      console.error('Failed to delete thread:', error);
-    }
-  };
 
   const handleThreadUpdate = async (threadId: string) => {
     try {
@@ -279,7 +268,7 @@ function AppContent() {
                         headers: {
                           'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify(agent.card),
+                        body: JSON.stringify(agent),
                       });
 
                       if (!response.ok) {

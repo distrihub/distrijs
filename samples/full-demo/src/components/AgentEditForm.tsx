@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Bot, AlertCircle } from 'lucide-react';
-import { DistriAgent } from '@distri/react';
-import { useAgentSchema } from '../hooks/useAgentSchema';
+import { X, Save, Bot, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { DistriAgent } from '@distri/core';
+
+// Extended agent type for form editing
+interface AgentFormData {
+  system_prompt?: string;
+  icon_url?: string;
+  sub_agents?: string;
+  mcp_servers?: any[];
+  model_settings?: any;
+  [key: string]: any; // allow dynamic access for read-only rendering
+}
 
 interface AgentEditFormProps {
   agent: DistriAgent;
@@ -15,316 +26,429 @@ interface ValidationError {
   message: string;
 }
 
+const DEFAULT_AVATAR = (
+  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+    <Bot className="h-8 w-8 text-blue-500" />
+  </div>
+);
+
+const getFormData = (agent: DistriAgent) => {
+  return {
+    ...agent,
+    system_prompt: agent.system_prompt || '',
+    icon_url: agent.icon_url || '',
+    skills: agent.skills?.join('\n') || '',
+    name: agent.name || '',
+    description: agent.description || '',
+    sub_agents: agent.sub_agents?.join('\n') || '',
+    mcp_servers: agent.mcp_servers?.map((srv) => ({
+      name: srv.name,
+      filter: srv.filter?.join('\n') || '',
+    })),
+    model_settings: agent.model_settings,
+  };
+};
+
+const getAgentData = (agent: DistriAgent, formData: AgentFormData) => {
+  const sub_agents = formData.sub_agents
+    ? (typeof formData.sub_agents === 'string'
+      ? formData.sub_agents.split('\n').map((l: string) => l.trim()).filter(Boolean)
+      : formData.sub_agents)
+    : [];
+
+  // Prepare mcp_servers filters as arrays
+  const mcp_servers = (formData.mcp_servers || []).map((srv: any) => ({
+    ...srv,
+    filter: srv.filter ? srv.filter.split('\n').map((l: string) => l.trim()).filter(Boolean) : [],
+  }));
+  // Prepare model_settings
+  const model_settings = {
+    ...formData.model_settings,
+    model_provider: formData.model_settings?.model_provider,
+  };
+  return {
+    ...agent,
+    ...formData,
+    name: formData.name || '',
+    description: formData.description || '',
+    system_prompt: formData.system_prompt || '',
+    icon_url: formData.icon_url || '',
+    sub_agents: sub_agents,
+    model_settings: model_settings,
+    mcp_servers: mcp_servers,
+  };
+};
 const AgentEditForm: React.FC<AgentEditFormProps> = ({
   agent,
   isOpen,
   onClose,
-  onSave
+  onSave,
 }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    version: '',
-    iconUrl: '',
-    documentationUrl: '',
-    url: '',
-    streaming: false,
-    pushNotifications: false,
-    stateTransitionHistory: false,
-    organization: '',
-    providerUrl: ''
-  });
-
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [agentData, setAgentData] = useState<DistriAgent>(agent);
   const [loading, setLoading] = useState(false);
-  const { schema, validateForm: validateWithSchema } = useAgentSchema();
+  const [iconDialogOpen, setIconDialogOpen] = useState(false);
+  const [iconInput, setIconInput] = useState(agent.icon_url || '');
+  const [mode, setMode] = useState<'ui' | 'raw'>('ui');
+  const [rawError, setRawError] = useState<string | null>(null);
+
+  const formData = getFormData(agentData);
+  const rawValue = JSON.stringify(agentData, null, 2);
 
   useEffect(() => {
-    if (isOpen && agent) {
-      setFormData({
-        name: agent.name || '',
-        description: agent.description || '',
-        version: agent.card?.version || '',
-        iconUrl: agent.card?.iconUrl || '',
-        documentationUrl: agent.card?.documentationUrl || '',
-        url: agent.card?.url || '',
-        streaming: agent.card?.capabilities?.streaming || false,
-        pushNotifications: agent.card?.capabilities?.pushNotifications || false,
-        stateTransitionHistory: agent.card?.capabilities?.stateTransitionHistory || false,
-        organization: agent.card?.provider?.organization || '',
-        providerUrl: agent.card?.provider?.url || ''
-      });
+    if (isOpen) {
+      setErrors([]);
+      setIconInput(agent.icon_url || '');
+      setRawError(null);
+      setMode('ui');
     }
   }, [isOpen, agent]);
 
-  const validateForm = (): boolean => {
+  const setFormData = ((prev: AgentFormData) => {
+    setAgentData(getAgentData(agentData, prev));
+  });
+
+  // --- Field Handlers ---
+  const handleFieldChange = (field: string, value: any) => {
+    setFormData((prev: AgentFormData) => ({ ...prev, [field]: value }));
+    setErrors((prev) => prev.filter((e) => e.field !== field));
+  };
+
+  // --- Validation ---
+  const validate = () => {
     const newErrors: ValidationError[] = [];
-
-    // Use schema-based validation if available
-    if (schema && validateWithSchema) {
-      const schemaErrors = validateWithSchema(formData);
-      for (const [field, message] of Object.entries(schemaErrors)) {
-        newErrors.push({ field, message });
-      }
-    } else {
-      // Fall back to manual validation
-      if (!formData.name.trim()) {
-        newErrors.push({ field: 'name', message: 'Name is required' });
-      }
-
-      if (!formData.description.trim()) {
-        newErrors.push({ field: 'description', message: 'Description is required' });
-      }
-
-      if (formData.url && !isValidUrl(formData.url)) {
-        newErrors.push({ field: 'url', message: 'Please enter a valid URL' });
-      }
-
-      if (formData.iconUrl && !isValidUrl(formData.iconUrl)) {
-        newErrors.push({ field: 'iconUrl', message: 'Please enter a valid icon URL' });
-      }
-
-      if (formData.documentationUrl && !isValidUrl(formData.documentationUrl)) {
-        newErrors.push({ field: 'documentationUrl', message: 'Please enter a valid documentation URL' });
-      }
-
-      if (formData.providerUrl && !isValidUrl(formData.providerUrl)) {
-        newErrors.push({ field: 'providerUrl', message: 'Please enter a valid provider URL' });
+    if (!formData.name || typeof formData.name !== 'string' || !formData.name.trim()) {
+      newErrors.push({ field: 'name', message: 'Name is required' });
+    }
+    if (formData.icon_url) {
+      try {
+        new URL(formData.icon_url);
+      } catch {
+        newErrors.push({ field: 'icon_url', message: 'Must be a valid URL' });
       }
     }
-
+    if (formData.sub_agents) {
+      const lines = formData.sub_agents.split('\n').map((l: string) => l.trim()).filter(Boolean);
+      if (lines.some((l: string) => !l)) {
+        newErrors.push({ field: 'sub_agents', message: 'Each agent must be a non-empty name' });
+      }
+    }
+    if (Array.isArray(formData.mcp_servers)) {
+      formData.mcp_servers.forEach((srv: any, idx: number) => {
+        if (!srv.name || typeof srv.name !== 'string') {
+          newErrors.push({ field: `mcp_servers.${idx}.name`, message: 'Name is required' });
+        }
+      });
+    }
+    if (formData.model_settings) {
+      const provider = formData.model_settings?.provider;
+      if (!provider || !provider.provider) {
+        newErrors.push({ field: 'model_settings.model_provider', message: 'Provider is required' });
+      }
+      if (provider.provider === 'aigateway') {
+        const v = provider.value || {};
+        if (!v.base_url) newErrors.push({ field: 'model_settings.model_provider.value.base_url', message: 'Base URL required' });
+        if (!v.api_key) newErrors.push({ field: 'model_settings.model_provider.value.api_key', message: 'API Key required' });
+        if (!v.project_id) newErrors.push({ field: 'model_settings.model_provider.value.project_id', message: 'Project ID required' });
+      }
+    }
     setErrors(newErrors);
     return newErrors.length === 0;
   };
 
-  const isValidUrl = (url: string): boolean => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
+  // --- Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validate()) return;
     setLoading(true);
-    try {
-      const updatedAgent: DistriAgent = {
-        ...agent,
-        name: formData.name,
-        description: formData.description,
-        card: {
-          ...agent.card,
-          name: formData.name,
-          description: formData.description,
-          version: formData.version || '',
-          iconUrl: formData.iconUrl || '',
-          documentationUrl: formData.documentationUrl || '',
-          url: formData.url || '',
-          capabilities: {
-            ...agent.card?.capabilities,
-            streaming: formData.streaming,
-            pushNotifications: formData.pushNotifications,
-            stateTransitionHistory: formData.stateTransitionHistory
-          },
-          provider: formData.organization || formData.providerUrl ? {
-            organization: formData.organization || 'Unknown',
-            url: formData.providerUrl || ''
-          } : undefined
-        }
-      };
 
-      await onSave(updatedAgent);
+
+    try {
+      await onSave(agentData);
       onClose();
-    } catch (error) {
-      console.error('Failed to save agent:', error);
+    } catch (err) {
       setErrors([{ field: 'general', message: 'Failed to save agent. Please try again.' }]);
     } finally {
       setLoading(false);
     }
+
   };
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => prev.filter(error => error.field !== field));
+  // --- Renderers ---
+  const getFieldError = (field: string) => errors.find((e) => e.field === field)?.message;
+
+  // --- MCP Servers UI ---
+  const handleMcpServerChange = (idx: number, key: string, value: any) => {
+    setFormData((prev: AgentFormData) => {
+      const mcp_servers = [...(prev.mcp_servers || [])];
+      mcp_servers[idx] = { ...mcp_servers[idx], [key]: value };
+      return { ...prev, mcp_servers };
+    });
+    setErrors((prev) => prev.filter((e) => !e.field.startsWith(`mcp_servers.${idx}`)));
+  };
+  const addMcpServer = () => {
+    setFormData((prev: AgentFormData) => ({ ...prev, mcp_servers: [...(prev.mcp_servers || []), { name: '', filter: '' }] }));
+  };
+  const removeMcpServer = (idx: number) => {
+    setFormData((prev: AgentFormData) => {
+      const mcp_servers = [...(prev.mcp_servers || [])];
+      mcp_servers.splice(idx, 1);
+      return { ...prev, mcp_servers };
+    });
   };
 
-  const getFieldError = (field: string) => {
-    return errors.find(error => error.field === field)?.message;
+  // --- Icon Dialog ---
+  const openIconDialog = () => {
+    setIconInput(formData.icon_url || '');
+    setIconDialogOpen(true);
+  };
+  const closeIconDialog = () => {
+    setIconDialogOpen(false);
+  };
+  const saveIconUrl = () => {
+    handleFieldChange('icon_url', iconInput);
+    setIconDialogOpen(false);
   };
 
-  const InputField = ({ label, field, type = 'text', required = false, placeholder = '' }: {
-    label: string;
-    field: string;
-    type?: string;
-    required?: boolean;
-    placeholder?: string;
-  }) => {
-    const error = getFieldError(field);
-    const value = (formData as any)[field] || '';
-
-    return (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        {type === 'textarea' ? (
-          <textarea
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            placeholder={placeholder}
-            rows={3}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-500' : 'border-gray-300'
-              }`}
-          />
-        ) : (
-          <input
-            type={type}
-            value={value}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            placeholder={placeholder}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-500' : 'border-gray-300'
-              }`}
-          />
-        )}
-        {error && (
-          <p className="mt-1 text-sm text-red-600 flex items-center">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            {error}
-          </p>
-        )}
-      </div>
-    );
+  // --- Raw mode handlers ---
+  const handleRawChange = (value: string) => {
+    try {
+      const parsed = JSON.parse(value);
+      setAgentData(parsed);
+      setRawError(null);
+    } catch (err) {
+      setRawError('Invalid JSON');
+    }
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[96vh] overflow-y-auto flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-8 border-b">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Bot className="h-5 w-5 text-white" />
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Bot className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Edit Agent</h2>
-              <p className="text-sm text-gray-500">Update agent configuration</p>
+              <h2 className="text-2xl font-semibold text-gray-900">Edit Agent</h2>
+              <p className="text-base text-gray-500">Update agent configuration</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* General Errors */}
-          {errors.find(e => e.field === 'general') && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-red-400" />
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
-                  <p className="text-sm text-red-700">{getFieldError('general')}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
-            <InputField label="Name" field="name" required placeholder="Enter agent name" />
-            <InputField label="Description" field="description" type="textarea" required placeholder="Enter agent description" />
-            <InputField label="Version" field="version" placeholder="1.0.0" />
-            <InputField label="Icon URL" field="iconUrl" placeholder="https://example.com/icon.png" />
-            <InputField label="Documentation URL" field="documentationUrl" placeholder="https://docs.example.com" />
-            <InputField label="Agent URL" field="url" placeholder="https://agent.example.com" />
-          </div>
-
-          {/* Provider Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Provider Information</h3>
-            <InputField label="Organization" field="organization" placeholder="Organization name" />
-            <InputField label="Provider URL" field="providerUrl" placeholder="https://provider.example.com" />
-          </div>
-
-          {/* Capabilities */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Capabilities</h3>
-            <div className="space-y-3">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.streaming}
-                  onChange={(e) => handleInputChange('streaming', e.target.checked)}
-                  className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300"
-                />
-                <span className="text-sm text-gray-700">Streaming</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.pushNotifications}
-                  onChange={(e) => handleInputChange('pushNotifications', e.target.checked)}
-                  className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300"
-                />
-                <span className="text-sm text-gray-700">Push Notifications</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.stateTransitionHistory}
-                  onChange={(e) => handleInputChange('stateTransitionHistory', e.target.checked)}
-                  className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300"
-                />
-                <span className="text-sm text-gray-700">State Transition History</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t">
+          <div className="flex items-center space-x-2">
+            {/* Mode Toggle */}
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              className={`px-3 py-1 rounded-t-md border-b-2 ${mode === 'ui' ? 'border-blue-600 text-blue-700 font-semibold bg-blue-50' : 'border-transparent text-gray-500 bg-gray-100'}`}
+              onClick={() => setMode('ui')}
             >
-              Cancel
+              UI
             </button>
             <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              type="button"
+              className={`px-3 py-1 rounded-t-md border-b-2 ${mode === 'raw' ? 'border-blue-600 text-blue-700 font-semibold bg-blue-50' : 'border-transparent text-gray-500 bg-gray-100'}`}
+              onClick={() => setMode('raw')}
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>Save Agent</span>
-                </>
-              )}
+              Raw
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-4">
+              <X className="h-7 w-7" />
             </button>
           </div>
-        </form>
+        </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto min-h-[500px] max-h-[calc(96vh-180px)] px-8 pb-8 pt-6 flex flex-col">
+          {mode === 'raw' ? (
+            <div className="flex-1 flex flex-col">
+              <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">Agent JSON Configuration</label>
+              <SyntaxHighlighter language="json" style={oneDark}>
+                {rawValue}
+              </SyntaxHighlighter>
+              {rawError && <p className="text-xs text-red-600 mt-1">{rawError}</p>}
+            </div>
+          ) : (
+            <form className="flex-1 flex flex-col space-y-8" onSubmit={handleSubmit}>
+              {errors.find((e) => e.field === 'general') && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                  <div className="flex">
+                    <AlertCircle className="h-5 w-5 text-red-400" />
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">Error</h3>
+                      <p className="text-sm text-red-700">{getFieldError('general')}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Row: Avatar, Name, Description */}
+              <div className="flex flex-col md:flex-row md:items-center md:space-x-8 space-y-4 md:space-y-0">
+                {/* Avatar/Icon */}
+                <div className="flex flex-col items-center space-y-2">
+                  <button type="button" onClick={openIconDialog} className="focus:outline-none group">
+                    {formData.icon_url ? (
+                      <img
+                        src={formData.icon_url as string}
+                        alt="icon preview"
+                        className="w-16 h-16 rounded-full border object-cover group-hover:opacity-80"
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                    ) : (
+                      DEFAULT_AVATAR
+                    )}
+                    <span className="text-xs text-blue-600 mt-1 flex items-center"><ImageIcon className="w-4 h-4 mr-1" />Change</span>
+                  </button>
+                </div>
+                {/* Name and Description */}
+                <div className="flex-1 flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      className="mt-1 block w-full border rounded-md p-2"
+                      value={formData.name || ''}
+                      onChange={(e) => handleFieldChange('name', e.target.value)}
+                      required
+                    />
+                    {getFieldError('name') && <p className="text-xs text-red-600 mt-1">{getFieldError('name')}</p>}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      rows={2}
+                      className="mt-1 block w-full border rounded-md p-2"
+                      value={formData.description || ''}
+                      onChange={(e) => handleFieldChange('description', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Icon URL Dialog */}
+              {iconDialogOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                  <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xs flex flex-col items-center">
+                    <h3 className="text-lg font-semibold mb-2">Set Icon URL</h3>
+                    <input
+                      type="text"
+                      className="w-full border rounded-md p-2 mb-2"
+                      value={iconInput}
+                      onChange={(e) => setIconInput(e.target.value)}
+                      placeholder="https://..."
+                    />
+                    {iconInput && (
+                      <img
+                        src={iconInput}
+                        alt="icon preview"
+                        className="w-16 h-16 rounded-full border object-cover mb-2"
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                    )}
+                    <div className="flex space-x-2 mt-2">
+                      <button type="button" className="px-3 py-1 rounded bg-gray-200" onClick={closeIconDialog}>Cancel</button>
+                      <button type="button" className="px-3 py-1 rounded bg-blue-600 text-white" onClick={saveIconUrl}>Save</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* System Prompt */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">System Prompt</label>
+                <textarea
+                  rows={10}
+                  className="mt-1 block w-full border rounded-md p-2 font-mono"
+                  value={formData.system_prompt || ''}
+                  onChange={(e) => handleFieldChange('system_prompt', e.target.value)}
+                />
+              </div>
+              {/* Skills */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Skills (one per line)</label>
+                <textarea
+                  rows={6}
+                  className="mt-1 block w-full border rounded-md p-2"
+                  value={Array.isArray(formData.skills) ? formData.skills.join('\n') : formData.skills || ''}
+                  onChange={(e) => handleFieldChange('skills', e.target.value)}
+                  placeholder="Define skills one per line"
+                />
+              </div>
+              {/* Sub Agents */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Sub Agents (one per line)</label>
+                <textarea
+                  rows={3}
+                  className="mt-1 block w-full border rounded-md p-2"
+                  value={Array.isArray(formData.sub_agents) ? formData.sub_agents.join('\n') : formData.sub_agents || ''}
+                  onChange={(e) => handleFieldChange('sub_agents', e.target.value)}
+                  placeholder="Define sub-agents one per line"
+                />
+                {getFieldError('sub_agents') && <p className="text-xs text-red-600 mt-1">{getFieldError('sub_agents')}</p>}
+              </div>
+              {/* MCP Servers */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">MCP Servers</label>
+                <div className="space-y-2">
+                  {(formData.mcp_servers || []).map((srv: any, idx: number) => (
+                    <div key={idx} className="flex items-start space-x-2">
+                      <input
+                        type="text"
+                        className="border rounded-md p-2 w-1/3"
+                        placeholder="Name"
+                        value={srv.name || ''}
+                        onChange={(e) => handleMcpServerChange(idx, 'name', e.target.value)}
+                      />
+                      <textarea
+                        className="border rounded-md p-2 w-2/3"
+                        placeholder="Filter (one per line)"
+                        rows={2}
+                        value={Array.isArray(srv.filter) ? srv.filter.join('\n') : srv.filter || ''}
+                        onChange={(e) => handleMcpServerChange(idx, 'filter', e.target.value)}
+                      />
+                      <button type="button" className="text-red-500" onClick={() => removeMcpServer(idx)}>
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="text-blue-600 text-sm" onClick={addMcpServer}>
+                    + Add MCP Server
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
+        {/* Save/Cancel always visible at bottom */}
+        <div className="flex items-center justify-end space-x-3 pt-6 border-t mt-6 px-8 pb-8 bg-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={loading || (mode === 'raw' && !!rawError)}
+            onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              await handleSubmit(e);
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Save Agent</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
-    </div>
+    </div >
   );
 };
 

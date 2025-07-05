@@ -409,7 +409,6 @@ var ConnectionError = class extends DistriError {
 var DistriClient = class {
   constructor(config) {
     this.agentClients = /* @__PURE__ */ new Map();
-    this.agentCards = /* @__PURE__ */ new Map();
     this.config = {
       baseUrl: config.baseUrl.replace(/\/$/, ""),
       apiVersion: config.apiVersion || "v1",
@@ -430,18 +429,8 @@ var DistriClient = class {
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
-      const agentCards = await response.json();
-      agentCards.forEach((card) => {
-        this.agentCards.set(card.name, card);
-      });
-      const distriAgents = agentCards.map((card) => ({
-        id: card.name,
-        name: card.name,
-        description: card.description,
-        status: "online",
-        card
-      }));
-      return distriAgents;
+      const agents = await response.json();
+      return agents;
     } catch (error) {
       if (error instanceof ApiError)
         throw error;
@@ -460,15 +449,11 @@ var DistriClient = class {
         }
         throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
       }
-      const card = await response.json();
-      this.agentCards.set(agentId, card);
-      return {
-        id: card.name,
-        name: card.name,
-        description: card.description,
-        status: "online",
-        card
-      };
+      const agent = await response.json();
+      if (!agent.id) {
+        agent.id = agentId;
+      }
+      return agent;
     } catch (error) {
       if (error instanceof ApiError)
         throw error;
@@ -479,16 +464,10 @@ var DistriClient = class {
    * Get or create A2AClient for an agent
    */
   getA2AClient(agentId) {
-    if (!this.agentClients.has(agentId)) {
-      const agentCard = this.agentCards.get(agentId);
-      if (!agentCard) {
-        throw new DistriError(`Agent card not found for ${agentId}. Call getAgent() first.`, "AGENT_NOT_FOUND");
-      }
-      const agentUrl = agentCard.url || `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
-      this.agentClients.set(agentId, client);
-      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
-    }
+    const agentUrl = `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
+    const client = new A2AClient(agentUrl);
+    this.agentClients.set(agentId, client);
+    this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     return this.agentClients.get(agentId);
   }
   /**

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Play, Bot, CheckCircle, XCircle, Edit, Eye } from 'lucide-react';
+import { RefreshCw, Play, Bot, Edit, Eye } from 'lucide-react';
 import { DistriAgent } from '@distri/react';
 import AgentEditForm from './AgentEditForm';
 import AgentDetailsDialog from './AgentDetailsDialog';
@@ -16,6 +16,7 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
   const [editingAgent, setEditingAgent] = useState<DistriAgent | null>(null);
   const [viewingAgent, setViewingAgent] = useState<DistriAgent | null>(null);
 
+  console.log('agents', agents);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -45,27 +46,6 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
     }
   };
 
-  const handleUpdateAgent = async (agentId: string) => {
-    try {
-      // Make API call to update agent
-      const response = await fetch(`/api/v1/agents/${agentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editingAgent),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update agent: ${response.statusText}`);
-      }
-
-      await onRefresh(); // Refresh the list after updating
-    } catch (error) {
-      console.error('Failed to update agent:', error);
-      throw error;
-    }
-  };
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -76,7 +56,7 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
           disabled={refreshing}
           className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
-                     <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
@@ -92,7 +72,7 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
               <div
-                key={agent.id}
+                key={agent.name}
                 className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
@@ -103,13 +83,8 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
                     <div>
                       <h3 className="font-medium text-gray-900">{agent.name}</h3>
                       <div className="flex items-center space-x-1">
-                        {agent.status === 'online' ? (
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <XCircle className="h-3 w-3 text-red-500" />
-                        )}
                         <span className="text-xs text-gray-500 capitalize">
-                          {agent.status}
+                          {agent.version}
                         </span>
                       </div>
                     </div>
@@ -122,7 +97,7 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
 
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-400">
-                    {agent.card?.version && `v${agent.card.version}`}
+                    {agent.version && `v${agent.version}`}
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -141,7 +116,6 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
                     </button>
                     <button
                       onClick={() => onStartChat(agent)}
-                      disabled={agent.status !== 'online'}
                       className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Play className="h-3 w-3" />
@@ -168,12 +142,12 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat, o
       {/* Details Dialog */}
       {viewingAgent && (
         <AgentDetailsDialog
-          agent={viewingAgent}
+          agentId={viewingAgent.name}
           isOpen={!!viewingAgent}
           onClose={() => setViewingAgent(null)}
-          onStartChat={(agent) => {
+          onStartChat={() => {
             setViewingAgent(null);
-            onStartChat(agent);
+            onStartChat(viewingAgent);
           }}
         />
       )}
