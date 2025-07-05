@@ -262,8 +262,9 @@ function AppContent() {
                   onStartChat={startChatWithAgent}
                   onUpdateAgent={async (agent) => {
                     try {
+                      const id = agent.id || agent.name;
                       // Make API call to update agent
-                      const response = await fetch(`/api/v1/agents/${agent.id}`, {
+                      const response = await fetch(`/api/v1/agents/${id}`, {
                         method: 'PUT',
                         headers: {
                           'Content-Type': 'application/json',

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Bot, AlertCircle, Image as ImageIcon } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { DistriAgent } from '@distri/core';
 
 // Extended agent type for form editing
@@ -32,7 +30,7 @@ const DEFAULT_AVATAR = (
   </div>
 );
 
-const getFormData = (agent: DistriAgent) => {
+const getFormData = (agent: DistriAgent): AgentFormData => {
   return {
     ...agent,
     system_prompt: agent.system_prompt || '',
@@ -48,36 +46,6 @@ const getFormData = (agent: DistriAgent) => {
     model_settings: agent.model_settings,
   };
 };
-
-const getAgentData = (agent: DistriAgent, formData: AgentFormData) => {
-  const sub_agents = formData.sub_agents
-    ? (typeof formData.sub_agents === 'string'
-      ? formData.sub_agents.split('\n').map((l: string) => l.trim()).filter(Boolean)
-      : formData.sub_agents)
-    : [];
-
-  // Prepare mcp_servers filters as arrays
-  const mcp_servers = (formData.mcp_servers || []).map((srv: any) => ({
-    ...srv,
-    filter: srv.filter ? srv.filter.split('\n').map((l: string) => l.trim()).filter(Boolean) : [],
-  }));
-  // Prepare model_settings
-  const model_settings = {
-    ...formData.model_settings,
-    model_provider: formData.model_settings?.model_provider,
-  };
-  return {
-    ...agent,
-    ...formData,
-    name: formData.name || '',
-    description: formData.description || '',
-    system_prompt: formData.system_prompt || '',
-    icon_url: formData.icon_url || '',
-    sub_agents: sub_agents,
-    model_settings: model_settings,
-    mcp_servers: mcp_servers,
-  };
-};
 const AgentEditForm: React.FC<AgentEditFormProps> = ({
   agent,
   isOpen,
@@ -90,32 +58,38 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
   const [iconDialogOpen, setIconDialogOpen] = useState(false);
   const [iconInput, setIconInput] = useState(agent.icon_url || '');
   const [mode, setMode] = useState<'ui' | 'raw'>('ui');
-  const [rawError, setRawError] = useState<string | null>(null);
+
+
 
   const formData = getFormData(agentData);
   const rawValue = JSON.stringify(agentData, null, 2);
-
   useEffect(() => {
     if (isOpen) {
       setErrors([]);
       setIconInput(agent.icon_url || '');
-      setRawError(null);
       setMode('ui');
+      setAgentData(agent);
     }
   }, [isOpen, agent]);
 
-  const setFormData = ((prev: AgentFormData) => {
-    setAgentData(getAgentData(agentData, prev));
-  });
-
   // --- Field Handlers ---
   const handleFieldChange = (field: string, value: any) => {
-    setFormData((prev: AgentFormData) => ({ ...prev, [field]: value }));
+    // Update agentData directly
+    let updated: any = { ...agentData };
+    if (field === 'skills') {
+      updated.skills = value.split('\n').map((l: string) => l.trim()).filter(Boolean);
+    } else if (field === 'sub_agents') {
+      updated.sub_agents = value.split('\n').map((l: string) => l.trim()).filter(Boolean);
+    } else {
+      updated[field] = value;
+    }
+    setAgentData(updated);
     setErrors((prev) => prev.filter((e) => e.field !== field));
   };
 
   // --- Validation ---
   const validate = () => {
+    console.log('Validating agent:', formData);
     const newErrors: ValidationError[] = [];
     if (!formData.name || typeof formData.name !== 'string' || !formData.name.trim()) {
       newErrors.push({ field: 'name', message: 'Name is required' });
@@ -140,29 +114,19 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
         }
       });
     }
-    if (formData.model_settings) {
-      const provider = formData.model_settings?.provider;
-      if (!provider || !provider.provider) {
-        newErrors.push({ field: 'model_settings.model_provider', message: 'Provider is required' });
-      }
-      if (provider.provider === 'aigateway') {
-        const v = provider.value || {};
-        if (!v.base_url) newErrors.push({ field: 'model_settings.model_provider.value.base_url', message: 'Base URL required' });
-        if (!v.api_key) newErrors.push({ field: 'model_settings.model_provider.value.api_key', message: 'API Key required' });
-        if (!v.project_id) newErrors.push({ field: 'model_settings.model_provider.value.project_id', message: 'Project ID required' });
-      }
-    }
-    setErrors(newErrors);
-    return newErrors.length === 0;
+    return newErrors;
   };
 
   // --- Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    const errors = validate();
+    console.log('Errors:', errors);
+    if (errors.length > 0) {
+      setErrors(errors);
+      return;
+    }
     setLoading(true);
-
-
     try {
       await onSave(agentData);
       onClose();
@@ -171,7 +135,6 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
     } finally {
       setLoading(false);
     }
-
   };
 
   // --- Renderers ---
@@ -179,22 +142,21 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
 
   // --- MCP Servers UI ---
   const handleMcpServerChange = (idx: number, key: string, value: any) => {
-    setFormData((prev: AgentFormData) => {
-      const mcp_servers = [...(prev.mcp_servers || [])];
-      mcp_servers[idx] = { ...mcp_servers[idx], [key]: value };
-      return { ...prev, mcp_servers };
-    });
+    const mcp_servers = [...(agentData.mcp_servers || [])];
+    mcp_servers[idx] = { ...mcp_servers[idx], [key]: value };
+    setAgentData({ ...agentData, mcp_servers });
     setErrors((prev) => prev.filter((e) => !e.field.startsWith(`mcp_servers.${idx}`)));
   };
   const addMcpServer = () => {
-    setFormData((prev: AgentFormData) => ({ ...prev, mcp_servers: [...(prev.mcp_servers || []), { name: '', filter: '' }] }));
+    const mcp_servers = [...(agentData.mcp_servers || []), { name: '', filter: [] }];
+    setAgentData({ ...agentData, mcp_servers });
+
   };
   const removeMcpServer = (idx: number) => {
-    setFormData((prev: AgentFormData) => {
-      const mcp_servers = [...(prev.mcp_servers || [])];
-      mcp_servers.splice(idx, 1);
-      return { ...prev, mcp_servers };
-    });
+    const mcp_servers = [...(agentData.mcp_servers || [])];
+    mcp_servers.splice(idx, 1);
+    setAgentData({ ...agentData, mcp_servers });
+
   };
 
   // --- Icon Dialog ---
@@ -210,14 +172,27 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
     setIconDialogOpen(false);
   };
 
+  const Errors = ({ errors }: { errors: ValidationError[] }) => {
+    return errors.find((e) => e.field === 'general') && (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+        <div className="flex">
+          <AlertCircle className="h-5 w-5 text-red-400" />
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <p className="text-sm text-red-700">{getFieldError('general')}</p>
+          </div>
+        </div>
+      </div>)
+  };
+
   // --- Raw mode handlers ---
-  const handleRawChange = (value: string) => {
+  const handleRawChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
     try {
       const parsed = JSON.parse(value);
       setAgentData(parsed);
-      setRawError(null);
     } catch (err) {
-      setRawError('Invalid JSON');
+      setErrors([{ field: 'general', message: 'Invalid JSON' }]);
     }
   };
 
@@ -260,27 +235,24 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
         </div>
         {/* Content */}
         <div className="flex-1 overflow-y-auto min-h-[500px] max-h-[calc(96vh-180px)] px-8 pb-8 pt-6 flex flex-col">
+
           {mode === 'raw' ? (
-            <div className="flex-1 flex flex-col">
-              <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">Agent JSON Configuration</label>
-              <SyntaxHighlighter language="json" style={oneDark}>
-                {rawValue}
-              </SyntaxHighlighter>
-              {rawError && <p className="text-xs text-red-600 mt-1">{rawError}</p>}
-            </div>
+            <form className="flex-1 flex flex-col space-y-8" onSubmit={handleSubmit}>
+              <Errors errors={errors} />
+              <div className="flex-1 flex flex-col">
+                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">Agent JSON Configuration</label>
+                <textarea
+                  className="font-mono w-full h-[400px] border rounded p-2 text-xs bg-gray-50"
+                  value={rawValue}
+                  onChange={handleRawChange}
+                  spellCheck={false}
+                />
+
+              </div>
+            </form>
           ) : (
             <form className="flex-1 flex flex-col space-y-8" onSubmit={handleSubmit}>
-              {errors.find((e) => e.field === 'general') && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-                  <div className="flex">
-                    <AlertCircle className="h-5 w-5 text-red-400" />
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">Error</h3>
-                      <p className="text-sm text-red-700">{getFieldError('general')}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <Errors errors={errors} />
               {/* Row: Avatar, Name, Description */}
               <div className="flex flex-col md:flex-row md:items-center md:space-x-8 space-y-4 md:space-y-0">
                 {/* Avatar/Icon */}
@@ -427,9 +399,10 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
           </button>
           <button
             type="button"
-            disabled={loading || (mode === 'raw' && !!rawError)}
+            disabled={loading}
             onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
+              console.log('Saving agent:', agentData);
               await handleSubmit(e);
             }}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
