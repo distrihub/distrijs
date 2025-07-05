@@ -1,13 +1,12 @@
 import {
   A2AClient,
-  AgentCard,
   Message,
   MessageSendParams,
   Task,
   SendMessageResponse,
   GetTaskResponse,
 
-} from '@a2a-js/sdk';
+} from '@a2a-js/sdk/client';
 import {
   DistriClientConfig,
   DistriError,
@@ -23,7 +22,6 @@ import {
 export class DistriClient {
   private config: Required<DistriClientConfig>;
   private agentClients = new Map<string, A2AClient>();
-  private agentCards = new Map<string, AgentCard>();
 
   constructor(config: DistriClientConfig) {
     this.config = {
@@ -49,23 +47,9 @@ export class DistriClient {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
 
-      const agentCards: AgentCard[] = await response.json();
+      const agents: DistriAgent[] = await response.json();
 
-      // Cache agent cards for later A2AClient creation
-      agentCards.forEach(card => {
-        this.agentCards.set(card.name, card);
-      });
-
-      // Convert to DistriAgent format
-      const distriAgents: DistriAgent[] = agentCards.map(card => ({
-        id: card.name,
-        name: card.name,
-        description: card.description,
-        status: 'online' as const,
-        card
-      }));
-
-      return distriAgents;
+      return agents;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch agents', 'FETCH_ERROR', error);
@@ -85,16 +69,12 @@ export class DistriClient {
         throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
       }
 
-      const card: AgentCard = await response.json();
-      this.agentCards.set(agentId, card);
-
-      return {
-        id: card.name,
-        name: card.name,
-        description: card.description,
-        status: 'online' as const,
-        card
-      };
+      const agent: DistriAgent = await response.json();
+      // If the agent doesn't have an id, set it to the agentId
+      if (!agent.id) {
+        agent.id = agentId;
+      }
+      return agent;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, 'FETCH_ERROR', error);
@@ -105,19 +85,11 @@ export class DistriClient {
    * Get or create A2AClient for an agent
    */
   private getA2AClient(agentId: string): A2AClient {
-    if (!this.agentClients.has(agentId)) {
-      const agentCard = this.agentCards.get(agentId);
-      if (!agentCard) {
-        throw new DistriError(`Agent card not found for ${agentId}. Call getAgent() first.`, 'AGENT_NOT_FOUND');
-      }
-
-      // Use agent's URL from the card, or fall back to Distri server proxy
-      const agentUrl = agentCard.url || `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
-      this.agentClients.set(agentId, client);
-      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
-    }
-
+    // Use agent's URL from the card, or fall back to Distri server proxy
+    const agentUrl = `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
+    const client = new A2AClient(agentUrl);
+    this.agentClients.set(agentId, client);
+    this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     return this.agentClients.get(agentId)!;
   }
 
@@ -149,7 +121,7 @@ export class DistriClient {
   /**
    * Send a streaming message to an agent
    */
-  async* sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData> {
+  async * sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData> {
     try {
       const client = this.getA2AClient(agentId);
       yield* await client.sendMessageStream(params);

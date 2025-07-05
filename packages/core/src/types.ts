@@ -1,16 +1,78 @@
 // Distri Framework Types - Based on A2A Protocol and SSE
-import { AgentCard, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
+import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
 
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
  */
 export interface DistriAgent {
-  id: string;
+  /** The name of the agent. */
   name: string;
-  description: string;
-  status: 'online' | 'offline';
-  card: AgentCard;
+
+  id: string;
+
+  /** A brief description of the agent's purpose. */
+  description?: string;
+
+  /** The version of the agent. */
+  version?: string;
+
+  /** The system prompt for the agent, if any. */
+  system_prompt?: string | null;
+
+  /** A list of MCP server definitions associated with the agent. */
+  mcp_servers?: McpDefinition[];
+
+  /** Settings related to the model used by the agent. */
+  model_settings?: ModelSettings;
+
+  /** The size of the history to maintain for the agent. */
+  history_size?: number;
+
+  /** The planning configuration for the agent, if any. */
+  plan?: any;
+
+  /** A2A-specific fields */
+  icon_url?: string;
+
+  max_iterations?: number;
+
+  skills?: AgentSkill[];
+
+  /** List of sub-agents that this agent can transfer control to */
+  sub_agents?: string[];
 }
+
+export interface McpDefinition {
+  /** The filter applied to the tools in this MCP definition. */
+  filter?: string[];
+
+  /** The name of the MCP server. */
+  name: string;
+
+  /** The type of the MCP server (Tool or Agent). */
+  type?: McpServerType; // Use 'type' here instead of 'r#type'
+}
+
+
+export interface ModelSettings {
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  top_p: number;
+  frequency_penalty: number;
+  presence_penalty: number;
+  max_iterations: number;
+  provider: ModelProvider;
+  /** Additional parameters for the agent, if any. */
+  parameters?: any;
+
+  /** The format of the response, if specified. */
+  response_format?: any;
+}
+
+export type McpServerType = 'tool' | 'agent';
+
+export type ModelProvider = 'openai' | 'aigateway';
 
 /**
  * Distri Thread type for conversation management

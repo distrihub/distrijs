@@ -58,17 +58,6 @@ function AppContent() {
     setSelectedThread(newThread);
   };
 
-  const handleDeleteThread = async (threadId: string) => {
-    try {
-      await deleteThread(threadId);
-      if (selectedThread?.id === threadId) {
-        const remainingThreads = threads.filter(thread => thread.id !== threadId);
-        setSelectedThread(remainingThreads.length > 0 ? remainingThreads[0] : null);
-      }
-    } catch (error) {
-      console.error('Failed to delete thread:', error);
-    }
-  };
 
   const handleThreadUpdate = async (threadId: string) => {
     try {
@@ -271,6 +260,29 @@ function AppContent() {
                   agents={agents}
                   onRefresh={refetchAgents}
                   onStartChat={startChatWithAgent}
+                  onUpdateAgent={async (agent) => {
+                    try {
+                      const id = agent.id || agent.name;
+                      // Make API call to update agent
+                      const response = await fetch(`/api/v1/agents/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(agent),
+                      });
+
+                      if (!response.ok) {
+                        throw new Error(`Failed to update agent: ${response.statusText}`);
+                      }
+
+                      // Refresh the agents list
+                      await refetchAgents();
+                    } catch (error) {
+                      console.error('Failed to update agent:', error);
+                      throw error;
+                    }
+                  }}
                 />
               </div>
             )}
