@@ -48,6 +48,12 @@ export class DistriClient {
       }
 
       const agents: DistriAgent[] = await response.json();
+      // Temporary fix for agents without an id
+      agents.forEach(agent => {
+        if (!agent.id) {
+          agent.id = agent.name;
+        }
+      });
 
       return agents;
     } catch (error) {

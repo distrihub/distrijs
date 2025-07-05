@@ -460,6 +460,11 @@ var DistriClient = class {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
       const agents = await response.json();
+      agents.forEach((agent) => {
+        if (!agent.id) {
+          agent.id = agent.name;
+        }
+      });
       return agents;
     } catch (error) {
       if (error instanceof ApiError)
