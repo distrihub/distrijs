@@ -2,9 +2,7 @@ name: Deploy Demo to GitHub Pages
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [deploy]
   workflow_dispatch:
 
 permissions:
@@ -67,89 +65,7 @@ jobs:
           NODE_ENV: production
         run: |
           cd samples/full-demo
-          
-          # Install missing Node.js polyfills for browser compatibility
-          pnpm add -D @rollup/plugin-node-resolve @rollup/plugin-commonjs vite-plugin-node-polyfills
-          
-          # Create a custom vite config for CI
-          cat > vite.config.ci.ts << 'EOF'
-          import { defineConfig } from 'vite'
-          import react from '@vitejs/plugin-react'
-          import { nodeResolve } from '@rollup/plugin-node-resolve'
-          import commonjs from '@rollup/plugin-commonjs'
-          import { nodePolyfills } from 'vite-plugin-node-polyfills'
-          
-          export default defineConfig({
-            plugins: [
-              react(),
-              nodePolyfills({
-                include: ['crypto', 'events', 'util', 'buffer'],
-                globals: {
-                  Buffer: true,
-                  global: true,
-                  process: true,
-                },
-              }),
-            ],
-            base: '/distrijs/',
-            build: {
-              outDir: 'dist',
-              sourcemap: false,
-              rollupOptions: {
-                plugins: [
-                  nodeResolve({
-                    preferBuiltins: false,
-                    browser: true,
-                  }),
-                  commonjs(),
-                ],
-              },
-            },
-            define: {
-              global: 'globalThis',
-              'process.env.NODE_ENV': JSON.stringify('production'),
-            },
-          })
-          EOF
-          
-          # Use the CI-specific config
-          pnpm build --config vite.config.ci.ts || {
-            echo "Build failed, creating minimal static site"
-            mkdir -p dist
-            cat > dist/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Distri.js Demo</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-          </head>
-          <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-            <div class="max-w-2xl mx-auto p-8 bg-white rounded-lg shadow-lg">
-              <h1 class="text-4xl font-bold text-gray-900 mb-6">Distri.js</h1>
-              <p class="text-lg text-gray-600 mb-8">AI Agent Platform - Demo coming soon!</p>
-              <div class="space-y-4">
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 class="font-semibold text-blue-900 mb-2">📦 npm Packages</h3>
-                  <p class="text-blue-800">
-                    <code class="bg-blue-100 px-2 py-1 rounded">npm install @distri/core @distri/react</code>
-                  </p>
-                </div>
-                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 class="font-semibold text-green-900 mb-2">🚀 GitHub Actions</h3>
-                  <p class="text-green-800">Automated publishing and deployment configured</p>
-                </div>
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <h3 class="font-semibold text-yellow-900 mb-2">⚙️ Environment Selector</h3>
-                  <p class="text-yellow-800">Development, Staging, and Production environments</p>
-                </div>
-              </div>
-            </div>
-          </body>
-          </html>
-          EOF
-          }
+          pnpm build  
           
           # Create a .nojekyll file to bypass Jekyll processing
           touch dist/.nojekyll
@@ -163,12 +79,18 @@ jobs:
           path: './samples/full-demo/dist'
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    
+    runs-on: ubuntu-latest
+    needs: build
+        # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
