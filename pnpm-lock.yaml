@@ -47,8 +47,8 @@ importers:
   packages/react:
     dependencies:
       '@distri/core':
-        specifier: workspace:*
-        version: link:../core
+        specifier: 0.1.0
+        version: 0.1.0
     devDependencies:
       '@types/react':
         specifier: ^18.0.0
@@ -263,6 +263,9 @@ packages:
   '@babel/types@7.27.7':
     resolution: {integrity: sha512-8OLQgDScAOHXnAz2cV+RfzzNMipuLVBz2biuAJFMV9bfkNf393je3VM8CLkjQodW5+iWsSJdSgSWT6rsZoXHPw==}
     engines: {node: '>=6.9.0'}
+
+  '@distri/core@0.1.0':
+    resolution: {integrity: sha512-rfL6RxAdFHx/+se31ws3+sNI20uRO1hpk+hN8o1z7MJVAWua7L+tllVzq615p1fh8Nl18QjFI/wkPexxtaD0UA==}
 
   '@esbuild/aix-ppc64@0.19.12':
     resolution: {integrity: sha512-bmoCYyWdEL3wDQIVbcyzRyeKLgk2WtWLTWz1ZIAZF/EGbNOwSA6ew3PftJ1PqMiOOGu0OyFMzG53L0zqIpPeNA==}
@@ -3515,6 +3518,10 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
+
+  '@distri/core@0.1.0':
+    dependencies:
+      eventemitter3: 5.0.1
 
   '@esbuild/aix-ppc64@0.19.12':
     optional: true
