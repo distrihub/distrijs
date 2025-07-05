@@ -46,9 +46,9 @@ interface UseThreadsResult {
     loading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
-    createThread: (agentId: string, title: string) => DistriThread;
+    createThread: (agentId: string, title: string, id?: string) => DistriThread;
     deleteThread: (threadId: string) => Promise<void>;
-    updateThread: (threadId: string) => Promise<void>;
+    updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 declare function useThreads(): UseThreadsResult;
 

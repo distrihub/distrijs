@@ -1,17 +1,63 @@
-import { MessageSendParams, Message as Message$1, Task as Task$1 } from '@a2a-js/sdk';
-export * from '@a2a-js/sdk';
-import { AgentCard, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Task } from '@a2a-js/sdk/client';
+import { AgentSkill, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Task, MessageSendParams } from '@a2a-js/sdk/client';
+export * from '@a2a-js/sdk/client';
 export { AgentCard, Message, MessageSendParams, Task, TaskArtifactUpdateEvent, TaskStatus, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
 
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
  */
 interface DistriAgent {
-    id: string;
+    /** The name of the agent. */
     name: string;
-    description: string;
-    status: 'online' | 'offline';
-    card: AgentCard;
+    id: string;
+    /** A brief description of the agent's purpose. */
+    description?: string;
+    /** The version of the agent. */
+    version?: string;
+    /** The system prompt for the agent, if any. */
+    system_prompt?: string | null;
+    /** A list of MCP server definitions associated with the agent. */
+    mcp_servers?: McpDefinition[];
+    /** Settings related to the model used by the agent. */
+    model_settings?: ModelSettings;
+    /** The size of the history to maintain for the agent. */
+    history_size?: number;
+    /** The planning configuration for the agent, if any. */
+    plan?: any;
+    /** A2A-specific fields */
+    icon_url?: string;
+    max_iterations?: number;
+    skills?: AgentSkill[];
+    /** List of sub-agents that this agent can transfer control to */
+    sub_agents?: string[];
+}
+interface McpDefinition {
+    /** The filter applied to the tools in this MCP definition. */
+    filter?: string[];
+    /** The name of the MCP server. */
+    name: string;
+    /** The type of the MCP server (Tool or Agent). */
+    type?: McpServerType;
+}
+interface ModelSettings {
+    model: string;
+    temperature: number;
+    max_tokens: number;
+    top_p: number;
+    frequency_penalty: number;
+    presence_penalty: number;
+    max_iterations: number;
+    provider: ModelProvider;
+    /** Additional parameters for the agent, if any. */
+    parameters?: any;
+    /** The format of the response, if specified. */
+    response_format?: any;
+}
+type McpServerType = 'tool' | 'agent';
+type ModelProviderType = 'openai' | 'aigateway';
+
+export interface ModelProvider {
+    provider: ModelProviderType;
+    value?: any;
 }
 /**
  * Distri Thread type for conversation management
@@ -88,7 +134,6 @@ type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEv
 declare class DistriClient {
     private config;
     private agentClients;
-    private agentCards;
     constructor(config: DistriClientConfig);
     /**
      * Get all available agents from the Distri server
@@ -105,7 +150,7 @@ declare class DistriClient {
     /**
      * Send a message to an agent
      */
-    sendMessage(agentId: string, params: MessageSendParams): Promise<Message$1 | Task$1>;
+    sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task>;
     /**
      * Send a streaming message to an agent
      */
@@ -113,7 +158,7 @@ declare class DistriClient {
     /**
      * Get task details
      */
-    getTask(agentId: string, taskId: string): Promise<Task$1>;
+    getTask(agentId: string, taskId: string): Promise<Task>;
     /**
      * Cancel a task
      */
@@ -125,7 +170,7 @@ declare class DistriClient {
     /**
      * Get thread messages
      */
-    getThreadMessages(threadId: string): Promise<Message$1[]>;
+    getThreadMessages(threadId: string): Promise<Message[]>;
     /**
      * Get the base URL for making direct requests
      */
@@ -145,11 +190,12 @@ declare class DistriClient {
     /**
      * Helper method to create A2A messages
      */
-    static initMessage(input: string, role?: 'agent' | 'user', contextId?: string, messageId?: string, taskId?: string): Message$1;
+    static initMessage(input: string, role?: 'agent' | 'user', contextId?: string, messageId?: string, taskId?: string): Message;
     /**
      * Helper method to create message send parameters
      */
-    static initMessageParams(message: Message$1, configuration?: MessageSendParams['configuration']): MessageSendParams;
+    static initMessageParams(message: Message, configuration?: MessageSendParams['configuration']): MessageSendParams;
 }
+declare function uuidv4(): string;
 
-export { A2AProtocolError, type A2AStreamEventData, type Agent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriThread, type Thread };
+export { A2AProtocolError, type A2AStreamEventData, type Agent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriThread, type McpDefinition, type McpServerType, type ModelProvider, type ModelSettings, type Thread, uuidv4 };
