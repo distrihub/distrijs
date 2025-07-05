@@ -21,6 +21,7 @@ export interface UseChatResult {
   sendMessageStream: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
   clearMessages: () => void;
   refreshMessages: () => Promise<void>;
+  abort: () => void;
 }
 
 export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
@@ -136,6 +137,7 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
 
       // Cancel any existing stream
       if (abortControllerRef.current) {
+        console.log('aborting existing stream');
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
@@ -155,6 +157,7 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
 
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
+          console.log('abort signal received');
           break;
         }
 
@@ -166,8 +169,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
         } else if (event.kind === 'status-update') {
           message = (event as TaskStatusUpdateEvent).status.message as Message;
         }
-
-
 
         if (!message) continue;
         setMessages((prev: Message[]) => {
@@ -204,9 +205,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
     }
   }, [client, agentId]);
 
-
-
-
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
@@ -220,6 +218,12 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
     };
   }, []);
 
+  const abort = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
   return {
     loading: loading || clientLoading,
     error: error || clientError,
@@ -229,5 +233,6 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
     sendMessageStream,
     clearMessages,
     refreshMessages: fetchMessages,
+    abort,
   };
 }

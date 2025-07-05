@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DistriThread } from '@distri/core';
 import { useDistri } from './DistriProvider';
-import { uuidv4 } from 'packages/core/src/distri-client';
 
 export interface UseThreadsResult {
   threads: DistriThread[];
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-  createThread: (agentId: string, title: string, id?: string) => DistriThread;
   deleteThread: (threadId: string) => Promise<void>;
+  fetchThread: (threadId: string) => Promise<DistriThread>;
   updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 
@@ -40,20 +39,18 @@ export function useThreads(): UseThreadsResult {
     }
   }, [client]);
 
-  const createThread = useCallback((agentId: string, title: string, id?: string): DistriThread => {
-    const newThread: DistriThread = {
-      id: id || uuidv4(),
-      title,
-      agent_id: agentId,
-      agent_name: agentId, // Will be updated when we have agent info
-      updated_at: new Date().toISOString(),
-      message_count: 0,
-      last_message: undefined,
-    };
-
-    setThreads(prev => [newThread, ...prev]);
-    return newThread;
-  }, []);
+  const fetchThread = useCallback(async (threadId: string) => {
+    if (!client) {
+      throw new Error('Client not available');
+    }
+    try {
+      const response = await client.getThread(threadId);
+      return response;
+    } catch (err) {
+      console.error('[useThreads] Failed to fetch thread:', err);
+      throw err;
+    }
+  }, [client]);
 
   const deleteThread = useCallback(async (threadId: string) => {
     if (!client) {
@@ -134,8 +131,8 @@ export function useThreads(): UseThreadsResult {
     loading: loading || clientLoading,
     error: error || clientError,
     refetch: fetchThreads,
-    createThread,
     deleteThread,
+    fetchThread,
     updateThread
   };
 }

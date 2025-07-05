@@ -162,6 +162,7 @@ declare class DistriClient {
      * Get threads from Distri server
      */
     getThreads(): Promise<DistriThread[]>;
+    getThread(threadId: string): Promise<DistriThread>;
     /**
      * Get thread messages
      */

@@ -38,6 +38,7 @@ interface UseChatResult {
     sendMessageStream: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
     clearMessages: () => void;
     refreshMessages: () => Promise<void>;
+    abort: () => void;
 }
 declare function useChat({ agentId, contextId }: UseChatOptions): UseChatResult;
 
@@ -46,8 +47,8 @@ interface UseThreadsResult {
     loading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
-    createThread: (agentId: string, title: string, id?: string) => DistriThread;
     deleteThread: (threadId: string) => Promise<void>;
+    fetchThread: (threadId: string) => Promise<DistriThread>;
     updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 declare function useThreads(): UseThreadsResult;

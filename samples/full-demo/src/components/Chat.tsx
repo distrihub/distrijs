@@ -1,23 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, User, Bot, Square } from 'lucide-react';
-import { useChat, DistriAgent, DistriThread } from '@distri/react';
+import { useChat, DistriAgent } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
 import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
 
 interface ChatProps {
-  thread: DistriThread | null;
+  selectedThreadId: string;
   agent: DistriAgent;
-  onThreadUpdate?: () => void;
-  setThreadId?: (threadId: string) => void;
-  refreshThreads?: () => void;
-  onBackendThreadId?: (localId: string, backendThread: DistriThread) => void;
+  onThreadUpdate: (threadId: string) => void;
 }
 
-const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId, refreshThreads, onBackendThreadId }) => {
+const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) => {
   const [input, setInput] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    console.log('selectedThreadId', selectedThreadId);
+    console.log('agent', agent);
+    refreshMessages();
+  }, [selectedThreadId]);
 
   // Use the new hooks
   const {
@@ -27,7 +30,7 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId,
     error,
     isStreaming,
     sendMessageStream,
-  } = useChat({ agentId: agent.id, contextId: thread?.id });
+  } = useChat({ agentId: agent.id, contextId: selectedThreadId });
 
   // Helper function to extract text from message parts
   const extractTextFromMessage = (message: any): string => {
@@ -64,19 +67,21 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId,
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, streamingText]);
+    if (selectedThreadId && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, streamingText, selectedThreadId]);
 
   // Load thread messages when thread changes
   useEffect(() => {
     // Only refresh if the thread id actually changes (not during streaming)
-    if (thread?.id) {
+    if (selectedThreadId) {
       refreshMessages();
       setStreamingText(''); // Only clear streaming text when a new thread is selected
     }
     // Do NOT refresh on every message or streaming update
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thread?.id]);
+  }, [selectedThreadId]);
 
   // Handle streaming text accumulation
   useEffect(() => {
@@ -91,32 +96,6 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId,
     }
   }, [isStreaming, messages]);
 
-  // After sending the first message in a new thread, detect the backend thread id from the first agent message and update parent
-  useEffect(() => {
-    if (thread && typeof thread.id === 'string' && messages.length > 0) {
-      // Find the first agent message with a contextId
-      const agentMsg = messages.find(m => m.role === 'agent' && typeof m.contextId === 'string' && m.contextId);
-      if (agentMsg && setThreadId && typeof agentMsg.contextId === 'string') {
-        setThreadId(agentMsg.contextId);
-        if (refreshThreads) refreshThreads();
-        // If onBackendThreadId is provided, call it with the local id and backend thread
-        if (onBackendThreadId) {
-          // Construct a minimal backendThread object
-          const backendThread = {
-            id: agentMsg.contextId as string,
-            title: 'New Conversation',
-            agent_id: agent.id,
-            agent_name: agent.name,
-            updated_at: new Date().toISOString(),
-            message_count: 1,
-            last_message: '',
-          };
-          onBackendThreadId(thread.id, backendThread);
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, thread]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading || isStreaming) return;
@@ -126,16 +105,13 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId,
     setStreamingText(''); // Clear any existing streaming text
 
     try {
-      // Always send the message; backend will create thread if needed
       await sendMessageStream(messageText, {
         acceptedOutputModes: ['text/plain'],
         blocking: false
       });
 
       // Update thread after successful message
-      if (onThreadUpdate) {
-        onThreadUpdate();
-      }
+      onThreadUpdate(selectedThreadId);
     } catch (error) {
       console.error('Failed to send message:', error);
       // Re-add the input text if sending failed
@@ -192,16 +168,14 @@ const Chat: React.FC<ChatProps> = ({ thread, agent, onThreadUpdate, setThreadId,
             <Bot className="h-4 w-4 text-white" />
           </div>
           <div>
-            <h3 className="font-medium text-gray-900">{thread?.title}</h3>
             <p className="text-sm text-gray-500">with {agent.name}</p>
           </div>
         </div>
-        <div className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-green-400' : 'bg-gray-400'}`} />
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {(!thread && messages.length === 0 && !loading && !isStreaming) && (
+        {(messages.length === 0 && !loading && !isStreaming) && (
           <div className="flex flex-col items-center justify-center h-full py-8">
             <MessageRenderer content={''} className="" />
             <div className="flex flex-col items-center mt-4">

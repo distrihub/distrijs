@@ -191,6 +191,19 @@ export class DistriClient {
     }
   }
 
+  async getThread(threadId: string): Promise<DistriThread> {
+    try {
+      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}`);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch thread: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to fetch thread ${threadId}`, 'FETCH_ERROR', error);
+    }
+  }
+
   /**
    * Get thread messages
    */
