@@ -42,7 +42,11 @@ export class DistriClient {
    */
   async getAgents(): Promise<DistriAgent[]> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents`);
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents`, {
+        headers: {
+          ...this.config.headers,
+        }
+      });
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
@@ -67,7 +71,11 @@ export class DistriClient {
    */
   async getAgent(agentId: string): Promise<DistriAgent> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`);
+      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`, {
+        headers: {
+          ...this.config.headers,
+        }
+      });
       if (!response.ok) {
         if (response.status === 404) {
           throw new ApiError(`Agent not found: ${agentId}`, 404);
