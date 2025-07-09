@@ -23,13 +23,16 @@
     "README.md"
   ],
   "dependencies": {
-    "@distri/core": "0.1.0"
+    "@distri/core": "0.1.0",
+    "react-markdown": "^9.0.0",
+    "react-syntax-highlighter": "^15.5.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.0",
+    "@types/react-syntax-highlighter": "^15.5.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",

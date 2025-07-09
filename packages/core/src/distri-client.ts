@@ -42,7 +42,7 @@ export class DistriClient {
    */
   async getAgents(): Promise<DistriAgent[]> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents`, {
+      const response = await this.fetch(`/agents`, {
         headers: {
           ...this.config.headers,
         }
@@ -71,7 +71,7 @@ export class DistriClient {
    */
   async getAgent(agentId: string): Promise<DistriAgent> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`, {
+      const response = await this.fetch(`/agents/${agentId}`, {
         headers: {
           ...this.config.headers,
         }
@@ -99,11 +99,13 @@ export class DistriClient {
    * Get or create A2AClient for an agent
    */
   private getA2AClient(agentId: string): A2AClient {
-    // Use agent's URL from the card, or fall back to Distri server proxy
-    const agentUrl = `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
-    const client = new A2AClient(agentUrl);
-    this.agentClients.set(agentId, client);
-    this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+    if (!this.agentClients.has(agentId)) {
+      // Use agent's URL from the configured baseUrl
+      const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
+      const client = new A2AClient(agentUrl);
+      this.agentClients.set(agentId, client);
+      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+    }
     return this.agentClients.get(agentId)!;
   }
 
@@ -187,7 +189,7 @@ export class DistriClient {
    */
   async getThreads(): Promise<DistriThread[]> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/threads`);
+      const response = await this.fetch(`/threads`);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch threads: ${response.statusText}`, response.status);
       }
@@ -201,7 +203,7 @@ export class DistriClient {
 
   async getThread(threadId: string): Promise<DistriThread> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}`);
+      const response = await this.fetch(`/threads/${threadId}`);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch thread: ${response.statusText}`, response.status);
       }
@@ -217,7 +219,7 @@ export class DistriClient {
    */
   async getThreadMessages(threadId: string): Promise<Message[]> {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}/messages`);
+      const response = await this.fetch(`/threads/${threadId}/messages`);
       if (!response.ok) {
         if (response.status === 404) {
           return []; // Thread not found, return empty messages
@@ -243,6 +245,7 @@ export class DistriClient {
    * Enhanced fetch with retry logic
    */
   private async fetch(path: string, options?: RequestInit): Promise<Response> {
+    // Construct the full URL using baseUrl
     const url = `${this.config.baseUrl}${path}`;
     let lastError: Error | undefined;
 
