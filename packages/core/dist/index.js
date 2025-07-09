@@ -455,7 +455,11 @@ var DistriClient = class {
    */
   async getAgents() {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents`);
+      const response = await this.fetch(`/agents`, {
+        headers: {
+          ...this.config.headers
+        }
+      });
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
@@ -477,7 +481,11 @@ var DistriClient = class {
    */
   async getAgent(agentId) {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/agents/${agentId}`);
+      const response = await this.fetch(`/agents/${agentId}`, {
+        headers: {
+          ...this.config.headers
+        }
+      });
       if (!response.ok) {
         if (response.status === 404) {
           throw new ApiError(`Agent not found: ${agentId}`, 404);
@@ -499,10 +507,12 @@ var DistriClient = class {
    * Get or create A2AClient for an agent
    */
   getA2AClient(agentId) {
-    const agentUrl = `${this.config.baseUrl}/api/${this.config.apiVersion}/agents/${agentId}`;
-    const client = new A2AClient(agentUrl);
-    this.agentClients.set(agentId, client);
-    this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+    if (!this.agentClients.has(agentId)) {
+      const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
+      const client = new A2AClient(agentUrl);
+      this.agentClients.set(agentId, client);
+      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+    }
     return this.agentClients.get(agentId);
   }
   /**
@@ -577,7 +587,7 @@ var DistriClient = class {
    */
   async getThreads() {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/threads`);
+      const response = await this.fetch(`/threads`);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch threads: ${response.statusText}`, response.status);
       }
@@ -590,7 +600,7 @@ var DistriClient = class {
   }
   async getThread(threadId) {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}`);
+      const response = await this.fetch(`/threads/${threadId}`);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch thread: ${response.statusText}`, response.status);
       }
@@ -606,7 +616,7 @@ var DistriClient = class {
    */
   async getThreadMessages(threadId) {
     try {
-      const response = await this.fetch(`/api/${this.config.apiVersion}/threads/${threadId}/messages`);
+      const response = await this.fetch(`/threads/${threadId}/messages`);
       if (!response.ok) {
         if (response.status === 404) {
           return [];
