@@ -5,9 +5,28 @@
   "workspaces": [
     "packages/*"
   ],
+  "exports": {
+    "./core": {
+      "import": "./core/index.mjs",
+      "require": "./core/index.js",
+      "types": "./core/index.d.ts"
+    },
+    "./react": {
+      "import": "./react/index.mjs",
+      "require": "./react/index.js",
+      "types": "./react/index.d.ts"
+    }
+  },
+  "files": [
+    "core/",
+    "react/",
+    "README.md"
+  ],
   "scripts": {
     "build": "turbo build --filter=./packages/*",
     "build:all": "turbo build",
+    "build:prepare": "npm run build:all && npm run build:copy",
+    "build:copy": "node scripts/build-copy.js",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check"
