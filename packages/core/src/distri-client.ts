@@ -103,7 +103,7 @@ export class DistriClient {
   private getA2AClient(agentId: string): A2AClient {
     if (!this.agentClients.has(agentId)) {
       // Use agent's URL from the configured baseUrl
-      const fetchFn = this.fetch;
+      const fetchFn = this.fetch.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
       const client = new A2AClient(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
@@ -249,6 +249,7 @@ export class DistriClient {
    * Enhanced fetch with retry logic
    */
   private async fetch(input: RequestInfo | URL, initialInit?: RequestInit): Promise<Response> {
+
     const init = await this.config.interceptor(initialInit);
     // Construct the full URL using baseUrl
     const url = `${this.config.baseUrl}${input}`;

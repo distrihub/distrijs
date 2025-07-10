@@ -511,7 +511,7 @@ var DistriClient = class {
    */
   getA2AClient(agentId) {
     if (!this.agentClients.has(agentId)) {
-      const fetchFn = this.fetch;
+      const fetchFn = this.fetch.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
       const client = new A2AClient(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
