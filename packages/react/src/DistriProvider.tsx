@@ -18,6 +18,13 @@ interface DistriProviderProps {
   children: ReactNode;
 }
 
+const debug = (config: DistriClientConfig, ...args: any[]): void => {
+  if (config.debug) {
+    console.log('[DistriProvider]', ...args);
+  }
+}
+
+
 export function DistriProvider({ config, children }: DistriProviderProps) {
   const [client, setClient] = useState<DistriClient | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -27,14 +34,14 @@ export function DistriProvider({ config, children }: DistriProviderProps) {
     let currentClient: DistriClient | null = null;
 
     try {
-      console.log('[DistriProvider] Initializing client with config:', config);
+      debug(config, '[DistriProvider] Initializing client with config:', config);
       currentClient = new DistriClient(config);
       setClient(currentClient);
       setError(null);
       setIsLoading(false);
-      console.log('[DistriProvider] Client initialized successfully');
+      debug(config, '[DistriProvider] Client initialized successfully');
     } catch (err) {
-      console.error('[DistriProvider] Failed to initialize client:', err);
+      debug(config, '[DistriProvider] Failed to initialize client:', err);
       const error = err instanceof Error ? err : new Error('Failed to initialize client');
       setError(error);
       setClient(null);
@@ -50,15 +57,15 @@ export function DistriProvider({ config, children }: DistriProviderProps) {
   };
 
   if (error) {
-    console.error('[DistriProvider] Rendering error state:', error.message);
+    console.error(config, '[DistriProvider] Rendering error state:', error.message);
   }
 
   if (isLoading) {
-    console.log('[DistriProvider] Rendering loading state');
+    debug(config, '[DistriProvider] Rendering loading state');
   }
 
   if (client) {
-    console.log('[DistriProvider] Rendering with client available');
+    debug(config, '[DistriProvider] Rendering with client available');
   }
 
   return (
