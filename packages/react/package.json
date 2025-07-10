@@ -1,6 +1,6 @@
 {
   "name": "@distri/react",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "React hooks and components for Distri Framework",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -23,7 +23,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@distri/core": "0.1.1",
+    "@distri/core": "0.1.4",
     "react-markdown": "^9.0.0",
     "react-syntax-highlighter": "^15.5.0"
   },

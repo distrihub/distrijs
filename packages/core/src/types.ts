@@ -126,7 +126,7 @@ export interface DistriClientConfig {
   retryDelay?: number;
   debug?: boolean;
   headers?: Record<string, string>;
-  interceptor?: (input: RequestInfo | URL, init?: RequestInit) => Promise<RequestInfo | URL>;
+  interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
 }
 
 /**
