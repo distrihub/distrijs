@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@a2a-js/sdk':
-        specifier: https://github.com/v3g42/a2a-js.git#1bed58e
-        version: https://codeload.github.com/v3g42/a2a-js/tar.gz/1bed58e
+        specifier: https://github.com/v3g42/a2a-js.git#51444c9
+        version: https://codeload.github.com/v3g42/a2a-js/tar.gz/51444c9
     devDependencies:
       turbo:
         specifier: ^1.10.0
@@ -47,8 +47,8 @@ importers:
   packages/react:
     dependencies:
       '@distri/core':
-        specifier: 0.1.4
-        version: 0.1.4
+        specifier: 0.1.6
+        version: 0.1.6
       react-markdown:
         specifier: ^9.0.0
         version: 9.1.0(@types/react@18.3.23)(react@18.3.1)
@@ -174,8 +174,8 @@ importers:
 
 packages:
 
-  '@a2a-js/sdk@https://codeload.github.com/v3g42/a2a-js/tar.gz/1bed58e':
-    resolution: {tarball: https://codeload.github.com/v3g42/a2a-js/tar.gz/1bed58e}
+  '@a2a-js/sdk@https://codeload.github.com/v3g42/a2a-js/tar.gz/51444c9':
+    resolution: {tarball: https://codeload.github.com/v3g42/a2a-js/tar.gz/51444c9}
     version: 0.2.1
     engines: {node: '>=18'}
 
@@ -273,8 +273,8 @@ packages:
     resolution: {integrity: sha512-8OLQgDScAOHXnAz2cV+RfzzNMipuLVBz2biuAJFMV9bfkNf393je3VM8CLkjQodW5+iWsSJdSgSWT6rsZoXHPw==}
     engines: {node: '>=6.9.0'}
 
-  '@distri/core@0.1.4':
-    resolution: {integrity: sha512-T2vAk45ZxLpmE0jOcV1qGnWqjsKLnQNqpyNdgSf8/l82MvhxGhD9D0y4BbgLwUrQxGiXF7vQhs/CXrshZuT4dQ==}
+  '@distri/core@0.1.6':
+    resolution: {integrity: sha512-sYlTkaD0ElmSeY4KRtYfTjn3OBc1nJI1HP6DTG0iIb4V0fPzF4n6kcpgLMMjeULroObNN+52Ai4tQ7gKoedTEQ==}
 
   '@esbuild/aix-ppc64@0.19.12':
     resolution: {integrity: sha512-bmoCYyWdEL3wDQIVbcyzRyeKLgk2WtWLTWz1ZIAZF/EGbNOwSA6ew3PftJ1PqMiOOGu0OyFMzG53L0zqIpPeNA==}
@@ -3399,7 +3399,7 @@ packages:
 
 snapshots:
 
-  '@a2a-js/sdk@https://codeload.github.com/v3g42/a2a-js/tar.gz/1bed58e':
+  '@a2a-js/sdk@https://codeload.github.com/v3g42/a2a-js/tar.gz/51444c9':
     dependencies:
       '@types/cors': 2.8.19
       '@types/express': 5.0.3
@@ -3534,7 +3534,7 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
 
-  '@distri/core@0.1.4':
+  '@distri/core@0.1.6':
     dependencies:
       eventemitter3: 5.0.1
 
