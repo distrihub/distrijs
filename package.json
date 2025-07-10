@@ -7,19 +7,19 @@
   ],
   "exports": {
     "./core": {
-      "import": "./core/index.mjs",
-      "require": "./core/index.js",
-      "types": "./core/index.d.ts"
+      "import": "./packages/core/dist/index.mjs",
+      "require": "./packages/core/dist/index.js",
+      "types": "./packages/core/dist/index.d.ts"
     },
     "./react": {
-      "import": "./react/index.mjs",
-      "require": "./react/index.js",
-      "types": "./react/index.d.ts"
+      "import": "./packages/react/dist/index.mjs",
+      "require": "./packages/react/dist/index.js",
+      "types": "./packages/react/dist/index.d.ts"
     }
   },
   "files": [
-    "core/",
-    "react/",
+    "packages/core/dist/",
+    "packages/react/dist/",
     "README.md"
   ],
   "scripts": {

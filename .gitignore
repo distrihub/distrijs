@@ -104,7 +104,3 @@ temp/
 .local
 .cache/
 samples/full-demo/dist/
-
-# Generated dist folders for git dependency usage
-/core/
-/react/
