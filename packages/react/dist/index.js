@@ -38,6 +38,11 @@ var DistriContext = (0, import_react.createContext)({
   error: null,
   isLoading: true
 });
+var debug = (config, ...args) => {
+  if (config.debug) {
+    console.log("[DistriProvider]", ...args);
+  }
+};
 function DistriProvider({ config, children }) {
   const [client, setClient] = (0, import_react.useState)(null);
   const [error, setError] = (0, import_react.useState)(null);
@@ -45,14 +50,14 @@ function DistriProvider({ config, children }) {
   (0, import_react.useEffect)(() => {
     let currentClient = null;
     try {
-      console.log("[DistriProvider] Initializing client with config:", config);
+      debug(config, "[DistriProvider] Initializing client with config:", config);
       currentClient = new import_core.DistriClient(config);
       setClient(currentClient);
       setError(null);
       setIsLoading(false);
-      console.log("[DistriProvider] Client initialized successfully");
+      debug(config, "[DistriProvider] Client initialized successfully");
     } catch (err) {
-      console.error("[DistriProvider] Failed to initialize client:", err);
+      debug(config, "[DistriProvider] Failed to initialize client:", err);
       const error2 = err instanceof Error ? err : new Error("Failed to initialize client");
       setError(error2);
       setClient(null);
@@ -65,13 +70,13 @@ function DistriProvider({ config, children }) {
     isLoading
   };
   if (error) {
-    console.error("[DistriProvider] Rendering error state:", error.message);
+    console.error(config, "[DistriProvider] Rendering error state:", error.message);
   }
   if (isLoading) {
-    console.log("[DistriProvider] Rendering loading state");
+    debug(config, "[DistriProvider] Rendering loading state");
   }
   if (client) {
-    console.log("[DistriProvider] Rendering with client available");
+    debug(config, "[DistriProvider] Rendering with client available");
   }
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DistriContext.Provider, { value: contextValue, children });
 }
