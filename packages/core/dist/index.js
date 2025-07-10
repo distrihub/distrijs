@@ -449,7 +449,7 @@ var DistriClient = class {
       retryDelay: config.retryDelay || 1e3,
       debug: config.debug || false,
       headers: config.headers || {},
-      interceptor: config.interceptor || ((input, _init) => Promise.resolve(input))
+      interceptor: config.interceptor || ((init) => Promise.resolve(init))
     };
     this.debug("DistriClient initialized with config:", this.config);
   }
@@ -643,8 +643,8 @@ var DistriClient = class {
   /**
    * Enhanced fetch with retry logic
    */
-  async fetch(request, init) {
-    const input = await this.config.interceptor(request, init);
+  async fetch(input, initialInit) {
+    const init = await this.config.interceptor(initialInit);
     const url = `${this.config.baseUrl}${input}`;
     let lastError;
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
