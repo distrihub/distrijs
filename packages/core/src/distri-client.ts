@@ -115,6 +115,7 @@ export class DistriClient {
   async sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task> {
     try {
       const client = this.getA2AClient(agentId);
+
       const response: SendMessageResponse = await client.sendMessage(params);
 
       if ('error' in response && response.error) {
