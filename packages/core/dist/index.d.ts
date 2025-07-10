@@ -101,6 +101,7 @@ interface DistriClientConfig {
     retryDelay?: number;
     debug?: boolean;
     headers?: Record<string, string>;
+    interceptor?: (input: RequestInfo | URL, init?: RequestInit) => Promise<RequestInfo | URL>;
 }
 /**
  * Error Types
