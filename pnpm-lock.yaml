@@ -47,8 +47,8 @@ importers:
   packages/react:
     dependencies:
       '@distri/core':
-        specifier: 0.1.1
-        version: 0.1.1
+        specifier: 0.1.3
+        version: 0.1.3
       react-markdown:
         specifier: ^9.0.0
         version: 9.1.0(@types/react@18.3.23)(react@18.3.1)
@@ -273,8 +273,8 @@ packages:
     resolution: {integrity: sha512-8OLQgDScAOHXnAz2cV+RfzzNMipuLVBz2biuAJFMV9bfkNf393je3VM8CLkjQodW5+iWsSJdSgSWT6rsZoXHPw==}
     engines: {node: '>=6.9.0'}
 
-  '@distri/core@0.1.1':
-    resolution: {integrity: sha512-0ydWX87IgYJmT2QBtWhnHVyUyLnvoZ05sAJCpW3VERgo6Uad650GrOUtvWJgDXZC9wWmNKFukpQA5e19/rkFLw==}
+  '@distri/core@0.1.3':
+    resolution: {integrity: sha512-RT48Tm+JO6gv/tB+L4F62rzmhhm1gkQRdZ5ozsxtMmgEoGJ75qBW+jClHxf9N8AQFgJEWu+9Rs29W8TPlVn8zA==}
 
   '@esbuild/aix-ppc64@0.19.12':
     resolution: {integrity: sha512-bmoCYyWdEL3wDQIVbcyzRyeKLgk2WtWLTWz1ZIAZF/EGbNOwSA6ew3PftJ1PqMiOOGu0OyFMzG53L0zqIpPeNA==}
@@ -3534,7 +3534,7 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
 
-  '@distri/core@0.1.1':
+  '@distri/core@0.1.3':
     dependencies:
       eventemitter3: 5.0.1
 
