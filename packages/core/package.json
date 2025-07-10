@@ -1,6 +1,6 @@
 {
   "name": "@distri/core",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Core utilities and types for Distri Framework",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

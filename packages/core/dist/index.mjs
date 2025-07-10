@@ -5,7 +5,7 @@ var __publicField = (obj, key, value) => {
   return value;
 };
 
-// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+1bed58e/node_modules/@a2a-js/sdk/dist/chunk-IOYJGLJK.js
+// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
   /**
    * Constructs an A2AClient instance.
@@ -22,8 +22,8 @@ var A2AClient = class {
     // To be populated from AgentCard after fetching
     __publicField(this, "fetchFn");
     this.agentBaseUrl = agentBaseUrl.replace(/\/$/, "");
-    this.agentCardPromise = this._fetchAndCacheAgentCard();
     this.fetchFn = fetchFn || globalThis.fetch;
+    this.agentCardPromise = this._fetchAndCacheAgentCard();
   }
   /**
    * Fetches the Agent Card from the agent's well-known URI and caches its service endpoint URL.
