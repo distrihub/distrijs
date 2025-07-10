@@ -31,11 +31,13 @@ export class DistriClient {
       retryAttempts: config.retryAttempts || 3,
       retryDelay: config.retryDelay || 1000,
       debug: config.debug || false,
-      headers: config.headers || {}
+      headers: config.headers || {},
+      interceptor: config.interceptor || ((input: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(input))
     };
 
     this.debug('DistriClient initialized with config:', this.config);
   }
+
 
   /**
    * Get all available agents from the Distri server
@@ -101,8 +103,9 @@ export class DistriClient {
   private getA2AClient(agentId: string): A2AClient {
     if (!this.agentClients.has(agentId)) {
       // Use agent's URL from the configured baseUrl
+      const fetchFn = this.fetch;
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
+      const client = new A2AClient(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
@@ -245,9 +248,10 @@ export class DistriClient {
   /**
    * Enhanced fetch with retry logic
    */
-  private async fetch(path: string, options?: RequestInit): Promise<Response> {
+  private async fetch(request: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const input = await this.config.interceptor(request, init);
     // Construct the full URL using baseUrl
-    const url = `${this.config.baseUrl}${path}`;
+    const url = `${this.config.baseUrl}${input}`;
     let lastError: Error | undefined;
 
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
@@ -256,11 +260,11 @@ export class DistriClient {
         const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
         const response = await fetch(url, {
-          ...options,
+          ...init,
           signal: controller.signal,
           headers: {
             ...this.config.headers,
-            ...options?.headers
+            ...init?.headers
           }
         });
 
