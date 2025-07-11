@@ -175,6 +175,10 @@ declare class DistriClient {
     /**
      * Enhanced fetch with retry logic
      */
+    private fetchAbsolute;
+    /**
+     * Enhanced fetch with retry logic
+     */
     private fetch;
     /**
      * Delay utility
@@ -195,4 +199,76 @@ declare class DistriClient {
 }
 declare function uuidv4(): string;
 
-export { A2AProtocolError, type A2AStreamEventData, type Agent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriThread, type McpDefinition, type McpServerType, type ModelProvider, type ModelSettings, type Thread, uuidv4 };
+type Role = 'user' | 'system' | 'assistant';
+interface RunStartedEvent {
+    type: 'run_started';
+}
+interface RunFinishedEvent {
+    type: 'run_finished';
+}
+interface RunErrorEvent {
+    type: 'run_error';
+    data: {
+        message: string;
+        code?: string;
+    };
+}
+interface TextMessageStartEvent {
+    type: 'text_message_start';
+    data: {
+        message_id: string;
+        role: Role;
+    };
+}
+interface TextMessageContentEvent {
+    type: 'text_message_content';
+    data: {
+        message_id: string;
+        delta: string;
+    };
+}
+interface TextMessageEndEvent {
+    type: 'text_message_end';
+    data: {
+        message_id: string;
+    };
+}
+interface ToolCallStartEvent {
+    type: 'tool_call_start';
+    data: {
+        tool_call_id: string;
+        tool_call_name: string;
+        parent_message_id?: string;
+    };
+}
+interface ToolCallArgsEvent {
+    type: 'tool_call_args';
+    data: {
+        tool_call_id: string;
+        delta: string;
+    };
+}
+interface ToolCallEndEvent {
+    type: 'tool_call_end';
+    data: {
+        tool_call_id: string;
+    };
+}
+interface ToolCallResultEvent {
+    type: 'tool_call_result';
+    data: {
+        tool_call_id: string;
+        result: string;
+    };
+}
+interface AgentHandoverEvent {
+    type: 'agent_handover';
+    data: {
+        from_agent: string;
+        to_agent: string;
+        reason?: string;
+    };
+}
+type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | AgentHandoverEvent;
+
+export { A2AProtocolError, type A2AStreamEventData, type Agent, type AgentHandoverEvent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriThread, type McpDefinition, type McpServerType, type ModelProvider, type ModelSettings, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type Thread, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallResultEvent, type ToolCallStartEvent, uuidv4 };

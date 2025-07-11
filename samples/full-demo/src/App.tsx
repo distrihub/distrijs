@@ -56,7 +56,7 @@ function AppContent() {
                     }}
                     className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {agents.map((agent) => (
+                    {agents.map((agent: DistriAgent) => (
                       <option key={agent.id} value={agent.id}>
                         {agent.name}
                       </option>
@@ -122,7 +122,7 @@ function AppContent() {
 function App() {
   return (
     <DistriProvider config={{
-      baseUrl: 'http://localhost:8080',
+      baseUrl: 'http://localhost:8080/api/v1',
       debug: true
     }}>
       <AppContent />

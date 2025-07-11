@@ -156,7 +156,6 @@ function useChat({ agentId, contextId }) {
       setMessages([]);
       return;
     }
-    console.log("inside: fetchMessages", client, contextId);
     try {
       setLoading(true);
       setError(null);
@@ -171,7 +170,6 @@ function useChat({ agentId, contextId }) {
     }
   }, [client, contextId]);
   useEffect3(() => {
-    console.log("useEffect", clientLoading, clientError, contextId, !clientLoading && !clientError && contextId);
     if (!clientLoading && !clientError && contextId) {
       fetchMessages();
     } else {
@@ -200,9 +198,7 @@ function useChat({ agentId, contextId }) {
         throw new Error("Invalid response format");
       }
       setMessages((prev) => {
-        console.log("message", message.messageId);
         if (prev.find((msg) => msg.messageId === message.messageId)) {
-          console.log("message found", message.messageId);
           return prev.map((msg) => {
             if (msg.messageId === message.messageId) {
               return {
@@ -213,7 +209,6 @@ function useChat({ agentId, contextId }) {
             return msg;
           });
         } else {
-          console.log("message not found", message.messageId);
           return [...prev, message];
         }
       });
@@ -234,30 +229,26 @@ function useChat({ agentId, contextId }) {
       setError(null);
       setIsStreaming(true);
       if (abortControllerRef.current) {
-        console.log("aborting existing stream");
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
       const userMessage = DistriClient2.initMessage(input, "user", contextId);
       setMessages((prev) => [...prev, userMessage]);
-      console.log("userMessage", userMessage);
       const params = DistriClient2.initMessageParams(userMessage, {
         blocking: false,
         acceptedOutputModes: ["text/plain"],
         ...configuration
       });
+      setIsStreaming(true);
       const stream = await client.sendMessageStream(agentId, params);
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
           console.log("abort signal received");
           break;
         }
-        console.log("Stream event:", event);
         let message = void 0;
         if (event.kind === "message") {
           message = event;
-        } else if (event.kind === "status-update") {
-          message = event.status.message;
         }
         if (!message)
           continue;
@@ -276,15 +267,13 @@ function useChat({ agentId, contextId }) {
             return [...prev, message];
           }
         });
-        if (event.kind === "status-update" && event.final) {
-          setIsStreaming(false);
-          break;
-        }
       }
+      setIsStreaming(false);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
+      console.log("error", err);
       setError(err instanceof Error ? err : new Error("Failed to stream message"));
     } finally {
       setLoading(false);
