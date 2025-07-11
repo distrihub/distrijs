@@ -3,24 +3,42 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
+import { DistriEvent } from '@distri/core';
 
 interface MessageRendererProps {
   content: string;
   className?: string;
-  metadata?: any;
+  metadata?: DistriEvent;
 }
 
 const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = "", metadata }) => {
-  // ToolCall detection: expects tool_call in metadata
-  if (metadata?.tool_call) {
-    // Compose a ToolCallState from metadata and content (args)
-    const toolCall: ToolCallState = {
-      tool_call_id: metadata.tool_call_id,
-      tool_name: metadata.tool_name,
-      args: content || '',
-      running: metadata.event_type !== 'result' && metadata.event_type !== 'end',
-      result: metadata.result,
+  // ToolCall event detection using concrete types
+  if (metadata && (
+    metadata.type === 'tool_call_start' ||
+    metadata.type === 'tool_call_args' ||
+    metadata.type === 'tool_call_end' ||
+    metadata.type === 'tool_call_result'
+  )) {
+    let toolCall: ToolCallState = {
+      tool_call_id: metadata.data.tool_call_id,
+      tool_name: undefined,
+      args: '',
+      running: true,
+      result: undefined,
     };
+    if (metadata.type === 'tool_call_start') {
+      toolCall.tool_name = metadata.data.tool_call_name;
+      toolCall.args = '';
+      toolCall.running = true;
+    } else if (metadata.type === 'tool_call_args') {
+      toolCall.args = metadata.data.delta;
+      toolCall.running = true;
+    } else if (metadata.type === 'tool_call_end') {
+      toolCall.running = false;
+    } else if (metadata.type === 'tool_call_result') {
+      toolCall.result = metadata.data.result;
+      toolCall.running = false;
+    }
     return <ToolCallRenderer toolCall={toolCall} />;
   }
 
