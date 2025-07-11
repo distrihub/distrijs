@@ -481,7 +481,7 @@ var DistriClient = class {
    */
   getA2AClient(agentId) {
     if (!this.agentClients.has(agentId)) {
-      const fetchFn = this.fetch.bind(this);
+      const fetchFn = this.fetchAbsolute.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
       const client = new A2AClient(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
@@ -613,9 +613,8 @@ var DistriClient = class {
   /**
    * Enhanced fetch with retry logic
    */
-  async fetch(input, initialInit) {
+  async fetchAbsolute(url, initialInit) {
     const init = await this.config.interceptor(initialInit);
-    const url = `${this.config.baseUrl}${input}`;
     let lastError;
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
       try {
@@ -640,6 +639,13 @@ var DistriClient = class {
       }
     }
     throw lastError;
+  }
+  /**
+   * Enhanced fetch with retry logic
+   */
+  async fetch(input, initialInit) {
+    const url = `${this.config.baseUrl}${input}`;
+    return this.fetchAbsolute(url, initialInit);
   }
   /**
    * Delay utility
