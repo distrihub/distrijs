@@ -174,6 +174,9 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           toolCallStatus[tool_call_id].running = false;
           toolCallStatus[tool_call_id].result = data.result;
         }
+        if (meta.type === 'tool_call_end') {
+          toolCallStatus[tool_call_id].running = false;
+        }
       }
     });
 
