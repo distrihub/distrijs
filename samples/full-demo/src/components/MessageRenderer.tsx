@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus, prism } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
 import { ExternalToolHandler } from './ExternalToolHandler';
 import { DistriEvent, MessageMetadata, ToolCall } from '@distri/core';
+import { Copy, Check } from 'lucide-react';
 
 interface MessageRendererProps {
   content: string;
@@ -14,6 +15,77 @@ interface MessageRendererProps {
   onApprovalResponse?: (approved: boolean, reason?: string) => void;
 }
 
+// Enhanced Code Block Component with copy functionality
+const CodeBlock: React.FC<{
+  language: string;
+  children: string;
+  inline?: boolean;
+  isDark?: boolean;
+}> = ({ language, children, inline = false, isDark = false }) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  if (inline) {
+    return (
+      <code className={`px-1.5 py-0.5 rounded text-sm font-mono ${
+        isDark 
+          ? 'bg-gray-700 text-gray-200' 
+          : 'bg-gray-100 text-gray-800'
+      }`}>
+        {children}
+      </code>
+    );
+  }
+
+  return (
+    <div className="relative group my-4">
+      <div className="flex items-center justify-between bg-gray-800 text-gray-200 px-4 py-2 rounded-t-lg text-sm">
+        <span className="font-medium">{language || 'text'}</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100"
+          title="Copy code"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3 w-3" />
+              <span className="text-xs">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" />
+              <span className="text-xs">Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={vscDarkPlus}
+        language={language || 'text'}
+        PreTag="div"
+        className="!mt-0 !rounded-t-none"
+        showLineNumbers={children.split('\n').length > 10}
+        customStyle={{
+          margin: 0,
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
+        }}
+      >
+        {children.replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
 const MessageRenderer: React.FC<MessageRendererProps> = ({ 
   content, 
   className = "", 
@@ -21,6 +93,24 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
   onToolResponse,
   onApprovalResponse
 }) => {
+  // Detect if we're in a dark theme context (e.g., user message with white text)
+  const isDark = className.includes('text-white');
+
+  // Memoize external tool call creation to prevent re-renders
+  const externalToolCall = useMemo(() => {
+    if (metadata && (metadata as DistriEvent).type === 'tool_call_start') {
+      const eventMetadata = metadata as DistriEvent;
+      if ((eventMetadata.data as any).is_external) {
+        return {
+          tool_call_id: eventMetadata.data.tool_call_id,
+          tool_name: eventMetadata.data.tool_call_name,
+          input: '' // Will be populated by tool_call_args events
+        } as ToolCall;
+      }
+    }
+    return null;
+  }, [metadata]);
+
   // Handle MessageMetadata for external tool calls (for Agent API)
   if (metadata && (metadata as any).type === 'external_tool_calls') {
     const externalMetadata = metadata as MessageMetadata & { type: 'external_tool_calls' };
@@ -28,6 +118,18 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       <ExternalToolHandler
         toolCalls={externalMetadata.tool_calls}
         requiresApproval={externalMetadata.requires_approval}
+        onToolResponse={onToolResponse || (() => {})}
+        onApprovalResponse={onApprovalResponse || (() => {})}
+      />
+    );
+  }
+
+  // Handle external tool calls from ToolCallStart events
+  if (externalToolCall) {
+    return (
+      <ExternalToolHandler
+        toolCalls={[externalToolCall]}
+        requiresApproval={externalToolCall.tool_name === 'approval_request'}
         onToolResponse={onToolResponse || (() => {})}
         onApprovalResponse={onApprovalResponse || (() => {})}
       />
@@ -55,23 +157,9 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       toolCall.args = '';
       toolCall.running = true;
       
-      // Check if this is an external tool using the is_external field
+      // External tools are already handled above, so skip them here
       if ((eventMetadata.data as any).is_external) {
-        // For external tools, create a ToolCall object and render ExternalToolHandler
-        const externalToolCall: ToolCall = {
-          tool_call_id: eventMetadata.data.tool_call_id,
-          tool_name: eventMetadata.data.tool_call_name,
-          input: '' // Will be populated by tool_call_args events
-        };
-        
-        return (
-          <ExternalToolHandler
-            toolCalls={[externalToolCall]}
-            requiresApproval={eventMetadata.data.tool_call_name === 'approval_request'}
-            onToolResponse={onToolResponse || (() => {})}
-            onApprovalResponse={onApprovalResponse || (() => {})}
-          />
-        );
+        return null;
       }
     } else if (eventMetadata.type === 'tool_call_args') {
       toolCall.args = eventMetadata.data.delta;
@@ -87,8 +175,8 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     return <ToolCallRenderer toolCall={toolCall} />;
   }
 
-  // Check if content looks like markdown (has markdown syntax)
-  const hasMarkdownSyntax = (text: string): boolean => {
+  // Memoize markdown detection to avoid recalculating on every render
+  const hasMarkdownSyntax = useMemo(() => {
     const markdownPatterns = [
       /^#{1,6}\s+/m, // Headers
       /\*\*.*?\*\*/g, // Bold
@@ -101,11 +189,44 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       /\[.*?\]\(.*?\)/g, // Links
     ];
 
-    return markdownPatterns.some(pattern => pattern.test(text));
-  };
+    return markdownPatterns.some(pattern => pattern.test(content));
+  }, [content]);
 
-  // If content doesn't look like markdown, render as plain text with some basic formatting
-  if (!hasMarkdownSyntax(content)) {
+  // Enhanced plain text rendering with better formatting
+  if (!hasMarkdownSyntax) {
+    // Check if content looks like code (indented lines, common programming patterns)
+    const looksLikeCode = useMemo(() => {
+      const codePatterns = [
+        /^[ \t]{2,}/m, // Indented lines
+        /function\s+\w+\s*\(/,
+        /class\s+\w+/,
+        /import\s+/,
+        /from\s+['"][\w\/\.\-]+['"]/,
+        /def\s+\w+\s*\(/,
+        /public\s+class/,
+        /console\.log\(/,
+        /\w+\s*=\s*\w+/,
+        /if\s*\(/,
+        /for\s*\(/,
+        /while\s*\(/,
+        /\{[\s\S]*\}/,
+        /\[[\s\S]*\]/,
+      ];
+      
+      return codePatterns.some(pattern => pattern.test(content));
+    }, [content]);
+
+    if (looksLikeCode) {
+      return (
+        <CodeBlock
+          language="text"
+          isDark={isDark}
+        >
+          {content}
+        </CodeBlock>
+      );
+    }
+
     return (
       <div className={`whitespace-pre-wrap ${className}`}>
         {content}
@@ -113,26 +234,67 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     );
   }
 
-  // Render markdown
+  // Enhanced markdown rendering with custom components
   return (
-    <div className={`prose prose-sm max-w-none ${className}`}>
+    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''} ${className}`}>
       <ReactMarkdown
         components={{
           code({ node, inline, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
-            return !inline && match ? (
-              <SyntaxHighlighter
-                style={tomorrow}
-                language={match[1]}
-                PreTag="div"
-                {...props}
+            const language = match ? match[1] : '';
+            
+            return (
+              <CodeBlock
+                language={language}
+                inline={inline}
+                isDark={isDark}
               >
                 {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>
-            ) : (
-              <code className={className} {...props}>
+              </CodeBlock>
+            );
+          },
+          // Enhanced blockquote styling
+          blockquote({ children }) {
+            return (
+              <blockquote className={`border-l-4 pl-4 italic ${
+                isDark 
+                  ? 'border-blue-400 text-blue-200' 
+                  : 'border-blue-500 text-blue-700 bg-blue-50'
+              } rounded-r`}>
                 {children}
-              </code>
+              </blockquote>
+            );
+          },
+          // Enhanced table styling
+          table({ children }) {
+            return (
+              <div className="overflow-x-auto">
+                <table className={`min-w-full border-collapse ${
+                  isDark ? 'border-gray-600' : 'border-gray-300'
+                }`}>
+                  {children}
+                </table>
+              </div>
+            );
+          },
+          th({ children }) {
+            return (
+              <th className={`border p-2 font-semibold ${
+                isDark 
+                  ? 'border-gray-600 bg-gray-700' 
+                  : 'border-gray-300 bg-gray-100'
+              }`}>
+                {children}
+              </th>
+            );
+          },
+          td({ children }) {
+            return (
+              <td className={`border p-2 ${
+                isDark ? 'border-gray-600' : 'border-gray-300'
+              }`}>
+                {children}
+              </td>
             );
           },
         }}
