@@ -14,11 +14,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    refreshMessages();
-  }, [selectedThreadId]);
-
-  // Use the new hooks
+  // Use the new hooks - useChat automatically handles selectedThreadId changes
   const {
     messages,
     loading,
@@ -72,16 +68,6 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       scrollToBottom();
     }
   }, [messages, selectedThreadId]);
-
-  // Load thread messages when thread changes
-  useEffect(() => {
-    // Only refresh if the thread id actually changes (not during streaming)
-    if (selectedThreadId) {
-      refreshMessages();
-    }
-    // Do NOT refresh on every message or streaming update
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedThreadId]);
 
   // Handle external tool responses
   const handleToolResponse = async (toolCallId: string, result: any) => {

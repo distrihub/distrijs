@@ -215,12 +215,12 @@ function useChat({ agentId, contextId }) {
     }
   }, [client, contextId]);
   (0, import_react3.useEffect)(() => {
-    if (!clientLoading && !clientError && contextId) {
+    if (!clientLoading && !clientError && contextId && client) {
       fetchMessages();
     } else {
       setMessages([]);
     }
-  }, [clientLoading, clientError, contextId, fetchMessages]);
+  }, [clientLoading, clientError, contextId, client]);
   const sendMessage = (0, import_react3.useCallback)(async (input, configuration) => {
     if (!client) {
       setError(new Error("Client not available"));

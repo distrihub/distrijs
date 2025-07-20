@@ -51,13 +51,16 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
     }
   }, [client, contextId]);
 
+  // Load messages when conditions change, but don't include fetchMessages in dependencies
   useEffect(() => {
-    if (!clientLoading && !clientError && contextId) {
+    if (!clientLoading && !clientError && contextId && client) {
       fetchMessages();
     } else {
       setMessages([]);
     }
-  }, [clientLoading, clientError, contextId, fetchMessages]);
+    // Don't include fetchMessages in dependencies to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientLoading, clientError, contextId, client]);
 
   const sendMessage = useCallback(async (
     input: string,
