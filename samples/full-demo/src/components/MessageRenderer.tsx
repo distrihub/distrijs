@@ -15,7 +15,7 @@ interface MessageRendererProps {
   onApprovalResponse?: (approved: boolean, reason?: string) => void;
 }
 
-// Enhanced Code Block Component with copy functionality
+// Enhanced Code Block Component with better overflow handling
 const CodeBlock: React.FC<{
   language: string;
   children: string;
@@ -80,10 +80,10 @@ const CodeBlock: React.FC<{
 
   if (inline) {
     return (
-      <code className={`px-2 py-1 rounded-md text-sm font-mono border ${
+      <code className={`px-1.5 py-0.5 rounded text-sm font-mono ${
         isDark 
-          ? 'bg-gray-800 text-gray-200 border-gray-600' 
-          : 'bg-gray-100 text-gray-800 border-gray-200'
+          ? 'bg-gray-700 text-gray-200' 
+          : 'bg-gray-100 text-gray-800'
       }`}>
         {children}
       </code>
@@ -91,11 +91,11 @@ const CodeBlock: React.FC<{
   }
 
   const lineCount = children.split('\n').length;
-  const shouldShowLineNumbers = lineCount > 3;
+  const shouldShowLineNumbers = lineCount > 4;
 
   return (
-    <div className="relative group my-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200 px-4 py-2 text-sm">
+    <div className="relative my-4 rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200 px-3 py-2 text-sm">
         <div className="flex items-center gap-2">
           <Code2 className="h-4 w-4 text-gray-500" />
           <span className="font-medium text-gray-700">
@@ -107,7 +107,7 @@ const CodeBlock: React.FC<{
         </div>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 text-gray-600 hover:text-gray-800"
+          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-200 transition-colors text-gray-600 hover:text-gray-800"
           title="Copy code"
         >
           {copied ? (
@@ -123,29 +123,34 @@ const CodeBlock: React.FC<{
           )}
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="relative">
         <SyntaxHighlighter
           style={isDark ? vscDarkPlus : oneLight}
           language={normalizedLanguage}
           PreTag="div"
           showLineNumbers={shouldShowLineNumbers}
+          wrapLines={true}
+          wrapLongLines={true}
           lineNumberStyle={{
             minWidth: '2.5em',
             paddingRight: '1em',
             color: '#9CA3AF',
-            fontSize: '0.875em'
+            fontSize: '0.75rem',
+            userSelect: 'none'
           }}
           customStyle={{
             margin: 0,
-            padding: '1rem',
+            padding: '0.75rem',
             background: isDark ? '#1e1e1e' : '#fafafa',
-            fontSize: '14px',
+            fontSize: '0.875rem',
             lineHeight: '1.5',
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+            overflowX: 'auto',
+            maxWidth: '100%',
           }}
           codeTagProps={{
             style: {
-              fontSize: '14px',
+              fontSize: '0.875rem',
               fontFamily: 'inherit',
             }
           }}
@@ -265,74 +270,48 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     return markdownPatterns.some(pattern => pattern.test(content));
   }, [content]);
 
-  // Enhanced plain text rendering with much better code detection
+  // Much more conservative code detection to avoid thoughts being marked as code
   if (!hasMarkdownSyntax) {
-    // Comprehensive code detection
+    // Only detect very obvious code patterns, not thoughts or explanations
     const looksLikeCode = useMemo(() => {
       const lines = content.split('\n');
       const totalLines = lines.length;
       
-      // If it's a single line and short, probably not code
-      if (totalLines === 1 && content.length < 20) {
+      // Don't treat short single lines as code
+      if (totalLines === 1 && content.length < 30) {
         return false;
       }
 
-      const codeIndicators = [
-        // Programming language keywords and patterns
-        /\b(function|const|let|var|class|interface|type|import|export|from|require)\b/,
-        /\b(def|class|if|elif|else|for|while|try|except|import|from)\b/, // Python
-        /\b(public|private|protected|static|void|int|string|boolean|return)\b/, // Java/C#
-        /\b(fn|let|mut|impl|struct|enum|match|if|else|for|while)\b/, // Rust
-        /\b(func|var|const|if|else|for|range|package|import)\b/, // Go
-        /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/i, // SQL
-        
-        // Common code patterns
-        /^[ \t]*\/\/.*$/m, // Line comments
-        /^[ \t]*#.*$/m, // Python/Shell comments
-        /\/\*[\s\S]*?\*\//, // Block comments
-        /^[ \t]*<!--.*-->$/m, // HTML comments
-        
-        // Structural patterns
-        /[{}\[\]()]/g, // Brackets and braces
-        /^[ \t]{2,}/m, // Indentation
-        /[;:]/g, // Semicolons and colons
-        /=>\s*[{(]/, // Arrow functions
-        /\w+\s*=\s*\w+/, // Assignments
-        /\w+\(\s*.*\s*\)/, // Function calls
-        /\b\w+\.\w+/, // Method calls
-        /^[ \t]*<\w+/, // XML/HTML tags
-        /\$\{.*\}/, // Template literals
-        /"[^"]*":\s*/, // JSON structure
-        /:\s*\{/, // Object definitions
-        
-        // File extensions or shebangs
+      // Strong code indicators that are very unlikely to be thoughts
+      const strongCodeIndicators = [
         /^#!\//, // Shebang
-        /\.(js|ts|py|rb|php|java|cpp|c|h|rs|go|sh|sql|html|css|json|xml|yaml|yml)$/,
+        /^\s*(function|const|let|var|class|interface|import|export)\s+\w+/m, // JS/TS declarations
+        /^\s*(def|class|import|from)\s+\w+/m, // Python declarations
+        /^\s*(public|private|protected)\s+(class|interface|static)/m, // Java/C# 
+        /^\s*<\?php/m, // PHP
+        /^\s*<\w+.*>/m, // HTML tags
+        /^\s*\{[\s\S]*\}/m, // JSON objects
+        /^\s*\/\*[\s\S]*\*\//m, // Block comments
+        /^\s*\/\/.*$/m, // Line comments (but only if multiple)
       ];
 
-      // Check if significant portion looks like code
-      let codeScore = 0;
-      const maxScore = codeIndicators.length;
+      // Check for strong indicators
+      const hasStrongIndicators = strongCodeIndicators.some(pattern => pattern.test(content));
+      
+      if (hasStrongIndicators) return true;
 
-      codeIndicators.forEach(pattern => {
-        if (pattern.test(content)) {
-          codeScore++;
-        }
-      });
-
-      // Additional heuristics
-      const hasMultipleLines = totalLines > 1;
-      const hasIndentation = lines.some(line => /^[ \t]{2,}/.test(line));
-      const hasBraces = (content.match(/[{}\[\]()]/g) || []).length > 2;
-      const hasSpecialChars = /[;=><]/g.test(content);
-
-      // Calculate final score
-      const heuristicScore = (hasMultipleLines ? 1 : 0) + 
-                           (hasIndentation ? 2 : 0) + 
-                           (hasBraces ? 1 : 0) + 
-                           (hasSpecialChars ? 1 : 0);
-
-      return (codeScore / maxScore) > 0.15 || heuristicScore >= 3;
+      // Additional check: multiple lines with consistent indentation or structure
+      const indentedLines = lines.filter(line => /^[ \t]{2,}/.test(line)).length;
+      const linesWithBraces = lines.filter(line => /[{}[\]()]/.test(line)).length;
+      const linesWithSemicolons = lines.filter(line => /;$/.test(line.trim())).length;
+      
+      // More conservative threshold - needs significant code-like structure
+      const codeScore = (indentedLines / totalLines) + 
+                       (linesWithBraces / totalLines) + 
+                       (linesWithSemicolons / totalLines);
+      
+      // Only if >50% of lines look very code-like
+      return codeScore > 0.5 && totalLines > 3;
     }, [content]);
 
     if (looksLikeCode) {
@@ -363,15 +342,15 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     }
 
     return (
-      <div className={`whitespace-pre-wrap ${className}`}>
+      <div className={`whitespace-pre-wrap break-words ${className}`}>
         {content}
       </div>
     );
   }
 
-  // Enhanced markdown rendering with custom components
+  // Enhanced markdown rendering with better overflow handling
   return (
-    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''} ${className}`}>
+    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''} ${className} break-words`}>
       <ReactMarkdown
         components={{
           code({ node, inline, className, children, ...props }) {
@@ -400,7 +379,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
               </blockquote>
             );
           },
-          // Enhanced table styling
+          // Enhanced table styling with overflow handling
           table({ children }) {
             return (
               <div className="overflow-x-auto my-4">
