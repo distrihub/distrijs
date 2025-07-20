@@ -3,40 +3,69 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
-import { DistriEvent } from '@distri/core';
+import { ExternalToolHandler } from './ExternalToolHandler';
+import { DistriEvent, MessageMetadata, ToolCall } from '@distri/core';
 
 interface MessageRendererProps {
   content: string;
   className?: string;
-  metadata?: DistriEvent;
+  metadata?: DistriEvent | MessageMetadata;
+  onToolResponse?: (toolCallId: string, result: any) => void;
+  onApprovalResponse?: (approved: boolean, reason?: string) => void;
 }
 
-const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = "", metadata }) => {
+const MessageRenderer: React.FC<MessageRendererProps> = ({ 
+  content, 
+  className = "", 
+  metadata,
+  onToolResponse,
+  onApprovalResponse
+}) => {
+  // Handle external tool calls
+  if (metadata && (metadata as any).type === 'external_tool_calls') {
+    const externalMetadata = metadata as MessageMetadata & { type: 'external_tool_calls' };
+    return (
+      <ExternalToolHandler
+        toolCalls={externalMetadata.tool_calls}
+        requiresApproval={externalMetadata.requires_approval}
+        onToolResponse={onToolResponse || (() => {})}
+        onApprovalResponse={onApprovalResponse || (() => {})}
+      />
+    );
+  }
+
   // ToolCall event detection using concrete types
   if (metadata && (
-    metadata.type === 'tool_call_start' ||
-    metadata.type === 'tool_call_args' ||
-    metadata.type === 'tool_call_end' ||
-    metadata.type === 'tool_call_result'
+    (metadata as DistriEvent).type === 'tool_call_start' ||
+    (metadata as DistriEvent).type === 'tool_call_args' ||
+    (metadata as DistriEvent).type === 'tool_call_end' ||
+    (metadata as DistriEvent).type === 'tool_call_result'
   )) {
+    const eventMetadata = metadata as DistriEvent;
     let toolCall: ToolCallState = {
-      tool_call_id: metadata.data.tool_call_id,
+      tool_call_id: eventMetadata.data.tool_call_id,
       tool_name: undefined,
       args: '',
       running: true,
       result: undefined,
     };
-    if (metadata.type === 'tool_call_start') {
-      toolCall.tool_name = metadata.data.tool_call_name;
+    
+    if (eventMetadata.type === 'tool_call_start') {
+      toolCall.tool_name = eventMetadata.data.tool_call_name;
       toolCall.args = '';
       toolCall.running = true;
-    } else if (metadata.type === 'tool_call_args') {
-      toolCall.args = metadata.data.delta;
+      // Check if this is an external tool
+      if ((eventMetadata.data as any).is_external) {
+        // Don't render external tools as regular tool calls
+        return null;
+      }
+    } else if (eventMetadata.type === 'tool_call_args') {
+      toolCall.args = eventMetadata.data.delta;
       toolCall.running = true;
-    } else if (metadata.type === 'tool_call_end') {
+    } else if (eventMetadata.type === 'tool_call_end') {
       toolCall.running = false;
-    } else if (metadata.type === 'tool_call_result') {
-      toolCall.result = metadata.data.result;
+    } else if (eventMetadata.type === 'tool_call_result') {
+      toolCall.result = eventMetadata.data.result;
       toolCall.running = false;
     }
     return <ToolCallRenderer toolCall={toolCall} />;
@@ -68,63 +97,28 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({ content, className = 
     );
   }
 
-  // Render as markdown with syntax highlighting
+  // Render markdown
   return (
     <div className={`prose prose-sm max-w-none ${className}`}>
       <ReactMarkdown
         components={{
-          code: ({ className: codeClassName, children }) => {
-            const match = /language-(\w+)/.exec(codeClassName || '');
-            const language = match ? match[1] : '';
-            const isInline = !match;
-
-            return !isInline && language ? (
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '');
+            return !inline && match ? (
               <SyntaxHighlighter
-                style={tomorrow as any}
-                language={language}
+                style={tomorrow}
+                language={match[1]}
                 PreTag="div"
-                className="!mt-0 !mb-0"
+                {...props}
               >
                 {String(children).replace(/\n$/, '')}
               </SyntaxHighlighter>
             ) : (
-              <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">
+              <code className={className} {...props}>
                 {children}
               </code>
             );
           },
-          p: ({ children }) => (
-            <p className="mb-2 last:mb-0">{children}</p>
-          ),
-          ul: ({ children }) => (
-            <ul className="list-disc list-inside mb-2">{children}</ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal list-inside mb-2">{children}</ol>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600">
-              {children}
-            </blockquote>
-          ),
-          h1: ({ children }) => (
-            <h1 className="text-lg font-bold mb-2">{children}</h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-base font-bold mb-2">{children}</h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-sm font-bold mb-1">{children}</h3>
-          ),
-          h4: ({ children }) => (
-            <h4 className="text-sm font-semibold mb-1">{children}</h4>
-          ),
-          h5: ({ children }) => (
-            <h5 className="text-xs font-semibold mb-1">{children}</h5>
-          ),
-          h6: ({ children }) => (
-            <h6 className="text-xs font-semibold mb-1">{children}</h6>
-          ),
         }}
       >
         {content}

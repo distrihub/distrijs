@@ -40,6 +40,12 @@ export interface DistriAgent {
 
   /** List of sub-agents that this agent can transfer control to */
   sub_agents?: string[];
+
+  /** External tools that are handled by the frontend */
+  external_tools?: ExternalTool[];
+
+  /** Tool approval configuration */
+  tool_approval?: ApprovalMode;
 }
 
 export interface McpDefinition {
@@ -53,6 +59,55 @@ export interface McpDefinition {
   type?: McpServerType; // Use 'type' here instead of 'r#type'
 }
 
+/**
+ * External tool definition
+ */
+export interface ExternalTool {
+  name: string;
+  description: string;
+  input_schema: any;
+}
+
+/**
+ * Mode for tool approval requirements
+ */
+export type ApprovalMode = 
+  | { type: 'none' }
+  | { type: 'all' }
+  | { type: 'filter'; tools: string[] };
+
+/**
+ * Tool call definition
+ */
+export interface ToolCall {
+  tool_call_id: string;
+  tool_name: string;
+  input: string;
+}
+
+/**
+ * Message metadata types for external tools and approval system
+ */
+export type MessageMetadata = 
+  | {
+      type: 'tool_response';
+      tool_call_id: string;
+      result: any;
+    }
+  | {
+      type: 'tool_calls';
+      tool_calls: ToolCall[];
+    }
+  | {
+      type: 'external_tool_calls';
+      tool_calls: ToolCall[];
+      requires_approval: boolean;
+    };
+
+/**
+ * Approval request tool name constant
+ */
+export const APPROVAL_REQUEST_TOOL_NAME = 'approval_request';
 
 export interface ModelSettings {
   model: string;

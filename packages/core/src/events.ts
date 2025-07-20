@@ -46,6 +46,7 @@ export interface ToolCallStartEvent {
     tool_call_id: string;
     tool_call_name: string;
     parent_message_id?: string;
+    is_external?: boolean;
   };
 }
 
