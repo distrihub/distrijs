@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Loader2, User, Bot, Square } from 'lucide-react';
 import { useChat, DistriAgent, DistriClient, MessageMetadata } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
@@ -25,7 +25,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
   } = useChat({ agentId: agent.id, contextId: selectedThreadId });
 
   // Helper function to extract text from message parts
-  const extractTextFromMessage = (message: any): string => {
+  const extractTextFromMessage = useCallback((message: any): string => {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return '';
     }
@@ -34,10 +34,10 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       .filter((part: any) => part?.kind === 'text' && part?.text)
       .map((part: any) => part.text)
       .join('') || '';
-  };
+  }, []);
 
   // Helper function to check if message has valid content
-  const hasValidContent = (message: any): boolean => {
+  const hasValidContent = useCallback((message: any): boolean => {
     if (!message) return false;
 
     // Check if message has text parts with content
@@ -57,20 +57,20 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     }
 
     return false;
-  };
+  }, [extractTextFromMessage]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     if (selectedThreadId && messages.length > 0) {
       scrollToBottom();
     }
-  }, [messages, selectedThreadId]);
+  }, [messages, selectedThreadId, scrollToBottom]);
 
   // Handle external tool responses
-  const handleToolResponse = async (toolCallId: string, result: any) => {
+  const handleToolResponse = useCallback(async (toolCallId: string, result: any) => {
     try {
       // Create a tool response message
       const responseMessage = DistriClient.initMessage('', 'user', selectedThreadId);
@@ -91,10 +91,10 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     } catch (error) {
       console.error('Failed to send tool response:', error);
     }
-  };
+  }, [selectedThreadId, sendMessageStream, onThreadUpdate]);
 
   // Handle approval responses
-  const handleApprovalResponse = async (approved: boolean, reason?: string) => {
+  const handleApprovalResponse = useCallback(async (approved: boolean, reason?: string) => {
     try {
       // Send approval response
       console.log('Approval response:', { approved, reason });
@@ -104,9 +104,9 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     } catch (error) {
       console.error('Failed to send approval response:', error);
     }
-  };
+  }, [selectedThreadId, onThreadUpdate]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!input.trim() || loading || isStreaming) return;
 
     const messageText = input.trim();
@@ -125,16 +125,16 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       // Re-add the input text if sending failed
       setInput(messageText);
     }
-  };
-  const toolCallEventTypes = [
+  }, [input, loading, isStreaming, sendMessageStream, onThreadUpdate, selectedThreadId]);
+
+  const toolCallEventTypes = useMemo(() => [
     'tool_call_start',
     'tool_call_args',
     'tool_call_result',
     'tool_call_end',
-  ];
+  ], []);
 
-
-  const buildToolCallStatus = (messages: any[]): Record<string, ToolCallState> => {
+  const buildToolCallStatus = useCallback((messages: any[]): Record<string, ToolCallState> => {
     const toolCallStatus: Record<string, ToolCallState> = {};
 
     messages.forEach((message) => {
@@ -178,14 +178,92 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     });
 
     return toolCallStatus;
-  };
+  }, [toolCallEventTypes]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // Memoize the rendered messages to prevent re-computation on every render
+  const renderedMessages = useMemo(() => {
+    const toolCallStatus = buildToolCallStatus(messages);
+    const renderedToolCalls = new Set<string>();
+    
+    return messages.filter(hasValidContent).map((message: any, index: number) => {
+      const meta = message.metadata;
+      let tool_call_id: string | undefined;
+      let isExternalTool = false;
+      
+      if (
+        meta &&
+        toolCallEventTypes.includes(String(meta.type)) &&
+        meta.data &&
+        typeof meta.data === 'object' &&
+        'tool_call_id' in meta.data
+      ) {
+        tool_call_id = (meta.data as any).tool_call_id;
+        // Check if this is an external tool
+        if (meta.type === 'tool_call_start' && (meta.data as any).is_external) {
+          isExternalTool = true;
+        }
+      }
+      
+      // Only render ToolCallRenderer for non-external tools
+      if (tool_call_id && !isExternalTool && !renderedToolCalls.has(tool_call_id)) {
+        renderedToolCalls.add(tool_call_id);
+        return (
+          <div key={message.messageId || `msg-${index}`} className="flex justify-start">
+            <ToolCallRenderer toolCall={toolCallStatus[tool_call_id]} />
+          </div>
+        );
+      }
+      
+      // Normal message rendering (including external tools handled by MessageRenderer)
+      const messageText = extractTextFromMessage(message);
+      const isUser = message.role === 'user';
+      const displayText = messageText || (message.metadata?.type === 'external_tool_calls' ? '' : 'Empty message');
+
+      // Don't render if no text and not an external tool call or tool event
+      if (!messageText && message.metadata?.type !== 'external_tool_calls' && !meta?.type?.startsWith('tool_call')) {
+        return null;
+      }
+
+      return (
+        <div
+          key={message.messageId || `msg-${index}`}
+          className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+        >
+          <div className={`flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              isUser ? 'bg-blue-500' : 'bg-gray-300'
+            }`}>
+              {isUser ? (
+                <User className="h-4 w-4 text-white" />
+              ) : (
+                <Bot className="h-4 w-4 text-gray-600" />
+              )}
+            </div>
+            <div className={`rounded-2xl px-4 py-2 ${
+              isUser 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-100 text-gray-900'
+            }`}>
+              <MessageRenderer 
+                content={displayText} 
+                className={isUser ? 'text-white' : ''}
+                metadata={message.metadata}
+                onToolResponse={handleToolResponse}
+                onApprovalResponse={handleApprovalResponse}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }).filter(Boolean); // Remove null entries
+  }, [messages, hasValidContent, buildToolCallStatus, toolCallEventTypes, extractTextFromMessage, handleToolResponse, handleApprovalResponse]);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
-  };
+  }, [sendMessage]);
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -213,84 +291,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           </div>
         )}
 
-
-        {(() => {
-          // 1. Build toolCallStatus and toolCallNameMap in a single pass
-          const toolCallStatus = buildToolCallStatus(messages);
-          // 2. Render messages, only render ToolCallRenderer for first occurrence of each tool_call_id
-          const renderedToolCalls = new Set<string>();
-          return messages.filter(hasValidContent).map((message: any, index: number) => {
-            const meta = message.metadata;
-            let tool_call_id: string | undefined;
-            let isExternalTool = false;
-            
-            if (
-              meta &&
-              toolCallEventTypes.includes(String(meta.type)) &&
-              meta.data &&
-              typeof meta.data === 'object' &&
-              'tool_call_id' in meta.data
-            ) {
-              tool_call_id = (meta.data as any).tool_call_id;
-              // Check if this is an external tool
-              if (meta.type === 'tool_call_start' && (meta.data as any).is_external) {
-                isExternalTool = true;
-              }
-            }
-            
-            // Only render ToolCallRenderer for non-external tools
-            if (tool_call_id && !isExternalTool && !renderedToolCalls.has(tool_call_id)) {
-              renderedToolCalls.add(tool_call_id);
-              return (
-                <div key={message.messageId || `msg-${index}`} className="flex justify-start">
-                  <ToolCallRenderer toolCall={toolCallStatus[tool_call_id]} />
-                </div>
-              );
-            }
-            
-            // Normal message rendering (including external tools handled by MessageRenderer)
-            const messageText = extractTextFromMessage(message);
-            const isUser = message.role === 'user';
-            const displayText = messageText || (message.metadata?.type === 'external_tool_calls' ? '' : 'Empty message');
-
-            // Don't render if no text and not an external tool call or tool event
-            if (!messageText && message.metadata?.type !== 'external_tool_calls' && !meta?.type?.startsWith('tool_call')) {
-              return null;
-            }
-
-            return (
-              <div
-                key={message.messageId || `msg-${index}`}
-                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                    isUser ? 'bg-blue-500' : 'bg-gray-300'
-                  }`}>
-                    {isUser ? (
-                      <User className="h-4 w-4 text-white" />
-                    ) : (
-                      <Bot className="h-4 w-4 text-gray-600" />
-                    )}
-                  </div>
-                  <div className={`rounded-2xl px-4 py-2 ${
-                    isUser 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-100 text-gray-900'
-                  }`}>
-                    <MessageRenderer 
-                      content={displayText} 
-                      className={isUser ? 'text-white' : ''}
-                      metadata={message.metadata}
-                      onToolResponse={handleToolResponse}
-                      onApprovalResponse={handleApprovalResponse}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          });
-        })()}
+        {renderedMessages}
 
         <div ref={messagesEndRef} />
       </div>
