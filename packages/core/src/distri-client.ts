@@ -105,7 +105,8 @@ export class DistriClient {
       // Use agent's URL from the configured baseUrl
       const fetchFn = this.fetchAbsolute.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl, fetchFn);
+      // Custom A2AClient accepts fetchFn as second parameter
+      const client = new (A2AClient as any)(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
