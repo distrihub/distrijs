@@ -27,6 +27,8 @@ var src_exports = {};
 __export(src_exports, {
   A2AClient: () => A2AClient,
   A2AProtocolError: () => A2AProtocolError,
+  APPROVAL_REQUEST_TOOL_NAME: () => APPROVAL_REQUEST_TOOL_NAME,
+  Agent: () => Agent,
   ApiError: () => ApiError,
   ConnectionError: () => ConnectionError,
   DistriClient: () => DistriClient,
@@ -35,8 +37,39 @@ __export(src_exports, {
 });
 module.exports = __toCommonJS(src_exports);
 
-// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
+// src/types.ts
+var APPROVAL_REQUEST_TOOL_NAME = "approval_request";
+var DistriError = class extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "DistriError";
+  }
+};
+var A2AProtocolError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "A2A_PROTOCOL_ERROR", details);
+    this.name = "A2AProtocolError";
+  }
+};
+var ApiError = class extends DistriError {
+  constructor(message, statusCode, details) {
+    super(message, "API_ERROR", details);
+    this.statusCode = statusCode;
+    this.name = "ApiError";
+  }
+};
+var ConnectionError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "CONNECTION_ERROR", details);
+    this.name = "ConnectionError";
+  }
+};
+
+// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+86c9de0/node_modules/@a2a-js/sdk/dist/chunk-MMZDL2A3.js
 var A2AClient = class {
+  // To be populated from AgentCard after fetching
   /**
    * Constructs an A2AClient instance.
    * It initiates fetching the agent card from the provided agent baseUrl.
@@ -44,15 +77,12 @@ var A2AClient = class {
    * The `url` field from the Agent Card will be used as the RPC service endpoint.
    * @param agentBaseUrl The base URL of the A2A agent (e.g., https://agent.example.com).
    */
-  constructor(agentBaseUrl, fetchFn) {
+  constructor(agentBaseUrl) {
     __publicField(this, "agentBaseUrl");
     __publicField(this, "agentCardPromise");
     __publicField(this, "requestIdCounter", 1);
     __publicField(this, "serviceEndpointUrl");
-    // To be populated from AgentCard after fetching
-    __publicField(this, "fetchFn");
     this.agentBaseUrl = agentBaseUrl.replace(/\/$/, "");
-    this.fetchFn = fetchFn || globalThis.fetch;
     this.agentCardPromise = this._fetchAndCacheAgentCard();
   }
   /**
@@ -63,7 +93,7 @@ var A2AClient = class {
   async _fetchAndCacheAgentCard() {
     const agentCardUrl = `${this.agentBaseUrl}/.well-known/agent.json`;
     try {
-      const response = await this.fetchFn(agentCardUrl, {
+      const response = await fetch(agentCardUrl, {
         headers: { "Accept": "application/json" }
       });
       if (!response.ok) {
@@ -92,7 +122,7 @@ var A2AClient = class {
     if (agentBaseUrl) {
       const specificAgentBaseUrl = agentBaseUrl.replace(/\/$/, "");
       const agentCardUrl = `${specificAgentBaseUrl}/.well-known/agent.json`;
-      const response = await this.fetchFn(agentCardUrl, {
+      const response = await fetch(agentCardUrl, {
         headers: { "Accept": "application/json" }
       });
       if (!response.ok) {
@@ -132,7 +162,7 @@ var A2AClient = class {
       // Cast because TParams structure varies per method
       id: requestId
     };
-    const httpResponse = await this.fetchFn(endpoint, {
+    const httpResponse = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -197,7 +227,7 @@ var A2AClient = class {
       params,
       id: clientRequestId
     };
-    const response = await this.fetchFn(endpoint, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -290,7 +320,7 @@ var A2AClient = class {
       params,
       id: clientRequestId
     };
-    const response = await this.fetchFn(endpoint, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -408,35 +438,6 @@ var A2AClient = class {
   }
 };
 
-// src/types.ts
-var DistriError = class extends Error {
-  constructor(message, code, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "DistriError";
-  }
-};
-var A2AProtocolError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "A2A_PROTOCOL_ERROR", details);
-    this.name = "A2AProtocolError";
-  }
-};
-var ApiError = class extends DistriError {
-  constructor(message, statusCode, details) {
-    super(message, "API_ERROR", details);
-    this.statusCode = statusCode;
-    this.name = "ApiError";
-  }
-};
-var ConnectionError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "CONNECTION_ERROR", details);
-    this.name = "ConnectionError";
-  }
-};
-
 // src/distri-client.ts
 var DistriClient = class {
   constructor(config) {
@@ -511,9 +512,8 @@ var DistriClient = class {
    */
   getA2AClient(agentId) {
     if (!this.agentClients.has(agentId)) {
-      const fetchFn = this.fetchAbsolute.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl, fetchFn);
+      const client = new A2AClient(agentUrl);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
@@ -731,10 +731,210 @@ function uuidv4() {
     (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
   ).join("");
 }
+
+// src/agent.ts
+var Agent = class _Agent {
+  constructor(agentDefinition, client) {
+    this.agentDefinition = agentDefinition;
+    this.client = client;
+  }
+  /**
+   * Get agent information
+   */
+  get id() {
+    return this.agentDefinition.id;
+  }
+  get name() {
+    return this.agentDefinition.name;
+  }
+  get description() {
+    return this.agentDefinition.description;
+  }
+  get externalTools() {
+    return this.agentDefinition.external_tools || [];
+  }
+  /**
+   * Invoke the agent with a message
+   */
+  async invoke(input, config = {}) {
+    const userMessage = DistriClient.initMessage(input, "user", config.contextId);
+    const params = DistriClient.initMessageParams(userMessage, config.configuration);
+    if (config.stream) {
+      return this.invokeStream(params);
+    } else {
+      return this.invokeDirect(params, config);
+    }
+  }
+  /**
+   * Direct (non-streaming) invoke
+   */
+  async invokeDirect(params, config) {
+    let result = await this.client.sendMessage(this.agentDefinition.id, params);
+    if (result.kind === "message") {
+      result = await this.handleMessageExternalTools(result, config);
+    }
+    return {
+      message: result.kind === "message" ? result : void 0,
+      task: result.kind === "task" ? result : void 0,
+      streamed: false
+    };
+  }
+  /**
+   * Streaming invoke
+   */
+  async invokeStream(params) {
+    const stream = this.client.sendMessageStream(this.agentDefinition.id, params);
+    return {
+      stream,
+      handleExternalTools: async (handler, approvalHandler) => {
+        await this.handleStreamExternalTools(stream, handler, approvalHandler);
+      }
+    };
+  }
+  /**
+   * Handle external tools in a message response
+   */
+  async handleMessageExternalTools(message, config) {
+    if (message.metadata && message.metadata.type === "external_tool_calls") {
+      const metadata = message.metadata;
+      const toolCalls = metadata.tool_calls;
+      const requiresApproval = metadata.requires_approval;
+      if (requiresApproval && config.approvalHandler) {
+        const approved = await config.approvalHandler(toolCalls);
+        if (!approved) {
+          throw new Error("Tool execution cancelled by user");
+        }
+      }
+      for (const toolCall of toolCalls) {
+        if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+          await this.handleApprovalRequest(toolCall, config.approvalHandler);
+        } else {
+          await this.handleExternalTool(toolCall, config.externalToolHandlers);
+        }
+      }
+    } else if (message.metadata) {
+      const metadata = message.metadata;
+      if (metadata.type === "external_tool_calls") {
+        const toolCalls = metadata.tool_calls;
+        const requiresApproval = metadata.requires_approval;
+        if (requiresApproval && config.approvalHandler) {
+          const approved = await config.approvalHandler(toolCalls);
+          if (!approved) {
+            throw new Error("Tool execution cancelled by user");
+          }
+        }
+        for (const toolCall of toolCalls) {
+          if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+            await this.handleApprovalRequest(toolCall, config.approvalHandler);
+          } else {
+            await this.handleExternalTool(toolCall, config.externalToolHandlers);
+          }
+        }
+      }
+    }
+    return message;
+  }
+  /**
+   * Handle external tools in a stream
+   */
+  async handleStreamExternalTools(stream, handler, approvalHandler) {
+    for await (const event of stream) {
+      if (event.kind === "message") {
+        const message = event;
+        if (message.metadata && message.metadata.type === "external_tool_calls") {
+          const metadata = message.metadata;
+          const toolCalls = metadata.tool_calls;
+          const requiresApproval = metadata.requires_approval;
+          if (requiresApproval && approvalHandler) {
+            const approved = await approvalHandler(toolCalls);
+            if (!approved) {
+              throw new Error("Tool execution cancelled by user");
+            }
+          }
+          for (const toolCall of toolCalls) {
+            if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+              await this.handleApprovalRequest(toolCall, approvalHandler);
+            } else {
+              const result = await handler(toolCall);
+              await this.sendToolResponse(toolCall.tool_call_id, result);
+            }
+          }
+        }
+      }
+    }
+  }
+  /**
+   * Handle a single external tool call
+   */
+  async handleExternalTool(toolCall, handlers) {
+    if (!handlers || !handlers[toolCall.tool_name]) {
+      throw new Error(`No handler found for external tool: ${toolCall.tool_name}`);
+    }
+    const result = await handlers[toolCall.tool_name](toolCall);
+    await this.sendToolResponse(toolCall.tool_call_id, result);
+    return result;
+  }
+  /**
+   * Handle approval request
+   */
+  async handleApprovalRequest(toolCall, approvalHandler) {
+    if (!approvalHandler) {
+      throw new Error("Approval handler required for approval requests");
+    }
+    try {
+      const input = JSON.parse(toolCall.input);
+      const toolCalls = input.tool_calls || [];
+      const reason = input.reason;
+      const approved = await approvalHandler(toolCalls, reason);
+      const result = {
+        approved,
+        reason: approved ? "Approved by user" : "Denied by user",
+        tool_calls: toolCalls
+      };
+      await this.sendToolResponse(toolCall.tool_call_id, result);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      await this.sendToolResponse(toolCall.tool_call_id, {
+        approved: false,
+        reason: `Error processing approval request: ${errorMessage}`,
+        tool_calls: []
+      });
+    }
+  }
+  /**
+   * Send tool response back to the agent
+   */
+  async sendToolResponse(toolCallId, result) {
+    const responseMessage = DistriClient.initMessage("", "user");
+    responseMessage.metadata = {
+      type: "tool_response",
+      tool_call_id: toolCallId,
+      result: typeof result === "string" ? result : JSON.stringify(result)
+    };
+    const params = DistriClient.initMessageParams(responseMessage);
+    await this.client.sendMessage(this.agentDefinition.id, params);
+  }
+  /**
+   * Create an agent instance from an agent ID
+   */
+  static async create(agentId, client) {
+    const agentDefinition = await client.getAgent(agentId);
+    return new _Agent(agentDefinition, client);
+  }
+  /**
+   * List all available agents
+   */
+  static async list(client) {
+    const agentDefinitions = await client.getAgents();
+    return agentDefinitions.map((def) => new _Agent(def, client));
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   A2AClient,
   A2AProtocolError,
+  APPROVAL_REQUEST_TOOL_NAME,
+  Agent,
   ApiError,
   ConnectionError,
   DistriClient,

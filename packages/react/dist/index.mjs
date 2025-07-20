@@ -417,8 +417,116 @@ function useThreads() {
     updateThread
   };
 }
+
+// src/useAgent.ts
+import React, { useState as useState5, useCallback as useCallback4, useRef as useRef2 } from "react";
+import {
+  Agent
+} from "@distri/core";
+function useAgent({
+  agentId,
+  autoCreateAgent = true,
+  defaultExternalToolHandlers,
+  defaultApprovalHandler
+}) {
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
+  const [agent, setAgent] = useState5(null);
+  const [loading, setLoading] = useState5(false);
+  const [error, setError] = useState5(null);
+  const agentRef = useRef2(null);
+  const initializeAgent = useCallback4(async () => {
+    if (!client || !agentId || agentRef.current)
+      return;
+    try {
+      setLoading(true);
+      setError(null);
+      const newAgent = await Agent.create(agentId, client);
+      agentRef.current = newAgent;
+      setAgent(newAgent);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to create agent"));
+    } finally {
+      setLoading(false);
+    }
+  }, [client, agentId]);
+  React.useEffect(() => {
+    if (!clientLoading && !clientError && autoCreateAgent && client) {
+      initializeAgent();
+    }
+  }, [clientLoading, clientError, autoCreateAgent, client, initializeAgent]);
+  const invoke = useCallback4(async (input, config = {}) => {
+    if (!agent) {
+      throw new Error("Agent not initialized");
+    }
+    const finalConfig = {
+      ...config,
+      externalToolHandlers: config.externalToolHandlers || defaultExternalToolHandlers,
+      approvalHandler: config.approvalHandler || defaultApprovalHandler
+    };
+    return agent.invoke(input, finalConfig);
+  }, [agent, defaultExternalToolHandlers, defaultApprovalHandler]);
+  const invokeWithHandlers = useCallback4(async (input, handlers, approvalHandler, config = {}) => {
+    if (!agent) {
+      throw new Error("Agent not initialized");
+    }
+    const result = await agent.invoke(input, {
+      ...config,
+      stream: false,
+      externalToolHandlers: handlers || defaultExternalToolHandlers,
+      approvalHandler: approvalHandler || defaultApprovalHandler
+    });
+    return result;
+  }, [agent, defaultExternalToolHandlers, defaultApprovalHandler]);
+  return {
+    agent,
+    loading: loading || clientLoading,
+    error: error || clientError,
+    invoke,
+    invokeWithHandlers
+  };
+}
+var createBuiltinToolHandlers = () => ({
+  // File upload handler
+  file_upload: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    console.log("File upload requested:", input);
+    return { success: true, message: "File upload simulated" };
+  },
+  // Input request handler
+  input_request: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    const userInput = prompt(input.prompt || "Please provide input:");
+    return { input: userInput };
+  },
+  // Email send handler
+  email_send: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    console.log("Email send requested:", input);
+    return { success: true, message: "Email sent successfully" };
+  }
+});
+var createBuiltinApprovalHandler = () => {
+  return async (toolCalls, reason) => {
+    const toolNames = toolCalls.map((tc) => tc.tool_name).join(", ");
+    const message = reason ? `${reason}
+
+Tools to execute: ${toolNames}
+
+Do you approve?` : `Execute tools: ${toolNames}?`;
+    return confirm(message);
+  };
+};
+
+// src/index.ts
+import { Agent as Agent2, DistriClient as DistriClient3, APPROVAL_REQUEST_TOOL_NAME } from "@distri/core";
 export {
+  APPROVAL_REQUEST_TOOL_NAME,
+  Agent2 as Agent,
+  DistriClient3 as DistriClient,
   DistriProvider,
+  createBuiltinApprovalHandler,
+  createBuiltinToolHandlers,
+  useAgent,
   useAgents,
   useChat,
   useDistri,

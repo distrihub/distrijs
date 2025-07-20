@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -15,12 +17,26 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
+  APPROVAL_REQUEST_TOOL_NAME: () => import_core4.APPROVAL_REQUEST_TOOL_NAME,
+  Agent: () => import_core4.Agent,
+  DistriClient: () => import_core4.DistriClient,
   DistriProvider: () => DistriProvider,
+  createBuiltinApprovalHandler: () => createBuiltinApprovalHandler,
+  createBuiltinToolHandlers: () => createBuiltinToolHandlers,
+  useAgent: () => useAgent,
   useAgents: () => useAgents,
   useChat: () => useChat,
   useDistri: () => useDistri,
@@ -446,9 +462,115 @@ function useThreads() {
     updateThread
   };
 }
+
+// src/useAgent.ts
+var import_react5 = __toESM(require("react"));
+var import_core3 = require("@distri/core");
+function useAgent({
+  agentId,
+  autoCreateAgent = true,
+  defaultExternalToolHandlers,
+  defaultApprovalHandler
+}) {
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
+  const [agent, setAgent] = (0, import_react5.useState)(null);
+  const [loading, setLoading] = (0, import_react5.useState)(false);
+  const [error, setError] = (0, import_react5.useState)(null);
+  const agentRef = (0, import_react5.useRef)(null);
+  const initializeAgent = (0, import_react5.useCallback)(async () => {
+    if (!client || !agentId || agentRef.current)
+      return;
+    try {
+      setLoading(true);
+      setError(null);
+      const newAgent = await import_core3.Agent.create(agentId, client);
+      agentRef.current = newAgent;
+      setAgent(newAgent);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to create agent"));
+    } finally {
+      setLoading(false);
+    }
+  }, [client, agentId]);
+  import_react5.default.useEffect(() => {
+    if (!clientLoading && !clientError && autoCreateAgent && client) {
+      initializeAgent();
+    }
+  }, [clientLoading, clientError, autoCreateAgent, client, initializeAgent]);
+  const invoke = (0, import_react5.useCallback)(async (input, config = {}) => {
+    if (!agent) {
+      throw new Error("Agent not initialized");
+    }
+    const finalConfig = {
+      ...config,
+      externalToolHandlers: config.externalToolHandlers || defaultExternalToolHandlers,
+      approvalHandler: config.approvalHandler || defaultApprovalHandler
+    };
+    return agent.invoke(input, finalConfig);
+  }, [agent, defaultExternalToolHandlers, defaultApprovalHandler]);
+  const invokeWithHandlers = (0, import_react5.useCallback)(async (input, handlers, approvalHandler, config = {}) => {
+    if (!agent) {
+      throw new Error("Agent not initialized");
+    }
+    const result = await agent.invoke(input, {
+      ...config,
+      stream: false,
+      externalToolHandlers: handlers || defaultExternalToolHandlers,
+      approvalHandler: approvalHandler || defaultApprovalHandler
+    });
+    return result;
+  }, [agent, defaultExternalToolHandlers, defaultApprovalHandler]);
+  return {
+    agent,
+    loading: loading || clientLoading,
+    error: error || clientError,
+    invoke,
+    invokeWithHandlers
+  };
+}
+var createBuiltinToolHandlers = () => ({
+  // File upload handler
+  file_upload: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    console.log("File upload requested:", input);
+    return { success: true, message: "File upload simulated" };
+  },
+  // Input request handler
+  input_request: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    const userInput = prompt(input.prompt || "Please provide input:");
+    return { input: userInput };
+  },
+  // Email send handler
+  email_send: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    console.log("Email send requested:", input);
+    return { success: true, message: "Email sent successfully" };
+  }
+});
+var createBuiltinApprovalHandler = () => {
+  return async (toolCalls, reason) => {
+    const toolNames = toolCalls.map((tc) => tc.tool_name).join(", ");
+    const message = reason ? `${reason}
+
+Tools to execute: ${toolNames}
+
+Do you approve?` : `Execute tools: ${toolNames}?`;
+    return confirm(message);
+  };
+};
+
+// src/index.ts
+var import_core4 = require("@distri/core");
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  APPROVAL_REQUEST_TOOL_NAME,
+  Agent,
+  DistriClient,
   DistriProvider,
+  createBuiltinApprovalHandler,
+  createBuiltinToolHandlers,
+  useAgent,
   useAgents,
   useChat,
   useDistri,

@@ -1,9 +1,9 @@
 import { DistriClient } from './distri-client';
-import {
-  DistriAgent,
-  MessageMetadata,
-  ToolCall,
-  ExternalTool,
+import { 
+  DistriAgent, 
+  MessageMetadata, 
+  ToolCall, 
+  ExternalTool, 
   APPROVAL_REQUEST_TOOL_NAME,
   A2AStreamEventData
 } from './types';
@@ -96,7 +96,7 @@ export class Agent {
     const params = DistriClient.initMessageParams(userMessage, config.configuration);
 
     if (config.stream) {
-      return this.invokeStream(params, config);
+      return this.invokeStream(params);
     } else {
       return this.invokeDirect(params, config);
     }
@@ -123,13 +123,13 @@ export class Agent {
   /**
    * Streaming invoke
    */
-  private async invokeStream(params: MessageSendParams, config: InvokeConfig): Promise<InvokeStreamResult> {
+  private async invokeStream(params: MessageSendParams): Promise<InvokeStreamResult> {
     const stream = this.client.sendMessageStream(this.agentDefinition.id, params);
 
     return {
       stream,
-      handleExternalTools: async () => {
-        await this.handleStreamExternalTools(stream, config);
+      handleExternalTools: async (handler: ExternalToolHandler, approvalHandler?: ApprovalHandler) => {
+        await this.handleStreamExternalTools(stream, handler, approvalHandler);
       }
     };
   }
@@ -138,10 +138,33 @@ export class Agent {
    * Handle external tools in a message response
    */
   private async handleMessageExternalTools(message: Message, config: InvokeConfig): Promise<Message> {
-    // Check for external tool calls in message metadata
-    if (message.metadata) {
+    // Check for external tool calls in message metadata - new format
+    if (message.metadata && (message.metadata as any).type === 'external_tool_calls') {
       const metadata = message.metadata as any;
+      const toolCalls: ToolCall[] = metadata.tool_calls;
+      const requiresApproval: boolean = metadata.requires_approval;
 
+      // Handle approval if required
+      if (requiresApproval && config.approvalHandler) {
+        const approved = await config.approvalHandler(toolCalls);
+        if (!approved) {
+          throw new Error('Tool execution cancelled by user');
+        }
+      }
+
+      // Execute external tools
+      for (const toolCall of toolCalls) {
+        if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+          await this.handleApprovalRequest(toolCall, config.approvalHandler);
+        } else {
+          await this.handleExternalTool(toolCall, config.externalToolHandlers);
+        }
+      }
+    }
+    // Fallback: Check for old MessageMetadata format
+    else if (message.metadata) {
+      const metadata = message.metadata as any;
+      
       if (metadata.type === 'external_tool_calls') {
         const toolCalls: ToolCall[] = metadata.tool_calls;
         const requiresApproval: boolean = metadata.requires_approval;
@@ -172,41 +195,34 @@ export class Agent {
    * Handle external tools in a stream
    */
   private async handleStreamExternalTools(
-    stream: AsyncGenerator<A2AStreamEventData>,
-    config: InvokeConfig
+    stream: AsyncGenerator<A2AStreamEventData>, 
+    handler: ExternalToolHandler, 
+    approvalHandler?: ApprovalHandler
   ): Promise<void> {
-    const handlers = config.externalToolHandlers;
-    const approvalHandler = config.approvalHandler;
-
     for await (const event of stream) {
       if (event.kind === 'message') {
         const message = event as Message;
-        if (message.metadata) {
+        // Check for external tool calls in new message metadata format
+        if (message.metadata && (message.metadata as any).type === 'external_tool_calls') {
           const metadata = message.metadata as any;
+          const toolCalls: ToolCall[] = metadata.tool_calls;
+          const requiresApproval: boolean = metadata.requires_approval;
 
-          if (metadata.type === 'external_tool_calls') {
-            const toolCalls: ToolCall[] = metadata.tool_calls;
-            const requiresApproval: boolean = metadata.requires_approval;
-
-            // Handle approval if required
-            if (requiresApproval && approvalHandler) {
-              const approved = await approvalHandler(toolCalls);
-              if (!approved) {
-                throw new Error('Tool execution cancelled by user');
-              }
+          // Handle approval if required
+          if (requiresApproval && approvalHandler) {
+            const approved = await approvalHandler(toolCalls);
+            if (!approved) {
+              throw new Error('Tool execution cancelled by user');
             }
+          }
 
-            // Execute external tools
-            for (const toolCall of toolCalls) {
-              if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-                await this.handleApprovalRequest(toolCall, approvalHandler);
-              } else {
-                if (!handlers || !handlers[toolCall.tool_name]) {
-                  throw new Error(`No handler found for external tool: ${toolCall.tool_name}`);
-                }
-                const result = await handlers[toolCall.tool_name](toolCall);
-                await this.sendToolResponse(toolCall.tool_call_id, result);
-              }
+          // Execute external tools
+          for (const toolCall of toolCalls) {
+            if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+              await this.handleApprovalRequest(toolCall, approvalHandler);
+            } else {
+              const result = await handler(toolCall);
+              await this.sendToolResponse(toolCall.tool_call_id, result);
             }
           }
         }
@@ -241,7 +257,7 @@ export class Agent {
       const reason: string = input.reason;
 
       const approved = await approvalHandler(toolCalls, reason);
-
+      
       const result = {
         approved,
         reason: approved ? 'Approved by user' : 'Denied by user',
@@ -249,10 +265,11 @@ export class Agent {
       };
 
       await this.sendToolResponse(toolCall.tool_call_id, result);
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await this.sendToolResponse(toolCall.tool_call_id, {
         approved: false,
-        reason: `Error processing approval request: ${error.message}`,
+        reason: `Error processing approval request: ${errorMessage}`,
         tool_calls: []
       });
     }

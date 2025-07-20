@@ -9,7 +9,7 @@ import { DistriEvent, MessageMetadata, ToolCall } from '@distri/core';
 interface MessageRendererProps {
   content: string;
   className?: string;
-  metadata?: DistriEvent | MessageMetadata;
+  metadata?: any; // Can be DistriEvent, MessageMetadata, or new message metadata format
   onToolResponse?: (toolCallId: string, result: any) => void;
   onApprovalResponse?: (approved: boolean, reason?: string) => void;
 }
@@ -21,8 +21,8 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
   onToolResponse,
   onApprovalResponse
 }) => {
-  // Handle external tool calls
-  if (metadata && (metadata as any).type === 'external_tool_calls') {
+  // Handle external tool calls - check for new metadata format first
+  if (metadata && metadata.type === 'external_tool_calls') {
     const externalMetadata = metadata as MessageMetadata & { type: 'external_tool_calls' };
     return (
       <ExternalToolHandler
@@ -34,8 +34,47 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     );
   }
 
-  // ToolCall event detection using concrete types
-  if (metadata && (
+  // Handle tool call events - check for new metadata format
+  if (metadata && metadata.type && metadata.data && (
+    metadata.type === 'tool_call_start' ||
+    metadata.type === 'tool_call_args' ||
+    metadata.type === 'tool_call_end' ||
+    metadata.type === 'tool_call_result'
+  )) {
+    const eventType = metadata.type;
+    const eventData = metadata.data;
+    
+    let toolCall: ToolCallState = {
+      tool_call_id: eventData.tool_call_id,
+      tool_name: undefined,
+      args: '',
+      running: true,
+      result: undefined,
+    };
+    
+    if (eventType === 'tool_call_start') {
+      toolCall.tool_name = eventData.tool_call_name;
+      toolCall.args = '';
+      toolCall.running = true;
+      // Check if this is an external tool
+      if (eventData.is_external) {
+        // Don't render external tools as regular tool calls
+        return null;
+      }
+    } else if (eventType === 'tool_call_args') {
+      toolCall.args = eventData.delta;
+      toolCall.running = true;
+    } else if (eventType === 'tool_call_end') {
+      toolCall.running = false;
+    } else if (eventType === 'tool_call_result') {
+      toolCall.result = eventData.result;
+      toolCall.running = false;
+    }
+    return <ToolCallRenderer toolCall={toolCall} />;
+  }
+
+  // Fallback: Handle old DistriEvent format for backwards compatibility
+  if (metadata && (metadata as DistriEvent).type && (
     (metadata as DistriEvent).type === 'tool_call_start' ||
     (metadata as DistriEvent).type === 'tool_call_args' ||
     (metadata as DistriEvent).type === 'tool_call_end' ||

@@ -48,13 +48,13 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;
 
-    // Check if tool_call_start
+    // Check if tool_call_start in metadata
     if (message.metadata?.type === 'tool_call_start') {
       console.log('tool_call_start: true', message);
       return true;
     }
 
-    // Check if external tool calls
+    // Check if external tool calls in metadata
     if (message.metadata?.type === 'external_tool_calls') {
       console.log('external_tool_calls: true', message);
       return true;
