@@ -795,24 +795,7 @@ var Agent = class _Agent {
    * Handle external tools in a message response
    */
   async handleMessageExternalTools(message, config) {
-    if (message.metadata && message.metadata.type === "external_tool_calls") {
-      const metadata = message.metadata;
-      const toolCalls = metadata.tool_calls;
-      const requiresApproval = metadata.requires_approval;
-      if (requiresApproval && config.approvalHandler) {
-        const approved = await config.approvalHandler(toolCalls);
-        if (!approved) {
-          throw new Error("Tool execution cancelled by user");
-        }
-      }
-      for (const toolCall of toolCalls) {
-        if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-          await this.handleApprovalRequest(toolCall, config.approvalHandler);
-        } else {
-          await this.handleExternalTool(toolCall, config.externalToolHandlers);
-        }
-      }
-    } else if (message.metadata) {
+    if (message.metadata) {
       const metadata = message.metadata;
       if (metadata.type === "external_tool_calls") {
         const toolCalls = metadata.tool_calls;
@@ -841,22 +824,24 @@ var Agent = class _Agent {
     for await (const event of stream) {
       if (event.kind === "message") {
         const message = event;
-        if (message.metadata && message.metadata.type === "external_tool_calls") {
+        if (message.metadata) {
           const metadata = message.metadata;
-          const toolCalls = metadata.tool_calls;
-          const requiresApproval = metadata.requires_approval;
-          if (requiresApproval && approvalHandler) {
-            const approved = await approvalHandler(toolCalls);
-            if (!approved) {
-              throw new Error("Tool execution cancelled by user");
+          if (metadata.type === "external_tool_calls") {
+            const toolCalls = metadata.tool_calls;
+            const requiresApproval = metadata.requires_approval;
+            if (requiresApproval && approvalHandler) {
+              const approved = await approvalHandler(toolCalls);
+              if (!approved) {
+                throw new Error("Tool execution cancelled by user");
+              }
             }
-          }
-          for (const toolCall of toolCalls) {
-            if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-              await this.handleApprovalRequest(toolCall, approvalHandler);
-            } else {
-              const result = await handler(toolCall);
-              await this.sendToolResponse(toolCall.tool_call_id, result);
+            for (const toolCall of toolCalls) {
+              if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+                await this.handleApprovalRequest(toolCall, approvalHandler);
+              } else {
+                const result = await handler(toolCall);
+                await this.sendToolResponse(toolCall.tool_call_id, result);
+              }
             }
           }
         }

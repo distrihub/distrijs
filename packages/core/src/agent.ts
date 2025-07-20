@@ -138,31 +138,8 @@ export class Agent {
    * Handle external tools in a message response
    */
   private async handleMessageExternalTools(message: Message, config: InvokeConfig): Promise<Message> {
-    // Check for external tool calls in message metadata - new format
-    if (message.metadata && (message.metadata as any).type === 'external_tool_calls') {
-      const metadata = message.metadata as any;
-      const toolCalls: ToolCall[] = metadata.tool_calls;
-      const requiresApproval: boolean = metadata.requires_approval;
-
-      // Handle approval if required
-      if (requiresApproval && config.approvalHandler) {
-        const approved = await config.approvalHandler(toolCalls);
-        if (!approved) {
-          throw new Error('Tool execution cancelled by user');
-        }
-      }
-
-      // Execute external tools
-      for (const toolCall of toolCalls) {
-        if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-          await this.handleApprovalRequest(toolCall, config.approvalHandler);
-        } else {
-          await this.handleExternalTool(toolCall, config.externalToolHandlers);
-        }
-      }
-    }
-    // Fallback: Check for old MessageMetadata format
-    else if (message.metadata) {
+    // Check for external tool calls in message metadata
+    if (message.metadata) {
       const metadata = message.metadata as any;
       
       if (metadata.type === 'external_tool_calls') {
@@ -202,27 +179,29 @@ export class Agent {
     for await (const event of stream) {
       if (event.kind === 'message') {
         const message = event as Message;
-        // Check for external tool calls in new message metadata format
-        if (message.metadata && (message.metadata as any).type === 'external_tool_calls') {
+        if (message.metadata) {
           const metadata = message.metadata as any;
-          const toolCalls: ToolCall[] = metadata.tool_calls;
-          const requiresApproval: boolean = metadata.requires_approval;
+          
+          if (metadata.type === 'external_tool_calls') {
+            const toolCalls: ToolCall[] = metadata.tool_calls;
+            const requiresApproval: boolean = metadata.requires_approval;
 
-          // Handle approval if required
-          if (requiresApproval && approvalHandler) {
-            const approved = await approvalHandler(toolCalls);
-            if (!approved) {
-              throw new Error('Tool execution cancelled by user');
+            // Handle approval if required
+            if (requiresApproval && approvalHandler) {
+              const approved = await approvalHandler(toolCalls);
+              if (!approved) {
+                throw new Error('Tool execution cancelled by user');
+              }
             }
-          }
 
-          // Execute external tools
-          for (const toolCall of toolCalls) {
-            if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-              await this.handleApprovalRequest(toolCall, approvalHandler);
-            } else {
-              const result = await handler(toolCall);
-              await this.sendToolResponse(toolCall.tool_call_id, result);
+            // Execute external tools
+            for (const toolCall of toolCalls) {
+              if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+                await this.handleApprovalRequest(toolCall, approvalHandler);
+              } else {
+                const result = await handler(toolCall);
+                await this.sendToolResponse(toolCall.tool_call_id, result);
+              }
             }
           }
         }
