@@ -1,14 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  Message,
-  MessageSendParams,
-  DistriClient
-} from '@distri/core';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { DistriClient, Message, MessageSendParams } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
 export interface UseChatOptions {
   agentId: string;
-  contextId?: string;
+  contextId: string;
 }
 
 export interface UseChatResult {
@@ -154,12 +150,17 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
           break;
         }
 
+        // Handle new JSON-RPC wrapped format
         let message = undefined;
-        if (event.kind === 'message') {
+        if (event.result && event.result.kind === 'message') {
+          message = (event.result as Message);
+        } else if (event.kind === 'message') {
+          // Fallback for old format
           message = (event as Message);
         }
 
         if (!message) continue;
+        
         setMessages((prev: Message[]) => {
           if (prev.find(msg => msg.messageId === message.messageId)) {
             return prev.map(msg => {
