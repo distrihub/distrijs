@@ -104,11 +104,83 @@ export class DistriClient {
     if (!this.agentClients.has(agentId)) {
       // Use agent's URL from the configured baseUrl
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
+      
+      // Temporarily override global fetch during A2AClient construction
+      // to ensure agent card fetch uses our custom headers
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = this.fetchAbsolute.bind(this);
+      
+      let client: A2AClient;
+      try {
+        client = new A2AClient(agentUrl);
+      } finally {
+        // Restore original fetch
+        globalThis.fetch = originalFetch;
+      }
+      
+      // Override the internal fetch calls to use our custom fetchAbsolute for future calls
+      this.patchA2AClientFetch(client);
+      
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
     return this.agentClients.get(agentId)!;
+  }
+
+  /**
+   * Patch A2AClient to use our custom fetch function with headers
+   */
+  private patchA2AClientFetch(client: A2AClient): void {
+    // Store the original methods that make fetch calls
+    const originalPostRpcRequest = (client as any)._postRpcRequest?.bind(client);
+    const originalFetchAndCacheAgentCard = (client as any)._fetchAndCacheAgentCard?.bind(client);
+    const originalSendMessageStream = client.sendMessageStream?.bind(client);
+    
+    // Capture reference to our fetchAbsolute method
+    const fetchAbsolute = this.fetchAbsolute.bind(this);
+    
+    // Override _postRpcRequest to use our custom fetch
+    if (originalPostRpcRequest) {
+      (client as any)._postRpcRequest = async (method: string, params: any) => {
+        // Temporarily override global fetch for this call
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = fetchAbsolute;
+        
+        try {
+          return await originalPostRpcRequest(method, params);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      };
+    }
+
+    // Override _fetchAndCacheAgentCard to use our custom fetch
+    if (originalFetchAndCacheAgentCard) {
+      (client as any)._fetchAndCacheAgentCard = async () => {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = fetchAbsolute;
+        
+        try {
+          return await originalFetchAndCacheAgentCard();
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      };
+    }
+
+    // Override sendMessageStream to use our custom fetch
+    if (originalSendMessageStream) {
+      client.sendMessageStream = async function* (params: any) {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = fetchAbsolute;
+        
+        try {
+          yield* originalSendMessageStream(params);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      };
+    }
   }
 
   /**
