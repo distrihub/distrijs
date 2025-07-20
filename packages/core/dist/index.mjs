@@ -35,9 +35,8 @@ var ConnectionError = class extends DistriError {
   }
 };
 
-// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+86c9de0/node_modules/@a2a-js/sdk/dist/chunk-MMZDL2A3.js
+// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
-  // To be populated from AgentCard after fetching
   /**
    * Constructs an A2AClient instance.
    * It initiates fetching the agent card from the provided agent baseUrl.
@@ -45,12 +44,15 @@ var A2AClient = class {
    * The `url` field from the Agent Card will be used as the RPC service endpoint.
    * @param agentBaseUrl The base URL of the A2A agent (e.g., https://agent.example.com).
    */
-  constructor(agentBaseUrl) {
+  constructor(agentBaseUrl, fetchFn) {
     __publicField(this, "agentBaseUrl");
     __publicField(this, "agentCardPromise");
     __publicField(this, "requestIdCounter", 1);
     __publicField(this, "serviceEndpointUrl");
+    // To be populated from AgentCard after fetching
+    __publicField(this, "fetchFn");
     this.agentBaseUrl = agentBaseUrl.replace(/\/$/, "");
+    this.fetchFn = fetchFn || globalThis.fetch;
     this.agentCardPromise = this._fetchAndCacheAgentCard();
   }
   /**
@@ -61,7 +63,7 @@ var A2AClient = class {
   async _fetchAndCacheAgentCard() {
     const agentCardUrl = `${this.agentBaseUrl}/.well-known/agent.json`;
     try {
-      const response = await fetch(agentCardUrl, {
+      const response = await this.fetchFn(agentCardUrl, {
         headers: { "Accept": "application/json" }
       });
       if (!response.ok) {
@@ -90,7 +92,7 @@ var A2AClient = class {
     if (agentBaseUrl) {
       const specificAgentBaseUrl = agentBaseUrl.replace(/\/$/, "");
       const agentCardUrl = `${specificAgentBaseUrl}/.well-known/agent.json`;
-      const response = await fetch(agentCardUrl, {
+      const response = await this.fetchFn(agentCardUrl, {
         headers: { "Accept": "application/json" }
       });
       if (!response.ok) {
@@ -130,7 +132,7 @@ var A2AClient = class {
       // Cast because TParams structure varies per method
       id: requestId
     };
-    const httpResponse = await fetch(endpoint, {
+    const httpResponse = await this.fetchFn(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -195,7 +197,7 @@ var A2AClient = class {
       params,
       id: clientRequestId
     };
-    const response = await fetch(endpoint, {
+    const response = await this.fetchFn(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -288,7 +290,7 @@ var A2AClient = class {
       params,
       id: clientRequestId
     };
-    const response = await fetch(endpoint, {
+    const response = await this.fetchFn(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
