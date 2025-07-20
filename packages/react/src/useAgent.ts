@@ -1,13 +1,12 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { 
-  Agent, 
-  InvokeConfig, 
-  InvokeResult, 
-  InvokeStreamResult, 
-  ExternalToolHandler, 
+import {
+  Agent,
+  InvokeConfig,
+  InvokeResult,
+  InvokeStreamResult,
+  ExternalToolHandler,
   ApprovalHandler,
   ToolCall,
-  APPROVAL_REQUEST_TOOL_NAME
 } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
@@ -24,7 +23,7 @@ export interface UseAgentResult {
   error: Error | null;
   invoke: (input: string, config?: InvokeConfig) => Promise<InvokeResult | InvokeStreamResult>;
   invokeWithHandlers: (
-    input: string, 
+    input: string,
     handlers?: Record<string, ExternalToolHandler>,
     approvalHandler?: ApprovalHandler,
     config?: Omit<InvokeConfig, 'externalToolHandlers' | 'approvalHandler'>
@@ -34,8 +33,8 @@ export interface UseAgentResult {
 /**
  * React hook for working with a specific agent
  */
-export function useAgent({ 
-  agentId, 
+export function useAgent({
+  agentId,
   autoCreateAgent = true,
   defaultExternalToolHandlers,
   defaultApprovalHandler
@@ -72,7 +71,7 @@ export function useAgent({
 
   // Invoke method
   const invoke = useCallback(async (
-    input: string, 
+    input: string,
     config: InvokeConfig = {}
   ): Promise<InvokeResult | InvokeStreamResult> => {
     if (!agent) {
@@ -153,10 +152,10 @@ export const createBuiltinToolHandlers = (): Record<string, ExternalToolHandler>
 export const createBuiltinApprovalHandler = (): ApprovalHandler => {
   return async (toolCalls: ToolCall[], reason?: string): Promise<boolean> => {
     const toolNames = toolCalls.map(tc => tc.tool_name).join(', ');
-    const message = reason 
+    const message = reason
       ? `${reason}\n\nTools to execute: ${toolNames}\n\nDo you approve?`
       : `Execute tools: ${toolNames}?`;
-    
+
     return confirm(message);
   };
 };
