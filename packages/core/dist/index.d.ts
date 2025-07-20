@@ -261,10 +261,6 @@ declare class DistriClient {
      */
     private getA2AClient;
     /**
-     * Patch A2AClient to use our custom fetch function with headers
-     */
-    private patchA2AClientFetch;
-    /**
      * Send a message to an agent
      */
     sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task>;
