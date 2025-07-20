@@ -480,8 +480,9 @@ var DistriClient = class {
    */
   getA2AClient(agentId) {
     if (!this.agentClients.has(agentId)) {
+      const fetchFn = this.fetchAbsolute.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
+      const client = new A2AClient(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }

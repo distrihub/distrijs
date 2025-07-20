@@ -103,8 +103,9 @@ export class DistriClient {
   private getA2AClient(agentId: string): A2AClient {
     if (!this.agentClients.has(agentId)) {
       // Use agent's URL from the configured baseUrl
+      const fetchFn = this.fetchAbsolute.bind(this);
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
+      const client = new A2AClient(agentUrl, fetchFn);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
