@@ -29,6 +29,10 @@ interface DistriAgent {
     skills?: AgentSkill[];
     /** List of sub-agents that this agent can transfer control to */
     sub_agents?: string[];
+    /** External tools that are handled by the frontend */
+    external_tools?: ExternalTool[];
+    /** Tool approval configuration */
+    tool_approval?: ApprovalMode;
 }
 interface McpDefinition {
     /** The filter applied to the tools in this MCP definition. */
@@ -38,6 +42,52 @@ interface McpDefinition {
     /** The type of the MCP server (Tool or Agent). */
     type?: McpServerType;
 }
+/**
+ * External tool definition
+ */
+interface ExternalTool {
+    name: string;
+    description: string;
+    input_schema: any;
+}
+/**
+ * Mode for tool approval requirements
+ */
+type ApprovalMode = {
+    type: 'none';
+} | {
+    type: 'all';
+} | {
+    type: 'filter';
+    tools: string[];
+};
+/**
+ * Tool call definition
+ */
+interface ToolCall {
+    tool_call_id: string;
+    tool_name: string;
+    input: string;
+}
+/**
+ * Message metadata types for external tools and approval system
+ */
+type MessageMetadata = {
+    type: 'tool_response';
+    tool_call_id: string;
+    result: any;
+} | {
+    type: 'tool_calls';
+    tool_calls: ToolCall[];
+} | {
+    type: 'external_tool_calls';
+    tool_calls: ToolCall[];
+    requires_approval: boolean;
+};
+/**
+ * Approval request tool name constant
+ */
+declare const APPROVAL_REQUEST_TOOL_NAME = "approval_request";
 interface ModelSettings {
     model: string;
     temperature: number;
@@ -66,12 +116,6 @@ interface DistriThread {
     message_count: number;
     last_message?: string;
 }
-interface Agent {
-    id: string;
-    name: string;
-    description: string;
-    status: 'online' | 'offline';
-}
 interface Thread {
     id: string;
     title: string;
@@ -83,7 +127,7 @@ interface Thread {
 }
 interface ChatProps {
     thread: Thread;
-    agent: Agent;
+    agent: DistriAgent;
     onThreadUpdate?: () => void;
 }
 /**
@@ -123,6 +167,79 @@ declare class ConnectionError extends DistriError {
 }
 
 type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Task;
+
+type Role = 'user' | 'system' | 'assistant';
+interface RunStartedEvent {
+    type: 'run_started';
+}
+interface RunFinishedEvent {
+    type: 'run_finished';
+}
+interface RunErrorEvent {
+    type: 'run_error';
+    data: {
+        message: string;
+        code?: string;
+    };
+}
+interface TextMessageStartEvent {
+    type: 'text_message_start';
+    data: {
+        message_id: string;
+        role: Role;
+    };
+}
+interface TextMessageContentEvent {
+    type: 'text_message_content';
+    data: {
+        message_id: string;
+        delta: string;
+    };
+}
+interface TextMessageEndEvent {
+    type: 'text_message_end';
+    data: {
+        message_id: string;
+    };
+}
+interface ToolCallStartEvent {
+    type: 'tool_call_start';
+    data: {
+        tool_call_id: string;
+        tool_call_name: string;
+        parent_message_id?: string;
+        is_external?: boolean;
+    };
+}
+interface ToolCallArgsEvent {
+    type: 'tool_call_args';
+    data: {
+        tool_call_id: string;
+        delta: string;
+    };
+}
+interface ToolCallEndEvent {
+    type: 'tool_call_end';
+    data: {
+        tool_call_id: string;
+    };
+}
+interface ToolCallResultEvent {
+    type: 'tool_call_result';
+    data: {
+        tool_call_id: string;
+        result: string;
+    };
+}
+interface AgentHandoverEvent {
+    type: 'agent_handover';
+    data: {
+        from_agent: string;
+        to_agent: string;
+        reason?: string;
+    };
+}
+type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | AgentHandoverEvent;
 
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
@@ -199,76 +316,103 @@ declare class DistriClient {
 }
 declare function uuidv4(): string;
 
-type Role = 'user' | 'system' | 'assistant';
-interface RunStartedEvent {
-    type: 'run_started';
+/**
+ * Configuration for Agent invoke method
+ */
+interface InvokeConfig {
+    /** Whether to stream responses */
+    stream?: boolean;
+    /** Configuration for the message */
+    configuration?: MessageSendParams['configuration'];
+    /** Context/thread ID */
+    contextId?: string;
+    /** External tool handlers */
+    externalToolHandlers?: Record<string, ExternalToolHandler>;
+    /** Approval handler for approval requests */
+    approvalHandler?: ApprovalHandler;
 }
-interface RunFinishedEvent {
-    type: 'run_finished';
+/**
+ * External tool handler function
+ */
+type ExternalToolHandler = (toolCall: ToolCall) => Promise<any>;
+/**
+ * Approval handler function
+ */
+type ApprovalHandler = (toolCalls: ToolCall[], reason?: string) => Promise<boolean>;
+/**
+ * Result from agent invoke
+ */
+interface InvokeResult {
+    /** Final response message */
+    message?: Message;
+    /** Task if created */
+    task?: any;
+    /** Whether the response was streamed */
+    streamed: boolean;
 }
-interface RunErrorEvent {
-    type: 'run_error';
-    data: {
-        message: string;
-        code?: string;
-    };
+/**
+ * Stream response from agent invoke
+ */
+interface InvokeStreamResult {
+    /** Async generator for streaming events */
+    stream: AsyncGenerator<A2AStreamEventData>;
+    /** Method to handle external tools and approval requests */
+    handleExternalTools: (handler: ExternalToolHandler, approvalHandler?: ApprovalHandler) => Promise<void>;
 }
-interface TextMessageStartEvent {
-    type: 'text_message_start';
-    data: {
-        message_id: string;
-        role: Role;
-    };
+/**
+ * Enhanced Agent class with nice API
+ */
+declare class Agent {
+    private client;
+    private agentDefinition;
+    constructor(agentDefinition: DistriAgent, client: DistriClient);
+    /**
+     * Get agent information
+     */
+    get id(): string;
+    get name(): string;
+    get description(): string | undefined;
+    get externalTools(): ExternalTool[];
+    /**
+     * Invoke the agent with a message
+     */
+    invoke(input: string, config?: InvokeConfig): Promise<InvokeResult | InvokeStreamResult>;
+    /**
+     * Direct (non-streaming) invoke
+     */
+    private invokeDirect;
+    /**
+     * Streaming invoke
+     */
+    private invokeStream;
+    /**
+     * Handle external tools in a message response
+     */
+    private handleMessageExternalTools;
+    /**
+     * Handle external tools in a stream
+     */
+    private handleStreamExternalTools;
+    /**
+     * Handle a single external tool call
+     */
+    private handleExternalTool;
+    /**
+     * Handle approval request
+     */
+    private handleApprovalRequest;
+    /**
+     * Send tool response back to the agent
+     */
+    private sendToolResponse;
+    /**
+     * Create an agent instance from an agent ID
+     */
+    static create(agentId: string, client: DistriClient): Promise<Agent>;
+    /**
+     * List all available agents
+     */
+    static list(client: DistriClient): Promise<Agent[]>;
 }
-interface TextMessageContentEvent {
-    type: 'text_message_content';
-    data: {
-        message_id: string;
-        delta: string;
-    };
-}
-interface TextMessageEndEvent {
-    type: 'text_message_end';
-    data: {
-        message_id: string;
-    };
-}
-interface ToolCallStartEvent {
-    type: 'tool_call_start';
-    data: {
-        tool_call_id: string;
-        tool_call_name: string;
-        parent_message_id?: string;
-    };
-}
-interface ToolCallArgsEvent {
-    type: 'tool_call_args';
-    data: {
-        tool_call_id: string;
-        delta: string;
-    };
-}
-interface ToolCallEndEvent {
-    type: 'tool_call_end';
-    data: {
-        tool_call_id: string;
-    };
-}
-interface ToolCallResultEvent {
-    type: 'tool_call_result';
-    data: {
-        tool_call_id: string;
-        result: string;
-    };
-}
-interface AgentHandoverEvent {
-    type: 'agent_handover';
-    data: {
-        from_agent: string;
-        to_agent: string;
-        reason?: string;
-    };
-}
-type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | AgentHandoverEvent;
 
-export { A2AProtocolError, type A2AStreamEventData, type Agent, type AgentHandoverEvent, ApiError, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriThread, type McpDefinition, type McpServerType, type ModelProvider, type ModelSettings, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type Thread, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallResultEvent, type ToolCallStartEvent, uuidv4 };
+export { A2AProtocolError, type A2AStreamEventData, APPROVAL_REQUEST_TOOL_NAME, Agent, type AgentHandoverEvent, ApiError, type ApprovalHandler, type ApprovalMode, type ChatProps, ConnectionError, type ConnectionStatus, type DistriAgent, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriThread, type ExternalTool, type ExternalToolHandler, type InvokeConfig, type InvokeResult, type InvokeStreamResult, type McpDefinition, type McpServerType, type MessageMetadata, type ModelProvider, type ModelSettings, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallResultEvent, type ToolCallStartEvent, uuidv4 };
