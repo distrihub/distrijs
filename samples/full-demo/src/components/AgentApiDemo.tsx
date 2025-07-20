@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Agent, 
-  DistriClient, 
+import {
+  Agent,
   useDistri,
   createBuiltinToolHandlers,
   createBuiltinApprovalHandler,
@@ -20,7 +19,7 @@ const AgentApiDemo: React.FC = () => {
   // Example external tool handlers
   const externalToolHandlers: Record<string, ExternalToolHandler> = {
     ...createBuiltinToolHandlers(),
-    
+
     // Custom handler example
     custom_tool: async (toolCall) => {
       const input = JSON.parse(toolCall.input);
@@ -66,7 +65,7 @@ const AgentApiDemo: React.FC = () => {
 
         if ('stream' in streamResult) {
           setResult('Streaming response...');
-          
+
           // Handle the stream
           for await (const event of streamResult.stream) {
             if (event.kind === 'message') {
@@ -171,8 +170,8 @@ const AgentApiDemo: React.FC = () => {
                 <strong>Description:</strong> {agent.description || 'No description'}
               </div>
               <div className="col-span-2">
-                <strong>External Tools:</strong> {agent.externalTools.length > 0 
-                  ? agent.externalTools.map(t => t.name).join(', ') 
+                <strong>External Tools:</strong> {agent.externalTools.length > 0
+                  ? agent.externalTools.map(t => t.name).join(', ')
                   : 'None'}
               </div>
             </div>
@@ -192,7 +191,7 @@ const AgentApiDemo: React.FC = () => {
                 <Play className="w-4 h-4" />
                 Simple Invoke (Direct)
               </button>
-              
+
               <button
                 onClick={() => invokeAgent('Hello! Please introduce yourself.', true)}
                 disabled={loading}
@@ -245,7 +244,7 @@ const AgentApiDemo: React.FC = () => {
         <div className="border rounded-lg p-4 mb-6 bg-gray-50">
           <h3 className="text-lg font-semibold mb-3">Code Example</h3>
           <pre className="text-sm text-gray-700 overflow-x-auto">
-{`// Create an agent
+            {`// Create an agent
 const agent = await Agent.create('my-agent-id', client);
 
 // Simple invoke
