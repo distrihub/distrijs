@@ -21,7 +21,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
   onToolResponse,
   onApprovalResponse
 }) => {
-  // Handle external tool calls
+  // Handle MessageMetadata for external tool calls (for Agent API)
   if (metadata && (metadata as any).type === 'external_tool_calls') {
     const externalMetadata = metadata as MessageMetadata & { type: 'external_tool_calls' };
     return (
@@ -54,10 +54,24 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       toolCall.tool_name = eventMetadata.data.tool_call_name;
       toolCall.args = '';
       toolCall.running = true;
-      // Check if this is an external tool using the new is_external field
+      
+      // Check if this is an external tool using the is_external field
       if ((eventMetadata.data as any).is_external) {
-        // Don't render external tools as regular tool calls
-        return null;
+        // For external tools, create a ToolCall object and render ExternalToolHandler
+        const externalToolCall: ToolCall = {
+          tool_call_id: eventMetadata.data.tool_call_id,
+          tool_name: eventMetadata.data.tool_call_name,
+          input: '' // Will be populated by tool_call_args events
+        };
+        
+        return (
+          <ExternalToolHandler
+            toolCalls={[externalToolCall]}
+            requiresApproval={eventMetadata.data.tool_call_name === 'approval_request'}
+            onToolResponse={onToolResponse || (() => {})}
+            onApprovalResponse={onApprovalResponse || (() => {})}
+          />
+        );
       }
     } else if (eventMetadata.type === 'tool_call_args') {
       toolCall.args = eventMetadata.data.delta;
@@ -68,6 +82,8 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       toolCall.result = eventMetadata.data.result;
       toolCall.running = false;
     }
+    
+    // Only render regular tool calls (non-external)
     return <ToolCallRenderer toolCall={toolCall} />;
   }
 

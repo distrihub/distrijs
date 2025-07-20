@@ -50,7 +50,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       return true;
     }
 
-    // Check if external tool calls
+    // Check if external tool calls (MessageMetadata for Agent API)
     if (message.metadata?.type === 'external_tool_calls') {
       console.log('external_tool_calls: true', message);
       return true;
@@ -148,6 +148,12 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       ) {
         const data = meta.data as any;
         const tool_call_id = data.tool_call_id;
+        
+        // Skip external tools - they are handled separately by ExternalToolHandler
+        if (meta.type === 'tool_call_start' && data.is_external) {
+          return;
+        }
+        
         if (!toolCallStatus[tool_call_id]) {
           toolCallStatus[tool_call_id] = {
             tool_call_id,
@@ -216,6 +222,8 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           return messages.filter(hasValidContent).map((message: any, index: number) => {
             const meta = message.metadata;
             let tool_call_id: string | undefined;
+            let isExternalTool = false;
+            
             if (
               meta &&
               toolCallEventTypes.includes(String(meta.type)) &&
@@ -224,8 +232,14 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
               'tool_call_id' in meta.data
             ) {
               tool_call_id = (meta.data as any).tool_call_id;
+              // Check if this is an external tool
+              if (meta.type === 'tool_call_start' && (meta.data as any).is_external) {
+                isExternalTool = true;
+              }
             }
-            if (tool_call_id && !renderedToolCalls.has(tool_call_id)) {
+            
+            // Only render ToolCallRenderer for non-external tools
+            if (tool_call_id && !isExternalTool && !renderedToolCalls.has(tool_call_id)) {
               renderedToolCalls.add(tool_call_id);
               return (
                 <div key={message.messageId || `msg-${index}`} className="flex justify-start">
@@ -233,12 +247,14 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
                 </div>
               );
             }
-            // Normal message rendering
+            
+            // Normal message rendering (including external tools handled by MessageRenderer)
             const messageText = extractTextFromMessage(message);
             const isUser = message.role === 'user';
             const displayText = messageText || (message.metadata?.type === 'external_tool_calls' ? '' : 'Empty message');
 
-            if (!messageText && message.metadata?.type !== 'external_tool_calls') {
+            // Don't render if no text and not an external tool call or tool event
+            if (!messageText && message.metadata?.type !== 'external_tool_calls' && !meta?.type?.startsWith('tool_call')) {
               return null;
             }
 
