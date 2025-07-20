@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { MessageSquare, Settings, Activity, Loader2, Bot } from 'lucide-react';
+import { MessageSquare, Settings, Activity, Loader2, Bot, Code } from 'lucide-react';
 import { DistriProvider, useAgents, DistriAgent } from '@distri/react';
 import ChatPage from './pages/ChatPage';
 import AgentsPage from './pages/AgentsPage';
 import TasksPage from './pages/TasksPage';
+import AgentApiDemo from './components/AgentApiDemo';
 
 function AppContent() {
   const { agents, loading } = useAgents();
   const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(agents[0] || null);
-  const [activeTab, setActiveTab] = useState<'chat' | 'agents' | 'tasks'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'agents' | 'tasks' | 'demo'>('chat');
 
   useEffect(() => {
     if (!loading && agents.length > 0) {
@@ -96,6 +97,16 @@ function AppContent() {
                   <Activity className="h-4 w-4" />
                   <span>Tasks</span>
                 </button>
+                <button
+                  onClick={() => setActiveTab('demo')}
+                  className={`flex items-center space-x-1 px-3 py-1 rounded text-sm font-medium transition-colors ${activeTab === 'demo'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                >
+                  <Code className="h-4 w-4" />
+                  <span>API Demo</span>
+                </button>
               </div>
             </div>
           </div>
@@ -114,6 +125,12 @@ function AppContent() {
 
       {activeTab === 'tasks' && (
         <TasksPage />
+      )}
+
+      {activeTab === 'demo' && (
+        <div className="flex-1 overflow-auto">
+          <AgentApiDemo />
+        </div>
       )}
     </div>
   );
