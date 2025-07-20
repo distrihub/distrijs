@@ -71,7 +71,7 @@ export interface ExternalTool {
 /**
  * Mode for tool approval requirements
  */
-export type ApprovalMode = 
+export type ApprovalMode =
   | { type: 'none' }
   | { type: 'all' }
   | { type: 'filter'; tools: string[] };
@@ -88,21 +88,21 @@ export interface ToolCall {
 /**
  * Message metadata types for external tools and approval system
  */
-export type MessageMetadata = 
+export type MessageMetadata =
   | {
-      type: 'tool_response';
-      tool_call_id: string;
-      result: any;
-    }
+    type: 'tool_response';
+    tool_call_id: string;
+    result: any;
+  }
   | {
-      type: 'tool_calls';
-      tool_calls: ToolCall[];
-    }
+    type: 'tool_calls';
+    tool_calls: ToolCall[];
+  }
   | {
-      type: 'external_tool_calls';
-      tool_calls: ToolCall[];
-      requires_approval: boolean;
-    };
+    type: 'external_tool_calls';
+    tool_calls: ToolCall[];
+    requires_approval: boolean;
+  };
 
 /**
  * Approval request tool name constant
@@ -142,13 +142,6 @@ export interface DistriThread {
   last_message?: string;
 }
 
-export interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  status: 'online' | 'offline';
-}
-
 export interface Thread {
   id: string;
   title: string;
@@ -161,7 +154,7 @@ export interface Thread {
 
 export interface ChatProps {
   thread: Thread;
-  agent: Agent;
+  agent: DistriAgent;
   onThreadUpdate?: () => void;
 }
 
