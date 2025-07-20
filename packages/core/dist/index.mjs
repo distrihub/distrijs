@@ -481,11 +481,61 @@ var DistriClient = class {
   getA2AClient(agentId) {
     if (!this.agentClients.has(agentId)) {
       const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-      const client = new A2AClient(agentUrl);
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = this.fetchAbsolute.bind(this);
+      let client;
+      try {
+        client = new A2AClient(agentUrl);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+      this.patchA2AClientFetch(client);
       this.agentClients.set(agentId, client);
       this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
     }
     return this.agentClients.get(agentId);
+  }
+  /**
+   * Patch A2AClient to use our custom fetch function with headers
+   */
+  patchA2AClientFetch(client) {
+    const originalPostRpcRequest = client._postRpcRequest?.bind(client);
+    const originalFetchAndCacheAgentCard = client._fetchAndCacheAgentCard?.bind(client);
+    const originalSendMessageStream = client.sendMessageStream?.bind(client);
+    const fetchAbsolute = this.fetchAbsolute.bind(this);
+    if (originalPostRpcRequest) {
+      client._postRpcRequest = async (method, params) => {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = fetchAbsolute;
+        try {
+          return await originalPostRpcRequest(method, params);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      };
+    }
+    if (originalFetchAndCacheAgentCard) {
+      client._fetchAndCacheAgentCard = async () => {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = fetchAbsolute;
+        try {
+          return await originalFetchAndCacheAgentCard();
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      };
+    }
+    if (originalSendMessageStream) {
+      client.sendMessageStream = async function* (params) {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = fetchAbsolute;
+        try {
+          yield* originalSendMessageStream(params);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      };
+    }
   }
   /**
    * Send a message to an agent
