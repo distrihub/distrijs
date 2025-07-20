@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, User, Bot, Square } from 'lucide-react';
-import { useChat, DistriAgent } from '@distri/react';
+import { useChat, DistriAgent, DistriClient, MessageMetadata } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
 import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
 
@@ -54,6 +54,12 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       return true;
     }
 
+    // Check if external tool calls
+    if (message.metadata?.type === 'external_tool_calls') {
+      console.log('external_tool_calls: true', message);
+      return true;
+    }
+
     return false;
   };
 
@@ -77,6 +83,42 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedThreadId]);
 
+  // Handle external tool responses
+  const handleToolResponse = async (toolCallId: string, result: any) => {
+    try {
+      // Create a tool response message
+      const responseMessage = DistriClient.initMessage('', 'user', selectedThreadId);
+      responseMessage.metadata = {
+        type: 'tool_response',
+        tool_call_id: toolCallId,
+        result: typeof result === 'string' ? result : JSON.stringify(result)
+      } as MessageMetadata;
+
+      // Send the response back to the agent
+      await sendMessageStream('', {
+        acceptedOutputModes: ['text/plain'],
+        blocking: false
+      });
+
+      // Refresh messages to show the response
+      onThreadUpdate(selectedThreadId);
+    } catch (error) {
+      console.error('Failed to send tool response:', error);
+    }
+  };
+
+  // Handle approval responses
+  const handleApprovalResponse = async (approved: boolean, reason?: string) => {
+    try {
+      // Send approval response
+      console.log('Approval response:', { approved, reason });
+      
+      // Refresh messages after approval
+      onThreadUpdate(selectedThreadId);
+    } catch (error) {
+      console.error('Failed to send approval response:', error);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || loading || isStreaming) return;
@@ -154,29 +196,28 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow h-full flex flex-col">
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <Bot className="h-4 w-4 text-white" />
-          </div>
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="border-b border-gray-200 p-4 bg-gray-50">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-500">with {agent.name}</p>
+            <h2 className="text-lg font-semibold text-gray-900">{agent.name}</h2>
+            <p className="text-sm text-gray-600">{agent.description}</p>
           </div>
+          {(loading || isStreaming) && (
+            <div className="flex items-center text-blue-600">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-sm">Processing...</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {(messages.length === 0 && !loading && !isStreaming) && (
-          <div className="flex flex-col items-center justify-center h-full py-8">
-            <MessageRenderer content={''} className="" />
-            <div className="flex flex-col items-center mt-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8s-9-3.582-9-8 4.03-8 9-8 9 3.582 9 8z" /></svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Start a new conversation</h3>
-              <p className="text-gray-500 text-sm">Type a message to begin chatting with {agent.name}.</p>
-            </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700">Error: {error.message}</p>
           </div>
         )}
 
@@ -208,33 +249,40 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
             }
             // Normal message rendering
             const messageText = extractTextFromMessage(message);
-            const isError = messageText.startsWith('Error:') || (messageText.includes('error') && message.role === 'agent');
+            const isUser = message.role === 'user';
+            const displayText = messageText || (message.metadata?.type === 'external_tool_calls' ? '' : 'Empty message');
+
+            if (!messageText && message.metadata?.type !== 'external_tool_calls') {
+              return null;
+            }
+
             return (
               <div
                 key={message.messageId || `msg-${index}`}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : isError
-                      ? 'bg-red-100 text-red-800 border border-red-300'
+                <div className={`flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    isUser ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}>
+                    {isUser ? (
+                      <User className="h-4 w-4 text-white" />
+                    ) : (
+                      <Bot className="h-4 w-4 text-gray-600" />
+                    )}
+                  </div>
+                  <div className={`rounded-2xl px-4 py-2 ${
+                    isUser 
+                      ? 'bg-blue-500 text-white' 
                       : 'bg-gray-100 text-gray-900'
-                    }`}
-                >
-                  <div className="flex items-start space-x-2">
-                    {message.role === 'agent' && (
-                      <Bot className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isError ? 'text-red-600' : ''}`} />
-                    )}
-                    {message.role === 'user' && (
-                      <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    )}
-                    <div className="flex-1">
-                      <MessageRenderer
-                        content={messageText}
-                        className={isError ? 'font-semibold' : ''}
-                      />
-                    </div>
+                  }`}>
+                    <MessageRenderer 
+                      content={displayText} 
+                      className={isUser ? 'text-white' : ''}
+                      metadata={message.metadata}
+                      onToolResponse={handleToolResponse}
+                      onApprovalResponse={handleApprovalResponse}
+                    />
                   </div>
                 </div>
               </div>
@@ -242,70 +290,32 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           });
         })()}
 
-
-
-        {loading && !isStreaming && (
-          <div className="flex justify-start">
-            <div className="flex items-center space-x-2 text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading...</span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex justify-start">
-            <div className="max-w-[70%] rounded-lg px-4 py-2 bg-red-100 text-red-800 border border-red-300">
-              <div className="flex items-start space-x-2">
-                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Error: {error.message}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t">
+      <div className="border-t border-gray-200 p-4 bg-gray-50">
         <div className="flex space-x-2">
-          <textarea
+          <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={`Message ${agent.name}...`}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={1}
+            placeholder="Type a message..."
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={loading || isStreaming}
           />
-          {isStreaming ? (
-            <button
-              onClick={() => {
-                if (abortControllerRef.current) {
-                  abortControllerRef.current.abort();
-                }
-              }}
-              className="bg-orange-100 text-orange-500 rounded-lg px-4 py-2 hover:bg-orange-200 flex items-center justify-center"
-              title="Stop streaming"
-            >
-              <Square className="h-5 w-5 animate-pulse" />
-            </button>
-          ) : (
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || loading}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
-          )}
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim() || loading || isStreaming}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center"
+          >
+            {isStreaming ? (
+              <Square className="h-4 w-4" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </button>
         </div>
       </div>
     </div>
