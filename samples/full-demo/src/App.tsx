@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MessageSquare, Settings, Activity, Loader2, Bot, Code } from 'lucide-react';
 import { DistriProvider, useAgents, DistriAgent } from '@distri/react';
 import ChatPage from './pages/ChatPage';
@@ -137,11 +137,14 @@ function AppContent() {
 }
 
 function App() {
+  // Memoize the config to prevent recreating it on every render
+  const config = useMemo(() => ({
+    baseUrl: 'http://localhost:8080/api/v1',
+    debug: true
+  }), []);
+
   return (
-    <DistriProvider config={{
-      baseUrl: 'http://localhost:8080/api/v1',
-      debug: true
-    }}>
+    <DistriProvider config={config}>
       <AppContent />
     </DistriProvider>
   );
