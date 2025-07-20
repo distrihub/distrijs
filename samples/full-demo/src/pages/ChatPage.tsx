@@ -101,8 +101,20 @@ const ThreadsList = ({ selectedThreadId, setSelectedThreadId, refreshCount }: { 
 
 
 export default function ChatPage({ selectedAgent }: { selectedAgent: DistriAgent | null }) {
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(uuidv4());
+  // Persist selectedThreadId to prevent reset on re-render
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(() => {
+    // Try to get from localStorage first, then fall back to generating new UUID
+    const saved = localStorage.getItem('distri-selected-thread-id');
+    return saved || uuidv4();
+  });
+  
   const [refreshCount, setRefreshCount] = useState<number>(0);
+  
+  // Save selectedThreadId to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('distri-selected-thread-id', selectedThreadId);
+  }, [selectedThreadId]);
+  
   console.log('selectedAgent', selectedAgent);
   return (
     <main className="flex flex-1 flex-col min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
