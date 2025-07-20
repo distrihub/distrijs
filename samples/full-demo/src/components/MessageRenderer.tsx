@@ -272,46 +272,53 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
 
   // Much more conservative code detection to avoid thoughts being marked as code
   if (!hasMarkdownSyntax) {
-    // Only detect very obvious code patterns, not thoughts or explanations
+    // Only detect actual code with very explicit programming syntax
     const looksLikeCode = useMemo(() => {
       const lines = content.split('\n');
       const totalLines = lines.length;
       
-      // Don't treat short single lines as code
-      if (totalLines === 1 && content.length < 30) {
+      // Don't treat short content as code
+      if (totalLines === 1 && content.length < 50) {
         return false;
       }
 
-      // Strong code indicators that are very unlikely to be thoughts
-      const strongCodeIndicators = [
+      // Only trigger on very explicit code patterns - NOT thoughts or explanations
+      const explicitCodePatterns = [
         /^#!\//, // Shebang
-        /^\s*(function|const|let|var|class|interface|import|export)\s+\w+/m, // JS/TS declarations
-        /^\s*(def|class|import|from)\s+\w+/m, // Python declarations
-        /^\s*(public|private|protected)\s+(class|interface|static)/m, // Java/C# 
-        /^\s*<\?php/m, // PHP
-        /^\s*<\w+.*>/m, // HTML tags
-        /^\s*\{[\s\S]*\}/m, // JSON objects
-        /^\s*\/\*[\s\S]*\*\//m, // Block comments
-        /^\s*\/\/.*$/m, // Line comments (but only if multiple)
+        /^\s*(function|const|let|var)\s+\w+\s*[=\(]/, // JS/TS function/variable declarations
+        /^\s*(class|interface)\s+\w+/, // Class/interface declarations
+        /^\s*(import|export)\s+/, // Import/export statements
+        /^\s*(def|class)\s+\w+/, // Python def/class
+        /^\s*(public|private|protected)\s+(class|interface|static)/, // Java/C# declarations
+        /^\s*<\?php/, // PHP opening tag
+        /^\s*<html|<head|<body|<div/, // HTML tags
+        /^\s*\{[\s]*"[\w"]+"\s*:/, // JSON objects (key-value pairs)
+        /^\s*SELECT\s+.*\s+FROM\s+/i, // SQL SELECT statements
+        /^\s*\/\*[\s\S]*\*\//, // Block comments
+        /^[ \t]*\/\/\s*\w+/, // Line comments (with actual content)
+        /;\s*$/, // Lines ending with semicolons
       ];
 
-      // Check for strong indicators
-      const hasStrongIndicators = strongCodeIndicators.some(pattern => pattern.test(content));
+      // Must have at least one very explicit code pattern
+      const hasExplicitCode = explicitCodePatterns.some(pattern => pattern.test(content));
       
-      if (hasStrongIndicators) return true;
+      if (!hasExplicitCode) return false;
 
-      // Additional check: multiple lines with consistent indentation or structure
-      const indentedLines = lines.filter(line => /^[ \t]{2,}/.test(line)).length;
-      const linesWithBraces = lines.filter(line => /[{}[\]()]/.test(line)).length;
-      const linesWithSemicolons = lines.filter(line => /;$/.test(line.trim())).length;
-      
-      // More conservative threshold - needs significant code-like structure
-      const codeScore = (indentedLines / totalLines) + 
-                       (linesWithBraces / totalLines) + 
-                       (linesWithSemicolons / totalLines);
-      
-      // Only if >50% of lines look very code-like
-      return codeScore > 0.5 && totalLines > 3;
+      // Additional verification: check for programming structure
+      const structuralPatterns = [
+        /[{}[\]()]/g, // Brackets and braces
+        /^\s{2,}/m, // Indentation
+        /=>/g, // Arrow functions
+        /[;:]/g, // Semicolons or colons
+      ];
+
+      const structureCount = structuralPatterns.reduce((count, pattern) => {
+        const matches = content.match(pattern);
+        return count + (matches ? matches.length : 0);
+      }, 0);
+
+      // Require both explicit code patterns AND structural elements
+      return structureCount >= 3;
     }, [content]);
 
     if (looksLikeCode) {
