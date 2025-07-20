@@ -48,7 +48,7 @@ export function DistriProvider({ config, children }: DistriProviderProps) {
       setIsLoading(false);
     }
 
-  }, [config.baseUrl, config.apiVersion, config.debug]); // Only depend on key config values
+  }, [config]); // Depend on the entire config object since we memoize it now
 
   const contextValue: DistriContextValue = {
     client,

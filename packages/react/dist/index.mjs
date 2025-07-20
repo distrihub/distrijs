@@ -32,7 +32,7 @@ function DistriProvider({ config, children }) {
       setClient(null);
       setIsLoading(false);
     }
-  }, [config.baseUrl, config.apiVersion, config.debug]);
+  }, [config]);
   const contextValue = {
     client,
     error,
