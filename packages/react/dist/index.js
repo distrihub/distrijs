@@ -30,9 +30,9 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
-  APPROVAL_REQUEST_TOOL_NAME: () => import_core4.APPROVAL_REQUEST_TOOL_NAME,
-  Agent: () => import_core4.Agent,
-  DistriClient: () => import_core4.DistriClient,
+  APPROVAL_REQUEST_TOOL_NAME: () => import_core3.APPROVAL_REQUEST_TOOL_NAME,
+  Agent: () => import_core3.Agent,
+  DistriClient: () => import_core3.DistriClient,
   DistriProvider: () => DistriProvider,
   createBuiltinApprovalHandler: () => createBuiltinApprovalHandler,
   createBuiltinToolHandlers: () => createBuiltinToolHandlers,
@@ -188,7 +188,6 @@ function useAgents() {
 
 // src/useChat.ts
 var import_react3 = require("react");
-var import_core2 = require("@distri/core");
 function useChat({ agentId, contextId }) {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [loading, setLoading] = (0, import_react3.useState)(false);
@@ -221,7 +220,7 @@ function useChat({ agentId, contextId }) {
       setMessages([]);
     }
   }, [clientLoading, clientError, contextId, client]);
-  const sendMessage = (0, import_react3.useCallback)(async (input, configuration) => {
+  const sendMessage = (0, import_react3.useCallback)(async (params) => {
     if (!client) {
       setError(new Error("Client not available"));
       return;
@@ -229,9 +228,7 @@ function useChat({ agentId, contextId }) {
     try {
       setLoading(true);
       setError(null);
-      const userMessage = import_core2.DistriClient.initMessage(input, "user", contextId);
-      setMessages((prev) => [...prev, userMessage]);
-      const params = import_core2.DistriClient.initMessageParams(userMessage, configuration);
+      setMessages((prev) => [...prev, params.message]);
       const result = await client.sendMessage(agentId, params);
       let message = void 0;
       if (result.kind === "message") {
@@ -264,7 +261,7 @@ function useChat({ agentId, contextId }) {
       setLoading(false);
     }
   }, [client, agentId]);
-  const sendMessageStream = (0, import_react3.useCallback)(async (input, configuration) => {
+  const sendMessageStream = (0, import_react3.useCallback)(async (params) => {
     if (!client) {
       setError(new Error("Client not available"));
       return;
@@ -277,13 +274,7 @@ function useChat({ agentId, contextId }) {
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
-      const userMessage = import_core2.DistriClient.initMessage(input, "user", contextId);
-      setMessages((prev) => [...prev, userMessage]);
-      const params = import_core2.DistriClient.initMessageParams(userMessage, {
-        blocking: false,
-        acceptedOutputModes: ["text/plain"],
-        ...configuration
-      });
+      setMessages((prev) => [...prev, params.message]);
       setIsStreaming(true);
       const stream = await client.sendMessageStream(agentId, params);
       for await (const event of stream) {
@@ -465,7 +456,7 @@ function useThreads() {
 
 // src/useAgent.ts
 var import_react5 = __toESM(require("react"));
-var import_core3 = require("@distri/core");
+var import_core2 = require("@distri/core");
 function useAgent({
   agentId,
   autoCreateAgent = true,
@@ -483,7 +474,7 @@ function useAgent({
     try {
       setLoading(true);
       setError(null);
-      const newAgent = await import_core3.Agent.create(agentId, client);
+      const newAgent = await import_core2.Agent.create(agentId, client);
       agentRef.current = newAgent;
       setAgent(newAgent);
     } catch (err) {
@@ -561,7 +552,7 @@ Do you approve?` : `Execute tools: ${toolNames}?`;
 };
 
 // src/index.ts
-var import_core4 = require("@distri/core");
+var import_core3 = require("@distri/core");
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   APPROVAL_REQUEST_TOOL_NAME,
