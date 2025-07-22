@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Message,
   MessageSendParams,
-  DistriClient
 } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
@@ -16,8 +15,8 @@ export interface UseChatResult {
   error: Error | null;
   messages: Message[];
   isStreaming: boolean;
-  sendMessage: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
-  sendMessageStream: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
+  sendMessage: (params: MessageSendParams) => Promise<void>;
+  sendMessageStream: (params: MessageSendParams) => Promise<void>;
   clearMessages: () => void;
   refreshMessages: () => Promise<void>;
   abort: () => void;
@@ -63,8 +62,7 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
   }, [clientLoading, clientError, contextId, client]);
 
   const sendMessage = useCallback(async (
-    input: string,
-    configuration?: MessageSendParams['configuration']
+    params: MessageSendParams,
   ) => {
     if (!client) {
       setError(new Error('Client not available'));
@@ -75,11 +73,9 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
       setLoading(true);
       setError(null);
 
-      const userMessage = DistriClient.initMessage(input, 'user', contextId);
+      // const userMessage = DistriClient.initMessage(input, 'user', contextId);
       // Add user message to local state immediately
-      setMessages(prev => [...prev, userMessage]);
-
-      const params = DistriClient.initMessageParams(userMessage, configuration);
+      setMessages(prev => [...prev, params.message]);
 
       const result = await client.sendMessage(agentId, params);
 
@@ -118,8 +114,7 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
   }, [client, agentId]);
 
   const sendMessageStream = useCallback(async (
-    input: string,
-    configuration?: MessageSendParams['configuration']
+    params: MessageSendParams,
   ) => {
     if (!client) {
       setError(new Error('Client not available'));
@@ -135,17 +130,11 @@ export function useChat({ agentId, contextId }: UseChatOptions): UseChatResult {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      abortControllerRef.current = new AbortController();
-
-      const userMessage = DistriClient.initMessage(input, 'user', contextId);
+      abortControllerRef.current = new AbortController();      // const userMessage = DistriClient.initMessage(input, 'user', contextId);
       // Add user message to local state immediately
-      setMessages(prev => [...prev, userMessage]);
+      setMessages(prev => [...prev, params.message]);
 
-      const params = DistriClient.initMessageParams(userMessage, {
-        blocking: false,
-        acceptedOutputModes: ['text/plain'],
-        ...configuration
-      });
+
       setIsStreaming(true);
 
       const stream = await client.sendMessageStream(agentId, params);

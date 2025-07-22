@@ -34,8 +34,8 @@ interface UseChatResult {
     error: Error | null;
     messages: Message[];
     isStreaming: boolean;
-    sendMessage: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
-    sendMessageStream: (text: string, configuration?: MessageSendParams['configuration']) => Promise<void>;
+    sendMessage: (params: MessageSendParams) => Promise<void>;
+    sendMessageStream: (params: MessageSendParams) => Promise<void>;
     clearMessages: () => void;
     refreshMessages: () => Promise<void>;
     abort: () => void;

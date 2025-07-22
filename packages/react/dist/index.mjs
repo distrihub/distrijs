@@ -141,9 +141,6 @@ function useAgents() {
 
 // src/useChat.ts
 import { useState as useState3, useEffect as useEffect3, useCallback as useCallback2, useRef } from "react";
-import {
-  DistriClient as DistriClient2
-} from "@distri/core";
 function useChat({ agentId, contextId }) {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [loading, setLoading] = useState3(false);
@@ -176,7 +173,7 @@ function useChat({ agentId, contextId }) {
       setMessages([]);
     }
   }, [clientLoading, clientError, contextId, client]);
-  const sendMessage = useCallback2(async (input, configuration) => {
+  const sendMessage = useCallback2(async (params) => {
     if (!client) {
       setError(new Error("Client not available"));
       return;
@@ -184,9 +181,7 @@ function useChat({ agentId, contextId }) {
     try {
       setLoading(true);
       setError(null);
-      const userMessage = DistriClient2.initMessage(input, "user", contextId);
-      setMessages((prev) => [...prev, userMessage]);
-      const params = DistriClient2.initMessageParams(userMessage, configuration);
+      setMessages((prev) => [...prev, params.message]);
       const result = await client.sendMessage(agentId, params);
       let message = void 0;
       if (result.kind === "message") {
@@ -219,7 +214,7 @@ function useChat({ agentId, contextId }) {
       setLoading(false);
     }
   }, [client, agentId]);
-  const sendMessageStream = useCallback2(async (input, configuration) => {
+  const sendMessageStream = useCallback2(async (params) => {
     if (!client) {
       setError(new Error("Client not available"));
       return;
@@ -232,13 +227,7 @@ function useChat({ agentId, contextId }) {
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
-      const userMessage = DistriClient2.initMessage(input, "user", contextId);
-      setMessages((prev) => [...prev, userMessage]);
-      const params = DistriClient2.initMessageParams(userMessage, {
-        blocking: false,
-        acceptedOutputModes: ["text/plain"],
-        ...configuration
-      });
+      setMessages((prev) => [...prev, params.message]);
       setIsStreaming(true);
       const stream = await client.sendMessageStream(agentId, params);
       for await (const event of stream) {
@@ -518,11 +507,11 @@ Do you approve?` : `Execute tools: ${toolNames}?`;
 };
 
 // src/index.ts
-import { Agent as Agent2, DistriClient as DistriClient3, APPROVAL_REQUEST_TOOL_NAME } from "@distri/core";
+import { Agent as Agent2, DistriClient as DistriClient2, APPROVAL_REQUEST_TOOL_NAME } from "@distri/core";
 export {
   APPROVAL_REQUEST_TOOL_NAME,
   Agent2 as Agent,
-  DistriClient3 as DistriClient,
+  DistriClient2 as DistriClient,
   DistriProvider,
   createBuiltinApprovalHandler,
   createBuiltinToolHandlers,

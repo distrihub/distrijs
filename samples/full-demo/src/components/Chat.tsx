@@ -12,13 +12,10 @@ interface ChatProps {
 const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   // Use the new hooks - useChat automatically handles selectedThreadId changes
   const {
     messages,
     loading,
-    refreshMessages,
     error,
     isStreaming,
     sendMessageStream,
@@ -79,12 +76,12 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
         tool_call_id: toolCallId,
         result: typeof result === 'string' ? result : JSON.stringify(result)
       } as MessageMetadata;
-
-      // Send the response back to the agent
-      await sendMessageStream('', {
+      const params = DistriClient.initMessageParams(responseMessage, {
         acceptedOutputModes: ['text/plain'],
         blocking: false
       });
+      // Send the response back to the agent
+      await sendMessageStream(params);
 
       // Refresh messages to show the response
       onThreadUpdate(selectedThreadId);
@@ -98,7 +95,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     try {
       // Send approval response
       console.log('Approval response:', { approved, reason });
-      
+
       // Refresh messages after approval
       onThreadUpdate(selectedThreadId);
     } catch (error) {
@@ -111,12 +108,14 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
 
     const messageText = input.trim();
     setInput('');
+    const message = DistriClient.initMessage(messageText, 'user', selectedThreadId);
+    const params = DistriClient.initMessageParams(message, {
+      acceptedOutputModes: ['text/plain'],
+      blocking: false
+    });
 
     try {
-      await sendMessageStream(messageText, {
-        acceptedOutputModes: ['text/plain'],
-        blocking: false
-      });
+      await sendMessageStream(params);
 
       // Update thread after successful message
       onThreadUpdate(selectedThreadId);
@@ -148,12 +147,12 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
       ) {
         const data = meta.data as any;
         const tool_call_id = data.tool_call_id;
-        
+
         // Skip external tools - they are handled separately by ExternalToolHandler
         if (meta.type === 'tool_call_start' && data.is_external) {
           return;
         }
-        
+
         if (!toolCallStatus[tool_call_id]) {
           toolCallStatus[tool_call_id] = {
             tool_call_id,
@@ -187,12 +186,12 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
   const renderedMessages = useMemo(() => {
     const toolCallStatus = buildToolCallStatus(messages);
     const renderedToolCalls = new Set<string>();
-    
+
     return messages.filter(hasValidContent).map((message: any, index: number) => {
       const meta = message.metadata;
       let tool_call_id: string | undefined;
       let isExternalTool = false;
-      
+
       if (
         meta &&
         toolCallEventTypes.includes(String(meta.type)) &&
@@ -206,7 +205,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           isExternalTool = true;
         }
       }
-      
+
       // Only render ToolCallRenderer for non-external tools
       if (tool_call_id && !isExternalTool && !renderedToolCalls.has(tool_call_id)) {
         renderedToolCalls.add(tool_call_id);
@@ -216,7 +215,7 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           </div>
         );
       }
-      
+
       // Normal message rendering (including external tools handled by MessageRenderer)
       const messageText = extractTextFromMessage(message);
       const isUser = message.role === 'user';
@@ -233,22 +232,20 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
           className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
         >
           <div className={`flex max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
-            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-              isUser ? 'bg-blue-500' : 'bg-gray-300'
-            }`}>
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isUser ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
               {isUser ? (
                 <User className="h-4 w-4 text-white" />
               ) : (
                 <Bot className="h-4 w-4 text-gray-600" />
               )}
             </div>
-            <div className={`rounded-2xl px-4 py-2 ${
-              isUser 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-100 text-gray-900'
-            }`}>
-              <MessageRenderer 
-                content={displayText} 
+            <div className={`rounded-2xl px-4 py-2 ${isUser
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-900'
+              }`}>
+              <MessageRenderer
+                content={displayText}
                 className={isUser ? 'text-white' : ''}
                 metadata={message.metadata}
                 onToolResponse={handleToolResponse}
