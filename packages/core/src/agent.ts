@@ -1,9 +1,9 @@
 import { DistriClient } from './distri-client';
-import { 
-  DistriAgent, 
-  MessageMetadata, 
-  ToolCall, 
-  ExternalTool, 
+import {
+  DistriAgent,
+  MessageMetadata,
+  ToolCall,
+  ExternalTool,
   APPROVAL_REQUEST_TOOL_NAME,
   A2AStreamEventData
 } from './types';
@@ -91,7 +91,7 @@ export class Agent {
   /**
    * Invoke the agent with a message
    */
-  async invoke(input: string, config: InvokeConfig = {}): Promise<InvokeResult | InvokeStreamResult> {
+  async invoke(input: string, config: InvokeConfig = {}, metadata?: MessageMetadata): Promise<InvokeResult | InvokeStreamResult> {
     const userMessage = DistriClient.initMessage(input, 'user', config.contextId);
     const params = DistriClient.initMessageParams(userMessage, config.configuration);
 
@@ -141,7 +141,7 @@ export class Agent {
     // Check for external tool calls in message metadata
     if (message.metadata) {
       const metadata = message.metadata as any;
-      
+
       if (metadata.type === 'external_tool_calls') {
         const toolCalls: ToolCall[] = metadata.tool_calls;
         const requiresApproval: boolean = metadata.requires_approval;
@@ -172,8 +172,8 @@ export class Agent {
    * Handle external tools in a stream
    */
   private async handleStreamExternalTools(
-    stream: AsyncGenerator<A2AStreamEventData>, 
-    handler: ExternalToolHandler, 
+    stream: AsyncGenerator<A2AStreamEventData>,
+    handler: ExternalToolHandler,
     approvalHandler?: ApprovalHandler
   ): Promise<void> {
     for await (const event of stream) {
@@ -181,7 +181,7 @@ export class Agent {
         const message = event as Message;
         if (message.metadata) {
           const metadata = message.metadata as any;
-          
+
           if (metadata.type === 'external_tool_calls') {
             const toolCalls: ToolCall[] = metadata.tool_calls;
             const requiresApproval: boolean = metadata.requires_approval;
@@ -236,7 +236,7 @@ export class Agent {
       const reason: string = input.reason;
 
       const approved = await approvalHandler(toolCalls, reason);
-      
+
       const result = {
         approved,
         reason: approved ? 'Approved by user' : 'Denied by user',
