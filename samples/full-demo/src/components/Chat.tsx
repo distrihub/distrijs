@@ -1,25 +1,36 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Loader2, User, Bot, Square } from 'lucide-react';
-import { useChat, DistriAgent, DistriClient, MessageMetadata } from '@distri/react';
+import { useChat, DistriAgent, MessageMetadata, ToolResult, ToolCall, ToolCallState } from '@distri/react';
 import MessageRenderer from './MessageRenderer';
-import { ToolCallRenderer, ToolCallState } from './ToolCallRenderer';
+import { ToolCallRenderer } from './ToolCallRenderer';
+import { ExternalToolManager } from '@distri/react';
 
 interface ChatProps {
   selectedThreadId: string;
   agent: DistriAgent;
   onThreadUpdate: (threadId: string) => void;
 }
+
 const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // Use the new hooks - useChat automatically handles selectedThreadId changes
+
   const {
     messages,
     loading,
     error,
     isStreaming,
     sendMessageStream,
-  } = useChat({ agentId: agent.id, contextId: selectedThreadId });
+    cancelToolExecution,
+    toolCallStatus,
+    pendingExternalToolCalls,
+  } = useChat({
+    agentId: agent.id,
+    threadId: selectedThreadId,
+    toolHandlers: {
+      // Add any custom tool handlers here
+    }
+  });
 
   // Helper function to extract text from message parts
   const extractTextFromMessage = useCallback((message: any): string => {
@@ -41,15 +52,15 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;
 
-    // Check if tool_call_start (DistriEvent format)
-    if (message.metadata?.type === 'tool_call_start') {
-      console.log('tool_call_start: true', message);
+    // Check if assistant_response with tool calls
+    if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
+      console.log('assistant_response with tool_calls: true', message);
       return true;
     }
 
-    // Check if external tool calls (MessageMetadata for Agent API)
-    if (message.metadata?.type === 'external_tool_calls') {
-      console.log('external_tool_calls: true', message);
+    // Check if tool results
+    if (message.metadata?.type === 'tool_results') {
+      console.log('tool_results: true', message);
       return true;
     }
 
@@ -66,40 +77,15 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     }
   }, [messages, selectedThreadId, scrollToBottom]);
 
-  // Handle external tool responses
-  const handleToolResponse = useCallback(async (toolCallId: string, result: any) => {
+  // Handle external tool completion
+  const handleToolComplete = useCallback(async (results: ToolResult[]) => {
     try {
-      // Create a tool response message
-      const responseMessage = DistriClient.initMessage('', 'user', selectedThreadId);
-      responseMessage.metadata = {
-        type: 'tool_response',
-        tool_call_id: toolCallId,
-        result: typeof result === 'string' ? result : JSON.stringify(result)
-      } as MessageMetadata;
-      const params = DistriClient.initMessageParams(responseMessage, {
-        acceptedOutputModes: ['text/plain'],
-        blocking: false
-      });
-      // Send the response back to the agent
-      await sendMessageStream(params);
+      console.log('Tool completion received:', results);
 
-      // Refresh messages to show the response
+      // Update thread after tool results
       onThreadUpdate(selectedThreadId);
     } catch (error) {
-      console.error('Failed to send tool response:', error);
-    }
-  }, [selectedThreadId, sendMessageStream, onThreadUpdate]);
-
-  // Handle approval responses
-  const handleApprovalResponse = useCallback(async (approved: boolean, reason?: string) => {
-    try {
-      // Send approval response
-      console.log('Approval response:', { approved, reason });
-
-      // Refresh messages after approval
-      onThreadUpdate(selectedThreadId);
-    } catch (error) {
-      console.error('Failed to send approval response:', error);
+      console.error('Failed to handle tool completion:', error);
     }
   }, [selectedThreadId, onThreadUpdate]);
 
@@ -108,14 +94,9 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
 
     const messageText = input.trim();
     setInput('');
-    const message = DistriClient.initMessage(messageText, 'user', selectedThreadId);
-    const params = DistriClient.initMessageParams(message, {
-      acceptedOutputModes: ['text/plain'],
-      blocking: false
-    });
 
     try {
-      await sendMessageStream(params);
+      await sendMessageStream(messageText);
 
       // Update thread after successful message
       onThreadUpdate(selectedThreadId);
@@ -126,103 +107,61 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
     }
   }, [input, loading, isStreaming, sendMessageStream, onThreadUpdate, selectedThreadId]);
 
-  const toolCallEventTypes = useMemo(() => [
-    'tool_call_start',
-    'tool_call_args',
-    'tool_call_result',
-    'tool_call_end',
-  ], []);
-
-  const buildToolCallStatus = useCallback((messages: any[]): Record<string, ToolCallState> => {
-    const toolCallStatus: Record<string, ToolCallState> = {};
-
-    messages.forEach((message) => {
-      const meta = message.metadata;
-      if (
-        meta &&
-        toolCallEventTypes.includes(String(meta.type)) &&
-        meta.data &&
-        typeof meta.data === 'object' &&
-        'tool_call_id' in meta.data
-      ) {
-        const data = meta.data as any;
-        const tool_call_id = data.tool_call_id;
-
-        // Skip external tools - they are handled separately by ExternalToolHandler
-        if (meta.type === 'tool_call_start' && data.is_external) {
-          return;
-        }
-
-        if (!toolCallStatus[tool_call_id]) {
-          toolCallStatus[tool_call_id] = {
-            tool_call_id,
-            tool_name: undefined,
-            args: '',
-            result: undefined,
-            running: true,
-          };
-        }
-        if (meta.type === 'tool_call_start' && typeof data.tool_call_name === 'string') {
-          toolCallStatus[tool_call_id].tool_name = data.tool_call_name;
-          toolCallStatus[tool_call_id].running = true;
-        }
-        if (meta.type === 'tool_call_args' && typeof data.delta === 'string') {
-          toolCallStatus[tool_call_id].args += data.delta;
-        }
-        if (meta.type === 'tool_call_result' && typeof data.result === 'string') {
-          toolCallStatus[tool_call_id].running = false;
-          toolCallStatus[tool_call_id].result = data.result;
-        }
-        if (meta.type === 'tool_call_end') {
-          toolCallStatus[tool_call_id].running = false;
-        }
-      }
-    });
-
-    return toolCallStatus;
-  }, [toolCallEventTypes]);
-
   // Memoize the rendered messages to prevent re-computation on every render
   const renderedMessages = useMemo(() => {
-    const toolCallStatus = buildToolCallStatus(messages);
     const renderedToolCalls = new Set<string>();
 
     return messages.filter(hasValidContent).map((message: any, index: number) => {
       const meta = message.metadata;
-      let tool_call_id: string | undefined;
-      let isExternalTool = false;
 
+      // Handle tool calls from assistant_response metadata
       if (
         meta &&
-        toolCallEventTypes.includes(String(meta.type)) &&
-        meta.data &&
-        typeof meta.data === 'object' &&
-        'tool_call_id' in meta.data
+        meta.type === 'assistant_response' &&
+        meta.tool_calls &&
+        Array.isArray(meta.tool_calls)
       ) {
-        tool_call_id = (meta.data as any).tool_call_id;
-        // Check if this is an external tool
-        if (meta.type === 'tool_call_start' && (meta.data as any).is_external) {
-          isExternalTool = true;
-        }
-      }
+        // Render each tool call using toolCallStatus from the hashmap
+        return meta.tool_calls.map((toolCall: any) => {
+          if (!renderedToolCalls.has(toolCall.tool_call_id)) {
+            renderedToolCalls.add(toolCall.tool_call_id);
 
-      // Only render ToolCallRenderer for non-external tools
-      if (tool_call_id && !isExternalTool && !renderedToolCalls.has(tool_call_id)) {
-        renderedToolCalls.add(tool_call_id);
-        return (
-          <div key={message.messageId || `msg-${index}`} className="flex justify-start">
-            <ToolCallRenderer toolCall={toolCallStatus[tool_call_id]} />
-          </div>
-        );
+            // Get tool call status from the hashmap using tool_call_id
+            const toolCallState: ToolCallState = toolCallStatus[toolCall.tool_call_id] || {
+              tool_call_id: toolCall.tool_call_id,
+              tool_name: toolCall.tool_name,
+              status: 'pending',
+              input: toolCall.input,
+              result: null,
+              error: null,
+            };
+
+            // Map to the format expected by ToolCallRenderer
+            const rendererToolCall = {
+              tool_call_id: toolCallState.tool_call_id,
+              tool_name: toolCallState.tool_name,
+              args: toolCallState.input || '',
+              result: toolCallState.result ? JSON.stringify(toolCallState.result) : undefined,
+              running: toolCallState.status === 'pending' || toolCallState.status === 'executing'
+            };
+
+            return (
+              <div key={`${message.messageId}-${toolCall.tool_call_id}`} className="flex justify-start">
+                <ToolCallRenderer toolCall={rendererToolCall} />
+              </div>
+            );
+          }
+          return null;
+        }).filter(Boolean);
       }
 
       // Normal message rendering (including external tools handled by MessageRenderer)
       const messageText = extractTextFromMessage(message);
       const isUser = message.role === 'user';
-      const displayText = messageText || (message.metadata?.type === 'external_tool_calls' ? '' : 'Empty message');
+      const displayText = messageText || 'Empty message';
 
-      // Don't render if no text and not an external tool call or tool event
-      if (!messageText && message.metadata?.type !== 'external_tool_calls' && !meta?.type?.startsWith('tool_call')) {
+      // Don't render if no text and not a tool event
+      if (!messageText && meta?.type !== 'assistant_response' && meta?.type !== 'tool_results') {
         return null;
       }
 
@@ -248,15 +187,13 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
                 content={displayText}
                 className={isUser ? 'text-white' : ''}
                 metadata={message.metadata}
-                onToolResponse={handleToolResponse}
-                onApprovalResponse={handleApprovalResponse}
               />
             </div>
           </div>
         </div>
       );
     }).filter(Boolean); // Remove null entries
-  }, [messages, hasValidContent, buildToolCallStatus, toolCallEventTypes, extractTextFromMessage, handleToolResponse, handleApprovalResponse]);
+  }, [messages, hasValidContent, toolCallStatus, extractTextFromMessage]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -292,6 +229,15 @@ const Chat: React.FC<ChatProps> = ({ selectedThreadId, agent, onThreadUpdate }) 
         )}
 
         {renderedMessages}
+
+        {/* External Tool Manager */}
+        {pendingExternalToolCalls.length > 0 && (
+          <ExternalToolManager
+            toolCalls={pendingExternalToolCalls}
+            onToolComplete={handleToolComplete}
+            onCancel={cancelToolExecution}
+          />
+        )}
 
         <div ref={messagesEndRef} />
       </div>
