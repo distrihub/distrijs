@@ -34,7 +34,7 @@ export const clearPendingToolCalls = () => {
  */
 export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
   // Approval request handler - opens a dialog
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (result: ToolResult) => Promise<void>): Promise<{} | null> => {
+  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
       const input = JSON.parse(toolCall.input);
       const toolCallsToApprove: ToolCall[] = input.tool_calls || [];
@@ -53,7 +53,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
         result: { approved, reason: approved ? 'Approved by user' : 'Denied by user' },
         success: true
       };
-      await onToolComplete(result);
+      await onToolComplete(toolCall.tool_call_id, result);
 
       return {
         approved,
@@ -70,14 +70,14 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
-      await onToolComplete(result);
+      await onToolComplete(toolCall.tool_call_id, result);
 
       return null;
     }
   },
 
   // Toast handler - shows a toast and returns success
-  toast: async (toolCall: ToolCall, onToolComplete: (result: ToolResult) => Promise<void>): Promise<{} | null> => {
+  toast: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
       const input = JSON.parse(toolCall.input);
       const message: string = input.message || 'Toast message';
@@ -96,7 +96,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
         result: { success: true, message: 'Toast displayed successfully' },
         success: true
       };
-      await onToolComplete(result);
+      await onToolComplete(toolCall.tool_call_id, result);
 
       return {
         success: true,
@@ -112,14 +112,14 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
-      await onToolComplete(result);
+      await onToolComplete(toolCall.tool_call_id, result);
 
       return null;
     }
   },
 
   // Input request handler - shows prompt
-  input_request: async (toolCall: ToolCall, onToolComplete: (result: ToolResult) => Promise<void>): Promise<{} | null> => {
+  input_request: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
       const input = JSON.parse(toolCall.input);
       const prompt: string = input.prompt || 'Please provide input:';
@@ -135,7 +135,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
           success: false,
           error: 'User cancelled input'
         };
-        await onToolComplete(result);
+        await onToolComplete(toolCall.tool_call_id, result);
         return null; // User cancelled
       }
 
@@ -145,7 +145,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
         result: { input: userInput },
         success: true
       };
-      await onToolComplete(result);
+      await onToolComplete(toolCall.tool_call_id, result);
 
       return {
         input: userInput
@@ -160,7 +160,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
-      await onToolComplete(result);
+      await onToolComplete(toolCall.tool_call_id, result);
 
       return null;
     }
@@ -194,7 +194,7 @@ export const processExternalToolCalls = async (
 
     try {
       // Create a wrapper onToolComplete that collects results
-      const singleToolComplete = async (result: ToolResult) => {
+      const singleToolComplete = async (_toolCallId: string, result: ToolResult) => {
         results.push(result);
         // Also call the main onToolComplete with all results so far
         await onToolComplete([...results]);

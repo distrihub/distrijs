@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAgent } from './useAgent';
 import {
   type Message,
-  type DistriAgent,
   type ToolHandler,
   type MessageMetadata,
   type ToolResult,
@@ -14,15 +13,16 @@ import {
   ToolCallStartEvent,
   ToolCallArgsEvent,
   ToolCallEndEvent,
+  Agent,
 } from '@distri/core';
 import type { Part, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
-import { extractExternalToolCalls, ToolCallState, ToolHandlerResult } from './utils/toolCallUtils';
+import { ToolCallState, ToolHandlerResult } from './utils/toolCallUtils';
 
 export interface UseChatOptions {
   agentId: string;
   threadId: string;
   // Optional: pre-configured agent from useAgent
-  agent?: any;
+  agent?: Agent;
   // Optional: agent configuration
   tools?: Record<string, ToolHandler>;
   // Optional: Metadata to pass to the agent
@@ -38,7 +38,7 @@ export interface UseChatResult {
   sendMessageStream: (input: string | Part[], metadata?: MessageMetadata) => Promise<void>;
   refreshMessages: () => Promise<void>;
   clearMessages: () => void;
-  agent: DistriAgent | null;
+  agent: Agent | null;
   // Tool call state - updated during streaming
   toolCallStatus: Record<string, ToolCallState>;
   toolHandlerResults: Record<string, ToolHandlerResult>;
@@ -85,7 +85,8 @@ export function useChat({
     agentId,
   });
 
-  const agent = providedAgent || internalAgent;
+  // Use provided agent if it's a proper Agent instance, otherwise use internal agent
+  const agent = (providedAgent && typeof providedAgent.getThreadMessages === 'function') ? providedAgent : internalAgent;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -211,7 +212,7 @@ export function useChat({
       setError(null);
       const result = await agent.invoke(params);
       if (result && 'message' in result && result.message) {
-        setMessages((prev) => [...prev, result.message!]);
+        setMessages((prev) => [...prev, result.message as Message]);
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to send message'));
@@ -332,7 +333,7 @@ export function useChat({
         if (abortControllerRef.current?.signal.aborted) break;
         if (event.kind === 'message') {
           await handleMessageEvent(event);
-        } else if (event.kind === 'task-status-update') {
+        } else if (event.kind === 'status-update') {
           await handleTaskStatusUpdateEvent(event);
         }
       }

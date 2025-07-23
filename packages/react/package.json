@@ -46,7 +46,10 @@
     "react",
     "hooks",
     "threads",
-    "messages"
+    "messages",
+    "chat",
+    "ai",
+    "agents"
   ],
   "author": "Distri Team",
   "license": "MIT",
