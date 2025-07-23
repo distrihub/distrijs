@@ -1,12 +1,10 @@
 import { DistriClient } from './distri-client';
 import {
   DistriAgent,
-  MessageMetadata,
   ToolCall,
   ToolHandler,
   ExternalTool,
   A2AStreamEventData,
-  ToolResult,
   APPROVAL_REQUEST_TOOL_NAME
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
