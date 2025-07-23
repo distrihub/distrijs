@@ -1,12 +1,11 @@
 import { DistriClient } from './distri-client';
 import {
   DistriAgent,
-  MessageMetadata,
   ToolCall,
   ToolHandler,
+  ToolResult,
   ExternalTool,
   A2AStreamEventData,
-  ToolResult,
   APPROVAL_REQUEST_TOOL_NAME
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
@@ -122,16 +121,28 @@ export class Agent {
  * Built-in external tool handlers
  */
 export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall) => {
+  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>) => {
     const input = JSON.parse(toolCall.input);
     const userInput = prompt(input.prompt || 'Please provide input:');
+    const result: ToolResult = {
+      tool_call_id: toolCall.tool_call_id,
+      result: { input: userInput },
+      success: true
+    };
+    await onToolComplete(toolCall.tool_call_id, result);
     return { input: userInput };
   },
 
   // Input request handler
-  input_request: async (toolCall: ToolCall) => {
+  input_request: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>) => {
     const input = JSON.parse(toolCall.input);
     const userInput = prompt(input.prompt || 'Please provide input:');
+    const result: ToolResult = {
+      tool_call_id: toolCall.tool_call_id,
+      result: { input: userInput },
+      success: true
+    };
+    await onToolComplete(toolCall.tool_call_id, result);
     return { input: userInput };
   },
 });

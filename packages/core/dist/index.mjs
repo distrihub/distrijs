@@ -760,15 +760,27 @@ var Agent = class _Agent {
   }
 };
 var createBuiltinToolHandlers = () => ({
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall) => {
+  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall, onToolComplete) => {
     const input = JSON.parse(toolCall.input);
     const userInput = prompt(input.prompt || "Please provide input:");
+    const result = {
+      tool_call_id: toolCall.tool_call_id,
+      result: { input: userInput },
+      success: true
+    };
+    await onToolComplete(toolCall.tool_call_id, result);
     return { input: userInput };
   },
   // Input request handler
-  input_request: async (toolCall) => {
+  input_request: async (toolCall, onToolComplete) => {
     const input = JSON.parse(toolCall.input);
     const userInput = prompt(input.prompt || "Please provide input:");
+    const result = {
+      tool_call_id: toolCall.tool_call_id,
+      result: { input: userInput },
+      success: true
+    };
+    await onToolComplete(toolCall.tool_call_id, result);
     return { input: userInput };
   }
 });

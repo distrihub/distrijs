@@ -1,55 +1,47 @@
-// Main exports for @distri/react package
-
-// Hooks
-export { useChat } from './useChat';
-export { useAgent, createBuiltinApprovalHandler } from './useAgent';
+// Core hooks
+export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
+export { useChat } from './useChat';
 export { useThreads } from './useThreads';
-export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
 
-// New components for external tool handling
+// Components
+export { default as Chat } from './components/Chat';
+export { 
+  UserMessage, 
+  AssistantMessage, 
+  AssistantWithToolCalls, 
+  Tool,
+  MessageContainer 
+} from './components/MessageComponents';
+export { default as MessageRenderer } from './components/MessageRenderer';
+export { default as ExternalToolManager } from './components/ExternalToolManager';
 export { default as Toast } from './components/Toast';
 export { default as ApprovalDialog } from './components/ApprovalDialog';
-export { default as ExternalToolManager } from './components/ExternalToolManager';
 
-// Builtin handlers
-export {
-  createBuiltinToolHandlers,
-  processExternalToolCalls,
-  initializeBuiltinHandlers,
-  clearPendingToolCalls
-} from './builtinHandlers';
+// Context and theming
+export { 
+  ChatProvider, 
+  useChatConfig, 
+  getThemeClasses,
+  type ChatTheme,
+  type ChatConfig,
+  type ChatContextValue
+} from './components/ChatContext';
 
-// Utility functions
-export {
-  extractExternalToolCalls
-} from './utils/toolCallUtils';
-export type { ToolCallState } from './utils/toolCallUtils';
+// Provider
+export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
 
-// Re-export core types
+// Built-in handlers
+export * from './builtinHandlers';
+
+// Re-export types from core
 export type {
-  DistriClientConfig,
   DistriAgent,
   DistriThread,
   Message,
   MessageMetadata,
-  ToolCall,
-  ToolResult,
   ToolHandler,
-  ExternalTool,
-  ApprovalHandler,
-  ApprovalMode,
-  InvokeConfig,
-  InvokeResult,
-  InvokeStreamResult,
-  Task,
-  TaskStatus,
-  MessageSendParams
-} from '@distri/core';
-
-// Re-export core classes and constants
-export {
-  DistriClient,
-  APPROVAL_REQUEST_TOOL_NAME,
-  Agent
+  ToolResult,
+  ToolCall,
+  ToolCallState,
 } from '@distri/core';
