@@ -20,10 +20,6 @@ importers:
         version: 5.8.3
 
   packages/core:
-    dependencies:
-      eventemitter3:
-        specifier: ^5.0.1
-        version: 5.0.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -49,6 +45,9 @@ importers:
       '@distri/core':
         specifier: workspace:*
         version: link:../core
+      lucide-react:
+        specifier: ^0.263.1
+        version: 0.263.1(react@18.3.1)
       react-markdown:
         specifier: ^9.0.0
         version: 9.1.0(@types/react@18.3.23)(react@18.3.1)
@@ -1798,9 +1797,6 @@ packages:
   etag@1.8.1:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
-
-  eventemitter3@5.0.1:
-    resolution: {integrity: sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==}
 
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
@@ -5146,8 +5142,6 @@ snapshots:
   esutils@2.0.3: {}
 
   etag@1.8.1: {}
-
-  eventemitter3@5.0.1: {}
 
   execa@5.1.1:
     dependencies:

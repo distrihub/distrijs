@@ -54,13 +54,14 @@ const ThreadsList = ({ selectedThreadId, setSelectedThreadId, refreshCount }: { 
 
 
   if (threadsLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
+    return (<div className="w-80 flex-shrink-0 flex flex-col">
+      <div className="bg-white rounded-lg shadow p-4 flex-1 flex flex-col">
+        <div className="flex items-center space-x-2 flex-1 justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           <span className="text-gray-600">Loading...</span>
         </div>
       </div>
+    </div>
     );
   }
 
@@ -107,14 +108,14 @@ export default function ChatPage({ selectedAgent }: { selectedAgent: DistriAgent
     const saved = localStorage.getItem('distri-selected-thread-id');
     return saved || uuidv4();
   });
-  
+
   const [refreshCount, setRefreshCount] = useState<number>(0);
-  
+
   // Save selectedThreadId to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('distri-selected-thread-id', selectedThreadId);
   }, [selectedThreadId]);
-  
+
   console.log('selectedAgent', selectedAgent);
   return (
     <main className="flex flex-1 flex-col min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -140,17 +141,15 @@ export default function ChatPage({ selectedAgent }: { selectedAgent: DistriAgent
 
 const EmptyAgent = () => {
   return (
-    <main className="flex-1 flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      <div className="h-full">
-        <div className="bg-white rounded-lg shadow h-full flex flex-col w-full">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="flex flex-col items-center justify-center h-full py-8">
-              <MessageRenderer content={''} className="" />
-              <div className="flex flex-col items-center mt-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8s-9-3.582-9-8 4.03-8 9-8 9 3.582 9 8z" /></svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Start a new conversation</h3>
-                <p className="text-gray-500 text-sm">Select an agent to begin chatting.</p>
-              </div>
+    <main className="flex-1 flex mx-auto">
+      <div className="bg-white rounded-lg shadow h-full flex flex-col w-full">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex flex-col items-center justify-center h-full py-8">
+            <MessageRenderer content={''} className="" />
+            <div className="flex flex-col items-center mt-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8s-9-3.582-9-8 4.03-8 9-8 9 3.582 9 8z" /></svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Start a new conversation</h3>
+              <p className="text-gray-500 text-sm">Select an agent to begin chatting.</p>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import {
   Task,
   SendMessageResponse,
   GetTaskResponse,
+  Part,
 
 } from '@a2a-js/sdk/client';
 import {
@@ -312,18 +313,17 @@ export class DistriClient {
    */
   static initMessage(
 
-    input: string,
+    parts: Part[] | string,
     role: 'agent' | 'user' = 'user',
-    contextId?: string,
-    messageId?: string,
-    taskId?: string
+    message: Omit<Partial<Message>, 'parts' | 'role' | 'kind'>
   ): Message {
     return {
-      messageId: messageId || uuidv4(),
+      messageId: message.messageId || uuidv4(),
+      taskId: message.taskId || uuidv4(),
+      contextId: message.contextId,
       role,
-      parts: [{ kind: 'text', text: input.trim() }],
-      contextId,
-      taskId: taskId || uuidv4(),
+      parts: Array.isArray(parts) ? parts : [{ kind: 'text', text: parts.trim() }],
+      ...message,
       kind: 'message'
     };
   }
@@ -333,7 +333,8 @@ export class DistriClient {
    */
   static initMessageParams(
     message: Message,
-    configuration?: MessageSendParams['configuration']
+    configuration?: MessageSendParams['configuration'],
+    metadata?: any
   ): MessageSendParams {
     return {
       message,
@@ -341,7 +342,8 @@ export class DistriClient {
         acceptedOutputModes: ['text/plain'],
         blocking: false, // Default to non-blocking for streaming
         ...configuration
-      }
+      },
+      metadata
     };
   }
 }
