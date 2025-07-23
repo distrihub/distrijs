@@ -665,20 +665,21 @@ var DistriClient = class {
   /**
    * Helper method to create A2A messages
    */
-  static initMessage(input, role = "user", contextId, messageId, taskId) {
+  static initMessage(parts, role = "user", message) {
     return {
-      messageId: messageId || uuidv4(),
+      messageId: message.messageId || uuidv4(),
+      taskId: message.taskId || uuidv4(),
+      contextId: message.contextId,
       role,
-      parts: [{ kind: "text", text: input.trim() }],
-      contextId,
-      taskId: taskId || uuidv4(),
+      parts: Array.isArray(parts) ? parts : [{ kind: "text", text: parts.trim() }],
+      ...message,
       kind: "message"
     };
   }
   /**
    * Helper method to create message send parameters
    */
-  static initMessageParams(message, configuration) {
+  static initMessageParams(message, configuration, metadata) {
     return {
       message,
       configuration: {
@@ -686,7 +687,8 @@ var DistriClient = class {
         blocking: false,
         // Default to non-blocking for streaming
         ...configuration
-      }
+      },
+      metadata
     };
   }
 };
@@ -725,150 +727,22 @@ var Agent = class _Agent {
     return this.agentDefinition.external_tools || [];
   }
   /**
-   * Invoke the agent with a message
+   * Fetch messages for a thread (public method for useChat)
    */
-  async invoke(input, config = {}) {
-    const userMessage = DistriClient.initMessage(input, "user", config.contextId);
-    const params = DistriClient.initMessageParams(userMessage, config.configuration);
-    if (config.stream) {
-      return this.invokeStream(params);
-    } else {
-      return this.invokeDirect(params, config);
-    }
+  async getThreadMessages(threadId) {
+    return this.client.getThreadMessages(threadId);
   }
   /**
    * Direct (non-streaming) invoke
    */
-  async invokeDirect(params, config) {
-    let result = await this.client.sendMessage(this.agentDefinition.id, params);
-    if (result.kind === "message") {
-      result = await this.handleMessageExternalTools(result, config);
-    }
-    return {
-      message: result.kind === "message" ? result : void 0,
-      task: result.kind === "task" ? result : void 0,
-      streamed: false
-    };
+  async invoke(params) {
+    return await this.client.sendMessage(this.agentDefinition.id, params);
   }
   /**
    * Streaming invoke
    */
   async invokeStream(params) {
-    const stream = this.client.sendMessageStream(this.agentDefinition.id, params);
-    return {
-      stream,
-      handleExternalTools: async (handler, approvalHandler) => {
-        await this.handleStreamExternalTools(stream, handler, approvalHandler);
-      }
-    };
-  }
-  /**
-   * Handle external tools in a message response
-   */
-  async handleMessageExternalTools(message, config) {
-    if (message.metadata) {
-      const metadata = message.metadata;
-      if (metadata.type === "external_tool_calls") {
-        const toolCalls = metadata.tool_calls;
-        const requiresApproval = metadata.requires_approval;
-        if (requiresApproval && config.approvalHandler) {
-          const approved = await config.approvalHandler(toolCalls);
-          if (!approved) {
-            throw new Error("Tool execution cancelled by user");
-          }
-        }
-        for (const toolCall of toolCalls) {
-          if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-            await this.handleApprovalRequest(toolCall, config.approvalHandler);
-          } else {
-            await this.handleExternalTool(toolCall, config.externalToolHandlers);
-          }
-        }
-      }
-    }
-    return message;
-  }
-  /**
-   * Handle external tools in a stream
-   */
-  async handleStreamExternalTools(stream, handler, approvalHandler) {
-    for await (const event of stream) {
-      if (event.kind === "message") {
-        const message = event;
-        if (message.metadata) {
-          const metadata = message.metadata;
-          if (metadata.type === "external_tool_calls") {
-            const toolCalls = metadata.tool_calls;
-            const requiresApproval = metadata.requires_approval;
-            if (requiresApproval && approvalHandler) {
-              const approved = await approvalHandler(toolCalls);
-              if (!approved) {
-                throw new Error("Tool execution cancelled by user");
-              }
-            }
-            for (const toolCall of toolCalls) {
-              if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
-                await this.handleApprovalRequest(toolCall, approvalHandler);
-              } else {
-                const result = await handler(toolCall);
-                await this.sendToolResponse(toolCall.tool_call_id, result);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  /**
-   * Handle a single external tool call
-   */
-  async handleExternalTool(toolCall, handlers) {
-    if (!handlers || !handlers[toolCall.tool_name]) {
-      throw new Error(`No handler found for external tool: ${toolCall.tool_name}`);
-    }
-    const result = await handlers[toolCall.tool_name](toolCall);
-    await this.sendToolResponse(toolCall.tool_call_id, result);
-    return result;
-  }
-  /**
-   * Handle approval request
-   */
-  async handleApprovalRequest(toolCall, approvalHandler) {
-    if (!approvalHandler) {
-      throw new Error("Approval handler required for approval requests");
-    }
-    try {
-      const input = JSON.parse(toolCall.input);
-      const toolCalls = input.tool_calls || [];
-      const reason = input.reason;
-      const approved = await approvalHandler(toolCalls, reason);
-      const result = {
-        approved,
-        reason: approved ? "Approved by user" : "Denied by user",
-        tool_calls: toolCalls
-      };
-      await this.sendToolResponse(toolCall.tool_call_id, result);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      await this.sendToolResponse(toolCall.tool_call_id, {
-        approved: false,
-        reason: `Error processing approval request: ${errorMessage}`,
-        tool_calls: []
-      });
-    }
-  }
-  /**
-   * Send tool response back to the agent
-   */
-  async sendToolResponse(toolCallId, result) {
-    const responseMessage = DistriClient.initMessage("", "user");
-    responseMessage.metadata = {
-      type: "tool_response",
-      tool_call_id: toolCallId,
-      result: typeof result === "string" ? result : JSON.stringify(result)
-    };
-    const params = DistriClient.initMessageParams(responseMessage);
-    await this.client.sendMessage(this.agentDefinition.id, params);
+    return this.client.sendMessageStream(this.agentDefinition.id, params);
   }
   /**
    * Create an agent instance from an agent ID
@@ -885,6 +759,19 @@ var Agent = class _Agent {
     return agentDefinitions.map((def) => new _Agent(def, client));
   }
 };
+var createBuiltinToolHandlers = () => ({
+  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    const userInput = prompt(input.prompt || "Please provide input:");
+    return { input: userInput };
+  },
+  // Input request handler
+  input_request: async (toolCall) => {
+    const input = JSON.parse(toolCall.input);
+    const userInput = prompt(input.prompt || "Please provide input:");
+    return { input: userInput };
+  }
+});
 export {
   A2AClient,
   A2AProtocolError,
@@ -894,6 +781,7 @@ export {
   ConnectionError,
   DistriClient,
   DistriError,
+  createBuiltinToolHandlers,
   uuidv4
 };
 //# sourceMappingURL=index.mjs.map

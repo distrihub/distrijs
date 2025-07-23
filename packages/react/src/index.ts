@@ -1,35 +1,55 @@
 // Main exports for @distri/react package
 
-export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
-export { useAgents } from './useAgents';
+// Hooks
 export { useChat } from './useChat';
+export { useAgent, createBuiltinApprovalHandler } from './useAgent';
+export { useAgents } from './useAgents';
 export { useThreads } from './useThreads';
-export { useAgent, createBuiltinToolHandlers, createBuiltinApprovalHandler } from './useAgent';
+export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
 
-export type { UseAgentsResult } from './useAgents';
-export type { UseChatOptions, UseChatResult } from './useChat';
-export type { UseAgentOptions, UseAgentResult } from './useAgent';
+// New components for external tool handling
+export { default as Toast } from './components/Toast';
+export { default as ApprovalDialog } from './components/ApprovalDialog';
+export { default as ExternalToolManager } from './components/ExternalToolManager';
 
-// Re-export types from core for convenience
+// Builtin handlers
+export {
+  createBuiltinToolHandlers,
+  processExternalToolCalls,
+  initializeBuiltinHandlers,
+  clearPendingToolCalls
+} from './builtinHandlers';
+
+// Utility functions
+export {
+  extractExternalToolCalls
+} from './utils/toolCallUtils';
+export type { ToolCallState } from './utils/toolCallUtils';
+
+// Re-export core types
 export type {
   DistriClientConfig,
   DistriAgent,
   DistriThread,
-  AgentCard,
-  Task,
   Message,
-  TaskStatus,
-  MessageSendParams,
-  ExternalTool,
-  ToolCall,
   MessageMetadata,
+  ToolCall,
+  ToolResult,
+  ToolHandler,
+  ExternalTool,
+  ApprovalHandler,
   ApprovalMode,
   InvokeConfig,
   InvokeResult,
   InvokeStreamResult,
-  ExternalToolHandler,
-  ApprovalHandler
+  Task,
+  TaskStatus,
+  MessageSendParams
 } from '@distri/core';
 
-// Re-export Agent class
-export { Agent, DistriClient, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
+// Re-export core classes and constants
+export {
+  DistriClient,
+  APPROVAL_REQUEST_TOOL_NAME,
+  Agent
+} from '@distri/core';

@@ -3,10 +3,12 @@ export type Role = 'user' | 'system' | 'assistant';
 // Each event is a concrete type
 export interface RunStartedEvent {
   type: 'run_started';
+  data: {}
 }
 
 export interface RunFinishedEvent {
   type: 'run_finished';
+  data: {}
 }
 
 export interface RunErrorEvent {

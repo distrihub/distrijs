@@ -86,6 +86,25 @@ export interface ToolCall {
 }
 
 /**
+ * Tool result datastructure for external tool responses
+ */
+export interface ToolResult {
+  tool_call_id: string;
+  result: any;
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * ToolHandler interface for handling external tool calls
+ * Returns {} | null - if there's a value, add a new message with ToolResult
+ * If no response, add a response saying "Skipped"
+ */
+export interface ToolHandler {
+  (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
+}
+
+/**
  * Message metadata types for external tools and approval system
  */
 export type MessageMetadata =
@@ -95,13 +114,16 @@ export type MessageMetadata =
     result: any;
   }
   | {
-    type: 'tool_calls';
+    type: 'assistant_response';
     tool_calls: ToolCall[];
   }
   | {
-    type: 'external_tool_calls';
-    tool_calls: ToolCall[];
-    requires_approval: boolean;
+    type: 'plan';
+    plan: string;
+  }
+  | {
+    type: 'tool_responses';
+    results: ToolResult[];
   };
 
 /**
