@@ -42,12 +42,15 @@ export const MessageContainer: React.FC<{
   children: React.ReactNode;
   align: 'left' | 'right' | 'center';
   className?: string;
-}> = ({ children, align, className = '' }) => {
+  backgroundColor?: string;
+}> = ({ children, align, className = '', backgroundColor }) => {
   const justifyClass = align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start';
+  
+  const bgStyle = backgroundColor ? { backgroundColor } : {};
 
   return (
-    <div className={`flex ${justifyClass} w-full ${className} mb-4`}>
-      <div className="w-full max-w-4xl mx-auto px-4">
+    <div className={`flex ${justifyClass} w-full ${className}`} style={bgStyle}>
+      <div className="w-full max-w-4xl mx-auto px-6">
         {children}
       </div>
     </div>
@@ -62,7 +65,7 @@ export const PlanMessage: React.FC<PlanMessageProps> = ({
   className = ''
 }) => {
   return (
-    <MessageContainer align="center" className={`bg-gray-800 ${className}`}>
+    <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
       <div className="flex items-start gap-4 py-6">
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-600">
           <Brain className="h-4 w-4 text-white" />
@@ -88,7 +91,7 @@ export const PlanMessage: React.FC<PlanMessageProps> = ({
   );
 };
 
-// User Message Component
+// User Message Component - ChatGPT style
 export const UserMessage: React.FC<UserMessageProps> = ({
   content,
   timestamp,
@@ -96,14 +99,14 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={className}>
-      <div className="flex items-start gap-4 py-6">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-blue-600">
+    <MessageContainer align="center" className={className} backgroundColor="#343541">
+      <div className="flex items-start gap-4 py-6 border-b border-gray-700/50">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#5b67c4' }}>
           {avatar || <User className="h-4 w-4 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-white mb-1">You</div>
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none text-white">
             <MessageRenderer
               content={content}
               className="text-white"
@@ -120,19 +123,19 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   );
 };
 
-// Assistant Message Component
+// Assistant Message Component - ChatGPT style
 export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   content,
   timestamp,
   isStreaming = false,
-  metadata,
+  metadata: _metadata,
   className = '',
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={`bg-gray-800 ${className}`}>
-      <div className="flex items-start gap-4 py-6">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-600">
+    <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
+      <div className="flex items-start gap-4 py-6 border-b border-gray-700/50">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#10a37f' }}>
           {avatar || <Bot className="h-4 w-4 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
@@ -146,11 +149,10 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
               </div>
             )}
           </div>
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none text-white">
             <MessageRenderer
               content={content}
               className="text-white"
-              metadata={metadata}
             />
           </div>
           {timestamp && (
@@ -164,7 +166,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   );
 };
 
-// Tool Call Component
+// Tool Call Component - ChatGPT style
 export const Tool: React.FC<ToolCallProps> = ({
   toolCall,
   status = 'pending',
@@ -178,11 +180,11 @@ export const Tool: React.FC<ToolCallProps> = ({
       case 'pending':
         return <Clock className="h-4 w-4 text-gray-400" />;
       case 'running':
-        return <Settings className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <Settings className="h-4 w-4 text-blue-400 animate-spin" />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-400" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-400" />;
       default:
         return <Clock className="h-4 w-4 text-gray-400" />;
     }
@@ -193,11 +195,11 @@ export const Tool: React.FC<ToolCallProps> = ({
       case 'pending':
         return 'border-gray-600 bg-gray-800';
       case 'running':
-        return 'border-blue-600 bg-blue-900';
+        return 'border-blue-500 bg-blue-900/20';
       case 'completed':
-        return 'border-green-600 bg-green-900';
+        return 'border-green-500 bg-green-900/20';
       case 'error':
-        return 'border-red-600 bg-red-900';
+        return 'border-red-500 bg-red-900/20';
       default:
         return 'border-gray-600 bg-gray-800';
     }
@@ -211,9 +213,9 @@ export const Tool: React.FC<ToolCallProps> = ({
   const shouldShowExpand = input || result || error;
 
   return (
-    <div className={`border rounded-lg ${getStatusColor()}`}>
+    <div className={`border rounded-lg ${getStatusColor()} my-3 overflow-hidden`}>
       <div
-        className="flex items-center gap-2 p-4 cursor-pointer hover:bg-gray-700 transition-colors"
+        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-700/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         {getStatusIcon()}
@@ -235,11 +237,11 @@ export const Tool: React.FC<ToolCallProps> = ({
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-600/50">
           {input && (
-            <div>
-              <div className="text-xs font-medium text-gray-300 mb-1">Input:</div>
-              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-2 font-mono text-white">
+            <div className="pt-3">
+              <div className="text-xs font-medium text-gray-300 mb-2">Input:</div>
+              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-3 font-mono text-gray-100 overflow-x-auto">
                 {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
               </div>
             </div>
@@ -247,8 +249,8 @@ export const Tool: React.FC<ToolCallProps> = ({
 
           {result && (
             <div>
-              <div className="text-xs font-medium text-gray-300 mb-1">Result:</div>
-              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-2 font-mono text-white">
+              <div className="text-xs font-medium text-gray-300 mb-2">Output:</div>
+              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-3 font-mono text-gray-100 overflow-x-auto">
                 {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
               </div>
             </div>
@@ -256,8 +258,8 @@ export const Tool: React.FC<ToolCallProps> = ({
 
           {error && (
             <div>
-              <div className="text-xs font-medium text-red-400 mb-1">Error:</div>
-              <div className="text-sm bg-red-900 rounded border border-red-700 p-2 text-red-200">
+              <div className="text-xs font-medium text-red-300 mb-2">Error:</div>
+              <div className="text-sm bg-red-900/20 border border-red-500/50 rounded p-3 text-red-200">
                 {error}
               </div>
             </div>
@@ -268,20 +270,20 @@ export const Tool: React.FC<ToolCallProps> = ({
   );
 };
 
-// Assistant with Tool Calls Component
+// Assistant Message With Tool Calls - ChatGPT style
 export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   content,
   toolCalls,
   timestamp,
   isStreaming = false,
-  metadata,
+  metadata: _metadata,
   className = '',
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={`bg-gray-800 ${className}`}>
-      <div className="flex items-start gap-4 py-6">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-600">
+    <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
+      <div className="flex items-start gap-4 py-6 border-b border-gray-700/50">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#10a37f' }}>
           {avatar || <Bot className="h-4 w-4 text-white" />}
         </div>
         <div className="flex-1 min-w-0">
@@ -297,17 +299,16 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           </div>
 
           {content && (
-            <div className="prose prose-sm max-w-none mb-4 prose-invert">
+            <div className="prose prose-sm max-w-none mb-4 text-white">
               <MessageRenderer
                 content={content}
                 className="text-white"
-                metadata={metadata}
               />
             </div>
           )}
 
           {toolCalls.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {toolCalls.map((toolCallProps, index) => (
                 <Tool key={index} {...toolCallProps} />
               ))}

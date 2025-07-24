@@ -74,6 +74,9 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   placeholder = "Type your message...",
   ...props
 }) => {
+  // Convert height to string if it's a number
+  const heightString = typeof height === 'number' ? `${height}px` : height;
+
   if (variant === 'full') {
     return (
       <FullChat
@@ -87,7 +90,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   return (
     <EmbeddableChat
       {...props}
-      height={height}
+      height={heightString}
       theme={theme}
       showDebug={showDebug}
       placeholder={placeholder}

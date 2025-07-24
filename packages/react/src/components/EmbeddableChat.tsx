@@ -1,19 +1,22 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { MessageSquare } from 'lucide-react';
 import { Agent } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage, getMessageType } from '../utils/messageUtils';
 import '../styles/themes.css';
+import { ChatInput } from './ChatInput';
 
 export interface EmbeddableChatProps {
   agentId: string;
   threadId?: string;
   agent?: Agent;
-  metadata?: any;
-  height?: string | number;
-  placeholder?: string;
+  height?: string;
   className?: string;
+  style?: React.CSSProperties;
+  metadata?: any;
+  // Available agents for selection
+  availableAgents?: Array<{ id: string; name: string; description?: string }>;
   // Customization props
   UserMessageComponent?: React.ComponentType<any>;
   AssistantMessageComponent?: React.ComponentType<any>;
@@ -21,40 +24,39 @@ export interface EmbeddableChatProps {
   PlanMessageComponent?: React.ComponentType<any>;
   // Theme
   theme?: 'light' | 'dark' | 'auto';
-  // Show debug info
+  // Config overrides
   showDebug?: boolean;
+  placeholder?: string;
   // Callbacks
-  onMessageSent?: (message: string) => void;
-  onResponse?: (response: any) => void;
+  onResponse?: (message: any) => void;
 }
 
 export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   agentId,
   threadId = 'default',
   agent,
-  metadata,
-  height = 500,
-  placeholder = "Type your message...",
+  height = '600px',
   className = '',
+  style = {},
+  metadata,
   UserMessageComponent = UserMessage,
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
   theme = 'dark',
   showDebug = false,
-  onMessageSent,
-  onResponse: _onResponse, // Currently unused but reserved for future response handling
+  placeholder = "Type your message...",
+  onResponse: _onResponse,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     messages,
     loading,
     error,
+    sendMessage: chatSendMessage,
     isStreaming,
-    sendMessageStream,
   } = useChat({
     agentId,
     threadId,
@@ -63,77 +65,77 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   });
 
   // Auto-scroll to bottom when new messages arrive
-  const scrollToBottom = useCallback(() => {
+  useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, []);
+  }, [messages]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages, scrollToBottom]);
+  // Determine theme class
+  const themeClass = theme === 'auto' ? '' : theme;
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || loading || isStreaming) return;
-
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    
     const messageText = input.trim();
     setInput('');
     
-    onMessageSent?.(messageText);
-
     try {
-      await sendMessageStream(messageText);
-    } catch (error) {
-      console.error('Failed to send message:', error);
+      await chatSendMessage(messageText);
+    } catch (err) {
+      console.error('Failed to send message:', err);
       setInput(messageText); // Restore input on error
     }
-  }, [input, loading, isStreaming, sendMessageStream, onMessageSent]);
+  };
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }, [sendMessage]);
-
-  // Filter and render messages
   const renderedMessages = useMemo(() => {
     return messages
-      .filter(message => shouldDisplayMessage(message, showDebug))
-      .map((message: any, index: number) => {
-        const timestamp = new Date(message.timestamp || Date.now());
-        const messageText = extractTextFromMessage(message);
+      .filter(msg => shouldDisplayMessage(msg, showDebug))
+      .map((message, index) => {
         const messageType = getMessageType(message);
-        const key = message.messageId || `${messageType}-${index}`;
+        const messageContent = extractTextFromMessage(message);
+        const key = `message-${index}`;
+
+        // Get timestamp from message metadata or parts
+        const timestamp = (message as any).created_at ? new Date((message as any).created_at) : undefined;
 
         switch (messageType) {
           case 'user':
             return (
               <UserMessageComponent
                 key={key}
-                content={messageText}
+                content={messageContent}
                 timestamp={timestamp}
               />
             );
 
+          case 'assistant':
+            return (
+              <AssistantMessageComponent
+                key={key}
+                content={messageContent}
+                timestamp={timestamp}
+                isStreaming={isStreaming && index === messages.length - 1}
+              />
+            );
+
           case 'assistant_with_tools':
-            const toolCallsProps = message.metadata.tool_calls?.map((toolCall: any) => ({
-              toolCall,
-              status: 'completed',
-              result: 'Tool executed successfully',
-              error: null,
-            })) || [];
+            // Extract tool calls from message parts or metadata
+            const toolCalls = (message.parts || [])
+              .filter((part: any) => part.tool_call)
+              .map((part: any) => ({
+                toolCall: part.tool_call,
+                status: 'completed' as const,
+                result: part.tool_result || 'Completed successfully',
+              }));
 
             return (
               <AssistantWithToolCallsComponent
                 key={key}
-                content={messageText}
-                toolCalls={toolCallsProps}
+                content={messageContent}
+                toolCalls={toolCalls}
                 timestamp={timestamp}
                 isStreaming={isStreaming && index === messages.length - 1}
-                metadata={message.metadata}
               />
             );
 
@@ -141,25 +143,16 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
             return (
               <PlanMessageComponent
                 key={key}
-                content={messageText || message.metadata?.plan || 'Planning...'}
-                duration={message.metadata?.duration}
+                content={messageContent}
                 timestamp={timestamp}
               />
             );
 
-          case 'assistant':
           default:
-            return (
-              <AssistantMessageComponent
-                key={key}
-                content={messageText || 'Empty message'}
-                timestamp={timestamp}
-                isStreaming={isStreaming && index === messages.length - 1}
-                metadata={message.metadata}
-              />
-            );
+            return null;
         }
-      });
+      })
+      .filter(Boolean);
   }, [
     messages,
     showDebug,
@@ -170,88 +163,69 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     PlanMessageComponent,
   ]);
 
-  // Apply theme class
-  const themeClass = theme === 'auto' ? '' : theme;
-  const containerHeight = typeof height === 'number' ? `${height}px` : height;
-
   return (
     <div 
-      className={`distri-chat ${themeClass} ${className}`}
-      style={{ height: containerHeight }}
+      className={`distri-chat ${themeClass} ${className} w-full`}
+      style={{ 
+        height,
+        backgroundColor: '#343541',
+        ...style 
+      }}
     >
-      <div className="distri-chat-container">
+      <div className="h-full flex flex-col">
         {/* Messages Area */}
-        <div 
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto distri-scroll p-4 space-y-4"
-        >
-          {error && (
-            <div className="p-4 border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 rounded-lg">
-              <p className="text-red-600 dark:text-red-400 text-sm">
-                Error: {error.message}
-              </p>
-            </div>
-          )}
-
-          {messages.length === 0 && !loading && (
-            <div className="flex-1 flex items-center justify-center py-12">
-              <div className="text-center max-w-sm">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Send className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <div className="flex-1 overflow-y-auto distri-scroll">
+          {messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <MessageSquare className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-white mb-2">
                   Start a conversation
                 </h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  Send a message to begin chatting with the AI assistant.
+                <p className="text-gray-400 max-w-sm">
+                  {placeholder || "Type your message below to begin chatting."}
                 </p>
               </div>
             </div>
-          )}
-
-          {renderedMessages}
-
-          {/* Loading indicator */}
-          {(loading || isStreaming) && (
-            <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400 p-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">AI is thinking...</span>
+          ) : (
+            <div className="space-y-0">
+              {renderedMessages}
             </div>
           )}
-
+          
+          {/* Loading state */}
+          {loading && (
+            <div className="px-6 py-4 flex items-center space-x-2" style={{ backgroundColor: '#2f2f2f' }}>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+              <span className="text-gray-400 text-sm">Thinking...</span>
+            </div>
+          )}
+          
+          {/* Error state */}
+          {error && (
+            <div className="px-6 py-4 bg-red-900/20 border border-red-500/20 mx-4 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <div className="h-4 w-4 rounded-full bg-red-500"></div>
+                <span className="text-red-400 text-sm">{error.message || String(error)}</span>
+              </div>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center space-x-2">
-            <div className="flex-1 relative">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={placeholder}
-                rows={1}
-                className="distri-input w-full resize-none px-4 py-3 pr-12 text-sm min-h-[52px] max-h-32"
-                disabled={loading || isStreaming}
-                style={{ 
-                  minHeight: '52px',
-                  maxHeight: '128px',
-                }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim() || loading || isStreaming}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 distri-button-primary disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+        <div className="border-t border-gray-600 p-4" style={{ backgroundColor: '#343541' }}>
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={sendMessage}
+            placeholder={placeholder}
+            disabled={loading}
+            className="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
       </div>
     </div>
   );
 };
-
-export default EmbeddableChat;

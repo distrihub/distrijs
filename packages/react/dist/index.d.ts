@@ -168,18 +168,23 @@ interface EmbeddableChatProps {
     agentId: string;
     threadId?: string;
     agent?: Agent;
-    metadata?: any;
-    height?: string | number;
-    placeholder?: string;
+    height?: string;
     className?: string;
+    style?: React.CSSProperties;
+    metadata?: any;
+    availableAgents?: Array<{
+        id: string;
+        name: string;
+        description?: string;
+    }>;
     UserMessageComponent?: React.ComponentType<any>;
     AssistantMessageComponent?: React.ComponentType<any>;
     AssistantWithToolCallsComponent?: React.ComponentType<any>;
     PlanMessageComponent?: React.ComponentType<any>;
     theme?: 'light' | 'dark' | 'auto';
     showDebug?: boolean;
-    onMessageSent?: (message: string) => void;
-    onResponse?: (response: any) => void;
+    placeholder?: string;
+    onResponse?: (message: any) => void;
 }
 declare const EmbeddableChat: React.FC<EmbeddableChatProps>;
 
@@ -243,6 +248,7 @@ declare const MessageContainer: React.FC<{
     children: React.ReactNode;
     align: 'left' | 'right' | 'center';
     className?: string;
+    backgroundColor?: string;
 }>;
 declare const PlanMessage: React.FC<PlanMessageProps>;
 declare const UserMessage: React.FC<UserMessageProps>;

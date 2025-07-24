@@ -1,112 +1,83 @@
 /* 
- * Distri Chat Theme Variables - ChatGPT Dark Style
- * Compatible with shadcn/ui and other design systems
- * Defaults to dark theme
+ * ChatGPT Exact Color Scheme - Dark Theme
+ * Based on actual ChatGPT CSS variables and color analysis
  */
 
 :root {
-  /* Dark theme as default - ChatGPT style */
-  --background: 212 100% 4%;
-  --foreground: 213 31% 91%;
-  --muted: 223 47% 11%;
-  --muted-foreground: 215.4 16.3% 56.9%;
-  --popover: 224 71% 4%;
-  --popover-foreground: 215 20.2% 65.1%;
-  --card: 224 71% 4%;
-  --card-foreground: 213 31% 91%;
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 84% 4.9%;
-  --secondary: 222.2 84% 4.9%;
-  --secondary-foreground: 210 40% 98%;
-  --accent: 216 34% 17%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --ring: 216 34% 17%;
-  --radius: 0.5rem;
+  /* ChatGPT Exact Colors */
+  --background: 217.2 32.6% 17.5%;         /* #343541 - Main background */
+  --foreground: 0 0% 98%;                  /* #fafafa - Main text */
+  --card: 217.2 32.6% 17.5%;               /* #343541 - Cards */
+  --card-foreground: 0 0% 98%;             /* #fafafa - Card text */
+  --popover: 217.2 32.6% 17.5%;            /* #343541 - Popovers */
+  --popover-foreground: 0 0% 98%;          /* #fafafa - Popover text */
+  --primary: 0 0% 98%;                     /* #fafafa - User messages */
+  --primary-foreground: 217.2 32.6% 17.5%; /* #343541 - User message text */
+  --secondary: 217.2 32.6% 17.5%;          /* #343541 - Secondary elements */
+  --secondary-foreground: 0 0% 98%;        /* #fafafa - Secondary text */
+  --muted: 215 27.9% 16.9%;                /* #2f2f2f - Assistant messages */
+  --muted-foreground: 215.4 16.3% 76.9%;  /* #c5c5c5 - Muted text */
+  --accent: 217.2 32.6% 17.5%;             /* #343541 - Accents */
+  --accent-foreground: 0 0% 98%;           /* #fafafa - Accent text */
+  --destructive: 0 84.2% 60.2%;            /* #ef4444 - Red */
+  --destructive-foreground: 0 0% 98%;      /* #fafafa - Red text */
+  --border: 217.2 32.6% 12.5%;             /* #1f1f23 - Borders */
+  --input: 217.2 32.6% 12.5%;              /* #1f1f23 - Inputs */
+  --ring: 212.7 26.8% 83.9%;               /* #d1d5db - Focus rings */
+  --radius: 0.375rem;
 
-  /* Distri-specific dark theme variables */
-  --distri-background: var(--background);
-  --distri-foreground: var(--foreground);
-  --distri-card: var(--card);
-  --distri-card-foreground: var(--card-foreground);
-  --distri-popover: var(--popover);
-  --distri-popover-foreground: var(--popover-foreground);
-  --distri-primary: var(--primary);
-  --distri-primary-foreground: var(--primary-foreground);
-  --distri-secondary: var(--secondary);
-  --distri-secondary-foreground: var(--secondary-foreground);
-  --distri-muted: var(--muted);
-  --distri-muted-foreground: var(--muted-foreground);
-  --distri-accent: var(--accent);
-  --distri-accent-foreground: var(--accent-foreground);
-  --distri-destructive: var(--destructive);
-  --distri-destructive-foreground: var(--destructive-foreground);
-  --distri-border: var(--border);
-  --distri-input: var(--input);
-  --distri-ring: var(--ring);
-  
-  /* Chat specific - ChatGPT style */
-  --distri-chat-background: 212 100% 4%; /* Very dark blue-gray */
-  --distri-chat-border: 216 34% 17%;
-  --distri-message-user-bg: 213 93% 94%; /* Light for user messages */
-  --distri-message-user-text: 222.2 84% 4.9%; /* Dark text */
-  --distri-message-assistant-bg: var(--distri-muted); /* Slightly lighter than background */
-  --distri-message-assistant-text: var(--distri-foreground);
-  --distri-message-tool-bg: 216 34% 17%;
-  --distri-message-tool-border: 216 34% 25%;
-  --distri-input-bg: 216 34% 17%;
-  --distri-input-border: 216 34% 25%;
-  --distri-input-text: var(--distri-foreground);
-  
-  /* Sidebar colors */
-  --distri-sidebar-bg: 217 33% 6%; /* Darker than main */
-  --distri-sidebar-border: 216 34% 17%;
-  --distri-sidebar-item-hover: 216 34% 17%;
-  --distri-sidebar-item-active: 213 27% 84%;
-  --distri-sidebar-item-active-bg: 216 34% 17%;
+  /* ChatGPT-specific chat variables */
+  --chat-bg: 217.2 32.6% 17.5%;            /* #343541 - Main chat area */
+  --sidebar-bg: 0 0% 0%;                   /* #000000 - Sidebar background */
+  --sidebar-border: 217.2 32.6% 12.5%;     /* #1f1f23 - Sidebar border */
+  --user-bg: 0 0% 98%;                     /* #fafafa - User message bubble */
+  --user-text: 217.2 32.6% 17.5%;          /* #343541 - User message text */
+  --assistant-bg: 215 27.9% 16.9%;         /* #2f2f2f - Assistant message background */
+  --assistant-text: 0 0% 98%;              /* #fafafa - Assistant message text */
+  --message-border: 217.2 32.6% 12.5%;     /* #1f1f23 - Message borders */
+  --hover-bg: 0 0% 100% / 0.05;            /* rgba(255,255,255,0.05) - Hover states */
+  --active-bg: 0 0% 100% / 0.1;            /* rgba(255,255,255,0.1) - Active states */
 }
 
 /* Light theme override (when explicitly requested) */
 .light {
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
   --primary: 221.2 83.2% 53.3%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
   --accent: 210 40% 96%;
   --accent-foreground: 222.2 84% 4.9%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
   --ring: 221.2 83.2% 53.3%;
 
-  /* Light theme chat specific */
-  --distri-chat-background: var(--background);
-  --distri-message-user-bg: var(--primary);
-  --distri-message-user-text: var(--primary-foreground);
-  --distri-message-assistant-bg: var(--muted);
-  --distri-message-assistant-text: var(--muted-foreground);
-  --distri-message-tool-bg: var(--accent);
-  --distri-message-tool-border: var(--border);
-  --distri-sidebar-bg: var(--background);
+  --chat-bg: 0 0% 100%;
+  --sidebar-bg: 210 40% 96%;
+  --sidebar-border: 214.3 31.8% 91.4%;
+  --user-bg: 221.2 83.2% 53.3%;
+  --user-text: 210 40% 98%;
+  --assistant-bg: 210 40% 96%;
+  --assistant-text: 222.2 84% 4.9%;
+  --message-border: 214.3 31.8% 91.4%;
+  --hover-bg: 0 0% 0% / 0.05;
+  --active-bg: 0 0% 0% / 0.1;
 }
 
-/* Base chat styles */
+/* Base chat styles with exact ChatGPT appearance */
 .distri-chat {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  background-color: hsl(var(--distri-chat-background));
-  color: hsl(var(--distri-foreground));
+  font-family: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: hsl(var(--chat-bg));
+  color: hsl(var(--foreground));
   border-radius: var(--radius);
 }
 
@@ -114,61 +85,97 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: hsl(var(--distri-chat-background));
-  border: 1px solid hsl(var(--distri-border));
+  background-color: hsl(var(--chat-bg));
   border-radius: var(--radius);
 }
 
+/* ChatGPT-style sidebar */
+.distri-sidebar {
+  background-color: hsl(var(--sidebar-bg));
+  border-right: 1px solid hsl(var(--sidebar-border));
+}
+
+/* ChatGPT-style message bubbles */
 .distri-message {
-  padding: 1rem;
-  border-bottom: 1px solid hsl(var(--distri-border));
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid hsl(var(--message-border));
 }
 
 .distri-message-user {
-  background-color: hsl(var(--distri-message-user-bg));
-  color: hsl(var(--distri-message-user-text));
+  background-color: hsl(var(--user-bg));
+  color: hsl(var(--user-text));
 }
 
 .distri-message-assistant {
-  background-color: hsl(var(--distri-message-assistant-bg));
-  color: hsl(var(--distri-message-assistant-text));
+  background-color: hsl(var(--assistant-bg));
+  color: hsl(var(--assistant-text));
 }
 
 .distri-message-tool {
-  background-color: hsl(var(--distri-message-tool-bg));
-  border: 1px solid hsl(var(--distri-message-tool-border));
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
+  padding: 1rem;
+  margin: 0.5rem 0;
 }
 
+/* ChatGPT-style input */
 .distri-input {
-  background-color: hsl(var(--distri-input-bg));
-  border: 1px solid hsl(var(--distri-input-border));
-  color: hsl(var(--distri-input-text));
+  background-color: hsl(var(--input));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
   border-radius: var(--radius);
+  font-family: inherit;
 }
 
 .distri-input:focus {
-  outline: 2px solid hsl(var(--distri-ring));
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+  border-color: hsl(var(--ring));
 }
 
+/* ChatGPT-style buttons */
 .distri-button-primary {
-  background-color: hsl(var(--distri-primary));
-  color: hsl(var(--distri-primary-foreground));
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   border-radius: var(--radius);
+  border: none;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-.distri-button-primary:hover {
-  opacity: 0.9;
+.distri-button-primary:hover:not(:disabled) {
+  background-color: hsl(var(--primary) / 0.9);
 }
 
+.distri-button-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ChatGPT-style hover states */
+.distri-hover {
+  transition: background-color 0.2s ease;
+}
+
+.distri-hover:hover {
+  background-color: hsl(var(--hover-bg));
+}
+
+.distri-active {
+  background-color: hsl(var(--active-bg));
+}
+
+/* ChatGPT-style scrollbars */
 .distri-scroll {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--distri-muted)) transparent;
+  scrollbar-color: hsl(var(--muted)) transparent;
 }
 
 .distri-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .distri-scroll::-webkit-scrollbar-track {
@@ -176,10 +183,36 @@
 }
 
 .distri-scroll::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--distri-muted));
-  border-radius: 3px;
+  background-color: hsl(var(--muted));
+  border-radius: 4px;
+  border: 2px solid hsl(var(--background));
 }
 
 .distri-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--distri-muted-foreground));
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Typography matching ChatGPT */
+.distri-text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.distri-text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+/* Animation utilities */
+@keyframes distri-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.distri-animate-spin {
+  animation: distri-spin 1s linear infinite;
 }
