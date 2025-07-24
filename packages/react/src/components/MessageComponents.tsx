@@ -65,16 +65,16 @@ export const PlanMessage: React.FC<PlanMessageProps> = ({
   className = ''
 }) => {
   return (
-    <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
-      <div className="flex items-start gap-4 py-6">
+    <MessageContainer align="center" className={className} backgroundColor="#444654">
+      <div className="flex items-start gap-4 py-6 px-4">
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-600">
           <Brain className="h-4 w-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1 flex items-center gap-2">
+          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
             Thought{duration ? ` for ${duration}s` : ''}
           </div>
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none text-white">
             <MessageRenderer
               content={content}
               className="text-white"
@@ -100,12 +100,12 @@ export const UserMessage: React.FC<UserMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#343541">
-      <div className="flex items-start gap-4 py-8 border-b border-gray-700/30">
+      <div className="flex items-start gap-4 py-6 px-4">
         <div className="distri-avatar distri-avatar-user">
           {avatar || <User className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-3">You</div>
+          <div className="text-sm font-medium text-white mb-2">You</div>
           <div className="prose prose-sm max-w-none text-white">
             <MessageRenderer
               content={content}
@@ -113,7 +113,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-3">
+            <div className="text-xs text-gray-400 mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -133,14 +133,14 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
-      <div className="flex items-start gap-4 py-8 border-b border-gray-700/30">
+    <MessageContainer align="center" className={className} backgroundColor="#444654">
+      <div className="flex items-start gap-4 py-6 px-4">
         <div className="distri-avatar distri-avatar-assistant">
           {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-3 flex items-center gap-2">
-            Assistant
+          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+            ChatGPT
             {isStreaming && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
@@ -156,7 +156,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-3">
+            <div className="text-xs text-gray-400 mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -283,14 +283,14 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
-      <div className="flex items-start gap-4 py-8 border-b border-gray-700/30">
+    <MessageContainer align="center" className={className} backgroundColor="#444654">
+      <div className="flex items-start gap-4 py-6 px-4">
         <div className="distri-avatar distri-avatar-assistant">
           {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-3 flex items-center gap-2">
-            Assistant
+          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+            ChatGPT
             {isStreaming && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
@@ -301,7 +301,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           </div>
 
           {content && (
-            <div className="prose prose-sm max-w-none mb-6 text-white">
+            <div className="prose prose-sm max-w-none mb-4 text-white">
               <MessageRenderer
                 content={content}
                 className="text-white"
@@ -318,7 +318,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           )}
 
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-3">
+            <div className="text-xs text-gray-400 mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}

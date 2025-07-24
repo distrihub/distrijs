@@ -705,14 +705,14 @@ var PlanMessage = ({
   timestamp,
   className = ""
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-6", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-6 px-4", children: [
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-600", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_lucide_react2.Brain, { className: "h-4 w-4 text-white" }) }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-sm font-medium text-white mb-1 flex items-center gap-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-sm font-medium text-white mb-2 flex items-center gap-2", children: [
         "Thought",
         duration ? ` for ${duration}s` : ""
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "prose prose-sm max-w-none prose-invert", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "prose prose-sm max-w-none text-white", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
         MessageRenderer_default,
         {
           content,
@@ -729,10 +729,10 @@ var UserMessage = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-8 border-b border-gray-700/30", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-6 px-4", children: [
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "distri-avatar distri-avatar-user", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_lucide_react2.User, { className: "h-4 w-4" }) }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-sm font-medium text-white mb-3", children: "You" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-sm font-medium text-white mb-2", children: "You" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "prose prose-sm max-w-none text-white", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
         MessageRenderer_default,
         {
@@ -740,7 +740,7 @@ var UserMessage = ({
           className: "text-white"
         }
       ) }),
-      timestamp && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-xs text-gray-400 mt-3", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-xs text-gray-400 mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -752,11 +752,11 @@ var AssistantMessage = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-8 border-b border-gray-700/30", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-6 px-4", children: [
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_lucide_react2.Bot, { className: "h-4 w-4" }) }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-sm font-medium text-white mb-3 flex items-center gap-2", children: [
-        "Assistant",
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-sm font-medium text-white mb-2 flex items-center gap-2", children: [
+        "ChatGPT",
         isStreaming && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center gap-1 text-xs text-gray-400", children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-75" }),
@@ -770,7 +770,7 @@ var AssistantMessage = ({
           className: "text-white"
         }
       ) }),
-      timestamp && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-xs text-gray-400 mt-3", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-xs text-gray-400 mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -852,18 +852,18 @@ var AssistantWithToolCalls = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-8 border-b border-gray-700/30", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start gap-4 py-6 px-4", children: [
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_lucide_react2.Bot, { className: "h-4 w-4" }) }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-sm font-medium text-white mb-3 flex items-center gap-2", children: [
-        "Assistant",
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-sm font-medium text-white mb-2 flex items-center gap-2", children: [
+        "ChatGPT",
         isStreaming && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center gap-1 text-xs text-gray-400", children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-75" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-150" })
         ] })
       ] }),
-      content && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "prose prose-sm max-w-none mb-6 text-white", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      content && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "prose prose-sm max-w-none mb-4 text-white", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
         MessageRenderer_default,
         {
           content,
@@ -871,7 +871,7 @@ var AssistantWithToolCalls = ({
         }
       ) }),
       toolCalls.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "space-y-3", children: toolCalls.map((toolCallProps, index) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Tool, { ...toolCallProps }, index)) }),
-      timestamp && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-xs text-gray-400 mt-3", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-xs text-gray-400 mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1033,7 +1033,7 @@ var ChatInput = ({
     }
   };
   const hasContent = value.trim().length > 0;
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "relative", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "relative flex items-end bg-gray-700 rounded-xl border border-gray-600 focus-within:border-gray-500 transition-colors", children: [
     /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
       "textarea",
       {
@@ -1044,33 +1044,25 @@ var ChatInput = ({
         placeholder,
         disabled,
         rows: 1,
-        className: `
-          resize-none pr-12 min-h-[52px] 
-          bg-gray-700 border border-gray-600 text-white placeholder-gray-400 
-          rounded-xl px-4 py-3 
-          focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
-          transition-all duration-200
-          ${className}
-        `,
+        className: "flex-1 resize-none bg-transparent text-white placeholder-gray-400 border-none outline-none px-4 py-3 max-h-[120px] min-h-[52px]",
         style: {
           minHeight: "52px",
           maxHeight: "120px"
         }
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "flex items-end p-2", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
       "button",
       {
         onClick: handleSend,
         disabled: !hasContent || disabled,
         className: `
-          absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200
-          ${hasContent && !disabled ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "bg-gray-600 text-gray-400 cursor-not-allowed"}
-          ${hasContent && !disabled ? "scale-100" : "scale-95 opacity-50"}
-        `,
+            p-2 rounded-lg transition-all duration-200 flex items-center justify-center
+            ${hasContent && !disabled ? "bg-white text-gray-900 hover:bg-gray-100" : "bg-gray-600 text-gray-400 cursor-not-allowed"}
+          `,
         children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_lucide_react4.Send, { className: "h-4 w-4" })
       }
-    )
+    ) })
   ] });
 };
 
@@ -1211,13 +1203,13 @@ var EmbeddableChat = ({
             className: "w-full"
           }
         ) }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "flex-1 overflow-y-auto distri-scroll", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "flex-1 overflow-y-auto distri-scroll", style: { backgroundColor: "#343541" }, children: [
           messages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "h-full flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "text-center", children: [
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react5.MessageSquare, { className: "h-16 w-16 text-gray-600 mx-auto mb-4" }),
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { className: "text-lg font-medium text-white mb-2", children: "Start a conversation" }),
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "text-gray-400 max-w-sm", children: placeholder || "Type your message below to begin chatting." })
           ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "space-y-0", children: renderedMessages }),
-          loading && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "px-6 py-4 flex items-center space-x-2", style: { backgroundColor: "#2f2f2f" }, children: [
+          loading && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "px-6 py-4 flex items-center space-x-2", style: { backgroundColor: "#444654" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" }),
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "text-gray-400 text-sm", children: "Thinking..." })
           ] }),
@@ -1515,8 +1507,8 @@ var FullChat = ({
       {
         className: "fixed left-0 top-0 h-full border-r flex flex-col distri-sidebar",
         style: {
-          backgroundColor: "#000000",
-          borderRightColor: "#2f2f2f",
+          backgroundColor: "#202123",
+          borderRightColor: "#444654",
           width: `${sidebarWidth}px`
         },
         children: [

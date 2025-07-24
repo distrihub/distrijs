@@ -192,7 +192,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
         )}
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto distri-scroll">
+        <div className="flex-1 overflow-y-auto distri-scroll" style={{ backgroundColor: '#343541' }}>
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
@@ -213,7 +213,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           
           {/* Loading state */}
           {loading && (
-            <div className="px-6 py-4 flex items-center space-x-2" style={{ backgroundColor: '#2f2f2f' }}>
+            <div className="px-6 py-4 flex items-center space-x-2" style={{ backgroundColor: '#444654' }}>
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
               <span className="text-gray-400 text-sm">Thinking...</span>
             </div>

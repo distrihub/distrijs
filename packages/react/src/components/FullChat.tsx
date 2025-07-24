@@ -221,8 +221,8 @@ export const FullChat: React.FC<FullChatProps> = ({
         <div 
           className="fixed left-0 top-0 h-full border-r flex flex-col distri-sidebar"
           style={{ 
-            backgroundColor: '#000000',
-            borderRightColor: '#2f2f2f',
+            backgroundColor: '#202123',
+            borderRightColor: '#444654',
             width: `${sidebarWidth}px`
           }}
         >

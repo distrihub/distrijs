@@ -46,7 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const hasContent = value.trim().length > 0;
 
   return (
-    <div className="relative">
+    <div className="relative flex items-end bg-gray-700 rounded-xl border border-gray-600 focus-within:border-gray-500 transition-colors">
       <textarea
         ref={textareaRef}
         value={value}
@@ -55,33 +55,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         placeholder={placeholder}
         disabled={disabled}
         rows={1}
-        className={`
-          resize-none pr-12 min-h-[52px] 
-          bg-gray-700 border border-gray-600 text-white placeholder-gray-400 
-          rounded-xl px-4 py-3 
-          focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
-          transition-all duration-200
-          ${className}
-        `}
+        className="flex-1 resize-none bg-transparent text-white placeholder-gray-400 border-none outline-none px-4 py-3 max-h-[120px] min-h-[52px]"
         style={{
           minHeight: '52px',
           maxHeight: '120px',
         }}
       />
-      <button
-        onClick={handleSend}
-        disabled={!hasContent || disabled}
-        className={`
-          absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200
-          ${hasContent && !disabled
-            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
-            : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-          }
-          ${hasContent && !disabled ? 'scale-100' : 'scale-95 opacity-50'}
-        `}
-      >
-        <Send className="h-4 w-4" />
-      </button>
+      <div className="flex items-end p-2">
+        <button
+          onClick={handleSend}
+          disabled={!hasContent || disabled}
+          className={`
+            p-2 rounded-lg transition-all duration-200 flex items-center justify-center
+            ${hasContent && !disabled
+              ? 'bg-white text-gray-900 hover:bg-gray-100' 
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+            }
+          `}
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 };
