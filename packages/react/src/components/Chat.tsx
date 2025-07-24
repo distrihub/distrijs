@@ -9,10 +9,21 @@ export interface ChatProps {
   agentId: string;
   threadId: string;
   agent?: Agent;
+  // Backwards compatibility: tools prop for legacy external tool handlers
+  tools?: Record<string, any>;
   metadata?: any;
   height?: string;
   onThreadUpdate?: (threadId: string) => void;
   className?: string;
+  // Customization props
+  placeholder?: string;
+  // Custom message components for full customization
+  UserMessageComponent?: React.ComponentType<any>;
+  AssistantMessageComponent?: React.ComponentType<any>;
+  AssistantWithToolCallsComponent?: React.ComponentType<any>;
+  PlanMessageComponent?: React.ComponentType<any>;
+  // Custom external tool handler (for backwards compatibility)
+  onExternalToolCall?: (toolCall: any) => void;
 }
 
 const ChatInput: React.FC<{
@@ -83,9 +94,16 @@ const ChatContent: React.FC<ChatProps> = ({
   agentId,
   threadId,
   agent,
+  tools,
   metadata,
   height = "600px",
-  onThreadUpdate
+  onThreadUpdate,
+  placeholder = "Type a message...",
+  UserMessageComponent = UserMessage,
+  AssistantMessageComponent = AssistantMessage,
+  AssistantWithToolCallsComponent = AssistantWithToolCalls,
+  PlanMessageComponent = PlanMessage,
+  onExternalToolCall,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -103,6 +121,13 @@ const ChatContent: React.FC<ChatProps> = ({
     agent,
     metadata,
   });
+
+  // Legacy tool handling for backwards compatibility
+  useEffect(() => {
+    if (tools && onExternalToolCall) {
+      console.warn('Legacy tools prop detected. Consider migrating to the new useTools hook for better performance.');
+    }
+  }, [tools, onExternalToolCall]);
 
   // Helper function to extract text from message parts
   const extractTextFromMessage = useCallback((message: any): string => {
@@ -174,7 +199,7 @@ const ChatContent: React.FC<ChatProps> = ({
     }
   }, [input, loading, isStreaming, sendMessageStream, onThreadUpdate, threadId]);
 
-  // Render messages using new components
+  // Render messages using custom components
   const renderedMessages = useMemo(() => {
     return messages
       .filter(shouldDisplayMessage)
@@ -186,7 +211,7 @@ const ChatContent: React.FC<ChatProps> = ({
         // Handle user messages
         if (isUser) {
           return (
-            <UserMessage
+            <UserMessageComponent
               key={message.messageId || `user-${index}`}
               content={messageText}
               timestamp={timestamp}
@@ -204,7 +229,7 @@ const ChatContent: React.FC<ChatProps> = ({
           }));
 
           return (
-            <AssistantWithToolCalls
+            <AssistantWithToolCallsComponent
               key={message.messageId || `assistant-tools-${index}`}
               content={messageText}
               toolCalls={toolCallsProps}
@@ -218,7 +243,7 @@ const ChatContent: React.FC<ChatProps> = ({
         // Handle plan messages
         if (message.metadata?.type === 'plan' || message.metadata?.plan) {
           return (
-            <PlanMessage
+            <PlanMessageComponent
               key={message.messageId || `plan-${index}`}
               content={messageText || message.metadata?.plan || 'Planning...'}
               duration={message.metadata?.duration}
@@ -229,7 +254,7 @@ const ChatContent: React.FC<ChatProps> = ({
 
         // Handle regular assistant messages
         return (
-          <AssistantMessage
+          <AssistantMessageComponent
             key={message.messageId || `assistant-${index}`}
             content={messageText || 'Empty message'}
             timestamp={timestamp}
@@ -238,7 +263,7 @@ const ChatContent: React.FC<ChatProps> = ({
           />
         );
       });
-  }, [messages, shouldDisplayMessage, extractTextFromMessage, isStreaming]);
+  }, [messages, shouldDisplayMessage, extractTextFromMessage, isStreaming, UserMessageComponent, AssistantMessageComponent, AssistantWithToolCallsComponent, PlanMessageComponent]);
 
   return (
     <div className="flex flex-col bg-gray-900 text-white" style={{ height }}>
@@ -311,6 +336,7 @@ const ChatContent: React.FC<ChatProps> = ({
         onSend={sendMessage}
         disabled={loading}
         isStreaming={isStreaming}
+        placeholder={placeholder}
       />
     </div>
   );
