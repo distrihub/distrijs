@@ -167,12 +167,12 @@ const ChatContent: React.FC<ChatProps> = ({
 
     // Show other metadata messages only if debug is enabled (like "run started", etc.)
     if (message.metadata?.type && message.metadata.type !== 'assistant_response') {
-      return config.showDebugMessages;
+      return config.showDebug;
     }
 
     // Don't show empty messages
     return false;
-  }, [extractTextFromMessage, config.showDebugMessages]);
+  }, [extractTextFromMessage, config.showDebug]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -280,8 +280,8 @@ const ChatContent: React.FC<ChatProps> = ({
           </div>
           <div className="flex items-center gap-3">
             <DebugToggle
-              showDebug={config.showDebugMessages}
-              onToggle={() => updateConfig({ showDebugMessages: !config.showDebugMessages })}
+              showDebug={config.showDebug}
+              onToggle={() => updateConfig({ showDebug: !config.showDebug })}
             />
             {(loading || isStreaming) && (
               <div className="flex items-center text-blue-400">

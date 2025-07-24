@@ -1,0 +1,139 @@
+/* src/styles/themes.css */
+:root {
+  --distri-background: 0 0% 100%;
+  --distri-foreground: 222.2 84% 4.9%;
+  --distri-card: 0 0% 100%;
+  --distri-card-foreground: 222.2 84% 4.9%;
+  --distri-popover: 0 0% 100%;
+  --distri-popover-foreground: 222.2 84% 4.9%;
+  --distri-primary: 221.2 83.2% 53.3%;
+  --distri-primary-foreground: 210 40% 98%;
+  --distri-secondary: 210 40% 96%;
+  --distri-secondary-foreground: 222.2 84% 4.9%;
+  --distri-muted: 210 40% 96%;
+  --distri-muted-foreground: 215.4 16.3% 46.9%;
+  --distri-accent: 210 40% 96%;
+  --distri-accent-foreground: 222.2 84% 4.9%;
+  --distri-destructive: 0 84.2% 60.2%;
+  --distri-destructive-foreground: 210 40% 98%;
+  --distri-border: 214.3 31.8% 91.4%;
+  --distri-input: 214.3 31.8% 91.4%;
+  --distri-ring: 221.2 83.2% 53.3%;
+  --distri-chat-background: var(--distri-background);
+  --distri-chat-border: var(--distri-border);
+  --distri-message-user-bg: var(--distri-primary);
+  --distri-message-user-text: var(--distri-primary-foreground);
+  --distri-message-assistant-bg: var(--distri-muted);
+  --distri-message-assistant-text: var(--distri-muted-foreground);
+  --distri-message-tool-bg: var(--distri-accent);
+  --distri-message-tool-border: var(--distri-border);
+  --distri-input-bg: var(--distri-background);
+  --distri-input-border: var(--distri-border);
+  --distri-input-text: var(--distri-foreground);
+  --distri-radius: 0.5rem;
+}
+.dark {
+  --distri-background: 222.2 84% 4.9%;
+  --distri-foreground: 210 40% 98%;
+  --distri-card: 222.2 84% 4.9%;
+  --distri-card-foreground: 210 40% 98%;
+  --distri-popover: 222.2 84% 4.9%;
+  --distri-popover-foreground: 210 40% 98%;
+  --distri-primary: 217.2 91.2% 59.8%;
+  --distri-primary-foreground: 222.2 84% 4.9%;
+  --distri-secondary: 217.2 32.6% 17.5%;
+  --distri-secondary-foreground: 210 40% 98%;
+  --distri-muted: 217.2 32.6% 17.5%;
+  --distri-muted-foreground: 215 20.2% 65.1%;
+  --distri-accent: 217.2 32.6% 17.5%;
+  --distri-accent-foreground: 210 40% 98%;
+  --distri-destructive: 0 62.8% 30.6%;
+  --distri-destructive-foreground: 210 40% 98%;
+  --distri-border: 217.2 32.6% 17.5%;
+  --distri-input: 217.2 32.6% 17.5%;
+  --distri-ring: 224.3 76.3% 94.1%;
+  --distri-chat-background: var(--distri-background);
+  --distri-message-user-bg: var(--distri-primary);
+  --distri-message-user-text: var(--distri-primary-foreground);
+  --distri-message-assistant-bg: var(--distri-muted);
+  --distri-message-assistant-text: var(--distri-muted-foreground);
+  --distri-message-tool-bg: var(--distri-accent);
+  --distri-message-tool-border: var(--distri-border);
+}
+.distri-chat {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
+  background-color: hsl(var(--distri-chat-background));
+  color: hsl(var(--distri-foreground));
+  border-radius: var(--distri-radius);
+}
+.distri-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: hsl(var(--distri-chat-background));
+  border: 1px solid hsl(var(--distri-chat-border));
+  border-radius: var(--distri-radius);
+}
+.distri-message {
+  padding: 1rem;
+  border-bottom: 1px solid hsl(var(--distri-border));
+}
+.distri-message-user {
+  background-color: hsl(var(--distri-message-user-bg));
+  color: hsl(var(--distri-message-user-text));
+}
+.distri-message-assistant {
+  background-color: hsl(var(--distri-message-assistant-bg));
+  color: hsl(var(--distri-message-assistant-text));
+}
+.distri-message-tool {
+  background-color: hsl(var(--distri-message-tool-bg));
+  border: 1px solid hsl(var(--distri-message-tool-border));
+  border-radius: var(--distri-radius);
+}
+.distri-input {
+  background-color: hsl(var(--distri-input-bg));
+  border: 1px solid hsl(var(--distri-input-border));
+  color: hsl(var(--distri-input-text));
+  border-radius: var(--distri-radius);
+}
+.distri-input:focus {
+  outline: 2px solid hsl(var(--distri-ring));
+  outline-offset: 2px;
+}
+.distri-button-primary {
+  background-color: hsl(var(--distri-primary));
+  color: hsl(var(--distri-primary-foreground));
+  border-radius: var(--distri-radius);
+}
+.distri-button-primary:hover {
+  opacity: 0.9;
+}
+.distri-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--distri-muted)) transparent;
+}
+.distri-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.distri-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.distri-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--distri-muted));
+  border-radius: 3px;
+}
+.distri-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--distri-muted-foreground));
+}
+/*# sourceMappingURL=index.css.map */

@@ -113,23 +113,94 @@ declare const createBuiltinTools: () => {
     notify: DistriTool;
 };
 
-interface ChatProps {
+interface ChatContainerProps {
     agentId: string;
-    threadId: string;
     agent?: Agent;
-    tools?: Record<string, any>;
     metadata?: any;
-    height?: string;
-    onThreadUpdate?: (threadId: string) => void;
+    variant?: 'embedded' | 'full';
+    height?: string | number;
     className?: string;
+    threadId?: string;
+    showSidebar?: boolean;
+    sidebarWidth?: number;
+    theme?: 'light' | 'dark' | 'auto';
     placeholder?: string;
+    showDebug?: boolean;
     UserMessageComponent?: React.ComponentType<any>;
     AssistantMessageComponent?: React.ComponentType<any>;
     AssistantWithToolCallsComponent?: React.ComponentType<any>;
     PlanMessageComponent?: React.ComponentType<any>;
-    onExternalToolCall?: (toolCall: any) => void;
+    onMessageSent?: (message: string) => void;
+    onResponse?: (response: any) => void;
+    onThreadSelect?: (threadId: string) => void;
+    onThreadCreate?: (threadId: string) => void;
+    onThreadDelete?: (threadId: string) => void;
 }
-declare const Chat: React.FC<ChatProps>;
+/**
+ * ChatContainer - A ready-to-use chat component for Distri agents
+ *
+ * This is the main component developers should use. It provides:
+ * - Embedded variant: Simple chat interface for embedding in existing UIs
+ * - Full variant: Complete chat application with threads sidebar
+ * - Theme support: Light/dark/auto themes compatible with shadcn/ui
+ * - Tool support: Automatic tool execution with visual feedback
+ * - Customization: Override any message component
+ *
+ * @example
+ * ```tsx
+ * // Simple embedded chat
+ * <ChatContainer agentId="my-agent" variant="embedded" height={400} />
+ *
+ * // Full chat with threads
+ * <ChatContainer agentId="my-agent" variant="full" />
+ *
+ * // With custom components
+ * <ChatContainer
+ *   agentId="my-agent"
+ *   UserMessageComponent={CustomUserMessage}
+ *   theme="dark"
+ * />
+ * ```
+ */
+declare const ChatContainer: React.FC<ChatContainerProps>;
+
+interface EmbeddableChatProps {
+    agentId: string;
+    threadId?: string;
+    agent?: Agent;
+    metadata?: any;
+    height?: string | number;
+    placeholder?: string;
+    className?: string;
+    UserMessageComponent?: React.ComponentType<any>;
+    AssistantMessageComponent?: React.ComponentType<any>;
+    AssistantWithToolCallsComponent?: React.ComponentType<any>;
+    PlanMessageComponent?: React.ComponentType<any>;
+    theme?: 'light' | 'dark' | 'auto';
+    showDebug?: boolean;
+    onMessageSent?: (message: string) => void;
+    onResponse?: (response: any) => void;
+}
+declare const EmbeddableChat: React.FC<EmbeddableChatProps>;
+
+interface FullChatProps {
+    agentId: string;
+    agent?: Agent;
+    metadata?: any;
+    className?: string;
+    UserMessageComponent?: React.ComponentType<any>;
+    AssistantMessageComponent?: React.ComponentType<any>;
+    AssistantWithToolCallsComponent?: React.ComponentType<any>;
+    PlanMessageComponent?: React.ComponentType<any>;
+    theme?: 'light' | 'dark' | 'auto';
+    showDebug?: boolean;
+    showSidebar?: boolean;
+    sidebarWidth?: number;
+    onThreadSelect?: (threadId: string) => void;
+    onThreadCreate?: (threadId: string) => void;
+    onThreadDelete?: (threadId: string) => void;
+}
+declare const FullChat: React.FC<FullChatProps>;
 
 interface BaseMessageProps {
     content?: string;
@@ -177,12 +248,27 @@ interface MessageRendererProps {
 }
 declare const MessageRenderer: React.FC<MessageRendererProps>;
 
-interface ExternalToolManagerProps {
-    toolCalls: ToolCall[];
-    onToolComplete: (results: ToolResult[]) => void;
-    onCancel: () => void;
-}
-declare const ExternalToolManager: React.FC<ExternalToolManagerProps>;
+/**
+ * Utility function to extract text content from message parts
+ */
+declare const extractTextFromMessage: (message: any) => string;
+/**
+ * Utility function to determine if a message should be displayed
+ * Can be used by builders when creating custom chat components
+ */
+declare const shouldDisplayMessage: (message: any, showDebugMessages?: boolean) => boolean;
+/**
+ * Utility function to determine message type for rendering
+ */
+declare const getMessageType: (message: any) => "user" | "assistant" | "assistant_with_tools" | "plan" | "system";
+/**
+ * Utility function to format timestamps
+ */
+declare const formatTimestamp: (timestamp: string | number | Date) => string;
+/**
+ * Utility function to scroll to bottom of chat
+ */
+declare const scrollToBottom: (element: HTMLElement | null, _behavior?: ScrollBehavior) => void;
 
 interface ApprovalDialogProps {
     toolCalls: ToolCall[];
@@ -201,39 +287,30 @@ interface ToastProps {
 }
 declare const Toast: React.FC<ToastProps>;
 
-type ChatTheme = 'light' | 'dark' | 'chatgpt';
-interface ChatConfig {
-    theme: ChatTheme;
-    showDebugMessages: boolean;
-    enableCodeHighlighting: boolean;
-    enableMarkdown: boolean;
-    maxMessageWidth: string;
-    borderRadius: string;
-    spacing: string;
+interface ChatProps {
+    agentId: string;
+    threadId: string;
+    agent?: Agent;
+    tools?: Record<string, any>;
+    metadata?: any;
+    height?: string;
+    onThreadUpdate?: (threadId: string) => void;
+    className?: string;
+    placeholder?: string;
+    UserMessageComponent?: React.ComponentType<any>;
+    AssistantMessageComponent?: React.ComponentType<any>;
+    AssistantWithToolCallsComponent?: React.ComponentType<any>;
+    PlanMessageComponent?: React.ComponentType<any>;
+    onExternalToolCall?: (toolCall: any) => void;
 }
-interface ChatContextValue {
-    config: ChatConfig;
-    updateConfig: (updates: Partial<ChatConfig>) => void;
+declare const Chat: React.FC<ChatProps>;
+
+interface ExternalToolManagerProps {
+    toolCalls: ToolCall[];
+    onToolComplete: (results: ToolResult[]) => void;
+    onCancel: () => void;
 }
-interface ChatProviderProps {
-    children: ReactNode;
-    config?: Partial<ChatConfig>;
-}
-declare function ChatProvider({ children, config: initialConfig }: ChatProviderProps): react_jsx_runtime.JSX.Element;
-declare function useChatConfig(): ChatContextValue;
-declare const getThemeClasses: (theme: ChatTheme) => {
-    background: string;
-    surface: string;
-    text: string;
-    textSecondary: string;
-    border: string;
-    userBubble: string;
-    assistantBubble: string;
-    avatar: {
-        user: string;
-        assistant: string;
-    };
-};
+declare const ExternalToolManager: React.FC<ExternalToolManagerProps>;
 
 interface LegacyToolHandler {
     (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
@@ -262,4 +339,28 @@ declare const createBuiltinToolHandlers: () => Record<string, LegacyToolHandler>
  */
 declare const processExternalToolCalls: (toolCalls: ToolCall[], handlers: Record<string, LegacyToolHandler>, onToolComplete: (results: ToolResult[]) => Promise<void>) => Promise<void>;
 
-export { ApprovalDialog, AssistantMessage, type AssistantMessageProps, AssistantWithToolCalls, type AssistantWithToolCallsProps, type BaseMessageProps, Chat, type ChatConfig, type ChatContextValue, ChatProvider, type ChatTheme, DistriProvider, ExternalToolManager, type LegacyToolHandler, MessageContainer, MessageRenderer, PlanMessage, type PlanMessageProps, Toast, Tool, type ToolCallProps, UserMessage, type UserMessageProps, clearPendingToolCalls, createBuiltinToolHandlers, createBuiltinTools, createTool, getThemeClasses, initializeBuiltinHandlers, processExternalToolCalls, useAgent, useAgents, useChat, useChatConfig, useDistri, useDistriClient, useThreads, useTools };
+type ChatTheme = 'light' | 'dark' | 'auto';
+interface ChatConfig {
+    theme: ChatTheme;
+    showDebug: boolean;
+    autoScroll: boolean;
+    showTimestamps: boolean;
+    enableMarkdown: boolean;
+    enableCodeHighlighting: boolean;
+}
+interface ChatContextValue {
+    config: ChatConfig;
+    updateConfig: (updates: Partial<ChatConfig>) => void;
+}
+interface ChatProviderProps {
+    children: ReactNode;
+    config?: Partial<ChatConfig>;
+}
+declare const ChatProvider: React.FC<ChatProviderProps>;
+declare const useChatConfig: () => ChatContextValue;
+/**
+ * Utility function to get theme classes for components
+ */
+declare const getThemeClasses: (theme: ChatTheme) => string;
+
+export { ApprovalDialog, AssistantMessage, type AssistantMessageProps, AssistantWithToolCalls, type AssistantWithToolCallsProps, type BaseMessageProps, Chat, type ChatConfig, ChatContainer, type ChatContainerProps, type ChatContextValue, ChatProvider, type ChatTheme, DistriProvider, EmbeddableChat, type EmbeddableChatProps, ExternalToolManager, FullChat, type FullChatProps, type LegacyToolHandler, MessageContainer, MessageRenderer, PlanMessage, type PlanMessageProps, Toast, Tool, type ToolCallProps, UserMessage, type UserMessageProps, clearPendingToolCalls, createBuiltinToolHandlers, createBuiltinTools, createTool, extractTextFromMessage, formatTimestamp, getMessageType, getThemeClasses, initializeBuiltinHandlers, processExternalToolCalls, scrollToBottom, shouldDisplayMessage, useAgent, useAgents, useChat, useChatConfig, useDistri, useDistriClient, useThreads, useTools };

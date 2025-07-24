@@ -1,15 +1,14 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 
-export type ChatTheme = 'light' | 'dark' | 'chatgpt';
+export type ChatTheme = 'light' | 'dark' | 'auto';
 
 export interface ChatConfig {
   theme: ChatTheme;
-  showDebugMessages: boolean;
-  enableCodeHighlighting: boolean;
+  showDebug: boolean;
+  autoScroll: boolean;
+  showTimestamps: boolean;
   enableMarkdown: boolean;
-  maxMessageWidth: string;
-  borderRadius: string;
-  spacing: string;
+  enableCodeHighlighting: boolean;
 }
 
 export interface ChatContextValue {
@@ -18,13 +17,12 @@ export interface ChatContextValue {
 }
 
 const defaultConfig: ChatConfig = {
-  theme: 'chatgpt',
-  showDebugMessages: false,
-  enableCodeHighlighting: true,
+  theme: 'auto',
+  showDebug: false,
+  autoScroll: true,
+  showTimestamps: true,
   enableMarkdown: true,
-  maxMessageWidth: '80%',
-  borderRadius: '2xl',
-  spacing: '4',
+  enableCodeHighlighting: true,
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -34,7 +32,10 @@ export interface ChatProviderProps {
   config?: Partial<ChatConfig>;
 }
 
-export function ChatProvider({ children, config: initialConfig }: ChatProviderProps) {
+export const ChatProvider: React.FC<ChatProviderProps> = ({ 
+  children, 
+  config: initialConfig = {} 
+}) => {
   const [config, setConfig] = React.useState<ChatConfig>({
     ...defaultConfig,
     ...initialConfig,
@@ -44,66 +45,44 @@ export function ChatProvider({ children, config: initialConfig }: ChatProviderPr
     setConfig(prev => ({ ...prev, ...updates }));
   }, []);
 
+  const value: ChatContextValue = {
+    config,
+    updateConfig,
+  };
+
   return (
-    <ChatContext.Provider value={{ config, updateConfig }}>
+    <ChatContext.Provider value={value}>
       {children}
     </ChatContext.Provider>
   );
-}
+};
 
-export function useChatConfig(): ChatContextValue {
+export const useChatConfig = (): ChatContextValue => {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error('useChatConfig must be used within a ChatProvider');
+    // Return default values if used outside provider
+    return {
+      config: defaultConfig,
+      updateConfig: () => {},
+    };
   }
   return context;
-}
+};
 
-// Theme utilities
-export const getThemeClasses = (theme: ChatTheme) => {
+/**
+ * Utility function to get theme classes for components
+ */
+export const getThemeClasses = (theme: ChatTheme): string => {
   switch (theme) {
     case 'dark':
-      return {
-        background: 'bg-gray-900',
-        surface: 'bg-gray-800',
-        text: 'text-gray-100',
-        textSecondary: 'text-gray-400',
-        border: 'border-gray-700',
-        userBubble: 'bg-blue-600 text-white',
-        assistantBubble: 'bg-gray-700 text-gray-100',
-        avatar: {
-          user: 'bg-blue-600',
-          assistant: 'bg-gray-600',
-        },
-      };
+      return 'dark';
     case 'light':
-      return {
-        background: 'bg-white',
-        surface: 'bg-gray-50',
-        text: 'text-gray-900',
-        textSecondary: 'text-gray-600',
-        border: 'border-gray-200',
-        userBubble: 'bg-blue-500 text-white',
-        assistantBubble: 'bg-gray-100 text-gray-900',
-        avatar: {
-          user: 'bg-blue-500',
-          assistant: 'bg-gray-300',
-        },
-      };
-    case 'chatgpt':
+      return '';
+    case 'auto':
     default:
-      return {
-        background: 'bg-white',
-        surface: 'bg-gray-50/50',
-        text: 'text-gray-900',
-        textSecondary: 'text-gray-600',
-        border: 'border-gray-200',
-        userBubble: 'bg-gray-900 text-white',
-        assistantBubble: 'bg-white text-gray-900 border border-gray-200',
-        avatar: {
-          user: 'bg-gray-900',
-          assistant: 'bg-green-600',
-        },
-      };
+      // Use system preference
+      return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches 
+        ? 'dark' 
+        : '';
   }
 };
