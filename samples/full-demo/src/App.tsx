@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { DistriProvider, useAgents, DistriAgent, FullChat } from '@distri/react';
+import { DistriProvider, useAgents, FullChat, ThemeProvider } from '@distri/react';
+import { DistriAgent } from '@distri/core';
 import AgentsPage from './pages/AgentsPage';
 
 type PageType = 'chat' | 'agents';
@@ -17,10 +18,10 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center space-x-2">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></div>
-          <span className="text-white">Loading...</span>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <span className="text-foreground">Loading...</span>
         </div>
       </div>
     );
@@ -38,11 +39,11 @@ function AppContent() {
   }));
 
   return (
-    <div className="h-screen bg-gray-900">
+    <div className="h-screen bg-background">
+
       <FullChat
         agentId={selectedAgent?.id || ''}
         availableAgents={availableAgents}
-        theme="dark"
         showSidebar={true}
         sidebarWidth={280}
         currentPage={currentPage}
@@ -53,13 +54,13 @@ function AppContent() {
         }}
         onLogoClick={() => setCurrentPage('chat')}
       />
-      
+
       {/* Render page content in the main area when not on chat */}
       {currentPage !== 'chat' && (
-        <div 
-          className="fixed top-0 bg-gray-900 h-full overflow-auto"
-          style={{ 
-            left: '280px', 
+        <div
+          className="fixed top-0 bg-background h-full overflow-auto"
+          style={{
+            left: '280px',
             right: '0'
           }}
         >
@@ -76,9 +77,19 @@ function App() {
     debug: true
   }), []);
 
+  // Initialize theme to dark by default
+  useEffect(() => {
+    const currentTheme = localStorage.getItem('distri-theme');
+    if (!currentTheme || currentTheme === 'system') {
+      localStorage.setItem('distri-theme', 'dark');
+    }
+  }, []);
+
   return (
     <DistriProvider config={config}>
-      <AppContent />
+      <ThemeProvider defaultTheme="dark" storageKey="distri-theme">
+        <AppContent />
+      </ThemeProvider>
     </DistriProvider>
   );
 }

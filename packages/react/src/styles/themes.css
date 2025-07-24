@@ -1,138 +1,154 @@
 /* 
- * Distri Theme System - ChatGPT Style with Shadcn Compatibility
+ * Distri Theme System - Following shadcn/ui conventions
  * Supports multiple themes with consistent design language
  */
 
 /* ===== BASE THEME SYSTEM ===== */
 :root {
-  /* Shadcn/ui base variables */
-  --background: 217.2 32.6% 17.5%;         /* #343541 */
-  --foreground: 0 0% 98%;                  /* #fafafa */
-  --card: 217.2 32.6% 17.5%;               /* #343541 */
-  --card-foreground: 0 0% 98%;             /* #fafafa */
-  --popover: 217.2 32.6% 17.5%;            /* #343541 */
-  --popover-foreground: 0 0% 98%;          /* #fafafa */
-  --primary: 221.2 83.2% 53.3%;            /* #3b82f6 - Blue */
-  --primary-foreground: 210 40% 98%;       /* #f8fafc */
-  --secondary: 217.2 32.6% 17.5%;          /* #343541 */
-  --secondary-foreground: 0 0% 98%;        /* #fafafa */
-  --muted: 215 27.9% 16.9%;                /* #2f2f2f */
-  --muted-foreground: 215.4 16.3% 76.9%;  /* #c5c5c5 */
-  --accent: 217.2 32.6% 17.5%;             /* #343541 */
-  --accent-foreground: 0 0% 98%;           /* #fafafa */
-  --destructive: 0 84.2% 60.2%;            /* #ef4444 */
-  --destructive-foreground: 0 0% 98%;      /* #fafafa */
-  --border: 217.2 32.6% 12.5%;             /* #1f1f23 */
-  --input: 217.2 32.6% 12.5%;              /* #1f1f23 */
-  --ring: 221.2 83.2% 53.3%;               /* #3b82f6 */
+  /* Core shadcn/ui variables - Light theme (default) */
   --radius: 0.5rem;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
 
-  /* ChatGPT-specific theme variables */
-  --chat-bg: 217.2 32.6% 17.5%;            /* #343541 - Main chat */
-  --sidebar-bg: 0 0% 0%;                   /* #000000 - Sidebar */
-  --sidebar-border: 217.2 32.6% 12.5%;     /* #1f1f23 */
-  --user-bg: 217.2 32.6% 17.5%;            /* #343541 - User messages same as main */
-  --user-text: 0 0% 98%;                   /* #fafafa */
-  --assistant-bg: 215 27.9% 16.9%;         /* #2f2f2f - Assistant messages */
-  --assistant-text: 0 0% 98%;              /* #fafafa */
-  --message-border: 217.2 32.6% 22%;       /* #565869 - Subtle border */
-  --avatar-user: 217.2 91% 59.8%;          /* #5b67c4 - ChatGPT user blue */
-  --avatar-assistant: 158.1 64.4% 51.6%;   /* #10a37f - ChatGPT green */
-  
-  /* Interactive states */
-  --hover-bg: 0 0% 100% / 0.05;            /* rgba(255,255,255,0.05) */
-  --active-bg: 0 0% 100% / 0.1;            /* rgba(255,255,255,0.1) */
-  --focus-ring: 221.2 83.2% 53.3%;         /* #3b82f6 */
-  
-  /* Button variants */
-  --button-primary-bg: 221.2 83.2% 53.3%;  /* #3b82f6 */
-  --button-primary-hover: 221.2 83.2% 45%; /* Darker blue */
-  --button-secondary-bg: 0 0% 100% / 0.1;  /* rgba(255,255,255,0.1) */
-  --button-secondary-hover: 0 0% 100% / 0.15; /* rgba(255,255,255,0.15) */
-  
-  /* Typography */
-  --font-family: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  
-  /* Spacing scale (ChatGPT-inspired) */
-  --spacing-xs: 0.25rem;    /* 4px */
-  --spacing-sm: 0.5rem;     /* 8px */
-  --spacing-md: 0.75rem;    /* 12px */
-  --spacing-lg: 1rem;       /* 16px */
-  --spacing-xl: 1.5rem;     /* 24px */
-  --spacing-2xl: 2rem;      /* 32px */
-  --spacing-3xl: 3rem;      /* 48px */
+  /* Responsive max-width */
+  --thread-content-max-width: 32rem;
 }
 
-/* Light theme */
-.light {
-  --background: 0 0% 100%;                 /* #ffffff */
-  --foreground: 222.2 84% 4.9%;            /* #0f172a */
-  --card: 0 0% 100%;                       /* #ffffff */
-  --card-foreground: 222.2 84% 4.9%;       /* #0f172a */
-  --popover: 0 0% 100%;                    /* #ffffff */
-  --popover-foreground: 222.2 84% 4.9%;    /* #0f172a */
-  --primary: 221.2 83.2% 53.3%;            /* #3b82f6 */
-  --primary-foreground: 210 40% 98%;       /* #f8fafc */
-  --secondary: 210 40% 96%;                /* #f1f5f9 */
-  --secondary-foreground: 222.2 84% 4.9%;  /* #0f172a */
-  --muted: 210 40% 96%;                    /* #f1f5f9 */
-  --muted-foreground: 215.4 16.3% 46.9%;   /* #64748b */
-  --accent: 210 40% 96%;                   /* #f1f5f9 */
-  --accent-foreground: 222.2 84% 4.9%;     /* #0f172a */
-  --destructive: 0 84.2% 60.2%;            /* #ef4444 */
-  --destructive-foreground: 210 40% 98%;   /* #f8fafc */
-  --border: 214.3 31.8% 91.4%;             /* #e2e8f0 */
-  --input: 214.3 31.8% 91.4%;              /* #e2e8f0 */
-  --ring: 221.2 83.2% 53.3%;               /* #3b82f6 */
+/* Dark theme */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 84% 4.9%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 48 19% 19%;
+  --ring: 212.7 26.8% 83.9%;
+}
 
-  --chat-bg: 0 0% 100%;                    /* #ffffff */
-  --sidebar-bg: 210 40% 96%;               /* #f1f5f9 */
-  --sidebar-border: 214.3 31.8% 91.4%;     /* #e2e8f0 */
-  --user-bg: 221.2 83.2% 53.3%;            /* #3b82f6 */
-  --user-text: 210 40% 98%;                /* #f8fafc */
-  --assistant-bg: 210 40% 96%;             /* #f1f5f9 */
-  --assistant-text: 222.2 84% 4.9%;        /* #0f172a */
-  --message-border: 214.3 31.8% 91.4%;     /* #e2e8f0 */
-  --avatar-user: 221.2 83.2% 53.3%;        /* #3b82f6 */
-  --avatar-assistant: 158.1 64.4% 51.6%;   /* #10a37f */
-  
-  --hover-bg: 0 0% 0% / 0.05;              /* rgba(0,0,0,0.05) */
-  --active-bg: 0 0% 0% / 0.1;              /* rgba(0,0,0,0.1) */
-  
-  --button-secondary-bg: 0 0% 0% / 0.05;   /* rgba(0,0,0,0.05) */
-  --button-secondary-hover: 0 0% 0% / 0.1; /* rgba(0,0,0,0.1) */
+/* ===== UTILITY CLASSES ===== */
+.bg-background {
+  background-color: hsl(var(--background));
+}
+
+.bg-card {
+  background-color: hsl(var(--card));
+}
+
+.bg-muted {
+  background-color: hsl(var(--muted));
+}
+
+.bg-input {
+  background-color: hsl(var(--input));
+}
+
+.bg-accent {
+  background-color: hsl(var(--accent));
+}
+
+.bg-primary {
+  background-color: hsl(var(--primary));
+}
+
+.bg-destructive {
+  background-color: hsl(var(--destructive));
+}
+
+.text-foreground {
+  color: hsl(var(--foreground));
+}
+
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+.text-card-foreground {
+  color: hsl(var(--card-foreground));
+}
+
+.text-accent-foreground {
+  color: hsl(var(--accent-foreground));
+}
+
+.text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+
+.text-destructive {
+  color: hsl(var(--destructive));
+}
+
+.border-border {
+  border-color: hsl(var(--border));
+}
+
+.border-muted-foreground {
+  border-color: hsl(var(--muted-foreground));
+}
+
+.border-destructive {
+  border-color: hsl(var(--destructive));
 }
 
 /* ===== COMPONENT STYLES ===== */
 
 /* Base chat container */
 .distri-chat {
-  font-family: var(--font-family);
-  background-color: hsl(var(--chat-bg));
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   border-radius: var(--radius);
 }
 
 /* Sidebar styling */
 .distri-sidebar {
-  background-color: hsl(var(--sidebar-bg));
-  border-right: 1px solid hsl(var(--sidebar-border));
+  background-color: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border));
 }
 
 /* Message containers with improved spacing */
 .distri-message {
-  padding: var(--spacing-2xl) var(--spacing-xl);
-  border-bottom: 1px solid hsl(var(--message-border));
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .distri-message-user {
-  background-color: hsl(var(--user-bg));
-  color: hsl(var(--user-text));
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .distri-message-assistant {
-  background-color: hsl(var(--assistant-bg));
-  color: hsl(var(--assistant-text));
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 /* Avatar styling */
@@ -147,13 +163,13 @@
 }
 
 .distri-avatar-user {
-  background-color: hsl(var(--avatar-user));
-  color: white;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .distri-avatar-assistant {
-  background-color: hsl(var(--avatar-assistant));
-  color: white;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 /* Improved input styling */
@@ -162,14 +178,14 @@
   border: 1px solid hsl(var(--border));
   color: hsl(var(--foreground));
   border-radius: var(--radius);
-  font-family: var(--font-family);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   transition: all 0.2s ease;
 }
 
 .distri-input:focus {
   outline: none;
-  border-color: hsl(var(--focus-ring));
-  box-shadow: 0 0 0 2px hsl(var(--focus-ring) / 0.2);
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 }
 
 .distri-input::placeholder {
@@ -179,7 +195,7 @@
 /* Button variants */
 .distri-button {
   border-radius: var(--radius);
-  font-family: var(--font-family);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-weight: 500;
   transition: all 0.2s ease;
   border: none;
@@ -195,24 +211,24 @@
 }
 
 .distri-button-primary {
-  background-color: hsl(var(--button-primary-bg));
+  background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
 
 .distri-button-primary:hover:not(:disabled) {
-  background-color: hsl(var(--button-primary-hover));
+  background-color: hsl(var(--primary) / 0.9);
 }
 
 .distri-button-secondary {
-  background-color: hsl(var(--button-secondary-bg));
-  color: hsl(var(--foreground));
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 .distri-button-secondary:hover:not(:disabled) {
-  background-color: hsl(var(--button-secondary-hover));
+  background-color: hsl(var(--secondary) / 0.8);
 }
 
-/* Send button specific styling (ChatGPT-like) */
+/* Send button specific styling */
 .distri-send-button {
   background-color: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
@@ -224,8 +240,8 @@
 }
 
 .distri-send-button:hover:not(:disabled) {
-  background-color: hsl(var(--muted-foreground) / 0.2);
-  color: hsl(var(--foreground));
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 .distri-send-button:disabled {
@@ -234,12 +250,12 @@
 }
 
 .distri-send-button.active {
-  background-color: hsl(var(--button-primary-bg));
+  background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
 
 .distri-send-button.active:hover:not(:disabled) {
-  background-color: hsl(var(--button-primary-hover));
+  background-color: hsl(var(--primary) / 0.9);
 }
 
 /* Interactive states */
@@ -248,11 +264,11 @@
 }
 
 .distri-hover:hover {
-  background-color: hsl(var(--hover-bg));
+  background-color: hsl(var(--accent));
 }
 
 .distri-active {
-  background-color: hsl(var(--active-bg));
+  background-color: hsl(var(--accent));
 }
 
 /* Improved scrollbars */
@@ -284,23 +300,23 @@
   background-color: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  margin: var(--spacing-md) 0;
+  margin: 1rem 0;
   overflow: hidden;
 }
 
 .distri-tool-header {
-  padding: var(--spacing-lg);
+  padding: 1rem;
   border-bottom: 1px solid hsl(var(--border));
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .distri-tool-header:hover {
-  background-color: hsl(var(--hover-bg));
+  background-color: hsl(var(--accent));
 }
 
 .distri-tool-content {
-  padding: var(--spacing-lg);
+  padding: 1rem;
   background-color: hsl(var(--muted));
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.875rem;
@@ -318,7 +334,7 @@
   border: 1px solid hsl(var(--border));
   color: hsl(var(--foreground));
   border-radius: var(--radius);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 0.5rem 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -328,7 +344,7 @@
 }
 
 .distri-dropdown-trigger:hover {
-  background-color: hsl(var(--hover-bg));
+  background-color: hsl(var(--accent));
 }
 
 .distri-dropdown-content {
@@ -347,7 +363,7 @@
 }
 
 .distri-dropdown-item {
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 0.5rem 1rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
   border-bottom: 1px solid hsl(var(--border));
@@ -358,33 +374,58 @@
 }
 
 .distri-dropdown-item:hover {
-  background-color: hsl(var(--hover-bg));
+  background-color: hsl(var(--accent));
 }
 
 .distri-dropdown-item.selected {
-  background-color: hsl(var(--active-bg));
+  background-color: hsl(var(--accent));
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
   .distri-message {
-    padding: var(--spacing-lg) var(--spacing-md);
+    padding: 1rem 0.75rem;
   }
-  
+
   .distri-sidebar {
     width: 100% !important;
   }
 }
 
+/* Responsive max-width for chat content */
+@media (min-width: 34rem) {
+  :root {
+    --thread-content-max-width: 40rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --thread-content-max-width: 48rem;
+  }
+}
+
 /* Animation utilities */
 @keyframes distri-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes distri-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .distri-animate-spin {
@@ -397,7 +438,7 @@
 
 /* Focus management */
 .distri-focus-ring:focus {
-  outline: 2px solid hsl(var(--focus-ring));
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 

@@ -4,14 +4,19 @@ export { EmbeddableChat } from './components/EmbeddableChat';
 export { FullChat } from './components/FullChat';
 export { Chat } from './components/Chat'; // Deprecated - use ChatContainer instead
 export { AgentDropdown } from './components/AgentDropdown';
+export { ChatInput } from './components/ChatInput';
+export { ThemeDemo } from './components/ThemeDemo';
+export { ThemeTest } from './components/ThemeTest';
+export { DarkModeDemo } from './components/DarkModeDemo';
+export { ThemeDebug } from './components/ThemeDebug';
 
 // Message components (customizable)
-export { 
-  UserMessage, 
-  AssistantMessage, 
-  AssistantWithToolCalls, 
-  Tool, 
-  MessageContainer, 
+export {
+  UserMessage,
+  AssistantMessage,
+  AssistantWithToolCalls,
+  Tool,
+  MessageContainer,
   PlanMessage
 } from './components/MessageComponents';
 
@@ -27,18 +32,21 @@ export { useTools, createTool, createBuiltinTools } from './useTools';
 
 // Providers
 export { DistriProvider, useDistri } from './DistriProvider';
+export { ThemeProvider, useTheme } from './components/ThemeProvider';
+export { ThemeDropdown } from './components/ThemeDropdown';
+export { ModeToggle } from './components/ModeToggle';
 
 // Message utilities
-export { 
-  extractTextFromMessage, 
-  shouldDisplayMessage, 
-  getMessageType, 
-  formatTimestamp, 
-  scrollToBottom 
+export {
+  extractTextFromMessage,
+  shouldDisplayMessage,
+  getMessageType,
+  formatTimestamp,
+  scrollToBottom
 } from './utils/messageUtils';
 
 // Types
-export type { 
+export type {
   BaseMessageProps,
   UserMessageProps,
   AssistantMessageProps,
@@ -50,3 +58,4 @@ export type {
 export type { ChatContainerProps } from './components/ChatContainer';
 export type { EmbeddableChatProps } from './components/EmbeddableChat';
 export type { FullChatProps } from './components/FullChat';
+export type { ChatInputProps } from './components/ChatInput';

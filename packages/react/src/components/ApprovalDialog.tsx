@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { ToolCall } from '@distri/core';
 
 export interface ApprovalDialogProps {
@@ -37,29 +39,31 @@ const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="flex items-center p-4 border-b border-gray-200">
-          <AlertTriangle className="w-6 h-6 text-yellow-500 mr-3" />
-          <h3 className="text-lg font-semibold text-gray-900">Tool Execution Approval</h3>
-        </div>
+    <Dialog>
+      <DialogContent>
+        <DialogHeader>
+          <div className="flex items-center">
+            <AlertTriangle className="w-6 h-6 text-yellow-500 mr-3" />
+            <DialogTitle>Tool Execution Approval</DialogTitle>
+          </div>
+        </DialogHeader>
 
         <div className="p-4">
           {reason && (
             <div className="mb-4">
-              <p className="text-sm text-gray-700">{reason}</p>
+              <p className="text-sm text-muted-foreground">{reason}</p>
             </div>
           )}
 
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Tools to execute:</h4>
+            <h4 className="text-sm font-medium mb-2">Tools to execute:</h4>
             <div className="space-y-2">
               {toolCalls.map((toolCall) => (
-                <div key={toolCall.tool_call_id} className="flex items-center p-2 bg-gray-50 rounded">
+                <div key={toolCall.tool_call_id} className="flex items-center p-2 bg-muted rounded">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{toolCall.tool_name}</p>
+                    <p className="text-sm font-medium">{toolCall.tool_name}</p>
                     {toolCall.input && (
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {typeof toolCall.input === 'string'
                           ? toolCall.input
                           : JSON.stringify(toolCall.input)
@@ -72,31 +76,33 @@ const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
             </div>
           </div>
 
-          <div className="flex space-x-3">
-            <button
+          <DialogFooter>
+            <Button
               onClick={handleApprove}
-              className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              variant="default"
+              className="flex-1"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               Approve
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleDeny}
-              className="flex-1 flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              variant="destructive"
+              className="flex-1"
             >
               <XCircle className="w-4 h-4 mr-2" />
               Deny
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleCancel}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              variant="outline"
             >
               Cancel
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

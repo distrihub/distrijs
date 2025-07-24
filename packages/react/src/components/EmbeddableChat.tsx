@@ -77,15 +77,12 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     }
   }, [messages]);
 
-  // Determine theme class
-  const themeClass = theme === 'auto' ? '' : theme;
-
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-    
+
     const messageText = input.trim();
     setInput('');
-    
+
     try {
       await chatSendMessage(messageText);
     } catch (err) {
@@ -170,78 +167,109 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   ]);
 
   return (
-    <div 
-      className={`distri-chat ${themeClass} ${className} w-full`}
-      style={{ 
+    <div
+      className={`distri-chat ${className} w-full bg-background text-foreground`}
+      style={{
         height,
-        backgroundColor: '#343541',
-        ...style 
+        ...style
       }}
     >
       <div className="h-full flex flex-col">
-        {/* Agent Selector Header (if enabled) */}
-        {showAgentSelector && availableAgents && availableAgents.length > 0 && (
-          <div className="border-b border-gray-600 p-4" style={{ backgroundColor: '#343541' }}>
-            <AgentDropdown
-              agents={availableAgents}
-              selectedAgentId={agentId}
-              onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
-              className="w-full"
-            />
-          </div>
-        )}
-
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto distri-scroll" style={{ backgroundColor: '#343541' }}>
-          {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <MessageSquare className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">
-                  Start a conversation
-                </h3>
-                <p className="text-gray-400 max-w-sm">
-                  {placeholder || "Type your message below to begin chatting."}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-0">
-              {renderedMessages}
+        {/* Top padding and Agent Selector */}
+        <div className="pt-6 px-6 bg-background">
+          {showAgentSelector && availableAgents && availableAgents.length > 0 && (
+            <div className="mb-6">
+              <AgentDropdown
+                agents={availableAgents}
+                selectedAgentId={agentId}
+                onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
+                className="w-full"
+              />
             </div>
           )}
-          
-          {/* Loading state */}
-          {loading && (
-            <div className="px-6 py-4 flex items-center space-x-2" style={{ backgroundColor: '#444654' }}>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
-              <span className="text-gray-400 text-sm">Thinking...</span>
-            </div>
-          )}
-          
-          {/* Error state */}
-          {error && (
-            <div className="px-6 py-4 bg-red-900/20 border border-red-500/20 mx-4 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="h-4 w-4 rounded-full bg-red-500"></div>
-                <span className="text-red-400 text-sm">{error.message || String(error)}</span>
-              </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="border-t border-gray-600 p-6" style={{ backgroundColor: '#343541' }}>
-          <ChatInput
-            value={input}
-            onChange={setInput}
-            onSend={sendMessage}
-            placeholder={placeholder}
-            disabled={loading}
-            className="w-full"
-          />
+        {/* Main Chat Area - Centered with responsive max-width */}
+        <div className="flex-1 flex flex-col">
+          <div className="mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto distri-scroll bg-background">
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">
+                      Start a conversation
+                    </h3>
+                    <p className="text-muted-foreground max-w-sm">
+                      {placeholder || "Type your message below to begin chatting."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {renderedMessages}
+                </div>
+              )}
+
+              {/* Loading state */}
+              {loading && (
+                <div className="px-6 py-4 flex items-center space-x-2 bg-muted">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
+                  <span className="text-muted-foreground text-sm">Thinking...</span>
+                </div>
+              )}
+
+              {/* Error state */}
+              {error && (
+                <div className="px-6 py-4 bg-destructive/20 border border-destructive/20 mx-4 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 rounded-full bg-destructive"></div>
+                    <span className="text-destructive text-sm">{error.message || String(error)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area - Centered when no messages, bottom when messages exist */}
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center px-6 py-8">
+                <div className="w-full max-w-2xl">
+                  <ChatInput
+                    value={input}
+                    onChange={setInput}
+                    onSend={sendMessage}
+                    onStop={() => {
+                      // Stop streaming - this would need to be implemented in the useChat hook
+                      console.log('Stop streaming');
+                    }}
+                    placeholder={placeholder}
+                    disabled={loading}
+                    isStreaming={isStreaming}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 bg-muted">
+                <ChatInput
+                  value={input}
+                  onChange={setInput}
+                  onSend={sendMessage}
+                  onStop={() => {
+                    // Stop streaming - this would need to be implemented in the useChat hook
+                    console.log('Stop streaming');
+                  }}
+                  placeholder={placeholder}
+                  disabled={loading}
+                  isStreaming={isStreaming}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

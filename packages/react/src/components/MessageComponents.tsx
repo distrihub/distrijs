@@ -45,11 +45,25 @@ export const MessageContainer: React.FC<{
   backgroundColor?: string;
 }> = ({ children, align, className = '', backgroundColor }) => {
   const justifyClass = align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start';
-  
-  const bgStyle = backgroundColor ? { backgroundColor } : {};
+
+  // Use shadcn/ui convention for theme-aware backgrounds
+  const getBgClass = (color: string) => {
+    switch (color) {
+      case '#343541':
+        return 'bg-background';
+      case '#444654':
+        return 'bg-muted';
+      case '#40414f':
+        return 'bg-background';
+      default:
+        return '';
+    }
+  };
+
+  const bgClass = backgroundColor ? getBgClass(backgroundColor) : '';
 
   return (
-    <div className={`flex ${justifyClass} w-full ${className}`} style={bgStyle}>
+    <div className={`flex ${justifyClass} w-full ${bgClass} ${className}`}>
       <div className="w-full max-w-4xl mx-auto px-6">
         {children}
       </div>
@@ -105,15 +119,15 @@ export const UserMessage: React.FC<UserMessageProps> = ({
           {avatar || <User className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-2">You</div>
-          <div className="prose prose-sm max-w-none text-white">
+          <div className="text-sm font-medium text-foreground mb-2">You</div>
+          <div className="prose prose-sm max-w-none text-foreground">
             <MessageRenderer
               content={content}
-              className="text-white"
+              className="text-foreground"
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -139,24 +153,24 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
           {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+          <div className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
             ChatGPT
             {isStreaming && (
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-75"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
               </div>
             )}
           </div>
-          <div className="prose prose-sm max-w-none text-white">
+          <div className="prose prose-sm max-w-none text-foreground">
             <MessageRenderer
               content={content}
-              className="text-white"
+              className="text-foreground"
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}

@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Loader2, Square, Eye, EyeOff, Bot } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Bot } from 'lucide-react';
 import { Agent } from '@distri/core';
 import { useChatConfig, ChatProvider } from './ChatContext';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
+import { Button } from './ui/button';
+import { ChatInput } from './ChatInput';
 
 export interface ChatProps {
   agentId: string;
@@ -26,67 +28,22 @@ export interface ChatProps {
   onExternalToolCall?: (toolCall: any) => void;
 }
 
-const ChatInput: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
-  onSend: () => void;
-  disabled: boolean;
-  isStreaming: boolean;
-  placeholder?: string;
-}> = ({ value, onChange, onSend, disabled, isStreaming, placeholder = "Type a message..." }) => {
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      onSend();
-    }
-  }, [onSend]);
-
-  return (
-    <div className="border-t border-gray-700 bg-gray-900 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex gap-3 items-end">
-          <div className="flex-1 relative flex gap-2 items-center">
-            <textarea
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={placeholder}
-              rows={1}
-              className="w-full resize-none rounded-xl border border-gray-600 px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-800 text-white placeholder-gray-400"
-              style={{ minHeight: '52px', maxHeight: '200px' }}
-              disabled={disabled}
-            />
-            <button
-              onClick={onSend}
-              disabled={!value.trim() || disabled}
-              className="absolute right-3 h-12 w-12 bottom-3 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            >
-              {isStreaming ? (
-                <Square className="h-4 w-4" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const DebugToggle: React.FC<{
   showDebug: boolean;
   onToggle: () => void;
 }> = ({ showDebug, onToggle }) => {
   return (
-    <button
+    <Button
       onClick={onToggle}
-      className="flex items-center gap-2 px-3 py-1 text-sm border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors text-white"
+      variant="outline"
+      size="sm"
+      className="flex items-center gap-2"
     >
       {showDebug ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       Debug
-    </button>
+    </Button>
   );
 };
 
@@ -334,6 +291,10 @@ const ChatContent: React.FC<ChatProps> = ({
         value={input}
         onChange={setInput}
         onSend={sendMessage}
+        onStop={() => {
+          // Stop streaming - this would need to be implemented in the useChat hook
+          console.log('Stop streaming');
+        }}
         disabled={loading}
         isStreaming={isStreaming}
         placeholder={placeholder}
