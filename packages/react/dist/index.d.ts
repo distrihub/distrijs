@@ -1,8 +1,21 @@
-import { Agent, DistriAgent, ToolHandler, Message, MessageMetadata, DistriThread, ToolCall, ToolCallState as ToolCallState$1, ToolResult, DistriClientConfig, DistriClient } from '@distri/core';
-export { DistriAgent, DistriThread, Message, MessageMetadata, ToolCall, ToolCallState, ToolHandler, ToolResult } from '@distri/core';
-import { Part } from '@a2a-js/sdk/client';
-import React, { ReactNode } from 'react';
 import * as react_jsx_runtime from 'react/jsx-runtime';
+import React, { ReactNode } from 'react';
+import { DistriClientConfig, DistriClient, Agent, DistriAgent, Message, MessageMetadata, DistriThread, DistriTool, ToolCall, ToolResult, ToolCallState } from '@distri/core';
+export { A2AProtocolError, Agent, ApiError, ConnectionError, ConnectionStatus, DistriAgent, DistriClientConfig, DistriError, DistriThread, DistriTool, Message, MessageMetadata, Thread, ToolCall, ToolCallState, ToolHandler, ToolResult } from '@distri/core';
+import { Part } from '@a2a-js/sdk/client';
+
+interface DistriContextValue {
+    client: DistriClient | null;
+    error: Error | null;
+    isLoading: boolean;
+}
+interface DistriProviderProps {
+    config: DistriClientConfig;
+    children: ReactNode;
+}
+declare function DistriProvider({ config, children }: DistriProviderProps): react_jsx_runtime.JSX.Element;
+declare function useDistri(): DistriContextValue;
+declare function useDistriClient(): DistriClient;
 
 interface UseAgentOptions {
     agentId: string;
@@ -28,26 +41,10 @@ interface UseAgentsResult {
 }
 declare function useAgents(): UseAgentsResult;
 
-interface ToolCallState {
-    tool_call_id: string;
-    tool_name: string;
-    status: 'running' | 'completed' | 'error';
-    input: string;
-    result: any;
-    error: string | null;
-}
-interface ToolHandlerResult {
-    tool_call_id: string;
-    result: any;
-    success: boolean;
-    error: string | null;
-}
-
 interface UseChatOptions {
     agentId: string;
     threadId: string;
     agent?: Agent;
-    tools?: Record<string, ToolHandler>;
     metadata?: any;
 }
 interface UseChatResult {
@@ -60,38 +57,12 @@ interface UseChatResult {
     refreshMessages: () => Promise<void>;
     clearMessages: () => void;
     agent: Agent | null;
-    toolCallStatus: Record<string, ToolCallState>;
-    toolHandlerResults: Record<string, ToolHandlerResult>;
-    cancelToolExecution: () => void;
 }
 /**
- * useChat is the main hook for chat UIs.
- * It handles all chat logic internally and can optionally accept a pre-configured agent.
- * For advanced agent configuration, use useAgent and pass the agent to useChat.
- *
- * sendParams: MessageSendParams configuration (auth, output modes, etc.)
- * {
- *   configuration: {
- *     acceptedOutputModes: ['text/plain'],
- *     blocking: false
- *   },
- *   // Executor Metadata (https://github.com/distrihub/distri/blob/main/distri/src/agent/types.rs#L97)
- *   metadata: {
- *     tools: {
- *       tool1: { .. },
- *       tool2: { ... }
- *     }
- *   }
- * }
- *
- * contextMetadata: MessageMetadata for tool responses and content
- * {
- *   type: 'tool_response',
- *   tool_call_id: '...',
- *   result: '...'
- * }
+ * useChat is the main hook for chat UIs with simplified tool handling.
+ * Tools are now registered directly on the agent using agent.addTool() or useTools hook.
  */
-declare function useChat({ agentId, threadId, agent: providedAgent, tools, metadata, }: UseChatOptions): UseChatResult;
+declare function useChat({ agentId, threadId, agent: providedAgent, metadata, }: UseChatOptions): UseChatResult;
 
 interface UseThreadsResult {
     threads: DistriThread[];
@@ -104,6 +75,44 @@ interface UseThreadsResult {
 }
 declare function useThreads(): UseThreadsResult;
 
+interface UseToolsOptions {
+    agent?: Agent | null;
+}
+interface UseToolsResult {
+    addTool: (tool: DistriTool) => void;
+    addTools: (tools: DistriTool[]) => void;
+    removeTool: (toolName: string) => void;
+    executeTool: (toolCall: ToolCall) => Promise<ToolResult>;
+    getTools: () => string[];
+    hasTool: (toolName: string) => boolean;
+}
+/**
+ * Hook for managing tools in an agent
+ * Follows AG-UI pattern for tool registration
+ */
+declare function useTools({ agent }: UseToolsOptions): UseToolsResult;
+/**
+ * Utility function to create common tool definitions
+ */
+declare const createTool: (name: string, description: string, parameters: any, handler: (input: any) => Promise<any> | any) => DistriTool;
+/**
+ * Built-in tool definitions
+ */
+declare const createBuiltinTools: () => {
+    /**
+     * Confirmation tool for user approval
+     */
+    confirm: DistriTool;
+    /**
+     * Input request tool
+     */
+    input: DistriTool;
+    /**
+     * Notification tool
+     */
+    notify: DistriTool;
+};
+
 interface ChatProps {
     agentId: string;
     threadId: string;
@@ -113,6 +122,12 @@ interface ChatProps {
     height?: string;
     onThreadUpdate?: (threadId: string) => void;
     className?: string;
+    placeholder?: string;
+    UserMessageComponent?: React.ComponentType<any>;
+    AssistantMessageComponent?: React.ComponentType<any>;
+    AssistantWithToolCallsComponent?: React.ComponentType<any>;
+    PlanMessageComponent?: React.ComponentType<any>;
+    onExternalToolCall?: (toolCall: any) => void;
 }
 declare const Chat: React.FC<ChatProps>;
 
@@ -131,7 +146,7 @@ interface AssistantMessageProps extends BaseMessageProps {
     metadata?: any;
 }
 interface ToolCallProps {
-    toolCall: ToolCall | ToolCallState$1;
+    toolCall: ToolCall | ToolCallState;
     status?: 'pending' | 'running' | 'completed' | 'error';
     result?: any;
     error?: string;
@@ -139,11 +154,17 @@ interface ToolCallProps {
 interface AssistantWithToolCallsProps extends AssistantMessageProps {
     toolCalls: ToolCallProps[];
 }
+interface PlanMessageProps extends BaseMessageProps {
+    content: string;
+    duration?: number;
+    timestamp?: Date;
+}
 declare const MessageContainer: React.FC<{
     children: React.ReactNode;
     align: 'left' | 'right' | 'center';
     className?: string;
 }>;
+declare const PlanMessage: React.FC<PlanMessageProps>;
 declare const UserMessage: React.FC<UserMessageProps>;
 declare const AssistantMessage: React.FC<AssistantMessageProps>;
 declare const Tool: React.FC<ToolCallProps>;
@@ -163,14 +184,6 @@ interface ExternalToolManagerProps {
 }
 declare const ExternalToolManager: React.FC<ExternalToolManagerProps>;
 
-interface ToastProps {
-    message: string;
-    type?: 'success' | 'error' | 'warning' | 'info';
-    duration?: number;
-    onClose?: () => void;
-}
-declare const Toast: React.FC<ToastProps>;
-
 interface ApprovalDialogProps {
     toolCalls: ToolCall[];
     reason?: string;
@@ -179,6 +192,14 @@ interface ApprovalDialogProps {
     onCancel: () => void;
 }
 declare const ApprovalDialog: React.FC<ApprovalDialogProps>;
+
+interface ToastProps {
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info';
+    duration?: number;
+    onClose?: () => void;
+}
+declare const Toast: React.FC<ToastProps>;
 
 type ChatTheme = 'light' | 'dark' | 'chatgpt';
 interface ChatConfig {
@@ -214,19 +235,9 @@ declare const getThemeClasses: (theme: ChatTheme) => {
     };
 };
 
-interface DistriContextValue {
-    client: DistriClient | null;
-    error: Error | null;
-    isLoading: boolean;
+interface LegacyToolHandler {
+    (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
 }
-interface DistriProviderProps {
-    config: DistriClientConfig;
-    children: ReactNode;
-}
-declare function DistriProvider({ config, children }: DistriProviderProps): react_jsx_runtime.JSX.Element;
-declare function useDistri(): DistriContextValue;
-declare function useDistriClient(): DistriClient;
-
 /**
  * Initialize the builtin handlers with callbacks
  */
@@ -241,12 +252,14 @@ declare const initializeBuiltinHandlers: (callbacks: {
  */
 declare const clearPendingToolCalls: () => void;
 /**
- * Builtin tool handlers using the new ToolHandler interface
+ * Legacy builtin tool handlers using the old ToolHandler interface
+ * These are kept for backwards compatibility but work alongside the new system
  */
-declare const createBuiltinToolHandlers: () => Record<string, ToolHandler>;
+declare const createBuiltinToolHandlers: () => Record<string, LegacyToolHandler>;
 /**
  * Process external tool calls with handlers
+ * This is kept for backwards compatibility
  */
-declare const processExternalToolCalls: (toolCalls: ToolCall[], handlers: Record<string, ToolHandler>, onToolComplete: (results: ToolResult[]) => Promise<void>) => Promise<void>;
+declare const processExternalToolCalls: (toolCalls: ToolCall[], handlers: Record<string, LegacyToolHandler>, onToolComplete: (results: ToolResult[]) => Promise<void>) => Promise<void>;
 
-export { ApprovalDialog, AssistantMessage, AssistantWithToolCalls, Chat, type ChatConfig, type ChatContextValue, ChatProvider, type ChatTheme, DistriProvider, ExternalToolManager, MessageContainer, MessageRenderer, Toast, Tool, UserMessage, clearPendingToolCalls, createBuiltinToolHandlers, getThemeClasses, initializeBuiltinHandlers, processExternalToolCalls, useAgent, useAgents, useChat, useChatConfig, useDistri, useDistriClient, useThreads };
+export { ApprovalDialog, AssistantMessage, type AssistantMessageProps, AssistantWithToolCalls, type AssistantWithToolCallsProps, type BaseMessageProps, Chat, type ChatConfig, type ChatContextValue, ChatProvider, type ChatTheme, DistriProvider, ExternalToolManager, type LegacyToolHandler, MessageContainer, MessageRenderer, PlanMessage, type PlanMessageProps, Toast, Tool, type ToolCallProps, UserMessage, type UserMessageProps, clearPendingToolCalls, createBuiltinToolHandlers, createBuiltinTools, createTool, getThemeClasses, initializeBuiltinHandlers, processExternalToolCalls, useAgent, useAgents, useChat, useChatConfig, useDistri, useDistriClient, useThreads, useTools };

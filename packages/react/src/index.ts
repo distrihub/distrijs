@@ -41,6 +41,7 @@ export {
 
 // Built-in handlers for backwards compatibility
 export * from './builtinHandlers';
+export type { LegacyToolHandler } from './builtinHandlers';
 
 // Types from core (re-exported for convenience)
 export type {

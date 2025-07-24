@@ -4,9 +4,6 @@ export { DistriClient } from './distri-client';
 // Enhanced agent class
 export { Agent } from './agent';
 
-// Event streaming
-export { EventStream } from './stream';
-
 // Event types
 export * from './events';
 
@@ -36,11 +33,6 @@ export type {
   ApiError,
   ConnectionError,
   
-  // Agent types
-  InvokeConfig,
-  ToolCallState,
-  InvokeResult,
-  
   // A2A re-exports
   AgentCard,
   Message,
@@ -51,6 +43,13 @@ export type {
   TaskArtifactUpdateEvent,
   A2AStreamEventData,
 } from './types';
+
+// Agent types
+export type {
+  InvokeConfig,
+  ToolCallState,
+  InvokeResult,
+} from './agent';
 
 // Constants
 export { APPROVAL_REQUEST_TOOL_NAME } from './types';

@@ -11,6 +11,9 @@ importers:
       '@a2a-js/sdk':
         specifier: https://github.com/v3g42/a2a-js.git#51444c9
         version: https://codeload.github.com/v3g42/a2a-js/tar.gz/51444c9
+      lucide-react:
+        specifier: ^0.263.1
+        version: 0.263.1(react@18.3.1)
     devDependencies:
       turbo:
         specifier: ^1.10.0
@@ -84,7 +87,7 @@ importers:
     dependencies:
       '@ag-ui/core':
         specifier: latest
-        version: 0.0.30
+        version: 0.0.35
       '@distri/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -178,8 +181,8 @@ packages:
     version: 0.2.1
     engines: {node: '>=18'}
 
-  '@ag-ui/core@0.0.30':
-    resolution: {integrity: sha512-cBukbc2O0qMKi/BKix6Exld5zSqGKR72376KA6NZNQz/xYAiPNhmK40VX77d/hyblhtXT3BlBGrYmda9V4ETlw==}
+  '@ag-ui/core@0.0.35':
+    resolution: {integrity: sha512-YAqrln3S3fdo+Hs5FFQPODXiBttyilv/E3xSSHCuxqC0Y/Fp3+VqyDx97BorO3NVp2VKZ9cG2nsO3cbmcTwkQw==}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -3403,7 +3406,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@ag-ui/core@0.0.30':
+  '@ag-ui/core@0.0.35':
     dependencies:
       rxjs: 7.8.1
       zod: 3.25.67

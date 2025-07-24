@@ -153,7 +153,7 @@ export class Agent {
     const definitions: Record<string, any> = {};
     
     // Note: We only send tool names to the backend since handlers are frontend-only
-    this.tools.forEach((handler, name) => {
+    this.tools.forEach((_handler, name) => {
       definitions[name] = { name };
     });
     

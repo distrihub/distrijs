@@ -1,4 +1,9 @@
-import { ToolHandler, ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
+import { ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
+
+// Legacy ToolHandler interface for backwards compatibility
+export interface LegacyToolHandler {
+  (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
+}
 
 // Global state for managing tool execution
 let pendingToolCalls: Map<string, { toolCall: ToolCall; resolve: (result: ToolResult) => void }> = new Map();
@@ -33,7 +38,7 @@ export const clearPendingToolCalls = () => {
  * Legacy builtin tool handlers using the old ToolHandler interface
  * These are kept for backwards compatibility but work alongside the new system
  */
-export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
+export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> => ({
   // Approval request handler - opens a dialog
   [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
@@ -174,7 +179,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
  */
 export const processExternalToolCalls = async (
   toolCalls: ToolCall[],
-  handlers: Record<string, ToolHandler>,
+  handlers: Record<string, LegacyToolHandler>,
   onToolComplete: (results: ToolResult[]) => Promise<void>
 ): Promise<void> => {
   const results: ToolResult[] = [];

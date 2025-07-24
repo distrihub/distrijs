@@ -9,7 +9,7 @@ import {
   DistriClient,
   Agent,
 } from '@distri/core';
-import type { Part, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
+import type { Part } from '@a2a-js/sdk/client';
 
 export interface UseChatOptions {
   agentId: string;
