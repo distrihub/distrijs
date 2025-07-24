@@ -53,6 +53,13 @@ export function useChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Clear messages when threadId changes
+  useEffect(() => {
+    setMessages([]);
+    setError(null);
+  }, [threadId]);
 
   const invokeConfig = useMemo(() => {
     return {
@@ -64,8 +71,6 @@ export function useChat({
       metadata: metadata
     } as InvokeConfig;
   }, [threadId, metadata]);
-
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch messages for the thread
   const fetchMessages = useCallback(async () => {

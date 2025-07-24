@@ -40,7 +40,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
-  theme = 'auto',
+  theme = 'dark',
   showDebug = false,
   onMessageSent,
   onResponse: _onResponse, // Currently unused but reserved for future response handling

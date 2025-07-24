@@ -67,14 +67,14 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
     <div 
       className={`group relative p-3 rounded-lg cursor-pointer transition-colors ${
         isActive 
-          ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' 
-          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+          ? 'bg-white/10 border border-white/20' 
+          : 'hover:bg-white/5'
       }`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <MessageSquare className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          <MessageSquare className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-white/60'}`} />
           
           {isEditing ? (
             <input
@@ -82,16 +82,16 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
               onChange={(e) => setEditTitle(e.target.value)}
               onBlur={handleRename}
               onKeyPress={handleKeyPress}
-              className="flex-1 text-sm bg-transparent border-none outline-none"
+              className="flex-1 text-sm bg-transparent border-none outline-none text-white"
               autoFocus
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              <p className={`text-sm font-medium truncate ${isActive ? 'text-white' : 'text-white/90'}`}>
                 {thread.title || 'New Chat'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs text-white/60 truncate">
                 {thread.last_message || 'No messages yet'}
               </p>
             </div>
@@ -105,20 +105,20 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 transition-opacity"
             >
-              <MoreHorizontal className="h-4 w-4 text-gray-400" />
+              <MoreHorizontal className="h-4 w-4 text-white/60" />
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 top-6 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+              <div className="absolute right-0 top-6 w-32 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsEditing(true);
                     setShowMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-white flex items-center space-x-2 rounded-t-lg"
                 >
                   <Edit3 className="h-3 w-3" />
                   <span>Rename</span>
@@ -129,7 +129,7 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
                     onDelete();
                     setShowMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-red-400 flex items-center space-x-2 rounded-b-lg"
                 >
                   <Trash2 className="h-3 w-3" />
                   <span>Delete</span>
@@ -210,14 +210,14 @@ export const FullChat: React.FC<FullChatProps> = ({
       {/* Sidebar */}
       {showSidebar && (
         <div 
-          className="fixed left-0 top-0 h-full bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col"
+          className="fixed left-0 top-0 h-full bg-gray-900 border-r border-gray-800 flex flex-col"
           style={sidebarStyle}
         >
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-b border-gray-800">
             <button
               onClick={handleNewChat}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
             >
               <Plus className="h-4 w-4" />
               <span className="text-sm font-medium">New Chat</span>
@@ -228,12 +228,12 @@ export const FullChat: React.FC<FullChatProps> = ({
           <div className="flex-1 overflow-y-auto p-4 space-y-2 distri-scroll">
             {threadsLoading ? (
               <div className="text-center py-8">
-                <div className="text-sm text-gray-500 dark:text-gray-400">Loading threads...</div>
+                <div className="text-sm text-white/60">Loading threads...</div>
               </div>
             ) : threads.length === 0 ? (
               <div className="text-center py-8">
-                <MessageSquare className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                <div className="text-sm text-gray-500 dark:text-gray-400">No conversations yet</div>
+                <MessageSquare className="h-8 w-8 text-white/30 mx-auto mb-2" />
+                <div className="text-sm text-white/60">No conversations yet</div>
               </div>
             ) : (
               threads.map((thread: any) => (
@@ -250,8 +250,8 @@ export const FullChat: React.FC<FullChatProps> = ({
           </div>
 
           {/* Settings */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <button className="w-full flex items-center space-x-2 px-3 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+          <div className="p-4 border-t border-gray-800">
+            <button className="w-full flex items-center space-x-2 px-3 py-2 text-white/70 hover:bg-white/10 rounded-lg transition-colors">
               <Settings className="h-4 w-4" />
               <span className="text-sm">Settings</span>
             </button>
