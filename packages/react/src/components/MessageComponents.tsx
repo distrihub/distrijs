@@ -100,12 +100,12 @@ export const UserMessage: React.FC<UserMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#343541">
-      <div className="flex items-start gap-4 py-6 border-b border-gray-700/50">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#5b67c4' }}>
-          {avatar || <User className="h-4 w-4 text-white" />}
+      <div className="flex items-start gap-4 py-8 border-b border-gray-700/30">
+        <div className="distri-avatar distri-avatar-user">
+          {avatar || <User className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1">You</div>
+          <div className="text-sm font-medium text-white mb-3">You</div>
           <div className="prose prose-sm max-w-none text-white">
             <MessageRenderer
               content={content}
@@ -113,7 +113,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-gray-400 mt-3">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -134,12 +134,12 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
-      <div className="flex items-start gap-4 py-6 border-b border-gray-700/50">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#10a37f' }}>
-          {avatar || <Bot className="h-4 w-4 text-white" />}
+      <div className="flex items-start gap-4 py-8 border-b border-gray-700/30">
+        <div className="distri-avatar distri-avatar-assistant">
+          {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1 flex items-center gap-2">
+          <div className="text-sm font-medium text-white mb-3 flex items-center gap-2">
             Assistant
             {isStreaming && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -156,7 +156,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-gray-400 mt-3">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -180,7 +180,7 @@ export const Tool: React.FC<ToolCallProps> = ({
       case 'pending':
         return <Clock className="h-4 w-4 text-gray-400" />;
       case 'running':
-        return <Settings className="h-4 w-4 text-blue-400 animate-spin" />;
+        return <Settings className="h-4 w-4 text-blue-400 distri-animate-spin" />;
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-400" />;
       case 'error':
@@ -193,15 +193,15 @@ export const Tool: React.FC<ToolCallProps> = ({
   const getStatusColor = () => {
     switch (status) {
       case 'pending':
-        return 'border-gray-600 bg-gray-800';
+        return 'border-gray-600 bg-gray-800/50';
       case 'running':
         return 'border-blue-500 bg-blue-900/20';
       case 'completed':
-        return 'border-green-500 bg-green-900/20';
+        return 'border-green-500/50 bg-green-900/20';
       case 'error':
-        return 'border-red-500 bg-red-900/20';
+        return 'border-red-500/50 bg-red-900/20';
       default:
-        return 'border-gray-600 bg-gray-800';
+        return 'border-gray-600 bg-gray-800/50';
     }
   };
 
@@ -213,35 +213,37 @@ export const Tool: React.FC<ToolCallProps> = ({
   const shouldShowExpand = input || result || error;
 
   return (
-    <div className={`border rounded-lg ${getStatusColor()} my-3 overflow-hidden`}>
+    <div className={`distri-tool ${getStatusColor()}`}>
       <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-700/50 transition-colors"
+        className="distri-tool-header"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        {getStatusIcon()}
-        <span className="font-medium text-sm text-white flex-1">{toolName}</span>
-        <span className="text-xs text-gray-400 font-mono">{toolId}</span>
-        {shouldShowExpand && (
-          <button className="text-gray-400 hover:text-white transition-colors">
-            {isExpanded ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-3 w-full">
+          {getStatusIcon()}
+          <span className="font-medium text-sm text-white flex-1">{toolName}</span>
+          <span className="text-xs text-gray-400 font-mono">{toolId}</span>
+          {shouldShowExpand && (
+            <button className="text-gray-400 hover:text-white transition-colors ml-2">
+              {isExpanded ? (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-600/50">
+        <div className="p-4 space-y-4 border-t border-gray-600/50">
           {input && (
-            <div className="pt-3">
+            <div>
               <div className="text-xs font-medium text-gray-300 mb-2">Input:</div>
-              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-3 font-mono text-gray-100 overflow-x-auto">
+              <div className="distri-tool-content">
                 {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
               </div>
             </div>
@@ -250,7 +252,7 @@ export const Tool: React.FC<ToolCallProps> = ({
           {result && (
             <div>
               <div className="text-xs font-medium text-gray-300 mb-2">Output:</div>
-              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-3 font-mono text-gray-100 overflow-x-auto">
+              <div className="distri-tool-content">
                 {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
               </div>
             </div>
@@ -282,12 +284,12 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#2f2f2f">
-      <div className="flex items-start gap-4 py-6 border-b border-gray-700/50">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#10a37f' }}>
-          {avatar || <Bot className="h-4 w-4 text-white" />}
+      <div className="flex items-start gap-4 py-8 border-b border-gray-700/30">
+        <div className="distri-avatar distri-avatar-assistant">
+          {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1 flex items-center gap-2">
+          <div className="text-sm font-medium text-white mb-3 flex items-center gap-2">
             Assistant
             {isStreaming && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -299,7 +301,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           </div>
 
           {content && (
-            <div className="prose prose-sm max-w-none mb-4 text-white">
+            <div className="prose prose-sm max-w-none mb-6 text-white">
               <MessageRenderer
                 content={content}
                 className="text-white"
@@ -308,7 +310,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           )}
 
           {toolCalls.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {toolCalls.map((toolCallProps, index) => (
                 <Tool key={index} {...toolCallProps} />
               ))}
@@ -316,7 +318,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           )}
 
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-gray-400 mt-3">
               {timestamp.toLocaleTimeString()}
             </div>
           )}

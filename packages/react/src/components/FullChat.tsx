@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, MessageSquare, Settings, MoreHorizontal, Trash2, Edit3, Bot, Users, BarChart3 } from 'lucide-react';
+import { Plus, MessageSquare, Settings, MoreHorizontal, Trash2, Edit3, Bot, Users } from 'lucide-react';
 import { Agent } from '@distri/core';
 import { useThreads } from '../useThreads';
 import { EmbeddableChat } from './EmbeddableChat';
+import { AgentDropdown } from './AgentDropdown';
 import '../styles/themes.css';
 
 export interface FullChatProps {
@@ -25,8 +26,8 @@ export interface FullChatProps {
   showSidebar?: boolean;
   sidebarWidth?: number;
   // Navigation
-  currentPage?: 'chat' | 'agents' | 'tasks';
-  onPageChange?: (page: 'chat' | 'agents' | 'tasks') => void;
+  currentPage?: 'chat' | 'agents';
+  onPageChange?: (page: 'chat' | 'agents') => void;
   // Callbacks
   onAgentSelect?: (agentId: string) => void;
   onThreadSelect?: (threadId: string) => void;
@@ -213,9 +214,6 @@ export const FullChat: React.FC<FullChatProps> = ({
     marginLeft: showSidebar ? `${sidebarWidth}px` : '0px',
   };
 
-  // Get current agent
-  const currentAgent = availableAgents.find(a => a.id === agentId);
-
   return (
     <div className={`distri-chat ${themeClass} ${className} h-full flex`} style={{ backgroundColor: '#343541' }}>
       {/* Sidebar - ChatGPT Style */}
@@ -252,32 +250,24 @@ export const FullChat: React.FC<FullChatProps> = ({
 
           {/* Agent Selection */}
           {availableAgents.length > 0 && (
-            <div className="px-4 pb-4">
-              <div className="text-xs text-gray-400 mb-2 px-2">Agent</div>
-              <select
-                value={agentId}
-                onChange={(e) => onAgentSelect?.(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {availableAgents.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </option>
-                ))}
-              </select>
-              {currentAgent?.description && (
-                <p className="text-xs text-gray-500 mt-1 px-2">{currentAgent.description}</p>
-              )}
+            <div className="px-4 pb-6">
+              <div className="text-xs text-gray-400 mb-3 px-2">Agent</div>
+              <AgentDropdown
+                agents={availableAgents}
+                selectedAgentId={agentId}
+                onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
+                className="w-full"
+              />
             </div>
           )}
 
           {/* Navigation */}
-          <div className="px-4 pb-4">
-            <div className="text-xs text-gray-400 mb-2 px-2">Navigation</div>
+          <div className="px-4 pb-6">
+            <div className="text-xs text-gray-400 mb-3 px-2">Navigation</div>
             <div className="space-y-1">
               <button
                 onClick={() => onPageChange?.('chat')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   currentPage === 'chat' 
                     ? 'bg-white/10 text-white' 
                     : 'text-gray-300 hover:bg-white/5 hover:text-white'
@@ -288,7 +278,7 @@ export const FullChat: React.FC<FullChatProps> = ({
               </button>
               <button
                 onClick={() => onPageChange?.('agents')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   currentPage === 'agents' 
                     ? 'bg-white/10 text-white' 
                     : 'text-gray-300 hover:bg-white/5 hover:text-white'
@@ -297,31 +287,20 @@ export const FullChat: React.FC<FullChatProps> = ({
                 <Users className="h-4 w-4" />
                 <span>Agents</span>
               </button>
-              <button
-                onClick={() => onPageChange?.('tasks')}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  currentPage === 'tasks' 
-                    ? 'bg-white/10 text-white' 
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span>Tasks</span>
-              </button>
             </div>
           </div>
 
           {/* Threads List - Only show when on chat page */}
           {currentPage === 'chat' && (
             <div className="flex-1 overflow-y-auto px-4 space-y-2 distri-scroll">
-              <div className="text-xs text-gray-400 mb-2 px-2">Conversations</div>
+              <div className="text-xs text-gray-400 mb-3 px-2">Conversations</div>
               {threadsLoading ? (
-                <div className="text-center py-8">
+                <div className="text-center py-12">
                   <div className="text-sm text-gray-400">Loading threads...</div>
                 </div>
               ) : threads.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageSquare className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                <div className="text-center py-12">
+                  <MessageSquare className="h-8 w-8 text-gray-600 mx-auto mb-3" />
                   <div className="text-sm text-gray-400">No conversations yet</div>
                 </div>
               ) : (
@@ -340,8 +319,8 @@ export const FullChat: React.FC<FullChatProps> = ({
           )}
 
           {/* Settings */}
-          <div className="p-4 border-t border-gray-700">
-            <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-white/10 rounded-lg transition-colors">
+          <div className="p-4 border-t border-gray-700/50">
+            <button className="w-full flex items-center space-x-3 px-3 py-2.5 text-gray-300 hover:bg-white/10 rounded-lg transition-colors">
               <Settings className="h-4 w-4" />
               <span className="text-sm">Settings</span>
             </button>

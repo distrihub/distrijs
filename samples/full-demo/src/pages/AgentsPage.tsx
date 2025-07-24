@@ -31,42 +31,44 @@ function AgentsPage() {
 
   return (
     <div className="h-full bg-gray-900 overflow-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Agents</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold text-white mb-3">Agents</h1>
+          <p className="text-gray-400 text-lg">
             Manage and configure your AI agents.
           </p>
         </div>
         
-        <AgentList
-          agents={agents}
-          onRefresh={refetchAgents}
-          onStartChat={startChatWithAgent}
-          onUpdateAgent={async (agent) => {
-            try {
-              const id = agent.id || agent.name;
-              // Make API call to update agent
-              const response = await fetch(`/api/v1/agents/${id}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(agent),
-              });
+        <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6">
+          <AgentList
+            agents={agents}
+            onRefresh={refetchAgents}
+            onStartChat={startChatWithAgent}
+            onUpdateAgent={async (agent) => {
+              try {
+                const id = agent.id || agent.name;
+                // Make API call to update agent
+                const response = await fetch(`/api/v1/agents/${id}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(agent),
+                });
 
-              if (!response.ok) {
-                throw new Error(`Failed to update agent: ${response.statusText}`);
+                if (!response.ok) {
+                  throw new Error(`Failed to update agent: ${response.statusText}`);
+                }
+
+                // Refresh the agents list
+                await refetchAgents();
+              } catch (error) {
+                console.error('Failed to update agent:', error);
+                throw error;
               }
-
-              // Refresh the agents list
-              await refetchAgents();
-            } catch (error) {
-              console.error('Failed to update agent:', error);
-              throw error;
-            }
-          }}
-        />
+            }}
+          />
+        </div>
       </div>
     </div>
   );

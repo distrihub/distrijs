@@ -1,9 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { DistriProvider, useAgents, DistriAgent, FullChat } from '@distri/react';
 import AgentsPage from './pages/AgentsPage';
-import TasksPage from './pages/TasksPage';
 
-type PageType = 'chat' | 'agents' | 'tasks';
+type PageType = 'chat' | 'agents';
 
 function AppContent() {
   const { agents, loading } = useAgents();
@@ -65,7 +64,6 @@ function AppContent() {
           }}
         >
           {currentPage === 'agents' && <AgentsPage />}
-          {currentPage === 'tasks' && <TasksPage />}
         </div>
       )}
     </div>

@@ -1,103 +1,127 @@
 /* 
- * ChatGPT Exact Color Scheme - Dark Theme
- * Based on actual ChatGPT CSS variables and color analysis
+ * Distri Theme System - ChatGPT Style with Shadcn Compatibility
+ * Supports multiple themes with consistent design language
  */
 
+/* ===== BASE THEME SYSTEM ===== */
 :root {
-  /* ChatGPT Exact Colors */
-  --background: 217.2 32.6% 17.5%;         /* #343541 - Main background */
-  --foreground: 0 0% 98%;                  /* #fafafa - Main text */
-  --card: 217.2 32.6% 17.5%;               /* #343541 - Cards */
-  --card-foreground: 0 0% 98%;             /* #fafafa - Card text */
-  --popover: 217.2 32.6% 17.5%;            /* #343541 - Popovers */
-  --popover-foreground: 0 0% 98%;          /* #fafafa - Popover text */
-  --primary: 0 0% 98%;                     /* #fafafa - User messages */
-  --primary-foreground: 217.2 32.6% 17.5%; /* #343541 - User message text */
-  --secondary: 217.2 32.6% 17.5%;          /* #343541 - Secondary elements */
-  --secondary-foreground: 0 0% 98%;        /* #fafafa - Secondary text */
-  --muted: 215 27.9% 16.9%;                /* #2f2f2f - Assistant messages */
-  --muted-foreground: 215.4 16.3% 76.9%;  /* #c5c5c5 - Muted text */
-  --accent: 217.2 32.6% 17.5%;             /* #343541 - Accents */
-  --accent-foreground: 0 0% 98%;           /* #fafafa - Accent text */
-  --destructive: 0 84.2% 60.2%;            /* #ef4444 - Red */
-  --destructive-foreground: 0 0% 98%;      /* #fafafa - Red text */
-  --border: 217.2 32.6% 12.5%;             /* #1f1f23 - Borders */
-  --input: 217.2 32.6% 12.5%;              /* #1f1f23 - Inputs */
-  --ring: 212.7 26.8% 83.9%;               /* #d1d5db - Focus rings */
-  --radius: 0.375rem;
+  /* Shadcn/ui base variables */
+  --background: 217.2 32.6% 17.5%;         /* #343541 */
+  --foreground: 0 0% 98%;                  /* #fafafa */
+  --card: 217.2 32.6% 17.5%;               /* #343541 */
+  --card-foreground: 0 0% 98%;             /* #fafafa */
+  --popover: 217.2 32.6% 17.5%;            /* #343541 */
+  --popover-foreground: 0 0% 98%;          /* #fafafa */
+  --primary: 221.2 83.2% 53.3%;            /* #3b82f6 - Blue */
+  --primary-foreground: 210 40% 98%;       /* #f8fafc */
+  --secondary: 217.2 32.6% 17.5%;          /* #343541 */
+  --secondary-foreground: 0 0% 98%;        /* #fafafa */
+  --muted: 215 27.9% 16.9%;                /* #2f2f2f */
+  --muted-foreground: 215.4 16.3% 76.9%;  /* #c5c5c5 */
+  --accent: 217.2 32.6% 17.5%;             /* #343541 */
+  --accent-foreground: 0 0% 98%;           /* #fafafa */
+  --destructive: 0 84.2% 60.2%;            /* #ef4444 */
+  --destructive-foreground: 0 0% 98%;      /* #fafafa */
+  --border: 217.2 32.6% 12.5%;             /* #1f1f23 */
+  --input: 217.2 32.6% 12.5%;              /* #1f1f23 */
+  --ring: 221.2 83.2% 53.3%;               /* #3b82f6 */
+  --radius: 0.5rem;
 
-  /* ChatGPT-specific chat variables */
-  --chat-bg: 217.2 32.6% 17.5%;            /* #343541 - Main chat area */
-  --sidebar-bg: 0 0% 0%;                   /* #000000 - Sidebar background */
-  --sidebar-border: 217.2 32.6% 12.5%;     /* #1f1f23 - Sidebar border */
-  --user-bg: 0 0% 98%;                     /* #fafafa - User message bubble */
-  --user-text: 217.2 32.6% 17.5%;          /* #343541 - User message text */
-  --assistant-bg: 215 27.9% 16.9%;         /* #2f2f2f - Assistant message background */
-  --assistant-text: 0 0% 98%;              /* #fafafa - Assistant message text */
-  --message-border: 217.2 32.6% 12.5%;     /* #1f1f23 - Message borders */
-  --hover-bg: 0 0% 100% / 0.05;            /* rgba(255,255,255,0.05) - Hover states */
-  --active-bg: 0 0% 100% / 0.1;            /* rgba(255,255,255,0.1) - Active states */
+  /* ChatGPT-specific theme variables */
+  --chat-bg: 217.2 32.6% 17.5%;            /* #343541 - Main chat */
+  --sidebar-bg: 0 0% 0%;                   /* #000000 - Sidebar */
+  --sidebar-border: 217.2 32.6% 12.5%;     /* #1f1f23 */
+  --user-bg: 217.2 32.6% 17.5%;            /* #343541 - User messages same as main */
+  --user-text: 0 0% 98%;                   /* #fafafa */
+  --assistant-bg: 215 27.9% 16.9%;         /* #2f2f2f - Assistant messages */
+  --assistant-text: 0 0% 98%;              /* #fafafa */
+  --message-border: 217.2 32.6% 22%;       /* #565869 - Subtle border */
+  --avatar-user: 217.2 91% 59.8%;          /* #5b67c4 - ChatGPT user blue */
+  --avatar-assistant: 158.1 64.4% 51.6%;   /* #10a37f - ChatGPT green */
+  
+  /* Interactive states */
+  --hover-bg: 0 0% 100% / 0.05;            /* rgba(255,255,255,0.05) */
+  --active-bg: 0 0% 100% / 0.1;            /* rgba(255,255,255,0.1) */
+  --focus-ring: 221.2 83.2% 53.3%;         /* #3b82f6 */
+  
+  /* Button variants */
+  --button-primary-bg: 221.2 83.2% 53.3%;  /* #3b82f6 */
+  --button-primary-hover: 221.2 83.2% 45%; /* Darker blue */
+  --button-secondary-bg: 0 0% 100% / 0.1;  /* rgba(255,255,255,0.1) */
+  --button-secondary-hover: 0 0% 100% / 0.15; /* rgba(255,255,255,0.15) */
+  
+  /* Typography */
+  --font-family: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  
+  /* Spacing scale (ChatGPT-inspired) */
+  --spacing-xs: 0.25rem;    /* 4px */
+  --spacing-sm: 0.5rem;     /* 8px */
+  --spacing-md: 0.75rem;    /* 12px */
+  --spacing-lg: 1rem;       /* 16px */
+  --spacing-xl: 1.5rem;     /* 24px */
+  --spacing-2xl: 2rem;      /* 32px */
+  --spacing-3xl: 3rem;      /* 48px */
 }
 
-/* Light theme override (when explicitly requested) */
+/* Light theme */
 .light {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 84% 4.9%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  --background: 0 0% 100%;                 /* #ffffff */
+  --foreground: 222.2 84% 4.9%;            /* #0f172a */
+  --card: 0 0% 100%;                       /* #ffffff */
+  --card-foreground: 222.2 84% 4.9%;       /* #0f172a */
+  --popover: 0 0% 100%;                    /* #ffffff */
+  --popover-foreground: 222.2 84% 4.9%;    /* #0f172a */
+  --primary: 221.2 83.2% 53.3%;            /* #3b82f6 */
+  --primary-foreground: 210 40% 98%;       /* #f8fafc */
+  --secondary: 210 40% 96%;                /* #f1f5f9 */
+  --secondary-foreground: 222.2 84% 4.9%;  /* #0f172a */
+  --muted: 210 40% 96%;                    /* #f1f5f9 */
+  --muted-foreground: 215.4 16.3% 46.9%;   /* #64748b */
+  --accent: 210 40% 96%;                   /* #f1f5f9 */
+  --accent-foreground: 222.2 84% 4.9%;     /* #0f172a */
+  --destructive: 0 84.2% 60.2%;            /* #ef4444 */
+  --destructive-foreground: 210 40% 98%;   /* #f8fafc */
+  --border: 214.3 31.8% 91.4%;             /* #e2e8f0 */
+  --input: 214.3 31.8% 91.4%;              /* #e2e8f0 */
+  --ring: 221.2 83.2% 53.3%;               /* #3b82f6 */
 
-  --chat-bg: 0 0% 100%;
-  --sidebar-bg: 210 40% 96%;
-  --sidebar-border: 214.3 31.8% 91.4%;
-  --user-bg: 221.2 83.2% 53.3%;
-  --user-text: 210 40% 98%;
-  --assistant-bg: 210 40% 96%;
-  --assistant-text: 222.2 84% 4.9%;
-  --message-border: 214.3 31.8% 91.4%;
-  --hover-bg: 0 0% 0% / 0.05;
-  --active-bg: 0 0% 0% / 0.1;
+  --chat-bg: 0 0% 100%;                    /* #ffffff */
+  --sidebar-bg: 210 40% 96%;               /* #f1f5f9 */
+  --sidebar-border: 214.3 31.8% 91.4%;     /* #e2e8f0 */
+  --user-bg: 221.2 83.2% 53.3%;            /* #3b82f6 */
+  --user-text: 210 40% 98%;                /* #f8fafc */
+  --assistant-bg: 210 40% 96%;             /* #f1f5f9 */
+  --assistant-text: 222.2 84% 4.9%;        /* #0f172a */
+  --message-border: 214.3 31.8% 91.4%;     /* #e2e8f0 */
+  --avatar-user: 221.2 83.2% 53.3%;        /* #3b82f6 */
+  --avatar-assistant: 158.1 64.4% 51.6%;   /* #10a37f */
+  
+  --hover-bg: 0 0% 0% / 0.05;              /* rgba(0,0,0,0.05) */
+  --active-bg: 0 0% 0% / 0.1;              /* rgba(0,0,0,0.1) */
+  
+  --button-secondary-bg: 0 0% 0% / 0.05;   /* rgba(0,0,0,0.05) */
+  --button-secondary-hover: 0 0% 0% / 0.1; /* rgba(0,0,0,0.1) */
 }
 
-/* Base chat styles with exact ChatGPT appearance */
+/* ===== COMPONENT STYLES ===== */
+
+/* Base chat container */
 .distri-chat {
-  font-family: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-family);
   background-color: hsl(var(--chat-bg));
   color: hsl(var(--foreground));
   border-radius: var(--radius);
 }
 
-.distri-chat-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: hsl(var(--chat-bg));
-  border-radius: var(--radius);
-}
-
-/* ChatGPT-style sidebar */
+/* Sidebar styling */
 .distri-sidebar {
   background-color: hsl(var(--sidebar-bg));
   border-right: 1px solid hsl(var(--sidebar-border));
 }
 
-/* ChatGPT-style message bubbles */
+/* Message containers with improved spacing */
 .distri-message {
-  padding: 1.5rem 1rem;
+  padding: var(--spacing-2xl) var(--spacing-xl);
   border-bottom: 1px solid hsl(var(--message-border));
 }
 
@@ -111,51 +135,114 @@
   color: hsl(var(--assistant-text));
 }
 
-.distri-message-tool {
-  background-color: hsl(var(--muted));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  padding: 1rem;
-  margin: 0.5rem 0;
+/* Avatar styling */
+.distri-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-/* ChatGPT-style input */
+.distri-avatar-user {
+  background-color: hsl(var(--avatar-user));
+  color: white;
+}
+
+.distri-avatar-assistant {
+  background-color: hsl(var(--avatar-assistant));
+  color: white;
+}
+
+/* Improved input styling */
 .distri-input {
   background-color: hsl(var(--input));
   border: 1px solid hsl(var(--border));
   color: hsl(var(--foreground));
   border-radius: var(--radius);
-  font-family: inherit;
-}
-
-.distri-input:focus {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-  border-color: hsl(var(--ring));
-}
-
-/* ChatGPT-style buttons */
-.distri-button-primary {
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-radius: var(--radius);
-  border: none;
-  padding: 0.5rem 1rem;
-  font-family: inherit;
-  font-weight: 500;
+  font-family: var(--font-family);
   transition: all 0.2s ease;
 }
 
-.distri-button-primary:hover:not(:disabled) {
-  background-color: hsl(var(--primary) / 0.9);
+.distri-input:focus {
+  outline: none;
+  border-color: hsl(var(--focus-ring));
+  box-shadow: 0 0 0 2px hsl(var(--focus-ring) / 0.2);
 }
 
-.distri-button-primary:disabled {
+.distri-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Button variants */
+.distri-button {
+  border-radius: var(--radius);
+  font-family: var(--font-family);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.distri-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* ChatGPT-style hover states */
+.distri-button-primary {
+  background-color: hsl(var(--button-primary-bg));
+  color: hsl(var(--primary-foreground));
+}
+
+.distri-button-primary:hover:not(:disabled) {
+  background-color: hsl(var(--button-primary-hover));
+}
+
+.distri-button-secondary {
+  background-color: hsl(var(--button-secondary-bg));
+  color: hsl(var(--foreground));
+}
+
+.distri-button-secondary:hover:not(:disabled) {
+  background-color: hsl(var(--button-secondary-hover));
+}
+
+/* Send button specific styling (ChatGPT-like) */
+.distri-send-button {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.distri-send-button:hover:not(:disabled) {
+  background-color: hsl(var(--muted-foreground) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+.distri-send-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.distri-send-button.active {
+  background-color: hsl(var(--button-primary-bg));
+  color: hsl(var(--primary-foreground));
+}
+
+.distri-send-button.active:hover:not(:disabled) {
+  background-color: hsl(var(--button-primary-hover));
+}
+
+/* Interactive states */
 .distri-hover {
   transition: background-color 0.2s ease;
 }
@@ -168,7 +255,7 @@
   background-color: hsl(var(--active-bg));
 }
 
-/* ChatGPT-style scrollbars */
+/* Improved scrollbars */
 .distri-scroll {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--muted)) transparent;
@@ -192,27 +279,128 @@
   background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Typography matching ChatGPT */
-.distri-text-sm {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+/* Tool styling */
+.distri-tool {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  margin: var(--spacing-md) 0;
+  overflow: hidden;
 }
 
-.distri-text-xs {
-  font-size: 0.75rem;
-  line-height: 1rem;
+.distri-tool-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.distri-tool-header:hover {
+  background-color: hsl(var(--hover-bg));
+}
+
+.distri-tool-content {
+  padding: var(--spacing-lg);
+  background-color: hsl(var(--muted));
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+
+/* Dropdown styling */
+.distri-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.distri-dropdown-trigger {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  border-radius: var(--radius);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 200px;
+}
+
+.distri-dropdown-trigger:hover {
+  background-color: hsl(var(--hover-bg));
+}
+
+.distri-dropdown-content {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  z-index: 50;
+  margin-top: 2px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.distri-dropdown-item {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.distri-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.distri-dropdown-item:hover {
+  background-color: hsl(var(--hover-bg));
+}
+
+.distri-dropdown-item.selected {
+  background-color: hsl(var(--active-bg));
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .distri-message {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+  
+  .distri-sidebar {
+    width: 100% !important;
+  }
 }
 
 /* Animation utilities */
 @keyframes distri-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes distri-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .distri-animate-spin {
   animation: distri-spin 1s linear infinite;
+}
+
+.distri-animate-pulse {
+  animation: distri-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Focus management */
+.distri-focus-ring:focus {
+  outline: 2px solid hsl(var(--focus-ring));
+  outline-offset: 2px;
+}
+
+.distri-focus-ring:focus:not(:focus-visible) {
+  outline: none;
 }

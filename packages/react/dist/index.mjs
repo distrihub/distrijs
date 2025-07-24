@@ -1,3 +1,16 @@
+// src/components/EmbeddableChat.tsx
+import { useState as useState6, useRef as useRef5, useEffect as useEffect5, useMemo as useMemo3 } from "react";
+import { MessageSquare } from "lucide-react";
+
+// src/useChat.ts
+import { useState as useState3, useEffect as useEffect2, useCallback as useCallback2, useRef as useRef2, useMemo } from "react";
+
+// src/useAgent.ts
+import React, { useState as useState2, useCallback, useRef } from "react";
+import {
+  Agent
+} from "@distri/core";
+
 // src/DistriProvider.tsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { DistriClient } from "@distri/core";
@@ -56,25 +69,8 @@ function useDistri() {
   }
   return context;
 }
-function useDistriClient() {
-  const { client, error, isLoading } = useDistri();
-  if (isLoading) {
-    throw new Error("Distri client is still loading");
-  }
-  if (error) {
-    throw new Error(`Distri client initialization failed: ${error.message}`);
-  }
-  if (!client) {
-    throw new Error("Distri client is not initialized");
-  }
-  return client;
-}
 
 // src/useAgent.ts
-import React, { useState as useState2, useCallback, useRef } from "react";
-import {
-  Agent
-} from "@distri/core";
 function useAgent({
   agentId,
   autoCreateAgent = true
@@ -113,77 +109,7 @@ function useAgent({
   };
 }
 
-// src/useAgents.ts
-import { useState as useState3, useEffect as useEffect2, useCallback as useCallback2 } from "react";
-function useAgents() {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agents, setAgents] = useState3([]);
-  const [loading, setLoading] = useState3(true);
-  const [error, setError] = useState3(null);
-  const fetchAgents = useCallback2(async () => {
-    if (!client) {
-      console.log("[useAgents] Client not available, skipping fetch");
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      console.log("[useAgents] Fetching agents...");
-      const fetchedAgents = await client.getAgents();
-      console.log("[useAgents] Fetched agents:", fetchedAgents);
-      setAgents(fetchedAgents);
-    } catch (err) {
-      console.error("[useAgents] Failed to fetch agents:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch agents"));
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
-  const getAgent = useCallback2(async (agentId) => {
-    if (!client) {
-      throw new Error("Client not available");
-    }
-    try {
-      const agent = await client.getAgent(agentId);
-      setAgents((prev) => prev.map((a) => a.id === agentId ? agent : a));
-      return agent;
-    } catch (err) {
-      const error2 = err instanceof Error ? err : new Error("Failed to get agent");
-      setError(error2);
-      throw error2;
-    }
-  }, [client]);
-  useEffect2(() => {
-    if (clientLoading) {
-      console.log("[useAgents] Client is loading, waiting...");
-      setLoading(true);
-      return;
-    }
-    if (clientError) {
-      console.error("[useAgents] Client error:", clientError);
-      setError(clientError);
-      setLoading(false);
-      return;
-    }
-    if (client) {
-      console.log("[useAgents] Client ready, fetching agents");
-      fetchAgents();
-    } else {
-      console.log("[useAgents] No client available");
-      setLoading(false);
-    }
-  }, [clientLoading, clientError, client, fetchAgents]);
-  return {
-    agents,
-    loading: loading || clientLoading,
-    error: error || clientError,
-    refetch: fetchAgents,
-    getAgent
-  };
-}
-
 // src/useChat.ts
-import { useState as useState4, useEffect as useEffect3, useCallback as useCallback3, useRef as useRef2, useMemo } from "react";
 import {
   DistriClient as DistriClient2
 } from "@distri/core";
@@ -197,12 +123,12 @@ function useChat({
     agentId
   });
   const agent = providedAgent && typeof providedAgent.getThreadMessages === "function" ? providedAgent : internalAgent;
-  const [messages, setMessages] = useState4([]);
-  const [loading, setLoading] = useState4(false);
-  const [error, setError] = useState4(null);
-  const [isStreaming, setIsStreaming] = useState4(false);
+  const [messages, setMessages] = useState3([]);
+  const [loading, setLoading] = useState3(false);
+  const [error, setError] = useState3(null);
+  const [isStreaming, setIsStreaming] = useState3(false);
   const abortControllerRef = useRef2(null);
-  useEffect3(() => {
+  useEffect2(() => {
     setMessages([]);
     setError(null);
   }, [threadId]);
@@ -216,7 +142,7 @@ function useChat({
       metadata
     };
   }, [threadId, metadata]);
-  const fetchMessages = useCallback3(async () => {
+  const fetchMessages = useCallback2(async () => {
     if (!agent || !threadId) {
       setMessages([]);
       return;
@@ -233,10 +159,10 @@ function useChat({
       setLoading(false);
     }
   }, [agent, threadId]);
-  useEffect3(() => {
+  useEffect2(() => {
     fetchMessages();
   }, [fetchMessages]);
-  const handleToolCalls = useCallback3(async (toolCalls) => {
+  const handleToolCalls = useCallback2(async (toolCalls) => {
     if (!agent)
       return;
     const results = [];
@@ -269,7 +195,7 @@ function useChat({
       }
     }
   }, [agent, threadId, invokeConfig.configuration]);
-  const handleStreamEvent = useCallback3(async (event) => {
+  const handleStreamEvent = useCallback2(async (event) => {
     if (event.kind === "message") {
       const message = event;
       setMessages((prev) => {
@@ -290,7 +216,7 @@ function useChat({
       console.debug("Task status update:", event);
     }
   }, [handleToolCalls]);
-  const sendMessage = useCallback3(async (input, metadata2) => {
+  const sendMessage = useCallback2(async (input, metadata2) => {
     if (!agent)
       return;
     const userMessage = DistriClient2.initMessage(input, "user", { contextId: threadId, metadata: metadata2 });
@@ -309,7 +235,7 @@ function useChat({
       setLoading(false);
     }
   }, [agent, threadId, invokeConfig.configuration]);
-  const sendMessageStream = useCallback3(async (input, metadata2) => {
+  const sendMessageStream = useCallback2(async (input, metadata2) => {
     if (!agent)
       return;
     const userMessage = DistriClient2.initMessage(input, "user", { contextId: threadId, metadata: metadata2 });
@@ -338,10 +264,10 @@ function useChat({
       setIsStreaming(false);
     }
   }, [agent, threadId, invokeConfig.configuration, handleStreamEvent]);
-  const clearMessages = useCallback3(() => {
+  const clearMessages = useCallback2(() => {
     setMessages([]);
   }, []);
-  const refreshMessages = useCallback3(async () => {
+  const refreshMessages = useCallback2(async () => {
     await fetchMessages();
   }, [fetchMessages]);
   return {
@@ -356,246 +282,6 @@ function useChat({
     agent: agent ? agent : null
   };
 }
-
-// src/useThreads.ts
-import { useState as useState5, useEffect as useEffect4, useCallback as useCallback4 } from "react";
-function useThreads() {
-  const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = useState5([]);
-  const [loading, setLoading] = useState5(true);
-  const [error, setError] = useState5(null);
-  const fetchThreads = useCallback4(async () => {
-    if (!client) {
-      console.log("[useThreads] Client not available, skipping fetch");
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      console.log("[useThreads] Fetching threads...");
-      const fetchedThreads = await client.getThreads();
-      console.log("[useThreads] Fetched threads:", fetchedThreads);
-      setThreads(fetchedThreads);
-    } catch (err) {
-      console.error("[useThreads] Failed to fetch threads:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch threads"));
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
-  const fetchThread = useCallback4(async (threadId) => {
-    if (!client) {
-      throw new Error("Client not available");
-    }
-    try {
-      const response = await client.getThread(threadId);
-      return response;
-    } catch (err) {
-      console.error("[useThreads] Failed to fetch thread:", err);
-      throw err;
-    }
-  }, [client]);
-  const deleteThread = useCallback4(async (threadId) => {
-    if (!client) {
-      throw new Error("Client not available");
-    }
-    try {
-      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
-        method: "DELETE"
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete thread");
-      }
-      setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
-    } catch (err) {
-      setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
-      console.warn("Failed to delete thread from server, but removed locally:", err);
-    }
-  }, [client]);
-  const updateThread = useCallback4(async (threadId, localId) => {
-    if (!client) {
-      return;
-    }
-    try {
-      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
-      if (response.ok) {
-        const updatedThread = await response.json();
-        setThreads((prev) => {
-          if (localId && prev.some((thread) => thread.id === localId)) {
-            return [
-              updatedThread,
-              ...prev.filter((thread) => thread.id !== localId && thread.id !== threadId)
-            ];
-          }
-          return prev.map(
-            (thread) => thread.id === threadId ? updatedThread : thread
-          );
-        });
-      }
-    } catch (err) {
-      console.warn("Failed to update thread:", err);
-    }
-  }, [client]);
-  useEffect4(() => {
-    if (clientLoading) {
-      console.log("[useThreads] Client is loading, waiting...");
-      setLoading(true);
-      return;
-    }
-    if (clientError) {
-      console.error("[useThreads] Client error:", clientError);
-      setError(clientError);
-      setLoading(false);
-      return;
-    }
-    if (client) {
-      console.log("[useThreads] Client ready, fetching threads");
-      fetchThreads();
-    } else {
-      console.log("[useThreads] No client available");
-      setLoading(false);
-    }
-  }, [clientLoading, clientError, client, fetchThreads]);
-  return {
-    threads,
-    loading: loading || clientLoading,
-    error: error || clientError,
-    refetch: fetchThreads,
-    deleteThread,
-    fetchThread,
-    updateThread
-  };
-}
-
-// src/useTools.ts
-import { useCallback as useCallback5, useRef as useRef3 } from "react";
-function useTools({ agent }) {
-  const toolsRef = useRef3(/* @__PURE__ */ new Set());
-  const addTool = useCallback5((tool) => {
-    if (!agent) {
-      console.warn("Cannot add tool: no agent provided");
-      return;
-    }
-    agent.addTool(tool);
-    toolsRef.current.add(tool.name);
-  }, [agent]);
-  const addTools = useCallback5((tools) => {
-    if (!agent) {
-      console.warn("Cannot add tools: no agent provided");
-      return;
-    }
-    tools.forEach((tool) => {
-      agent.addTool(tool);
-      toolsRef.current.add(tool.name);
-    });
-  }, [agent]);
-  const removeTool = useCallback5((toolName) => {
-    if (!agent) {
-      console.warn("Cannot remove tool: no agent provided");
-      return;
-    }
-    agent.removeTool(toolName);
-    toolsRef.current.delete(toolName);
-  }, [agent]);
-  const executeTool = useCallback5(async (toolCall) => {
-    if (!agent) {
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: "No agent provided"
-      };
-    }
-    return agent.executeTool(toolCall);
-  }, [agent]);
-  const getTools = useCallback5(() => {
-    if (!agent)
-      return [];
-    return agent.getTools();
-  }, [agent]);
-  const hasTool = useCallback5((toolName) => {
-    if (!agent)
-      return false;
-    return agent.hasTool(toolName);
-  }, [agent]);
-  return {
-    addTool,
-    addTools,
-    removeTool,
-    executeTool,
-    getTools,
-    hasTool
-  };
-}
-var createTool = (name, description, parameters, handler) => ({
-  name,
-  description,
-  parameters,
-  handler
-});
-var createBuiltinTools = () => ({
-  /**
-   * Confirmation tool for user approval
-   */
-  confirm: createTool(
-    "confirm",
-    "Ask user for confirmation",
-    {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Message to show to user" },
-        defaultValue: { type: "boolean", description: "Default value if user doesnt respond" }
-      },
-      required: ["message"]
-    },
-    async (input) => {
-      const result = confirm(input.message);
-      return { confirmed: result };
-    }
-  ),
-  /**
-   * Input request tool
-   */
-  input: createTool(
-    "input",
-    "Request text input from user",
-    {
-      type: "object",
-      properties: {
-        prompt: { type: "string", description: "Prompt to show to user" },
-        placeholder: { type: "string", description: "Placeholder text" }
-      },
-      required: ["prompt"]
-    },
-    async (input) => {
-      const result = prompt(input.prompt, input.placeholder);
-      return { input: result };
-    }
-  ),
-  /**
-   * Notification tool
-   */
-  notify: createTool(
-    "notify",
-    "Show notification to user",
-    {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Notification message" },
-        type: { type: "string", enum: ["info", "success", "warning", "error"], description: "Notification type" }
-      },
-      required: ["message"]
-    },
-    async (input) => {
-      console.log(`[${input.type || "info"}] ${input.message}`);
-      return { notified: true };
-    }
-  )
-});
-
-// src/components/EmbeddableChat.tsx
-import { useState as useState7, useRef as useRef5, useEffect as useEffect6, useMemo as useMemo3 } from "react";
-import { MessageSquare } from "lucide-react";
 
 // src/components/MessageComponents.tsx
 import React4 from "react";
@@ -647,17 +333,6 @@ var useChatConfig = () => {
     };
   }
   return context;
-};
-var getThemeClasses = (theme) => {
-  switch (theme) {
-    case "dark":
-      return "dark";
-    case "light":
-      return "";
-    case "auto":
-    default:
-      return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "";
-  }
 };
 
 // src/components/MessageRenderer.tsx
@@ -997,10 +672,10 @@ var UserMessage = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ jsx4(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-start gap-4 py-6 border-b border-gray-700/50", children: [
-    /* @__PURE__ */ jsx4("div", { className: "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center", style: { backgroundColor: "#5b67c4" }, children: avatar || /* @__PURE__ */ jsx4(User, { className: "h-4 w-4 text-white" }) }),
+  return /* @__PURE__ */ jsx4(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-start gap-4 py-8 border-b border-gray-700/30", children: [
+    /* @__PURE__ */ jsx4("div", { className: "distri-avatar distri-avatar-user", children: avatar || /* @__PURE__ */ jsx4(User, { className: "h-4 w-4" }) }),
     /* @__PURE__ */ jsxs2("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsx4("div", { className: "text-sm font-medium text-white mb-1", children: "You" }),
+      /* @__PURE__ */ jsx4("div", { className: "text-sm font-medium text-white mb-3", children: "You" }),
       /* @__PURE__ */ jsx4("div", { className: "prose prose-sm max-w-none text-white", children: /* @__PURE__ */ jsx4(
         MessageRenderer_default,
         {
@@ -1008,7 +683,7 @@ var UserMessage = ({
           className: "text-white"
         }
       ) }),
-      timestamp && /* @__PURE__ */ jsx4("div", { className: "text-xs text-gray-400 mt-2", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ jsx4("div", { className: "text-xs text-gray-400 mt-3", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1020,10 +695,10 @@ var AssistantMessage = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ jsx4(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-start gap-4 py-6 border-b border-gray-700/50", children: [
-    /* @__PURE__ */ jsx4("div", { className: "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center", style: { backgroundColor: "#10a37f" }, children: avatar || /* @__PURE__ */ jsx4(Bot, { className: "h-4 w-4 text-white" }) }),
+  return /* @__PURE__ */ jsx4(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-start gap-4 py-8 border-b border-gray-700/30", children: [
+    /* @__PURE__ */ jsx4("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ jsx4(Bot, { className: "h-4 w-4" }) }),
     /* @__PURE__ */ jsxs2("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsxs2("div", { className: "text-sm font-medium text-white mb-1 flex items-center gap-2", children: [
+      /* @__PURE__ */ jsxs2("div", { className: "text-sm font-medium text-white mb-3 flex items-center gap-2", children: [
         "Assistant",
         isStreaming && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-gray-400", children: [
           /* @__PURE__ */ jsx4("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse" }),
@@ -1038,7 +713,7 @@ var AssistantMessage = ({
           className: "text-white"
         }
       ) }),
-      timestamp && /* @__PURE__ */ jsx4("div", { className: "text-xs text-gray-400 mt-2", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ jsx4("div", { className: "text-xs text-gray-400 mt-3", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1054,7 +729,7 @@ var Tool = ({
       case "pending":
         return /* @__PURE__ */ jsx4(Clock, { className: "h-4 w-4 text-gray-400" });
       case "running":
-        return /* @__PURE__ */ jsx4(Settings, { className: "h-4 w-4 text-blue-400 animate-spin" });
+        return /* @__PURE__ */ jsx4(Settings, { className: "h-4 w-4 text-blue-400 distri-animate-spin" });
       case "completed":
         return /* @__PURE__ */ jsx4(CheckCircle, { className: "h-4 w-4 text-green-400" });
       case "error":
@@ -1066,43 +741,43 @@ var Tool = ({
   const getStatusColor = () => {
     switch (status) {
       case "pending":
-        return "border-gray-600 bg-gray-800";
+        return "border-gray-600 bg-gray-800/50";
       case "running":
         return "border-blue-500 bg-blue-900/20";
       case "completed":
-        return "border-green-500 bg-green-900/20";
+        return "border-green-500/50 bg-green-900/20";
       case "error":
-        return "border-red-500 bg-red-900/20";
+        return "border-red-500/50 bg-red-900/20";
       default:
-        return "border-gray-600 bg-gray-800";
+        return "border-gray-600 bg-gray-800/50";
     }
   };
   const toolName = "tool_name" in toolCall ? toolCall.tool_name : toolCall.tool_name;
   const toolId = "tool_call_id" in toolCall ? toolCall.tool_call_id : toolCall.tool_call_id;
   const input = "input" in toolCall ? toolCall.input : toolCall.args;
   const shouldShowExpand = input || result || error;
-  return /* @__PURE__ */ jsxs2("div", { className: `border rounded-lg ${getStatusColor()} my-3 overflow-hidden`, children: [
-    /* @__PURE__ */ jsxs2(
+  return /* @__PURE__ */ jsxs2("div", { className: `distri-tool ${getStatusColor()}`, children: [
+    /* @__PURE__ */ jsx4(
       "div",
       {
-        className: "flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-700/50 transition-colors",
+        className: "distri-tool-header",
         onClick: () => setIsExpanded(!isExpanded),
-        children: [
+        children: /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-3 w-full", children: [
           getStatusIcon(),
           /* @__PURE__ */ jsx4("span", { className: "font-medium text-sm text-white flex-1", children: toolName }),
           /* @__PURE__ */ jsx4("span", { className: "text-xs text-gray-400 font-mono", children: toolId }),
-          shouldShowExpand && /* @__PURE__ */ jsx4("button", { className: "text-gray-400 hover:text-white transition-colors", children: isExpanded ? /* @__PURE__ */ jsx4("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M19 9l-7 7-7-7" }) }) : /* @__PURE__ */ jsx4("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M9 5l7 7-7 7" }) }) })
-        ]
+          shouldShowExpand && /* @__PURE__ */ jsx4("button", { className: "text-gray-400 hover:text-white transition-colors ml-2", children: isExpanded ? /* @__PURE__ */ jsx4("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M19 9l-7 7-7-7" }) }) : /* @__PURE__ */ jsx4("svg", { className: "h-4 w-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsx4("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M9 5l7 7-7 7" }) }) })
+        ] })
       }
     ),
-    isExpanded && /* @__PURE__ */ jsxs2("div", { className: "px-4 pb-4 space-y-3 border-t border-gray-600/50", children: [
-      input && /* @__PURE__ */ jsxs2("div", { className: "pt-3", children: [
+    isExpanded && /* @__PURE__ */ jsxs2("div", { className: "p-4 space-y-4 border-t border-gray-600/50", children: [
+      input && /* @__PURE__ */ jsxs2("div", { children: [
         /* @__PURE__ */ jsx4("div", { className: "text-xs font-medium text-gray-300 mb-2", children: "Input:" }),
-        /* @__PURE__ */ jsx4("div", { className: "text-sm bg-gray-700 rounded border border-gray-600 p-3 font-mono text-gray-100 overflow-x-auto", children: typeof input === "string" ? input : JSON.stringify(input, null, 2) })
+        /* @__PURE__ */ jsx4("div", { className: "distri-tool-content", children: typeof input === "string" ? input : JSON.stringify(input, null, 2) })
       ] }),
       result && /* @__PURE__ */ jsxs2("div", { children: [
         /* @__PURE__ */ jsx4("div", { className: "text-xs font-medium text-gray-300 mb-2", children: "Output:" }),
-        /* @__PURE__ */ jsx4("div", { className: "text-sm bg-gray-700 rounded border border-gray-600 p-3 font-mono text-gray-100 overflow-x-auto", children: typeof result === "string" ? result : JSON.stringify(result, null, 2) })
+        /* @__PURE__ */ jsx4("div", { className: "distri-tool-content", children: typeof result === "string" ? result : JSON.stringify(result, null, 2) })
       ] }),
       error && /* @__PURE__ */ jsxs2("div", { children: [
         /* @__PURE__ */ jsx4("div", { className: "text-xs font-medium text-red-300 mb-2", children: "Error:" }),
@@ -1120,10 +795,10 @@ var AssistantWithToolCalls = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ jsx4(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-start gap-4 py-6 border-b border-gray-700/50", children: [
-    /* @__PURE__ */ jsx4("div", { className: "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center", style: { backgroundColor: "#10a37f" }, children: avatar || /* @__PURE__ */ jsx4(Bot, { className: "h-4 w-4 text-white" }) }),
+  return /* @__PURE__ */ jsx4(MessageContainer, { align: "center", className, backgroundColor: "#2f2f2f", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-start gap-4 py-8 border-b border-gray-700/30", children: [
+    /* @__PURE__ */ jsx4("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ jsx4(Bot, { className: "h-4 w-4" }) }),
     /* @__PURE__ */ jsxs2("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsxs2("div", { className: "text-sm font-medium text-white mb-1 flex items-center gap-2", children: [
+      /* @__PURE__ */ jsxs2("div", { className: "text-sm font-medium text-white mb-3 flex items-center gap-2", children: [
         "Assistant",
         isStreaming && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-gray-400", children: [
           /* @__PURE__ */ jsx4("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse" }),
@@ -1131,15 +806,15 @@ var AssistantWithToolCalls = ({
           /* @__PURE__ */ jsx4("div", { className: "w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-150" })
         ] })
       ] }),
-      content && /* @__PURE__ */ jsx4("div", { className: "prose prose-sm max-w-none mb-4 text-white", children: /* @__PURE__ */ jsx4(
+      content && /* @__PURE__ */ jsx4("div", { className: "prose prose-sm max-w-none mb-6 text-white", children: /* @__PURE__ */ jsx4(
         MessageRenderer_default,
         {
           content,
           className: "text-white"
         }
       ) }),
-      toolCalls.length > 0 && /* @__PURE__ */ jsx4("div", { className: "space-y-2", children: toolCalls.map((toolCallProps, index) => /* @__PURE__ */ jsx4(Tool, { ...toolCallProps }, index)) }),
-      timestamp && /* @__PURE__ */ jsx4("div", { className: "text-xs text-gray-400 mt-2", children: timestamp.toLocaleTimeString() })
+      toolCalls.length > 0 && /* @__PURE__ */ jsx4("div", { className: "space-y-3", children: toolCalls.map((toolCallProps, index) => /* @__PURE__ */ jsx4(Tool, { ...toolCallProps }, index)) }),
+      timestamp && /* @__PURE__ */ jsx4("div", { className: "text-xs text-gray-400 mt-3", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1195,10 +870,83 @@ var scrollToBottom = (element, _behavior = "smooth") => {
   }
 };
 
-// src/components/ChatInput.tsx
-import { useRef as useRef4, useEffect as useEffect5 } from "react";
-import { Send } from "lucide-react";
+// src/components/AgentDropdown.tsx
+import { useState as useState4, useRef as useRef3, useEffect as useEffect3 } from "react";
+import { ChevronDown, Bot as Bot2, Check as Check2 } from "lucide-react";
 import { jsx as jsx5, jsxs as jsxs3 } from "react/jsx-runtime";
+var AgentDropdown = ({
+  agents,
+  selectedAgentId,
+  onAgentSelect,
+  className = "",
+  placeholder = "Select an agent..."
+}) => {
+  const [isOpen, setIsOpen] = useState4(false);
+  const dropdownRef = useRef3(null);
+  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
+  useEffect3(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  const handleAgentSelect = (agentId) => {
+    onAgentSelect(agentId);
+    setIsOpen(false);
+  };
+  return /* @__PURE__ */ jsxs3("div", { ref: dropdownRef, className: `distri-dropdown ${className}`, children: [
+    /* @__PURE__ */ jsxs3(
+      "button",
+      {
+        onClick: () => setIsOpen(!isOpen),
+        className: "distri-dropdown-trigger w-full",
+        children: [
+          /* @__PURE__ */ jsxs3("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
+            /* @__PURE__ */ jsx5("div", { className: "distri-avatar distri-avatar-assistant", children: /* @__PURE__ */ jsx5(Bot2, { className: "h-4 w-4" }) }),
+            /* @__PURE__ */ jsxs3("div", { className: "flex-1 text-left min-w-0", children: [
+              /* @__PURE__ */ jsx5("div", { className: "text-sm font-medium text-white truncate", children: selectedAgent?.name || placeholder }),
+              selectedAgent?.description && /* @__PURE__ */ jsx5("div", { className: "text-xs text-gray-400 truncate", children: selectedAgent.description })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsx5(
+            ChevronDown,
+            {
+              className: `h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`
+            }
+          )
+        ]
+      }
+    ),
+    isOpen && /* @__PURE__ */ jsx5("div", { className: "distri-dropdown-content", children: agents.map((agent) => /* @__PURE__ */ jsx5(
+      "div",
+      {
+        onClick: () => handleAgentSelect(agent.id),
+        className: `distri-dropdown-item ${agent.id === selectedAgentId ? "selected" : ""}`,
+        children: /* @__PURE__ */ jsxs3("div", { className: "flex items-center space-x-3 w-full", children: [
+          /* @__PURE__ */ jsx5("div", { className: "distri-avatar distri-avatar-assistant", children: /* @__PURE__ */ jsx5(Bot2, { className: "h-4 w-4" }) }),
+          /* @__PURE__ */ jsxs3("div", { className: "flex-1 min-w-0", children: [
+            /* @__PURE__ */ jsxs3("div", { className: "flex items-center justify-between", children: [
+              /* @__PURE__ */ jsx5("div", { className: "text-sm font-medium text-white truncate", children: agent.name }),
+              agent.id === selectedAgentId && /* @__PURE__ */ jsx5(Check2, { className: "h-4 w-4 text-blue-400 flex-shrink-0 ml-2" })
+            ] }),
+            agent.description && /* @__PURE__ */ jsx5("div", { className: "text-xs text-gray-400 truncate", children: agent.description })
+          ] })
+        ] })
+      },
+      agent.id
+    )) })
+  ] });
+};
+
+// src/components/ChatInput.tsx
+import { useRef as useRef4, useEffect as useEffect4 } from "react";
+import { Send } from "lucide-react";
+import { jsx as jsx6, jsxs as jsxs4 } from "react/jsx-runtime";
 var ChatInput = ({
   value,
   onChange,
@@ -1208,7 +956,7 @@ var ChatInput = ({
   className = ""
 }) => {
   const textareaRef = useRef4(null);
-  useEffect5(() => {
+  useEffect4(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -1227,8 +975,9 @@ var ChatInput = ({
       onSend();
     }
   };
-  return /* @__PURE__ */ jsxs3("div", { className: "relative", children: [
-    /* @__PURE__ */ jsx5(
+  const hasContent = value.trim().length > 0;
+  return /* @__PURE__ */ jsxs4("div", { className: "relative", children: [
+    /* @__PURE__ */ jsx6(
       "textarea",
       {
         ref: textareaRef,
@@ -1238,27 +987,38 @@ var ChatInput = ({
         placeholder,
         disabled,
         rows: 1,
-        className: `resize-none pr-12 min-h-[52px] ${className}`,
+        className: `
+          resize-none pr-12 min-h-[52px] 
+          bg-gray-700 border border-gray-600 text-white placeholder-gray-400 
+          rounded-xl px-4 py-3 
+          focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+          transition-all duration-200
+          ${className}
+        `,
         style: {
           minHeight: "52px",
           maxHeight: "120px"
         }
       }
     ),
-    /* @__PURE__ */ jsx5(
+    /* @__PURE__ */ jsx6(
       "button",
       {
         onClick: handleSend,
-        disabled: !value.trim() || disabled,
-        className: "absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all",
-        children: /* @__PURE__ */ jsx5(Send, { className: "h-4 w-4 text-white" })
+        disabled: !hasContent || disabled,
+        className: `
+          absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200
+          ${hasContent && !disabled ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "bg-gray-600 text-gray-400 cursor-not-allowed"}
+          ${hasContent && !disabled ? "scale-100" : "scale-95 opacity-50"}
+        `,
+        children: /* @__PURE__ */ jsx6(Send, { className: "h-4 w-4" })
       }
     )
   ] });
 };
 
 // src/components/EmbeddableChat.tsx
-import { jsx as jsx6, jsxs as jsxs4 } from "react/jsx-runtime";
+import { jsx as jsx7, jsxs as jsxs5 } from "react/jsx-runtime";
 var EmbeddableChat = ({
   agentId,
   threadId = "default",
@@ -1267,16 +1027,19 @@ var EmbeddableChat = ({
   className = "",
   style = {},
   metadata,
+  availableAgents = [],
   UserMessageComponent = UserMessage,
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
   theme = "dark",
   showDebug = false,
+  showAgentSelector = true,
   placeholder = "Type your message...",
+  onAgentSelect,
   onResponse: _onResponse
 }) => {
-  const [input, setInput] = useState7("");
+  const [input, setInput] = useState6("");
   const messagesEndRef = useRef5(null);
   const {
     messages,
@@ -1290,7 +1053,7 @@ var EmbeddableChat = ({
     agent,
     metadata
   });
-  useEffect6(() => {
+  useEffect5(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -1316,7 +1079,7 @@ var EmbeddableChat = ({
       const timestamp = message.created_at ? new Date(message.created_at) : void 0;
       switch (messageType) {
         case "user":
-          return /* @__PURE__ */ jsx6(
+          return /* @__PURE__ */ jsx7(
             UserMessageComponent,
             {
               content: messageContent,
@@ -1325,7 +1088,7 @@ var EmbeddableChat = ({
             key
           );
         case "assistant":
-          return /* @__PURE__ */ jsx6(
+          return /* @__PURE__ */ jsx7(
             AssistantMessageComponent,
             {
               content: messageContent,
@@ -1340,7 +1103,7 @@ var EmbeddableChat = ({
             status: "completed",
             result: part.tool_result || "Completed successfully"
           }));
-          return /* @__PURE__ */ jsx6(
+          return /* @__PURE__ */ jsx7(
             AssistantWithToolCallsComponent,
             {
               content: messageContent,
@@ -1351,7 +1114,7 @@ var EmbeddableChat = ({
             key
           );
         case "plan":
-          return /* @__PURE__ */ jsx6(
+          return /* @__PURE__ */ jsx7(
             PlanMessageComponent,
             {
               content: messageContent,
@@ -1372,7 +1135,7 @@ var EmbeddableChat = ({
     AssistantWithToolCallsComponent,
     PlanMessageComponent
   ]);
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx7(
     "div",
     {
       className: `distri-chat ${themeClass} ${className} w-full`,
@@ -1381,24 +1144,33 @@ var EmbeddableChat = ({
         backgroundColor: "#343541",
         ...style
       },
-      children: /* @__PURE__ */ jsxs4("div", { className: "h-full flex flex-col", children: [
-        /* @__PURE__ */ jsxs4("div", { className: "flex-1 overflow-y-auto distri-scroll", children: [
-          messages.length === 0 ? /* @__PURE__ */ jsx6("div", { className: "h-full flex items-center justify-center", children: /* @__PURE__ */ jsxs4("div", { className: "text-center", children: [
-            /* @__PURE__ */ jsx6(MessageSquare, { className: "h-16 w-16 text-gray-600 mx-auto mb-4" }),
-            /* @__PURE__ */ jsx6("h3", { className: "text-lg font-medium text-white mb-2", children: "Start a conversation" }),
-            /* @__PURE__ */ jsx6("p", { className: "text-gray-400 max-w-sm", children: placeholder || "Type your message below to begin chatting." })
-          ] }) }) : /* @__PURE__ */ jsx6("div", { className: "space-y-0", children: renderedMessages }),
-          loading && /* @__PURE__ */ jsxs4("div", { className: "px-6 py-4 flex items-center space-x-2", style: { backgroundColor: "#2f2f2f" }, children: [
-            /* @__PURE__ */ jsx6("div", { className: "h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" }),
-            /* @__PURE__ */ jsx6("span", { className: "text-gray-400 text-sm", children: "Thinking..." })
+      children: /* @__PURE__ */ jsxs5("div", { className: "h-full flex flex-col", children: [
+        showAgentSelector && availableAgents && availableAgents.length > 0 && /* @__PURE__ */ jsx7("div", { className: "border-b border-gray-600 p-4", style: { backgroundColor: "#343541" }, children: /* @__PURE__ */ jsx7(
+          AgentDropdown,
+          {
+            agents: availableAgents,
+            selectedAgentId: agentId,
+            onAgentSelect: (agentId2) => onAgentSelect?.(agentId2),
+            className: "w-full"
+          }
+        ) }),
+        /* @__PURE__ */ jsxs5("div", { className: "flex-1 overflow-y-auto distri-scroll", children: [
+          messages.length === 0 ? /* @__PURE__ */ jsx7("div", { className: "h-full flex items-center justify-center", children: /* @__PURE__ */ jsxs5("div", { className: "text-center", children: [
+            /* @__PURE__ */ jsx7(MessageSquare, { className: "h-16 w-16 text-gray-600 mx-auto mb-4" }),
+            /* @__PURE__ */ jsx7("h3", { className: "text-lg font-medium text-white mb-2", children: "Start a conversation" }),
+            /* @__PURE__ */ jsx7("p", { className: "text-gray-400 max-w-sm", children: placeholder || "Type your message below to begin chatting." })
+          ] }) }) : /* @__PURE__ */ jsx7("div", { className: "space-y-0", children: renderedMessages }),
+          loading && /* @__PURE__ */ jsxs5("div", { className: "px-6 py-4 flex items-center space-x-2", style: { backgroundColor: "#2f2f2f" }, children: [
+            /* @__PURE__ */ jsx7("div", { className: "h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" }),
+            /* @__PURE__ */ jsx7("span", { className: "text-gray-400 text-sm", children: "Thinking..." })
           ] }),
-          error && /* @__PURE__ */ jsx6("div", { className: "px-6 py-4 bg-red-900/20 border border-red-500/20 mx-4 rounded-lg", children: /* @__PURE__ */ jsxs4("div", { className: "flex items-center space-x-2", children: [
-            /* @__PURE__ */ jsx6("div", { className: "h-4 w-4 rounded-full bg-red-500" }),
-            /* @__PURE__ */ jsx6("span", { className: "text-red-400 text-sm", children: error.message || String(error) })
+          error && /* @__PURE__ */ jsx7("div", { className: "px-6 py-4 bg-red-900/20 border border-red-500/20 mx-4 rounded-lg", children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-2", children: [
+            /* @__PURE__ */ jsx7("div", { className: "h-4 w-4 rounded-full bg-red-500" }),
+            /* @__PURE__ */ jsx7("span", { className: "text-red-400 text-sm", children: error.message || String(error) })
           ] }) }),
-          /* @__PURE__ */ jsx6("div", { ref: messagesEndRef })
+          /* @__PURE__ */ jsx7("div", { ref: messagesEndRef })
         ] }),
-        /* @__PURE__ */ jsx6("div", { className: "border-t border-gray-600 p-4", style: { backgroundColor: "#343541" }, children: /* @__PURE__ */ jsx6(
+        /* @__PURE__ */ jsx7("div", { className: "border-t border-gray-600 p-6", style: { backgroundColor: "#343541" }, children: /* @__PURE__ */ jsx7(
           ChatInput,
           {
             value: input,
@@ -1406,7 +1178,7 @@ var EmbeddableChat = ({
             onSend: sendMessage,
             placeholder,
             disabled: loading,
-            className: "w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className: "w-full"
           }
         ) })
       ] })
@@ -1415,9 +1187,121 @@ var EmbeddableChat = ({
 };
 
 // src/components/FullChat.tsx
-import { useState as useState8, useCallback as useCallback6 } from "react";
-import { Plus, MessageSquare as MessageSquare2, Settings as Settings2, MoreHorizontal, Trash2, Edit3, Bot as Bot2, Users, BarChart3 } from "lucide-react";
-import { jsx as jsx7, jsxs as jsxs5 } from "react/jsx-runtime";
+import { useState as useState8, useCallback as useCallback4 } from "react";
+import { Plus, MessageSquare as MessageSquare2, Settings as Settings2, MoreHorizontal, Trash2, Edit3, Bot as Bot3, Users } from "lucide-react";
+
+// src/useThreads.ts
+import { useState as useState7, useEffect as useEffect6, useCallback as useCallback3 } from "react";
+function useThreads() {
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
+  const [threads, setThreads] = useState7([]);
+  const [loading, setLoading] = useState7(true);
+  const [error, setError] = useState7(null);
+  const fetchThreads = useCallback3(async () => {
+    if (!client) {
+      console.log("[useThreads] Client not available, skipping fetch");
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      console.log("[useThreads] Fetching threads...");
+      const fetchedThreads = await client.getThreads();
+      console.log("[useThreads] Fetched threads:", fetchedThreads);
+      setThreads(fetchedThreads);
+    } catch (err) {
+      console.error("[useThreads] Failed to fetch threads:", err);
+      setError(err instanceof Error ? err : new Error("Failed to fetch threads"));
+    } finally {
+      setLoading(false);
+    }
+  }, [client]);
+  const fetchThread = useCallback3(async (threadId) => {
+    if (!client) {
+      throw new Error("Client not available");
+    }
+    try {
+      const response = await client.getThread(threadId);
+      return response;
+    } catch (err) {
+      console.error("[useThreads] Failed to fetch thread:", err);
+      throw err;
+    }
+  }, [client]);
+  const deleteThread = useCallback3(async (threadId) => {
+    if (!client) {
+      throw new Error("Client not available");
+    }
+    try {
+      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
+        method: "DELETE"
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete thread");
+      }
+      setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
+    } catch (err) {
+      setThreads((prev) => prev.filter((thread) => thread.id !== threadId));
+      console.warn("Failed to delete thread from server, but removed locally:", err);
+    }
+  }, [client]);
+  const updateThread = useCallback3(async (threadId, localId) => {
+    if (!client) {
+      return;
+    }
+    try {
+      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
+      if (response.ok) {
+        const updatedThread = await response.json();
+        setThreads((prev) => {
+          if (localId && prev.some((thread) => thread.id === localId)) {
+            return [
+              updatedThread,
+              ...prev.filter((thread) => thread.id !== localId && thread.id !== threadId)
+            ];
+          }
+          return prev.map(
+            (thread) => thread.id === threadId ? updatedThread : thread
+          );
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to update thread:", err);
+    }
+  }, [client]);
+  useEffect6(() => {
+    if (clientLoading) {
+      console.log("[useThreads] Client is loading, waiting...");
+      setLoading(true);
+      return;
+    }
+    if (clientError) {
+      console.error("[useThreads] Client error:", clientError);
+      setError(clientError);
+      setLoading(false);
+      return;
+    }
+    if (client) {
+      console.log("[useThreads] Client ready, fetching threads");
+      fetchThreads();
+    } else {
+      console.log("[useThreads] No client available");
+      setLoading(false);
+    }
+  }, [clientLoading, clientError, client, fetchThreads]);
+  return {
+    threads,
+    loading: loading || clientLoading,
+    error: error || clientError,
+    refetch: fetchThreads,
+    deleteThread,
+    fetchThread,
+    updateThread
+  };
+}
+
+// src/components/FullChat.tsx
+import { jsx as jsx8, jsxs as jsxs6 } from "react/jsx-runtime";
 var ThreadItem = ({
   thread,
   isActive,
@@ -1428,13 +1312,13 @@ var ThreadItem = ({
   const [isEditing, setIsEditing] = useState8(false);
   const [editTitle, setEditTitle] = useState8(thread.title || "New Chat");
   const [showMenu, setShowMenu] = useState8(false);
-  const handleRename = useCallback6(() => {
+  const handleRename = useCallback4(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = useCallback6((e) => {
+  const handleKeyPress = useCallback4((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -1442,15 +1326,15 @@ var ThreadItem = ({
       setIsEditing(false);
     }
   }, [handleRename, thread.title]);
-  return /* @__PURE__ */ jsx7(
+  return /* @__PURE__ */ jsx8(
     "div",
     {
       className: `group relative p-3 rounded-lg cursor-pointer transition-colors ${isActive ? "bg-white/10" : "hover:bg-white/5"}`,
       onClick,
-      children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center justify-between", children: [
-        /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
-          /* @__PURE__ */ jsx7(MessageSquare2, { className: `h-4 w-4 flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}` }),
-          isEditing ? /* @__PURE__ */ jsx7(
+      children: /* @__PURE__ */ jsxs6("div", { className: "flex items-center justify-between", children: [
+        /* @__PURE__ */ jsxs6("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
+          /* @__PURE__ */ jsx8(MessageSquare2, { className: `h-4 w-4 flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}` }),
+          isEditing ? /* @__PURE__ */ jsx8(
             "input",
             {
               value: editTitle,
@@ -1461,13 +1345,13 @@ var ThreadItem = ({
               autoFocus: true,
               onClick: (e) => e.stopPropagation()
             }
-          ) : /* @__PURE__ */ jsxs5("div", { className: "flex-1 min-w-0", children: [
-            /* @__PURE__ */ jsx7("p", { className: `text-sm font-medium truncate ${isActive ? "text-white" : "text-gray-200"}`, children: thread.title || "New Chat" }),
-            /* @__PURE__ */ jsx7("p", { className: "text-xs text-gray-400 truncate", children: thread.last_message || "No messages yet" })
+          ) : /* @__PURE__ */ jsxs6("div", { className: "flex-1 min-w-0", children: [
+            /* @__PURE__ */ jsx8("p", { className: `text-sm font-medium truncate ${isActive ? "text-white" : "text-gray-200"}`, children: thread.title || "New Chat" }),
+            /* @__PURE__ */ jsx8("p", { className: "text-xs text-gray-400 truncate", children: thread.last_message || "No messages yet" })
           ] })
         ] }),
-        !isEditing && /* @__PURE__ */ jsxs5("div", { className: "relative", children: [
-          /* @__PURE__ */ jsx7(
+        !isEditing && /* @__PURE__ */ jsxs6("div", { className: "relative", children: [
+          /* @__PURE__ */ jsx8(
             "button",
             {
               onClick: (e) => {
@@ -1475,11 +1359,11 @@ var ThreadItem = ({
                 setShowMenu(!showMenu);
               },
               className: "opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 transition-opacity",
-              children: /* @__PURE__ */ jsx7(MoreHorizontal, { className: "h-4 w-4 text-gray-400" })
+              children: /* @__PURE__ */ jsx8(MoreHorizontal, { className: "h-4 w-4 text-gray-400" })
             }
           ),
-          showMenu && /* @__PURE__ */ jsxs5("div", { className: "absolute right-0 top-6 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10", children: [
-            /* @__PURE__ */ jsxs5(
+          showMenu && /* @__PURE__ */ jsxs6("div", { className: "absolute right-0 top-6 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10", children: [
+            /* @__PURE__ */ jsxs6(
               "button",
               {
                 onClick: (e) => {
@@ -1489,12 +1373,12 @@ var ThreadItem = ({
                 },
                 className: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-white flex items-center space-x-2 rounded-t-lg",
                 children: [
-                  /* @__PURE__ */ jsx7(Edit3, { className: "h-3 w-3" }),
-                  /* @__PURE__ */ jsx7("span", { children: "Rename" })
+                  /* @__PURE__ */ jsx8(Edit3, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ jsx8("span", { children: "Rename" })
                 ]
               }
             ),
-            /* @__PURE__ */ jsxs5(
+            /* @__PURE__ */ jsxs6(
               "button",
               {
                 onClick: (e) => {
@@ -1504,8 +1388,8 @@ var ThreadItem = ({
                 },
                 className: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-red-400 flex items-center space-x-2 rounded-b-lg",
                 children: [
-                  /* @__PURE__ */ jsx7(Trash2, { className: "h-3 w-3" }),
-                  /* @__PURE__ */ jsx7("span", { children: "Delete" })
+                  /* @__PURE__ */ jsx8(Trash2, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ jsx8("span", { children: "Delete" })
                 ]
               }
             )
@@ -1539,16 +1423,16 @@ var FullChat = ({
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState8("default");
   const { threads, loading: threadsLoading, refetch: refetchThreads } = useThreads();
-  const handleNewChat = useCallback6(() => {
+  const handleNewChat = useCallback4(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = useCallback6((threadId) => {
+  const handleThreadSelect = useCallback4((threadId) => {
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = useCallback6((threadId) => {
+  const handleThreadDelete = useCallback4((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -1560,7 +1444,7 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = useCallback6((threadId, newTitle) => {
+  const handleThreadRename = useCallback4((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
@@ -1568,9 +1452,8 @@ var FullChat = ({
   const mainStyle = {
     marginLeft: showSidebar ? `${sidebarWidth}px` : "0px"
   };
-  const currentAgent = availableAgents.find((a) => a.id === agentId);
-  return /* @__PURE__ */ jsxs5("div", { className: `distri-chat ${themeClass} ${className} h-full flex`, style: { backgroundColor: "#343541" }, children: [
-    showSidebar && /* @__PURE__ */ jsxs5(
+  return /* @__PURE__ */ jsxs6("div", { className: `distri-chat ${themeClass} ${className} h-full flex`, style: { backgroundColor: "#343541" }, children: [
+    showSidebar && /* @__PURE__ */ jsxs6(
       "div",
       {
         className: "fixed left-0 top-0 h-full border-r flex flex-col distri-sidebar",
@@ -1580,85 +1463,73 @@ var FullChat = ({
           width: `${sidebarWidth}px`
         },
         children: [
-          /* @__PURE__ */ jsx7("div", { className: "p-4", children: /* @__PURE__ */ jsxs5(
+          /* @__PURE__ */ jsx8("div", { className: "p-4", children: /* @__PURE__ */ jsxs6(
             "button",
             {
               onClick: onLogoClick,
               className: "flex items-center space-x-2 text-white hover:bg-white/10 rounded-lg p-2 transition-colors w-full",
               children: [
-                /* @__PURE__ */ jsx7(Bot2, { className: "h-6 w-6" }),
-                /* @__PURE__ */ jsx7("span", { className: "font-semibold", children: "Distri" })
+                /* @__PURE__ */ jsx8(Bot3, { className: "h-6 w-6" }),
+                /* @__PURE__ */ jsx8("span", { className: "font-semibold", children: "Distri" })
               ]
             }
           ) }),
-          /* @__PURE__ */ jsx7("div", { className: "px-4 pb-4", children: /* @__PURE__ */ jsxs5(
+          /* @__PURE__ */ jsx8("div", { className: "px-4 pb-4", children: /* @__PURE__ */ jsxs6(
             "button",
             {
               onClick: handleNewChat,
               className: "w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors",
               children: [
-                /* @__PURE__ */ jsx7(Plus, { className: "h-4 w-4" }),
-                /* @__PURE__ */ jsx7("span", { className: "text-sm font-medium", children: "New Chat" })
+                /* @__PURE__ */ jsx8(Plus, { className: "h-4 w-4" }),
+                /* @__PURE__ */ jsx8("span", { className: "text-sm font-medium", children: "New Chat" })
               ]
             }
           ) }),
-          availableAgents.length > 0 && /* @__PURE__ */ jsxs5("div", { className: "px-4 pb-4", children: [
-            /* @__PURE__ */ jsx7("div", { className: "text-xs text-gray-400 mb-2 px-2", children: "Agent" }),
-            /* @__PURE__ */ jsx7(
-              "select",
+          availableAgents.length > 0 && /* @__PURE__ */ jsxs6("div", { className: "px-4 pb-6", children: [
+            /* @__PURE__ */ jsx8("div", { className: "text-xs text-gray-400 mb-3 px-2", children: "Agent" }),
+            /* @__PURE__ */ jsx8(
+              AgentDropdown,
               {
-                value: agentId,
-                onChange: (e) => onAgentSelect?.(e.target.value),
-                className: "w-full bg-gray-800 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
-                children: availableAgents.map((agent2) => /* @__PURE__ */ jsx7("option", { value: agent2.id, children: agent2.name }, agent2.id))
+                agents: availableAgents,
+                selectedAgentId: agentId,
+                onAgentSelect: (agentId2) => onAgentSelect?.(agentId2),
+                className: "w-full"
               }
-            ),
-            currentAgent?.description && /* @__PURE__ */ jsx7("p", { className: "text-xs text-gray-500 mt-1 px-2", children: currentAgent.description })
+            )
           ] }),
-          /* @__PURE__ */ jsxs5("div", { className: "px-4 pb-4", children: [
-            /* @__PURE__ */ jsx7("div", { className: "text-xs text-gray-400 mb-2 px-2", children: "Navigation" }),
-            /* @__PURE__ */ jsxs5("div", { className: "space-y-1", children: [
-              /* @__PURE__ */ jsxs5(
+          /* @__PURE__ */ jsxs6("div", { className: "px-4 pb-6", children: [
+            /* @__PURE__ */ jsx8("div", { className: "text-xs text-gray-400 mb-3 px-2", children: "Navigation" }),
+            /* @__PURE__ */ jsxs6("div", { className: "space-y-1", children: [
+              /* @__PURE__ */ jsxs6(
                 "button",
                 {
                   onClick: () => onPageChange?.("chat"),
-                  className: `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === "chat" ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5 hover:text-white"}`,
+                  className: `w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentPage === "chat" ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5 hover:text-white"}`,
                   children: [
-                    /* @__PURE__ */ jsx7(MessageSquare2, { className: "h-4 w-4" }),
-                    /* @__PURE__ */ jsx7("span", { children: "Chat" })
+                    /* @__PURE__ */ jsx8(MessageSquare2, { className: "h-4 w-4" }),
+                    /* @__PURE__ */ jsx8("span", { children: "Chat" })
                   ]
                 }
               ),
-              /* @__PURE__ */ jsxs5(
+              /* @__PURE__ */ jsxs6(
                 "button",
                 {
                   onClick: () => onPageChange?.("agents"),
-                  className: `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === "agents" ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5 hover:text-white"}`,
+                  className: `w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentPage === "agents" ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5 hover:text-white"}`,
                   children: [
-                    /* @__PURE__ */ jsx7(Users, { className: "h-4 w-4" }),
-                    /* @__PURE__ */ jsx7("span", { children: "Agents" })
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsxs5(
-                "button",
-                {
-                  onClick: () => onPageChange?.("tasks"),
-                  className: `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === "tasks" ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5 hover:text-white"}`,
-                  children: [
-                    /* @__PURE__ */ jsx7(BarChart3, { className: "h-4 w-4" }),
-                    /* @__PURE__ */ jsx7("span", { children: "Tasks" })
+                    /* @__PURE__ */ jsx8(Users, { className: "h-4 w-4" }),
+                    /* @__PURE__ */ jsx8("span", { children: "Agents" })
                   ]
                 }
               )
             ] })
           ] }),
-          currentPage === "chat" && /* @__PURE__ */ jsxs5("div", { className: "flex-1 overflow-y-auto px-4 space-y-2 distri-scroll", children: [
-            /* @__PURE__ */ jsx7("div", { className: "text-xs text-gray-400 mb-2 px-2", children: "Conversations" }),
-            threadsLoading ? /* @__PURE__ */ jsx7("div", { className: "text-center py-8", children: /* @__PURE__ */ jsx7("div", { className: "text-sm text-gray-400", children: "Loading threads..." }) }) : threads.length === 0 ? /* @__PURE__ */ jsxs5("div", { className: "text-center py-8", children: [
-              /* @__PURE__ */ jsx7(MessageSquare2, { className: "h-8 w-8 text-gray-600 mx-auto mb-2" }),
-              /* @__PURE__ */ jsx7("div", { className: "text-sm text-gray-400", children: "No conversations yet" })
-            ] }) : threads.map((thread) => /* @__PURE__ */ jsx7(
+          currentPage === "chat" && /* @__PURE__ */ jsxs6("div", { className: "flex-1 overflow-y-auto px-4 space-y-2 distri-scroll", children: [
+            /* @__PURE__ */ jsx8("div", { className: "text-xs text-gray-400 mb-3 px-2", children: "Conversations" }),
+            threadsLoading ? /* @__PURE__ */ jsx8("div", { className: "text-center py-12", children: /* @__PURE__ */ jsx8("div", { className: "text-sm text-gray-400", children: "Loading threads..." }) }) : threads.length === 0 ? /* @__PURE__ */ jsxs6("div", { className: "text-center py-12", children: [
+              /* @__PURE__ */ jsx8(MessageSquare2, { className: "h-8 w-8 text-gray-600 mx-auto mb-3" }),
+              /* @__PURE__ */ jsx8("div", { className: "text-sm text-gray-400", children: "No conversations yet" })
+            ] }) : threads.map((thread) => /* @__PURE__ */ jsx8(
               ThreadItem,
               {
                 thread,
@@ -1670,14 +1541,14 @@ var FullChat = ({
               thread.id
             ))
           ] }),
-          /* @__PURE__ */ jsx7("div", { className: "p-4 border-t border-gray-700", children: /* @__PURE__ */ jsxs5("button", { className: "w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-white/10 rounded-lg transition-colors", children: [
-            /* @__PURE__ */ jsx7(Settings2, { className: "h-4 w-4" }),
-            /* @__PURE__ */ jsx7("span", { className: "text-sm", children: "Settings" })
+          /* @__PURE__ */ jsx8("div", { className: "p-4 border-t border-gray-700/50", children: /* @__PURE__ */ jsxs6("button", { className: "w-full flex items-center space-x-3 px-3 py-2.5 text-gray-300 hover:bg-white/10 rounded-lg transition-colors", children: [
+            /* @__PURE__ */ jsx8(Settings2, { className: "h-4 w-4" }),
+            /* @__PURE__ */ jsx8("span", { className: "text-sm", children: "Settings" })
           ] }) })
         ]
       }
     ),
-    currentPage === "chat" && /* @__PURE__ */ jsx7("div", { className: "flex-1", style: mainStyle, children: /* @__PURE__ */ jsx7(
+    currentPage === "chat" && /* @__PURE__ */ jsx8("div", { className: "flex-1", style: mainStyle, children: /* @__PURE__ */ jsx8(
       EmbeddableChat,
       {
         agentId,
@@ -1698,7 +1569,7 @@ var FullChat = ({
 };
 
 // src/components/ChatContainer.tsx
-import { jsx as jsx8 } from "react/jsx-runtime";
+import { jsx as jsx9 } from "react/jsx-runtime";
 var ChatContainer = ({
   variant = "embedded",
   height = 500,
@@ -1709,7 +1580,7 @@ var ChatContainer = ({
 }) => {
   const heightString = typeof height === "number" ? `${height}px` : height;
   if (variant === "full") {
-    return /* @__PURE__ */ jsx8(
+    return /* @__PURE__ */ jsx9(
       FullChat,
       {
         ...props,
@@ -1718,7 +1589,7 @@ var ChatContainer = ({
       }
     );
   }
-  return /* @__PURE__ */ jsx8(
+  return /* @__PURE__ */ jsx9(
     EmbeddableChat,
     {
       ...props,
@@ -1730,162 +1601,19 @@ var ChatContainer = ({
   );
 };
 
-// src/components/ApprovalDialog.tsx
-import { useState as useState9 } from "react";
-import { AlertTriangle, CheckCircle as CheckCircle2, XCircle as XCircle2 } from "lucide-react";
-import { jsx as jsx9, jsxs as jsxs6 } from "react/jsx-runtime";
-var ApprovalDialog = ({
-  toolCalls,
-  reason,
-  onApprove,
-  onDeny,
-  onCancel
-}) => {
-  const [isVisible, setIsVisible] = useState9(true);
-  if (!isVisible)
-    return null;
-  const handleApprove = () => {
-    setIsVisible(false);
-    onApprove();
-  };
-  const handleDeny = () => {
-    setIsVisible(false);
-    onDeny();
-  };
-  const handleCancel = () => {
-    setIsVisible(false);
-    onCancel();
-  };
-  return /* @__PURE__ */ jsx9("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50", children: /* @__PURE__ */ jsxs6("div", { className: "bg-white rounded-lg shadow-xl max-w-md w-full mx-4", children: [
-    /* @__PURE__ */ jsxs6("div", { className: "flex items-center p-4 border-b border-gray-200", children: [
-      /* @__PURE__ */ jsx9(AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
-      /* @__PURE__ */ jsx9("h3", { className: "text-lg font-semibold text-gray-900", children: "Tool Execution Approval" })
-    ] }),
-    /* @__PURE__ */ jsxs6("div", { className: "p-4", children: [
-      reason && /* @__PURE__ */ jsx9("div", { className: "mb-4", children: /* @__PURE__ */ jsx9("p", { className: "text-sm text-gray-700", children: reason }) }),
-      /* @__PURE__ */ jsxs6("div", { className: "mb-4", children: [
-        /* @__PURE__ */ jsx9("h4", { className: "text-sm font-medium text-gray-900 mb-2", children: "Tools to execute:" }),
-        /* @__PURE__ */ jsx9("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ jsx9("div", { className: "flex items-center p-2 bg-gray-50 rounded", children: /* @__PURE__ */ jsxs6("div", { className: "flex-1", children: [
-          /* @__PURE__ */ jsx9("p", { className: "text-sm font-medium text-gray-900", children: toolCall.tool_name }),
-          toolCall.input && /* @__PURE__ */ jsx9("p", { className: "text-xs text-gray-600 mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
-        ] }) }, toolCall.tool_call_id)) })
-      ] }),
-      /* @__PURE__ */ jsxs6("div", { className: "flex space-x-3", children: [
-        /* @__PURE__ */ jsxs6(
-          "button",
-          {
-            onClick: handleApprove,
-            className: "flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors",
-            children: [
-              /* @__PURE__ */ jsx9(CheckCircle2, { className: "w-4 h-4 mr-2" }),
-              "Approve"
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxs6(
-          "button",
-          {
-            onClick: handleDeny,
-            className: "flex-1 flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors",
-            children: [
-              /* @__PURE__ */ jsx9(XCircle2, { className: "w-4 h-4 mr-2" }),
-              "Deny"
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsx9(
-          "button",
-          {
-            onClick: handleCancel,
-            className: "px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors",
-            children: "Cancel"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
-};
-var ApprovalDialog_default = ApprovalDialog;
-
-// src/components/Toast.tsx
-import { useState as useState10, useEffect as useEffect7 } from "react";
-import { CheckCircle as CheckCircle3, XCircle as XCircle3, AlertTriangle as AlertTriangle2, Info, X } from "lucide-react";
-import { jsx as jsx10, jsxs as jsxs7 } from "react/jsx-runtime";
-var Toast = ({
-  message,
-  type = "info",
-  duration = 3e3,
-  onClose
-}) => {
-  const [isVisible, setIsVisible] = useState10(true);
-  useEffect7(() => {
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-        setTimeout(() => onClose?.(), 300);
-      }, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [duration, onClose]);
-  const getIcon = () => {
-    switch (type) {
-      case "success":
-        return /* @__PURE__ */ jsx10(CheckCircle3, { className: "w-5 h-5 text-green-500" });
-      case "error":
-        return /* @__PURE__ */ jsx10(XCircle3, { className: "w-5 h-5 text-red-500" });
-      case "warning":
-        return /* @__PURE__ */ jsx10(AlertTriangle2, { className: "w-5 h-5 text-yellow-500" });
-      case "info":
-      default:
-        return /* @__PURE__ */ jsx10(Info, { className: "w-5 h-5 text-blue-500" });
-    }
-  };
-  const getBgColor = () => {
-    switch (type) {
-      case "success":
-        return "bg-green-50 border-green-200";
-      case "error":
-        return "bg-red-50 border-red-200";
-      case "warning":
-        return "bg-yellow-50 border-yellow-200";
-      case "info":
-      default:
-        return "bg-blue-50 border-blue-200";
-    }
-  };
-  if (!isVisible)
-    return null;
-  return /* @__PURE__ */ jsx10("div", { className: `fixed top-4 right-4 z-50 max-w-sm w-full ${getBgColor()} border rounded-lg shadow-lg transition-opacity duration-300 ${isVisible ? "opacity-100" : "opacity-0"}`, children: /* @__PURE__ */ jsxs7("div", { className: "flex items-start p-4", children: [
-    /* @__PURE__ */ jsx10("div", { className: "flex-shrink-0", children: getIcon() }),
-    /* @__PURE__ */ jsx10("div", { className: "ml-3 flex-1", children: /* @__PURE__ */ jsx10("p", { className: "text-sm font-medium text-gray-900", children: message }) }),
-    /* @__PURE__ */ jsx10("div", { className: "ml-4 flex-shrink-0", children: /* @__PURE__ */ jsx10(
-      "button",
-      {
-        onClick: () => {
-          setIsVisible(false);
-          setTimeout(() => onClose?.(), 300);
-        },
-        className: "inline-flex text-gray-400 hover:text-gray-600 focus:outline-none",
-        children: /* @__PURE__ */ jsx10(X, { className: "w-4 h-4" })
-      }
-    ) })
-  ] }) });
-};
-var Toast_default = Toast;
-
 // src/components/Chat.tsx
-import { useState as useState11, useRef as useRef6, useEffect as useEffect8, useCallback as useCallback7, useMemo as useMemo4 } from "react";
-import { Send as Send2, Loader2, Square, Eye, EyeOff, Bot as Bot3 } from "lucide-react";
-import { Fragment as Fragment2, jsx as jsx11, jsxs as jsxs8 } from "react/jsx-runtime";
+import { useState as useState9, useRef as useRef6, useEffect as useEffect7, useCallback as useCallback5, useMemo as useMemo4 } from "react";
+import { Send as Send2, Loader2, Square, Eye, EyeOff, Bot as Bot4 } from "lucide-react";
+import { Fragment as Fragment2, jsx as jsx10, jsxs as jsxs7 } from "react/jsx-runtime";
 var ChatInput2 = ({ value, onChange, onSend, disabled, isStreaming, placeholder = "Type a message..." }) => {
-  const handleKeyPress = useCallback7((e) => {
+  const handleKeyPress = useCallback5((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSend();
     }
   }, [onSend]);
-  return /* @__PURE__ */ jsx11("div", { className: "border-t border-gray-700 bg-gray-900 p-4", children: /* @__PURE__ */ jsx11("div", { className: "max-w-4xl mx-auto", children: /* @__PURE__ */ jsx11("div", { className: "flex gap-3 items-end", children: /* @__PURE__ */ jsxs8("div", { className: "flex-1 relative flex gap-2 items-center", children: [
-    /* @__PURE__ */ jsx11(
+  return /* @__PURE__ */ jsx10("div", { className: "border-t border-gray-700 bg-gray-900 p-4", children: /* @__PURE__ */ jsx10("div", { className: "max-w-4xl mx-auto", children: /* @__PURE__ */ jsx10("div", { className: "flex gap-3 items-end", children: /* @__PURE__ */ jsxs7("div", { className: "flex-1 relative flex gap-2 items-center", children: [
+    /* @__PURE__ */ jsx10(
       "textarea",
       {
         value,
@@ -1898,25 +1626,25 @@ var ChatInput2 = ({ value, onChange, onSend, disabled, isStreaming, placeholder 
         disabled
       }
     ),
-    /* @__PURE__ */ jsx11(
+    /* @__PURE__ */ jsx10(
       "button",
       {
         onClick: onSend,
         disabled: !value.trim() || disabled,
         className: "absolute right-3 h-12 w-12 bottom-3 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center",
-        children: isStreaming ? /* @__PURE__ */ jsx11(Square, { className: "h-4 w-4" }) : /* @__PURE__ */ jsx11(Send2, { className: "h-4 w-4" })
+        children: isStreaming ? /* @__PURE__ */ jsx10(Square, { className: "h-4 w-4" }) : /* @__PURE__ */ jsx10(Send2, { className: "h-4 w-4" })
       }
     )
   ] }) }) }) });
 };
 var DebugToggle = ({ showDebug, onToggle }) => {
-  return /* @__PURE__ */ jsxs8(
+  return /* @__PURE__ */ jsxs7(
     "button",
     {
       onClick: onToggle,
       className: "flex items-center gap-2 px-3 py-1 text-sm border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors text-white",
       children: [
-        showDebug ? /* @__PURE__ */ jsx11(EyeOff, { className: "h-4 w-4" }) : /* @__PURE__ */ jsx11(Eye, { className: "h-4 w-4" }),
+        showDebug ? /* @__PURE__ */ jsx10(EyeOff, { className: "h-4 w-4" }) : /* @__PURE__ */ jsx10(Eye, { className: "h-4 w-4" }),
         "Debug"
       ]
     }
@@ -1937,7 +1665,7 @@ var ChatContent = ({
   PlanMessageComponent = PlanMessage,
   onExternalToolCall
 }) => {
-  const [input, setInput] = useState11("");
+  const [input, setInput] = useState9("");
   const messagesEndRef = useRef6(null);
   const { config, updateConfig } = useChatConfig();
   const {
@@ -1952,18 +1680,18 @@ var ChatContent = ({
     agent,
     metadata
   });
-  useEffect8(() => {
+  useEffect7(() => {
     if (tools && onExternalToolCall) {
       console.warn("Legacy tools prop detected. Consider migrating to the new useTools hook for better performance.");
     }
   }, [tools, onExternalToolCall]);
-  const extractTextFromMessage2 = useCallback7((message) => {
+  const extractTextFromMessage2 = useCallback5((message) => {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
     return message.parts.filter((part) => part?.kind === "text" && part?.text).map((part) => part.text).join("") || "";
   }, []);
-  const shouldDisplayMessage2 = useCallback7((message) => {
+  const shouldDisplayMessage2 = useCallback5((message) => {
     if (!message)
       return false;
     if (message.role === "user") {
@@ -1984,15 +1712,15 @@ var ChatContent = ({
     }
     return false;
   }, [extractTextFromMessage2, config.showDebug]);
-  const scrollToBottom2 = useCallback7(() => {
+  const scrollToBottom2 = useCallback5(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
-  useEffect8(() => {
+  useEffect7(() => {
     if (threadId && messages.length > 0) {
       scrollToBottom2();
     }
   }, [messages, threadId, scrollToBottom2]);
-  const sendMessage = useCallback7(async () => {
+  const sendMessage = useCallback5(async () => {
     if (!input.trim() || loading || isStreaming)
       return;
     const messageText = input.trim();
@@ -2011,7 +1739,7 @@ var ChatContent = ({
       const messageText = extractTextFromMessage2(message);
       const isUser = message.role === "user";
       if (isUser) {
-        return /* @__PURE__ */ jsx11(
+        return /* @__PURE__ */ jsx10(
           UserMessageComponent,
           {
             content: messageText,
@@ -2028,7 +1756,7 @@ var ChatContent = ({
           result: "Tool executed successfully",
           error: null
         }));
-        return /* @__PURE__ */ jsx11(
+        return /* @__PURE__ */ jsx10(
           AssistantWithToolCallsComponent,
           {
             content: messageText,
@@ -2041,7 +1769,7 @@ var ChatContent = ({
         );
       }
       if (message.metadata?.type === "plan" || message.metadata?.plan) {
-        return /* @__PURE__ */ jsx11(
+        return /* @__PURE__ */ jsx10(
           PlanMessageComponent,
           {
             content: messageText || message.metadata?.plan || "Planning...",
@@ -2051,7 +1779,7 @@ var ChatContent = ({
           message.messageId || `plan-${index}`
         );
       }
-      return /* @__PURE__ */ jsx11(
+      return /* @__PURE__ */ jsx10(
         AssistantMessageComponent,
         {
           content: messageText || "Empty message",
@@ -2063,40 +1791,40 @@ var ChatContent = ({
       );
     });
   }, [messages, shouldDisplayMessage2, extractTextFromMessage2, isStreaming, UserMessageComponent, AssistantMessageComponent, AssistantWithToolCallsComponent, PlanMessageComponent]);
-  return /* @__PURE__ */ jsxs8("div", { className: "flex flex-col bg-gray-900 text-white", style: { height }, children: [
-    /* @__PURE__ */ jsx11("div", { className: "flex-shrink-0 border-b border-gray-700 bg-gray-900 p-4", children: /* @__PURE__ */ jsxs8("div", { className: "max-w-4xl mx-auto flex items-center justify-between", children: [
-      /* @__PURE__ */ jsx11("div", { children: agent && /* @__PURE__ */ jsxs8(Fragment2, { children: [
-        /* @__PURE__ */ jsx11("h2", { className: "text-lg font-semibold text-white", children: agent.name }),
-        /* @__PURE__ */ jsx11("p", { className: "text-sm text-gray-400", children: agent.description })
+  return /* @__PURE__ */ jsxs7("div", { className: "flex flex-col bg-gray-900 text-white", style: { height }, children: [
+    /* @__PURE__ */ jsx10("div", { className: "flex-shrink-0 border-b border-gray-700 bg-gray-900 p-4", children: /* @__PURE__ */ jsxs7("div", { className: "max-w-4xl mx-auto flex items-center justify-between", children: [
+      /* @__PURE__ */ jsx10("div", { children: agent && /* @__PURE__ */ jsxs7(Fragment2, { children: [
+        /* @__PURE__ */ jsx10("h2", { className: "text-lg font-semibold text-white", children: agent.name }),
+        /* @__PURE__ */ jsx10("p", { className: "text-sm text-gray-400", children: agent.description })
       ] }) }),
-      /* @__PURE__ */ jsxs8("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ jsx11(
+      /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ jsx10(
           DebugToggle,
           {
             showDebug: config.showDebug,
             onToggle: () => updateConfig({ showDebug: !config.showDebug })
           }
         ),
-        (loading || isStreaming) && /* @__PURE__ */ jsxs8("div", { className: "flex items-center text-blue-400", children: [
-          /* @__PURE__ */ jsx11(Loader2, { className: "h-4 w-4 animate-spin mr-2" }),
-          /* @__PURE__ */ jsx11("span", { className: "text-sm", children: "Processing..." })
+        (loading || isStreaming) && /* @__PURE__ */ jsxs7("div", { className: "flex items-center text-blue-400", children: [
+          /* @__PURE__ */ jsx10(Loader2, { className: "h-4 w-4 animate-spin mr-2" }),
+          /* @__PURE__ */ jsx10("span", { className: "text-sm", children: "Processing..." })
         ] })
       ] })
     ] }) }),
-    /* @__PURE__ */ jsxs8("div", { className: "flex-1 overflow-y-auto bg-gray-900", children: [
-      error && /* @__PURE__ */ jsx11("div", { className: "max-w-4xl mx-auto px-4 py-4", children: /* @__PURE__ */ jsx11("div", { className: "bg-red-900 border border-red-700 rounded-lg p-4", children: /* @__PURE__ */ jsxs8("p", { className: "text-red-200", children: [
+    /* @__PURE__ */ jsxs7("div", { className: "flex-1 overflow-y-auto bg-gray-900", children: [
+      error && /* @__PURE__ */ jsx10("div", { className: "max-w-4xl mx-auto px-4 py-4", children: /* @__PURE__ */ jsx10("div", { className: "bg-red-900 border border-red-700 rounded-lg p-4", children: /* @__PURE__ */ jsxs7("p", { className: "text-red-200", children: [
         "Error: ",
         error.message
       ] }) }) }),
-      /* @__PURE__ */ jsx11("div", { className: "min-h-full", children: messages.length === 0 ? /* @__PURE__ */ jsx11("div", { className: "flex-1 flex items-center justify-center", children: /* @__PURE__ */ jsxs8("div", { className: "text-center max-w-2xl mx-auto px-4", children: [
-        /* @__PURE__ */ jsx11("div", { className: "w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6", children: /* @__PURE__ */ jsx11(Bot3, { className: "h-8 w-8 text-white" }) }),
-        /* @__PURE__ */ jsx11("h1", { className: "text-2xl font-semibold text-white mb-2", children: agent?.name || "Assistant" }),
-        /* @__PURE__ */ jsx11("p", { className: "text-gray-400 text-lg mb-8", children: agent?.description || "How can I help you today?" }),
-        /* @__PURE__ */ jsx11("div", { className: "text-sm text-gray-500", children: /* @__PURE__ */ jsx11("p", { children: "Start a conversation by typing a message below." }) })
+      /* @__PURE__ */ jsx10("div", { className: "min-h-full", children: messages.length === 0 ? /* @__PURE__ */ jsx10("div", { className: "flex-1 flex items-center justify-center", children: /* @__PURE__ */ jsxs7("div", { className: "text-center max-w-2xl mx-auto px-4", children: [
+        /* @__PURE__ */ jsx10("div", { className: "w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6", children: /* @__PURE__ */ jsx10(Bot4, { className: "h-8 w-8 text-white" }) }),
+        /* @__PURE__ */ jsx10("h1", { className: "text-2xl font-semibold text-white mb-2", children: agent?.name || "Assistant" }),
+        /* @__PURE__ */ jsx10("p", { className: "text-gray-400 text-lg mb-8", children: agent?.description || "How can I help you today?" }),
+        /* @__PURE__ */ jsx10("div", { className: "text-sm text-gray-500", children: /* @__PURE__ */ jsx10("p", { children: "Start a conversation by typing a message below." }) })
       ] }) }) : renderedMessages }),
-      /* @__PURE__ */ jsx11("div", { ref: messagesEndRef })
+      /* @__PURE__ */ jsx10("div", { ref: messagesEndRef })
     ] }),
-    /* @__PURE__ */ jsx11(
+    /* @__PURE__ */ jsx10(
       ChatInput2,
       {
         value: input,
@@ -2110,340 +1838,228 @@ var ChatContent = ({
   ] });
 };
 var Chat = (props) => {
-  return /* @__PURE__ */ jsx11(ChatProvider, { children: /* @__PURE__ */ jsx11(ChatContent, { ...props }) });
+  return /* @__PURE__ */ jsx10(ChatProvider, { children: /* @__PURE__ */ jsx10(ChatContent, { ...props }) });
 };
 
-// src/components/ExternalToolManager.tsx
-import { useState as useState12, useCallback as useCallback8, useEffect as useEffect9 } from "react";
-import { X as X2, Loader2 as Loader22 } from "lucide-react";
-
-// src/builtinHandlers.ts
-import { APPROVAL_REQUEST_TOOL_NAME } from "@distri/core";
-var pendingToolCalls = /* @__PURE__ */ new Map();
-var showToast = null;
-var showApprovalDialog = null;
-var initializeBuiltinHandlers = (callbacks) => {
-  showToast = callbacks.showToast;
-  showApprovalDialog = callbacks.showApprovalDialog;
-};
-var clearPendingToolCalls = () => {
-  pendingToolCalls.clear();
-};
-var createBuiltinToolHandlers = () => ({
-  // Approval request handler - opens a dialog
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall, onToolComplete) => {
-    try {
-      const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
-      const toolCallsToApprove = input.tool_calls || [];
-      const reason = input.reason;
-      if (!showApprovalDialog) {
-        console.warn("Approval dialog not initialized");
-        return null;
-      }
-      const approved = await showApprovalDialog(toolCallsToApprove, reason);
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: { approved, reason: approved ? "Approved by user" : "Denied by user" },
-        success: true
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-      return {
-        approved,
-        reason: approved ? "Approved by user" : "Denied by user",
-        tool_calls: toolCallsToApprove
-      };
-    } catch (error) {
-      console.error("Error in approval request handler:", error);
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-      return null;
-    }
-  },
-  // Toast handler - shows a toast and returns success
-  toast: async (toolCall, onToolComplete) => {
-    try {
-      const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
-      const message = input.message || "Toast message";
-      const type = input.type || "info";
-      if (!showToast) {
-        console.warn("Toast not initialized");
-        return null;
-      }
-      showToast(message, type);
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: { success: true, message: "Toast displayed successfully" },
-        success: true
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-      return {
-        success: true,
-        message: "Toast displayed successfully"
-      };
-    } catch (error) {
-      console.error("Error in toast handler:", error);
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-      return null;
-    }
-  },
-  // Input request handler - shows prompt
-  input_request: async (toolCall, onToolComplete) => {
-    try {
-      const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
-      const prompt2 = input.prompt || "Please provide input:";
-      const defaultValue = input.default || "";
-      const userInput = window.prompt(prompt2, defaultValue);
-      if (userInput === null) {
-        const result2 = {
-          tool_call_id: toolCall.tool_call_id,
-          result: null,
-          success: false,
-          error: "User cancelled input"
-        };
-        await onToolComplete(toolCall.tool_call_id, result2);
-        return null;
-      }
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: { input: userInput },
-        success: true
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-      return {
-        input: userInput
-      };
-    } catch (error) {
-      console.error("Error in input request handler:", error);
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-      return null;
-    }
-  }
-});
-var processExternalToolCalls = async (toolCalls, handlers, onToolComplete) => {
-  const results = [];
-  for (const toolCall of toolCalls) {
-    const handler = handlers[toolCall.tool_name];
-    if (!handler) {
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: `No handler found for tool: ${toolCall.tool_name}`
-      };
-      results.push(result);
-      continue;
-    }
-    try {
-      const singleToolComplete = async (_toolCallId, result) => {
-        results.push(result);
-        await onToolComplete([...results]);
-      };
-      await handler(toolCall, singleToolComplete);
-    } catch (error) {
-      console.error(`Error executing tool ${toolCall.tool_name}:`, error);
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-      results.push(result);
-      await onToolComplete([...results]);
-    }
-  }
-};
-
-// src/components/ExternalToolManager.tsx
-import { Fragment as Fragment3, jsx as jsx12, jsxs as jsxs9 } from "react/jsx-runtime";
-var ExternalToolManager = ({
-  toolCalls,
-  onToolComplete,
-  onCancel
-}) => {
-  const [isProcessing, setIsProcessing] = useState12(false);
-  const [toasts, setToasts] = useState12([]);
-  const [approvalDialog, setApprovalDialog] = useState12(null);
-  const [processingResults, setProcessingResults] = useState12([]);
-  useEffect9(() => {
-    initializeBuiltinHandlers({
-      onToolComplete: (results) => {
-        setProcessingResults((prev) => [...prev, ...results]);
-        onToolComplete(results);
-      },
-      onCancel: () => {
-        clearPendingToolCalls();
-        onCancel();
-      },
-      showToast: (message, type = "info") => {
-        const id = Math.random().toString(36).substr(2, 9);
-        setToasts((prev) => [...prev, { id, message, type }]);
-      },
-      showApprovalDialog: (toolCalls2, reason) => {
-        return new Promise((resolve) => {
-          setApprovalDialog({ toolCalls: toolCalls2, reason, resolve });
-        });
-      }
-    });
-  }, [onToolComplete, onCancel]);
-  useEffect9(() => {
-    if (toolCalls.length > 0 && !isProcessing) {
-      processToolCalls();
-    }
-  }, [toolCalls]);
-  const processToolCalls = useCallback8(async () => {
-    if (toolCalls.length === 0)
+// src/useAgents.ts
+import { useState as useState10, useEffect as useEffect8, useCallback as useCallback6 } from "react";
+function useAgents() {
+  const { client, error: clientError, isLoading: clientLoading } = useDistri();
+  const [agents, setAgents] = useState10([]);
+  const [loading, setLoading] = useState10(true);
+  const [error, setError] = useState10(null);
+  const fetchAgents = useCallback6(async () => {
+    if (!client) {
+      console.log("[useAgents] Client not available, skipping fetch");
       return;
-    setIsProcessing(true);
-    setProcessingResults([]);
+    }
     try {
-      const handlers = createBuiltinToolHandlers();
-      const localOnToolComplete = async (results) => {
-        setProcessingResults((prev) => [...prev, ...results]);
-        onToolComplete(results);
-      };
-      await processExternalToolCalls(toolCalls, handlers, localOnToolComplete);
-    } catch (error) {
-      console.error("Error processing tool calls:", error);
-      const errorResults = toolCalls.map((toolCall) => ({
+      setLoading(true);
+      setError(null);
+      console.log("[useAgents] Fetching agents...");
+      const fetchedAgents = await client.getAgents();
+      console.log("[useAgents] Fetched agents:", fetchedAgents);
+      setAgents(fetchedAgents);
+    } catch (err) {
+      console.error("[useAgents] Failed to fetch agents:", err);
+      setError(err instanceof Error ? err : new Error("Failed to fetch agents"));
+    } finally {
+      setLoading(false);
+    }
+  }, [client]);
+  const getAgent = useCallback6(async (agentId) => {
+    if (!client) {
+      throw new Error("Client not available");
+    }
+    try {
+      const agent = await client.getAgent(agentId);
+      setAgents((prev) => prev.map((a) => a.id === agentId ? agent : a));
+      return agent;
+    } catch (err) {
+      const error2 = err instanceof Error ? err : new Error("Failed to get agent");
+      setError(error2);
+      throw error2;
+    }
+  }, [client]);
+  useEffect8(() => {
+    if (clientLoading) {
+      console.log("[useAgents] Client is loading, waiting...");
+      setLoading(true);
+      return;
+    }
+    if (clientError) {
+      console.error("[useAgents] Client error:", clientError);
+      setError(clientError);
+      setLoading(false);
+      return;
+    }
+    if (client) {
+      console.log("[useAgents] Client ready, fetching agents");
+      fetchAgents();
+    } else {
+      console.log("[useAgents] No client available");
+      setLoading(false);
+    }
+  }, [clientLoading, clientError, client, fetchAgents]);
+  return {
+    agents,
+    loading: loading || clientLoading,
+    error: error || clientError,
+    refetch: fetchAgents,
+    getAgent
+  };
+}
+
+// src/useTools.ts
+import { useCallback as useCallback7, useRef as useRef7 } from "react";
+function useTools({ agent }) {
+  const toolsRef = useRef7(/* @__PURE__ */ new Set());
+  const addTool = useCallback7((tool) => {
+    if (!agent) {
+      console.warn("Cannot add tool: no agent provided");
+      return;
+    }
+    agent.addTool(tool);
+    toolsRef.current.add(tool.name);
+  }, [agent]);
+  const addTools = useCallback7((tools) => {
+    if (!agent) {
+      console.warn("Cannot add tools: no agent provided");
+      return;
+    }
+    tools.forEach((tool) => {
+      agent.addTool(tool);
+      toolsRef.current.add(tool.name);
+    });
+  }, [agent]);
+  const removeTool = useCallback7((toolName) => {
+    if (!agent) {
+      console.warn("Cannot remove tool: no agent provided");
+      return;
+    }
+    agent.removeTool(toolName);
+    toolsRef.current.delete(toolName);
+  }, [agent]);
+  const executeTool = useCallback7(async (toolCall) => {
+    if (!agent) {
+      return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      }));
-      setProcessingResults(errorResults);
-      onToolComplete(errorResults);
-    } finally {
-      setIsProcessing(false);
+        error: "No agent provided"
+      };
     }
-  }, [toolCalls, onToolComplete]);
-  const handleApprovalDialogResponse = useCallback8((approved) => {
-    if (approvalDialog) {
-      approvalDialog.resolve(approved);
-      setApprovalDialog(null);
-    }
-  }, [approvalDialog]);
-  const handleApprovalDialogCancel = useCallback8(() => {
-    if (approvalDialog) {
-      approvalDialog.resolve(false);
-      setApprovalDialog(null);
-    }
-  }, [approvalDialog]);
-  const removeToast = useCallback8((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-  if (toolCalls.length === 0)
-    return null;
-  return /* @__PURE__ */ jsxs9(Fragment3, { children: [
-    /* @__PURE__ */ jsxs9("div", { className: "my-4 p-4 border border-blue-200 bg-blue-50 rounded-lg", children: [
-      /* @__PURE__ */ jsxs9("div", { className: "flex items-center justify-between mb-3", children: [
-        /* @__PURE__ */ jsxs9("div", { className: "flex items-center gap-2", children: [
-          /* @__PURE__ */ jsx12(Loader22, { className: `w-5 h-5 text-blue-600 ${isProcessing ? "animate-spin" : ""}` }),
-          /* @__PURE__ */ jsx12("span", { className: "font-semibold text-blue-800", children: isProcessing ? "Processing External Tools..." : "External Tools Completed" })
-        ] }),
-        /* @__PURE__ */ jsxs9(
-          "button",
-          {
-            onClick: onCancel,
-            className: "flex items-center gap-1 px-2 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-100 rounded transition-colors",
-            children: [
-              /* @__PURE__ */ jsx12(X2, { className: "w-4 h-4" }),
-              "Cancel"
-            ]
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsx12("div", { className: "space-y-2", children: toolCalls.map((toolCall) => {
-        const result = processingResults.find((r) => r.tool_call_id === toolCall.tool_call_id);
-        const status = result ? result.success ? "completed" : "error" : isProcessing ? "processing" : "pending";
-        return /* @__PURE__ */ jsxs9("div", { className: "flex items-center justify-between p-2 bg-white rounded border", children: [
-          /* @__PURE__ */ jsxs9("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsx12("span", { className: "font-medium", children: toolCall.tool_name }),
-            /* @__PURE__ */ jsx12("span", { className: `text-sm ${status === "completed" ? "text-green-600" : status === "error" ? "text-red-600" : status === "processing" ? "text-blue-600" : "text-gray-500"}`, children: status })
-          ] }),
-          result && !result.success && /* @__PURE__ */ jsx12("span", { className: "text-xs text-red-600", children: result.error })
-        ] }, toolCall.tool_call_id);
-      }) }),
-      processingResults.length > 0 && /* @__PURE__ */ jsx12("div", { className: "mt-3 p-2 bg-gray-100 rounded", children: /* @__PURE__ */ jsxs9("p", { className: "text-sm text-gray-700", children: [
-        processingResults.filter((r) => r.success).length,
-        " of ",
-        processingResults.length,
-        " tools completed successfully"
-      ] }) })
-    ] }),
-    approvalDialog && /* @__PURE__ */ jsx12(
-      ApprovalDialog_default,
-      {
-        toolCalls: approvalDialog.toolCalls,
-        reason: approvalDialog.reason,
-        onApprove: () => handleApprovalDialogResponse(true),
-        onDeny: () => handleApprovalDialogResponse(false),
-        onCancel: handleApprovalDialogCancel
-      }
-    ),
-    toasts.map((toast) => /* @__PURE__ */ jsx12(
-      Toast_default,
-      {
-        message: toast.message,
-        type: toast.type,
-        onClose: () => removeToast(toast.id)
+    return agent.executeTool(toolCall);
+  }, [agent]);
+  const getTools = useCallback7(() => {
+    if (!agent)
+      return [];
+    return agent.getTools();
+  }, [agent]);
+  const hasTool = useCallback7((toolName) => {
+    if (!agent)
+      return false;
+    return agent.hasTool(toolName);
+  }, [agent]);
+  return {
+    addTool,
+    addTools,
+    removeTool,
+    executeTool,
+    getTools,
+    hasTool
+  };
+}
+var createTool = (name, description, parameters, handler) => ({
+  name,
+  description,
+  parameters,
+  handler
+});
+var createBuiltinTools = () => ({
+  /**
+   * Confirmation tool for user approval
+   */
+  confirm: createTool(
+    "confirm",
+    "Ask user for confirmation",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Message to show to user" },
+        defaultValue: { type: "boolean", description: "Default value if user doesnt respond" }
       },
-      toast.id
-    ))
-  ] });
-};
-var ExternalToolManager_default = ExternalToolManager;
+      required: ["message"]
+    },
+    async (input) => {
+      const result = confirm(input.message);
+      return { confirmed: result };
+    }
+  ),
+  /**
+   * Input request tool
+   */
+  input: createTool(
+    "input",
+    "Request text input from user",
+    {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "Prompt to show to user" },
+        placeholder: { type: "string", description: "Placeholder text" }
+      },
+      required: ["prompt"]
+    },
+    async (input) => {
+      const result = prompt(input.prompt, input.placeholder);
+      return { input: result };
+    }
+  ),
+  /**
+   * Notification tool
+   */
+  notify: createTool(
+    "notify",
+    "Show notification to user",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Notification message" },
+        type: { type: "string", enum: ["info", "success", "warning", "error"], description: "Notification type" }
+      },
+      required: ["message"]
+    },
+    async (input) => {
+      console.log(`[${input.type || "info"}] ${input.message}`);
+      return { notified: true };
+    }
+  )
+});
 export {
-  ApprovalDialog_default as ApprovalDialog,
+  AgentDropdown,
   AssistantMessage,
   AssistantWithToolCalls,
   Chat,
   ChatContainer,
-  ChatProvider,
   DistriProvider,
   EmbeddableChat,
-  ExternalToolManager_default as ExternalToolManager,
   FullChat,
   MessageContainer,
   MessageRenderer_default as MessageRenderer,
   PlanMessage,
-  Toast_default as Toast,
   Tool,
   UserMessage,
-  clearPendingToolCalls,
-  createBuiltinToolHandlers,
   createBuiltinTools,
   createTool,
   extractTextFromMessage,
   formatTimestamp,
   getMessageType,
-  getThemeClasses,
-  initializeBuiltinHandlers,
-  processExternalToolCalls,
   scrollToBottom,
   shouldDisplayMessage,
   useAgent,
   useAgents,
   useChat,
-  useChatConfig,
   useDistri,
-  useDistriClient,
   useThreads,
   useTools
 };

@@ -4,6 +4,7 @@ import { Agent } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage, getMessageType } from '../utils/messageUtils';
+import { AgentDropdown } from './AgentDropdown';
 import '../styles/themes.css';
 import { ChatInput } from './ChatInput';
 
@@ -26,8 +27,10 @@ export interface EmbeddableChatProps {
   theme?: 'light' | 'dark' | 'auto';
   // Config overrides
   showDebug?: boolean;
+  showAgentSelector?: boolean;
   placeholder?: string;
   // Callbacks
+  onAgentSelect?: (agentId: string) => void;
   onResponse?: (message: any) => void;
 }
 
@@ -39,13 +42,16 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   className = '',
   style = {},
   metadata,
+  availableAgents = [],
   UserMessageComponent = UserMessage,
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
   theme = 'dark',
   showDebug = false,
+  showAgentSelector = true,
   placeholder = "Type your message...",
+  onAgentSelect,
   onResponse: _onResponse,
 }) => {
   const [input, setInput] = useState('');
@@ -173,6 +179,18 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
       }}
     >
       <div className="h-full flex flex-col">
+        {/* Agent Selector Header (if enabled) */}
+        {showAgentSelector && availableAgents && availableAgents.length > 0 && (
+          <div className="border-b border-gray-600 p-4" style={{ backgroundColor: '#343541' }}>
+            <AgentDropdown
+              agents={availableAgents}
+              selectedAgentId={agentId}
+              onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
+              className="w-full"
+            />
+          </div>
+        )}
+
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto distri-scroll">
           {messages.length === 0 ? (
@@ -215,14 +233,14 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-600 p-4" style={{ backgroundColor: '#343541' }}>
+        <div className="border-t border-gray-600 p-6" style={{ backgroundColor: '#343541' }}>
           <ChatInput
             value={input}
             onChange={setInput}
             onSend={sendMessage}
             placeholder={placeholder}
             disabled={loading}
-            className="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full"
           />
         </div>
       </div>

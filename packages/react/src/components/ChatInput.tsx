@@ -43,6 +43,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
+  const hasContent = value.trim().length > 0;
+
   return (
     <div className="relative">
       <textarea
@@ -53,7 +55,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         placeholder={placeholder}
         disabled={disabled}
         rows={1}
-        className={`resize-none pr-12 min-h-[52px] ${className}`}
+        className={`
+          resize-none pr-12 min-h-[52px] 
+          bg-gray-700 border border-gray-600 text-white placeholder-gray-400 
+          rounded-xl px-4 py-3 
+          focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+          transition-all duration-200
+          ${className}
+        `}
         style={{
           minHeight: '52px',
           maxHeight: '120px',
@@ -61,10 +70,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       />
       <button
         onClick={handleSend}
-        disabled={!value.trim() || disabled}
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        disabled={!hasContent || disabled}
+        className={`
+          absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200
+          ${hasContent && !disabled
+            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
+            : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }
+          ${hasContent && !disabled ? 'scale-100' : 'scale-95 opacity-50'}
+        `}
       >
-        <Send className="h-4 w-4 text-white" />
+        <Send className="h-4 w-4" />
       </button>
     </div>
   );
