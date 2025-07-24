@@ -1,403 +1,285 @@
-# Distri JavaScript SDK
+# DistriJS - AI Agent Framework
 
-A comprehensive JavaScript SDK for the [Distri distributed framework](https://github.com/distrihub/distri), providing both core functionality and React hooks for building applications that interact with AI agents using the A2A (Agent-to-Agent) protocol.
+[![npm version](https://badge.fury.io/js/@distri%2Fcore.svg)](https://badge.fury.io/js/@distri%2Fcore)
 
-## Features
+DistriJS is a comprehensive TypeScript/JavaScript framework for building AI agent applications with external tool integration. It provides a simplified, type-safe way to create interactive AI agents that can execute tools, handle user input, and integrate with external services.
 
-- 🤖 **Agent Communication**: Interact with AI agents using the A2A protocol
-- 📡 **Real-time Updates**: Server-Sent Events (SSE) for live task updates and streaming
-- 🎯 **Task Management**: Create, monitor, and manage agent tasks
-- ⚛️ **React Integration**: Pre-built hooks for seamless React development
-- 🔄 **Auto-retry**: Configurable retry logic with exponential backoff
-- 📱 **Modern API**: Built with TypeScript and modern web standards
-- � **Developer Experience**: Comprehensive error handling and debugging support
+## ✨ What's New - Major Refactor
 
-## Packages
+**🚀 Version 0.2.0** introduces a completely redesigned tool system following the AG-UI pattern:
 
-This monorepo contains two main packages:
+- **Simplified Tool Registration**: Register tools directly on agents using `agent.addTool()` or the `useTools` hook
+- **Automatic Tool Execution**: Tools are executed immediately when called by the AI - no more manual handling
+- **Type-Safe**: Full TypeScript support with proper type inference
+- **AG-UI Compatible**: Follows the same patterns as AG-UI for familiar developer experience
+- **No More External Tool Events**: Streamlined event handling without complex external tool managers
 
-- **`@distri/core`**: Core HTTP client and A2A protocol implementation
-- **`@distri/react`**: React hooks and context providers
+## 🏗️ Architecture
 
-## Installation
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   DistriJS      │    │   Backend       │
+│                 │    │   Framework     │    │                 │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │   React     │ │◄──►│ │    Core     │ │◄──►│ │   Distri    │ │
+│ │ Components  │ │    │ │   Agent     │ │    │ │   Server    │ │
+│ └─────────────┘ │    │ │   Client    │ │    │ └─────────────┘ │
+│ ┌─────────────┐ │    │ └─────────────┘ │    │                 │
+│ │   Tools     │ │    │ ┌─────────────┐ │    │                 │
+│ │  Registry   │ │    │ │   Events    │ │    │                 │
+│ └─────────────┘ │    │ │  Streaming  │ │    │                 │
+└─────────────────┘    │ └─────────────┘ │    └─────────────────┘
+                       └─────────────────┘
+```
+
+## 📦 Packages
+
+- **`@distri/core`** - Core client, agent management, and tool system
+- **`@distri/react`** - React hooks and components for UI integration
+- **`@distri/widgets`** - 🆕 Reusable UI widgets (ChartWidget, etc.)
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# Install both packages
-npm install @distri/core @distri/react
-
-# Or install individually
-npm install @distri/core
-npm install @distri/react
+npm install @distri/react @distri/core
+# Optional: For widgets
+npm install @distri/widgets
 ```
 
-## Quick Start
-
-### Basic Setup with React
+### Basic Usage
 
 ```tsx
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { DistriProvider } from '@distri/react'
-import App from './App'
+import { DistriProvider, useAgent, useTools, createTool, Chat } from '@distri/react';
 
-const config = {
-  baseUrl: 'http://localhost:8080', // Your Distri server URL
-  apiVersion: 'v1',
-  debug: process.env.NODE_ENV === 'development',
-  timeout: 30000,
-  retryAttempts: 3
-}
+function MyApp() {
+  const { agent } = useAgent({ agentId: 'my-agent' });
+  const { addTool } = useTools({ agent });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <DistriProvider config={config}>
-      <App />
-    </DistriProvider>
-  </React.StrictMode>
-)
-```
-
-### Using Core SDK Directly
-
-```typescript
-import { DistriClient } from '@distri/core'
-
-const client = new DistriClient({
-  baseUrl: 'http://localhost:8080',
-  apiVersion: 'v1',
-  debug: true
-})
-
-// Get available agents
-const agents = await client.getAgents()
-console.log('Available agents:', agents)
-
-// Send a message to an agent
-const message = DistriClient.createMessage(
-  'msg-123',
-  'Hello! Can you help me with a coding problem?',
-  'user'
-)
-
-const params = DistriClient.createMessageParams(message)
-const response = await client.sendMessage('assistant', params)
-
-// Subscribe to real-time updates
-client.subscribeToAgent('assistant')
-client.on('text_delta', (event) => {
-  console.log('Streaming text:', event.delta)
-})
-
-client.on('task_completed', (event) => {
-  console.log('Task completed:', event.task_id)
-})
-```
-
-## React Hooks
-
-### useAgents
-
-Manage and interact with available agents:
-
-```tsx
-import React from 'react'
-import { useAgents } from '@distri/react'
-
-function AgentList() {
-  const { agents, loading, error, refetch, getAgent } = useAgents()
-
-  const handleRefresh = async () => {
-    await refetch()
-  }
-
-  const handleSelectAgent = async (agentId: string) => {
-    const agent = await getAgent(agentId)
-    console.log('Selected agent:', agent)
-  }
-
-  if (loading) return <div>Loading agents...</div>
-  if (error) return <div>Error: {error.message}</div>
-
-  return (
-    <div>
-      <button onClick={handleRefresh}>Refresh Agents</button>
-      {agents.map(agent => (
-        <div key={agent.id} onClick={() => handleSelectAgent(agent.id)}>
-          <h3>{agent.name}</h3>
-          <p>{agent.description}</p>
-          <div>
-            {agent.capabilities?.map(cap => (
-              <span key={cap}>{cap}</span>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-```
-
-### useTask
-
-Handle agent tasks with real-time streaming:
-
-```tsx
-import React, { useState } from 'react'
-import { useTask } from '@distri/react'
-
-function AgentChat({ agentId }: { agentId: string }) {
-  const { 
-    task, 
-    loading, 
-    error, 
-    streamingText, 
-    isStreaming, 
-    sendMessage, 
-    clearTask 
-  } = useTask({ agentId, autoSubscribe: true })
-  
-  const [input, setInput] = useState('')
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim()) return
-    
-    await sendMessage(input)
-    setInput('')
-  }
-
-  return (
-    <div>
-      <div className="messages">
-        {task?.messages.map((message, index) => (
-          <div key={index} className={`message ${message.role}`}>
-            <strong>{message.role === 'user' ? 'You' : 'Assistant'}:</strong>
-            {message.parts.map((part, i) => (
-              <span key={i}>
-                {part.kind === 'text' && part.text}
-              </span>
-            ))}
-          </div>
-        ))}
-        
-        {/* Show streaming text in real-time */}
-        {isStreaming && streamingText && (
-          <div className="message streaming">
-            <strong>Assistant:</strong> {streamingText}
-            <span className="cursor">|</span>
-          </div>
-        )}
-      </div>
-      
-      <form onSubmit={handleSendMessage}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={isStreaming}
-        />
-        <button type="submit" disabled={!input.trim() || isStreaming}>
-          {isStreaming ? 'Streaming...' : 'Send'}
-        </button>
-      </form>
-      
-      {task && (
-        <div className="task-status">
-          Task: {task.id} | Status: {task.status}
-        </div>
-      )}
-      
-      <button onClick={clearTask}>Clear Chat</button>
-    </div>
-  )
-}
-```
-
-### useDistri
-
-Access the Distri client and handle errors:
-
-```tsx
-import React from 'react'
-import { useDistri, useDistriClient } from '@distri/react'
-
-function ConnectionStatus() {
-  const { error } = useDistri()
-  
-  if (error) {
-    return <div className="error">Connection Error: {error.message}</div>
-  }
-  
-  return <div className="status">Connected to Distri</div>
-}
-
-function CustomComponent() {
-  const client = useDistriClient()
-  
-  const handleCustomAction = async () => {
-    try {
-      const agents = await client.getAgents()
-      console.log('Found agents:', agents)
-    } catch (error) {
-      console.error('Failed to get agents:', error)
+  // Register tools when agent is ready
+  useEffect(() => {
+    if (agent) {
+      addTool(createTool(
+        'get_weather',
+        'Get current weather for a location',
+        {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' }
+          },
+          required: ['location']
+        },
+        async (input) => {
+          // Your tool implementation
+          return { weather: 'sunny', temperature: '75°F' };
+        }
+      ));
     }
-  }
-  
+  }, [agent, addTool]);
+
   return (
-    <button onClick={handleCustomAction}>
-      Get Available Agents
-    </button>
-  )
+    <Chat
+      agentId="my-agent"
+      threadId="conversation-1"
+      agent={agent}
+    />
+  );
+}
+
+function App() {
+  return (
+    <DistriProvider config={{ baseUrl: 'http://localhost:8080/api/v1' }}>
+      <MyApp />
+    </DistriProvider>
+  );
 }
 ```
 
-## Core API Reference
+## 🛠️ Tool System
 
-### DistriClient
+### Creating Tools
 
-The main client for interacting with the Distri server.
+Use the `createTool` helper for type-safe tool definitions:
 
-#### Constructor
+```tsx
+import { createTool } from '@distri/react';
 
-```typescript
-const client = new DistriClient({
-  baseUrl: 'http://localhost:8080',    // Required: Distri server URL
-  apiVersion?: 'v1',                   // API version (default: 'v1')
-  timeout?: 30000,                     // Request timeout in ms (default: 30000)
-  retryAttempts?: 3,                   // Retry attempts (default: 3)
-  retryDelay?: 1000,                   // Retry delay in ms (default: 1000)
-  debug?: false,                       // Enable debug logging (default: false)
-  headers?: {}                         // Additional headers
-})
+const calculatorTool = createTool(
+  'add',
+  'Add two numbers',
+  {
+    type: 'object',
+    properties: {
+      a: { type: 'number', description: 'First number' },
+      b: { type: 'number', description: 'Second number' }
+    },
+    required: ['a', 'b']
+  },
+  async (input: { a: number; b: number }) => {
+    return { result: input.a + input.b };
+  }
+);
 ```
 
-#### Methods
+### Using Tools Hook
 
-**Agent Management:**
-- `getAgents()` - Get all available agents
-- `getAgent(agentId)` - Get specific agent details
+```tsx
+import { useTools, createBuiltinTools } from '@distri/react';
 
-**Task Management:**
-- `sendMessage(agentId, params)` - Send a message to an agent
-- `sendStreamingMessage(agentId, params)` - Send a streaming message
-- `createTask(request)` - Create a new task
-- `getTask(taskId)` - Get task details
-- `cancelTask(taskId)` - Cancel a task (if supported)
-**Helper Methods:**
-- `DistriClient.createMessage(id, text, role, contextId?)` - Create A2A message
-- `DistriClient.createMessageParams(message, config?)` - Create message parameters
+function MyComponent() {
+  const { agent } = useAgent({ agentId: 'assistant' });
+  const { addTool, addTools, removeTool, getTools } = useTools({ agent });
 
-#### Events
+  useEffect(() => {
+    if (agent) {
+      // Add built-in tools
+      const builtins = createBuiltinTools();
+      addTools([builtins.confirm, builtins.input, builtins.notify]);
 
-The client emits events for real-time updates:
-
-```typescript
-client.on('text_delta', (event: TextDeltaEvent) => {
-  console.log('Streaming text:', event.delta)
-})
-
-client.on('task_status_changed', (event: TaskStatusChangedEvent) => {
-  console.log('Task status:', event.status)
-})
-
-client.on('task_completed', (event: TaskCompletedEvent) => {
-  console.log('Task completed:', event.task_id)
-})
-
-client.on('task_error', (event: TaskErrorEvent) => {
-  console.log('Task error:', event.error)
-})
-```
-
-## Configuration
-
-### DistriClientConfig
-
-```typescript
-interface DistriClientConfig {
-  baseUrl: string                      // Distri server URL
-  apiVersion?: string                  // API version (default: 'v1')
-  timeout?: number                     // Request timeout (default: 30000ms)
-  retryAttempts?: number              // Retry attempts (default: 3)
-  retryDelay?: number                 // Retry delay (default: 1000ms)
-  debug?: boolean                     // Debug logging (default: false)
-  headers?: Record<string, string>    // Additional headers
+      // Add custom tools
+      addTool(calculatorTool);
+    }
+  }, [agent, addTool, addTools]);
 }
 ```
 
-### AgentCard
+### Built-in Tools
 
-```typescript
-interface AgentCard {
-  id: string                          // Unique agent identifier
-  name: string                        // Human-readable name
-  description: string                 // Agent description
-  version?: string                    // Agent version
-  capabilities?: string[]             // Agent capabilities
-  metadata?: Record<string, any>      // Additional metadata
-}
+DistriJS includes common tools out of the box:
+
+- **`confirm`** - Ask user for confirmation
+- **`input`** - Request text input from user  
+- **`notify`** - Show notifications
+- **`approval_request`** - Built-in approval workflow
+
+## 📊 Widgets Package
+
+New `@distri/widgets` package provides reusable components:
+
+```tsx
+import { ChartWidget } from '@distri/widgets';
+
+const data = {
+  labels: ['Jan', 'Feb', 'Mar'],
+  datasets: [{
+    label: 'Sales',
+    data: [100, 200, 150]
+  }]
+};
+
+<ChartWidget
+  type="line"
+  data={data}
+  title="Monthly Sales"
+  height={400}
+/>
 ```
 
-### Task
+## 🎯 Examples & Samples
 
-```typescript
-interface Task {
-  id: string                          // Task identifier
-  agentId: string                     // Associated agent
-  status: TaskStatus                  // Current status
-  contextId?: string                  // Context identifier
-  createdAt: number                   // Creation timestamp
-  updatedAt: number                   // Last update timestamp
-  messages: A2AMessage[]              // Conversation messages
-  artifacts?: TaskArtifact[]          // Task artifacts
-  error?: string                      // Error message if failed
-  metadata?: Record<string, any>      // Additional metadata
-}
-```
+### 1. **Google Maps Integration** (`samples/maps-chat/`)
 
-## Sample Application
+Complete example showing external tool integration with Google Maps:
 
-The repository includes a complete Vite + React sample application demonstrating all features:
+- **Split Layout**: Maps on left, chat on right
+- **Real-time Control**: AI agent controls map through natural language
+- **Multiple Tools**: Center map, add markers, get directions, search places
 
 ```bash
-# Navigate to the sample
-cd samples/vite-demo
-
-# Install dependencies
+cd samples/maps-chat
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see the demo.
+**Example interactions:**
+- "Show me directions from Times Square to Central Park"
+- "Find restaurants near my location"
+- "Add a marker at the Statue of Liberty"
 
-The sample includes:
-- Agent discovery and selection
-- Real-time chat interface with streaming
-- Task management and monitoring
-- Error handling and retry logic
-- Modern responsive UI
+### 2. **Data Analyst Agent** (`samples/data-analyst/`)
 
-## Development
+Agent definition for financial data analysis with chart generation:
 
-### Building the SDK
+- **Trade Data**: Query stocks, crypto, forex, commodities  
+- **Visualizations**: Generate charts automatically
+- **Analytics**: Calculate metrics and generate reports
+
+### 3. **Tools Demo** (`samples/full-demo/`)
+
+Interactive demonstration of the new tool system:
+
+- **Live Tool Registration**: See tools being registered and removed
+- **Built-in Tools**: Test confirmation, input, and notification tools
+- **Custom Tools**: Calculator, random number generator, time tools
+
+## 🔧 Migration from v0.1.x
+
+### Major Changes
+
+1. **Simplified Tool System**: No more `external_tools` events or `ExternalToolManager`
+2. **Direct Registration**: Use `agent.addTool()` or `useTools` hook
+3. **Automatic Execution**: Tools execute immediately when called
+4. **Removed Props**: `tools` prop removed from `Chat` and `useChat`
+
+### Migration Steps
+
+**Before (v0.1.x):**
+```tsx
+const tools = {
+  my_tool: async (toolCall, onComplete) => {
+    const result = await doSomething(toolCall.input);
+    await onComplete(toolCall.tool_call_id, { result, success: true });
+  }
+};
+
+<Chat tools={tools} onExternalToolCall={handleToolCall} />
+```
+
+**After (v0.2.x):**
+```tsx
+const { agent } = useAgent({ agentId: 'my-agent' });
+const { addTool } = useTools({ agent });
+
+useEffect(() => {
+  if (agent) {
+    addTool(createTool(
+      'my_tool',
+      'Description',
+      { /* schema */ },
+      async (input) => {
+        return await doSomething(input);
+      }
+    ));
+  }
+}, [agent, addTool]);
+
+<Chat agent={agent} />
+```
+
+## 🏗️ Development
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm 8+
+
+### Setup
 
 ```bash
+# Clone the repository
+git clone https://github.com/distrihub/distrijs.git
+cd distrijs
+
 # Install dependencies
-npm install
+pnpm install
 
-# Build all packages
-npm run build
+# Build packages
+pnpm build
 
-# Run in development mode
+# Run samples
+cd samples/full-demo
 npm run dev
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
 ```
 
 ### Project Structure
@@ -405,87 +287,39 @@ npm run lint
 ```
 distrijs/
 ├── packages/
-│   ├── core/           # Core SDK (@distri/core)
-│   └── react/          # React hooks (@distri/react)
+│   ├── core/          # Core framework
+│   ├── react/         # React integration
+│   └── widgets/       # UI components
 ├── samples/
-│   └── vite-demo/      # Sample Vite application
-├── package.json        # Root package.json with workspaces
-├── turbo.json         # Turborepo configuration
-└── tsconfig.json      # TypeScript configuration
+│   ├── full-demo/     # Complete demo app
+│   ├── maps-chat/     # Google Maps integration
+│   └── data-analyst/ # Financial analysis agent
+└── scripts/           # Build and release scripts
 ```
 
-## Requirements
+## 📚 Documentation
 
-- Node.js 18+
-- React 16.8+ (for React hooks)
-- Distri server running (see [Distri repository](https://github.com/distrihub/distri))
+- **[API Reference](./docs/api/)** - Complete API documentation
+- **[Tool System Guide](./docs/tools.md)** - In-depth tool development
+- **[Migration Guide](./docs/migration.md)** - Upgrading from previous versions
+- **[Samples](./samples/)** - Working examples and tutorials
 
-## Distri Server Setup
+## 🤝 Contributing
 
-To use this SDK, you need a running Distri server. Follow the setup instructions in the [main Distri repository](https://github.com/distrihub/distri):
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-```bash
-# Clone the Distri repository
-git clone https://github.com/distrihub/distri.git
-cd distri
+## 📄 License
 
-# Build and run the server
-cargo run -- --config test-config.yaml serve
+MIT License - see [LICENSE](./LICENSE) for details.
 
-# The server will be available at http://localhost:8080
-```
+## 🔗 Links
 
-## API Endpoints
+- **[Documentation](https://distrijs.dev)**
+- **[GitHub](https://github.com/distrihub/distrijs)**
+- **[npm Packages](https://www.npmjs.com/search?q=%40distri)**
+- **[Discord Community](https://discord.gg/distri)**
 
-The SDK communicates with these Distri server endpoints:
+---
 
-- `GET /api/v1/agents` - List all agents
-- `GET /api/v1/agents/{id}` - Get agent details
-- `POST /api/v1/agents/{id}` - Send JSON-RPC requests
-- `GET /api/v1/agents/{id}/events` - SSE event stream
-- `GET /api/v1/tasks/{id}` - Get task details
-
-## Error Handling
-
-The SDK provides comprehensive error handling:
-
-```typescript
-import { DistriError, ApiError, A2AProtocolError } from '@distri/core'
-
-try {
-  await client.sendMessage('agent-id', params)
-} catch (error) {
-  if (error instanceof ApiError) {
-    console.log('HTTP Error:', error.statusCode, error.message)
-  } else if (error instanceof A2AProtocolError) {
-    console.log('Protocol Error:', error.message)
-  } else if (error instanceof DistriError) {
-    console.log('Distri Error:', error.code, error.message)
-  }
-}
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Support
-
-- 📖 [Distri Documentation](https://www.distri.dev)
-- 💬 [GitHub Discussions](https://github.com/distrihub/distri/discussions)
-- 🐛 [Issue Tracker](https://github.com/distrihub/distrijs/issues)
-- 📧 [Distri Community](https://github.com/distrihub/distri)
-
-## Related Projects
-
-- [Distri Framework](https://github.com/distrihub/distri) - The main Distri framework
-- [MCP Protocol](https://github.com/modelcontextprotocol/specification) - Model Context Protocol specification
+**DistriJS** - Build intelligent AI agents with external tool integration 🚀
 

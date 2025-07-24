@@ -1,16 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Loader2, Square, Eye, EyeOff, Bot } from 'lucide-react';
-import { Agent, ToolResult } from '@distri/core';
+import { Agent } from '@distri/core';
 import { useChatConfig, ChatProvider } from './ChatContext';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
-import ExternalToolManager from './ExternalToolManager';
 
 export interface ChatProps {
   agentId: string;
   threadId: string;
   agent?: Agent;
-  tools?: Record<string, any>;
   metadata?: any;
   height?: string;
   onThreadUpdate?: (threadId: string) => void;
@@ -85,7 +83,6 @@ const ChatContent: React.FC<ChatProps> = ({
   agentId,
   threadId,
   agent,
-  tools,
   metadata,
   height = "600px",
   onThreadUpdate
@@ -100,14 +97,10 @@ const ChatContent: React.FC<ChatProps> = ({
     error,
     isStreaming,
     sendMessageStream,
-    cancelToolExecution,
-    toolCallStatus,
-    toolHandlerResults,
   } = useChat({
     agentId,
     threadId,
     agent,
-    tools,
     metadata,
   });
 
@@ -154,7 +147,7 @@ const ChatContent: React.FC<ChatProps> = ({
 
     // Don't show empty messages
     return false;
-  }, [extractTextFromMessage, config.showDebugMessages, toolCallStatus]);
+  }, [extractTextFromMessage, config.showDebugMessages]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -203,15 +196,12 @@ const ChatContent: React.FC<ChatProps> = ({
 
         // Handle assistant messages with tool calls
         if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
-          const toolCallsProps = message.metadata.tool_calls.map((toolCall: any) => {
-            const status = toolCallStatus[toolCall.tool_call_id];
-            return {
-              toolCall,
-              status: status?.status || 'pending',
-              result: status?.result,
-              error: status?.error,
-            };
-          });
+          const toolCallsProps = message.metadata.tool_calls.map((toolCall: any) => ({
+            toolCall,
+            status: 'completed', // Tools are executed immediately now
+            result: 'Tool executed successfully',
+            error: null,
+          }));
 
           return (
             <AssistantWithToolCalls
@@ -248,7 +238,7 @@ const ChatContent: React.FC<ChatProps> = ({
           />
         );
       });
-  }, [messages, shouldDisplayMessage, extractTextFromMessage, toolCallStatus, isStreaming]);
+  }, [messages, shouldDisplayMessage, extractTextFromMessage, isStreaming]);
 
   return (
     <div className="flex flex-col bg-gray-900 text-white" style={{ height }}>
@@ -313,21 +303,6 @@ const ChatContent: React.FC<ChatProps> = ({
 
         <div ref={messagesEndRef} />
       </div>
-
-      {/* External Tool Manager */}
-      {Object.keys(toolHandlerResults).length > 0 && (
-        <div className="flex-shrink-0 border-t border-gray-700 bg-gray-800 p-4">
-          <div className="max-w-4xl mx-auto">
-            <ExternalToolManager
-              toolCalls={[]}
-              onToolComplete={async (_results: ToolResult[]) => {
-                onThreadUpdate?.(threadId);
-              }}
-              onCancel={cancelToolExecution}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Input */}
       <ChatInput

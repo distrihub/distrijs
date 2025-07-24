@@ -1,47 +1,35 @@
-// Core hooks
+// Main exports
+export { DistriProvider, useDistri } from './DistriProvider';
 export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
+export { useTools, createTool, createBuiltinTools } from './useTools';
 
 // Components
-export { default as Chat } from './components/Chat';
-export { 
-  UserMessage, 
-  AssistantMessage, 
-  AssistantWithToolCalls, 
-  Tool,
-  MessageContainer 
-} from './components/MessageComponents';
-export { default as MessageRenderer } from './components/MessageRenderer';
-export { default as ExternalToolManager } from './components/ExternalToolManager';
-export { default as Toast } from './components/Toast';
+export { Chat } from './components/Chat';
 export { default as ApprovalDialog } from './components/ApprovalDialog';
+export { default as Toast } from './components/Toast';
 
-// Context and theming
-export { 
-  ChatProvider, 
-  useChatConfig, 
-  getThemeClasses,
-  type ChatTheme,
-  type ChatConfig,
-  type ChatContextValue
-} from './components/ChatContext';
+// Component contexts
+export { ChatProvider, useChatConfig } from './components/ChatContext';
 
-// Provider
-export { DistriProvider, useDistri, useDistriClient } from './DistriProvider';
-
-// Built-in handlers
-export * from './builtinHandlers';
-
-// Re-export types from core
+// Types from core (re-exported for convenience)
 export type {
   DistriAgent,
+  DistriTool,
+  ToolCall,
+  ToolResult,
+  ToolHandler,
+  Agent,
+  DistriClientConfig,
+  DistriError,
+  A2AProtocolError,
+  ApiError,
+  ConnectionError,
+  ConnectionStatus,
+  Thread,
   DistriThread,
   Message,
   MessageMetadata,
-  ToolHandler,
-  ToolResult,
-  ToolCall,
-  ToolCallState,
 } from '@distri/core';
