@@ -5,8 +5,6 @@ import AgentList from '../components/AgentList';
 
 function AgentsPage() {
   const { agents, loading, refetch: refetchAgents } = useAgents();
-
-
   const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(null);
 
   // Auto-select first agent when agents load
@@ -16,32 +14,31 @@ function AgentsPage() {
     }
   }, [agents, selectedAgent]);
 
-
-
   const startChatWithAgent = async (agent: DistriAgent) => {
     setSelectedAgent(agent);
   };
 
-
-
-
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-gray-900 flex items-center justify-center">
         <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading agents...</span>
+          <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+          <span className="text-white">Loading agents...</span>
         </div>
       </div>
     );
   }
 
   return (
-
-    <main className="flex-1 flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-
-      <div className="h-full max-w-6xl">
+    <div className="h-full bg-gray-900 overflow-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Agents</h1>
+          <p className="text-gray-400">
+            Manage and configure your AI agents.
+          </p>
+        </div>
+        
         <AgentList
           agents={agents}
           onRefresh={refetchAgents}
@@ -71,7 +68,7 @@ function AgentsPage() {
           }}
         />
       </div>
-    </main>
+    </div>
   );
 }
 

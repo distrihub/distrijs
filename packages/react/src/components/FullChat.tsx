@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, MessageSquare, Settings, MoreHorizontal, Trash2, Edit3 } from 'lucide-react';
+import { Plus, MessageSquare, Settings, MoreHorizontal, Trash2, Edit3, Bot, Users, BarChart3 } from 'lucide-react';
 import { Agent } from '@distri/core';
 import { useThreads } from '../useThreads';
 import { EmbeddableChat } from './EmbeddableChat';
@@ -10,6 +10,8 @@ export interface FullChatProps {
   agent?: Agent;
   metadata?: any;
   className?: string;
+  // Available agents for selection
+  availableAgents?: Array<{ id: string; name: string; description?: string }>;
   // Customization props
   UserMessageComponent?: React.ComponentType<any>;
   AssistantMessageComponent?: React.ComponentType<any>;
@@ -22,10 +24,15 @@ export interface FullChatProps {
   // Sidebar
   showSidebar?: boolean;
   sidebarWidth?: number;
+  // Navigation
+  currentPage?: 'chat' | 'agents' | 'tasks';
+  onPageChange?: (page: 'chat' | 'agents' | 'tasks') => void;
   // Callbacks
+  onAgentSelect?: (agentId: string) => void;
   onThreadSelect?: (threadId: string) => void;
   onThreadCreate?: (threadId: string) => void;
   onThreadDelete?: (threadId: string) => void;
+  onLogoClick?: () => void;
 }
 
 interface ThreadItemProps {
@@ -148,17 +155,22 @@ export const FullChat: React.FC<FullChatProps> = ({
   agent,
   metadata,
   className = '',
+  availableAgents = [],
   UserMessageComponent,
   AssistantMessageComponent,
   AssistantWithToolCallsComponent,
   PlanMessageComponent,
-  theme = 'auto',
+  theme = 'dark',
   showDebug = false,
   showSidebar = true,
   sidebarWidth = 280,
+  currentPage = 'chat',
+  onPageChange,
+  onAgentSelect,
   onThreadSelect,
   onThreadCreate,
   onThreadDelete,
+  onLogoClick,
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<string>('default');
   const { threads, loading: threadsLoading, refetch: refetchThreads } = useThreads();
@@ -205,16 +217,30 @@ export const FullChat: React.FC<FullChatProps> = ({
     marginLeft: showSidebar ? `${sidebarWidth}px` : '0px',
   };
 
+  // Get current agent
+  const currentAgent = availableAgents.find(a => a.id === agentId);
+
   return (
-    <div className={`distri-chat ${themeClass} ${className} h-full flex`}>
-      {/* Sidebar */}
+    <div className={`distri-chat ${themeClass} ${className} h-full flex bg-gray-900`}>
+      {/* Sidebar - ChatGPT Style */}
       {showSidebar && (
         <div 
           className="fixed left-0 top-0 h-full bg-gray-900 border-r border-gray-800 flex flex-col"
           style={sidebarStyle}
         >
-          {/* Header */}
-          <div className="p-4 border-b border-gray-800">
+          {/* Logo */}
+          <div className="p-4">
+            <button 
+              onClick={onLogoClick}
+              className="flex items-center space-x-2 text-white hover:bg-white/10 rounded-lg p-2 transition-colors w-full"
+            >
+              <Bot className="h-6 w-6" />
+              <span className="font-semibold">Distri</span>
+            </button>
+          </div>
+
+          {/* New Chat Button */}
+          <div className="px-4 pb-4">
             <button
               onClick={handleNewChat}
               className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
@@ -224,34 +250,98 @@ export const FullChat: React.FC<FullChatProps> = ({
             </button>
           </div>
 
-          {/* Threads List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 distri-scroll">
-            {threadsLoading ? (
-              <div className="text-center py-8">
-                <div className="text-sm text-white/60">Loading threads...</div>
-              </div>
-            ) : threads.length === 0 ? (
-              <div className="text-center py-8">
-                <MessageSquare className="h-8 w-8 text-white/30 mx-auto mb-2" />
-                <div className="text-sm text-white/60">No conversations yet</div>
-              </div>
-            ) : (
-              threads.map((thread: any) => (
-                <ThreadItem
-                  key={thread.id}
-                  thread={thread}
-                  isActive={thread.id === selectedThreadId}
-                  onClick={() => handleThreadSelect(thread.id)}
-                  onDelete={() => handleThreadDelete(thread.id)}
-                  onRename={(newTitle) => handleThreadRename(thread.id, newTitle)}
-                />
-              ))
-            )}
+          {/* Agent Selection */}
+          {availableAgents.length > 0 && (
+            <div className="px-4 pb-4">
+              <div className="text-xs text-white/60 mb-2 px-2">Agent</div>
+              <select
+                value={agentId}
+                onChange={(e) => onAgentSelect?.(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {availableAgents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+              {currentAgent?.description && (
+                <p className="text-xs text-white/50 mt-1 px-2">{currentAgent.description}</p>
+              )}
+            </div>
+          )}
+
+          {/* Navigation */}
+          <div className="px-4 pb-4">
+            <div className="text-xs text-white/60 mb-2 px-2">Navigation</div>
+            <div className="space-y-1">
+              <button
+                onClick={() => onPageChange?.('chat')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  currentPage === 'chat' 
+                    ? 'bg-white/10 text-white' 
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Chat</span>
+              </button>
+              <button
+                onClick={() => onPageChange?.('agents')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  currentPage === 'agents' 
+                    ? 'bg-white/10 text-white' 
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Agents</span>
+              </button>
+              <button
+                onClick={() => onPageChange?.('tasks')}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  currentPage === 'tasks' 
+                    ? 'bg-white/10 text-white' 
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Tasks</span>
+              </button>
+            </div>
           </div>
+
+          {/* Threads List - Only show when on chat page */}
+          {currentPage === 'chat' && (
+            <div className="flex-1 overflow-y-auto px-4 space-y-2 distri-scroll">
+              <div className="text-xs text-white/60 mb-2 px-2">Conversations</div>
+              {threadsLoading ? (
+                <div className="text-center py-8">
+                  <div className="text-sm text-white/60">Loading threads...</div>
+                </div>
+              ) : threads.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-8 w-8 text-white/30 mx-auto mb-2" />
+                  <div className="text-sm text-white/60">No conversations yet</div>
+                </div>
+              ) : (
+                threads.map((thread: any) => (
+                  <ThreadItem
+                    key={thread.id}
+                    thread={thread}
+                    isActive={thread.id === selectedThreadId}
+                    onClick={() => handleThreadSelect(thread.id)}
+                    onDelete={() => handleThreadDelete(thread.id)}
+                    onRename={(newTitle) => handleThreadRename(thread.id, newTitle)}
+                  />
+                ))
+              )}
+            </div>
+          )}
 
           {/* Settings */}
           <div className="p-4 border-t border-gray-800">
-            <button className="w-full flex items-center space-x-2 px-3 py-2 text-white/70 hover:bg-white/10 rounded-lg transition-colors">
+            <button className="w-full flex items-center space-x-3 px-3 py-2 text-white/70 hover:bg-white/10 rounded-lg transition-colors">
               <Settings className="h-4 w-4" />
               <span className="text-sm">Settings</span>
             </button>
@@ -259,23 +349,25 @@ export const FullChat: React.FC<FullChatProps> = ({
         </div>
       )}
 
-      {/* Main Chat Area */}
-      <div className="flex-1" style={mainStyle}>
-        <EmbeddableChat
-          agentId={agentId}
-          threadId={selectedThreadId}
-          agent={agent}
-          metadata={metadata}
-          height="100vh"
-          UserMessageComponent={UserMessageComponent}
-          AssistantMessageComponent={AssistantMessageComponent}
-          AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
-          PlanMessageComponent={PlanMessageComponent}
-          theme={theme}
-          showDebug={showDebug}
-          placeholder="Type your message..."
-        />
-      </div>
+      {/* Main Chat Area - Only show when on chat page */}
+      {currentPage === 'chat' && (
+        <div className="flex-1" style={mainStyle}>
+          <EmbeddableChat
+            agentId={agentId}
+            threadId={selectedThreadId}
+            agent={agent}
+            metadata={metadata}
+            height="100vh"
+            UserMessageComponent={UserMessageComponent}
+            AssistantMessageComponent={AssistantMessageComponent}
+            AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
+            PlanMessageComponent={PlanMessageComponent}
+            theme={theme}
+            showDebug={showDebug}
+            placeholder="Type your message..."
+          />
+        </div>
+      )}
     </div>
   );
 };

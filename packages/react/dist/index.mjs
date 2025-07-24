@@ -201,6 +201,11 @@ function useChat({
   const [loading, setLoading] = useState4(false);
   const [error, setError] = useState4(null);
   const [isStreaming, setIsStreaming] = useState4(false);
+  const abortControllerRef = useRef2(null);
+  useEffect3(() => {
+    setMessages([]);
+    setError(null);
+  }, [threadId]);
   const invokeConfig = useMemo(() => {
     return {
       contextId: threadId,
@@ -211,7 +216,6 @@ function useChat({
       metadata
     };
   }, [threadId, metadata]);
-  const abortControllerRef = useRef2(null);
   const fetchMessages = useCallback3(async () => {
     if (!agent || !threadId) {
       setMessages([]);
@@ -1206,7 +1210,7 @@ var EmbeddableChat = ({
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
-  theme = "auto",
+  theme = "dark",
   showDebug = false,
   onMessageSent,
   onResponse: _onResponse
@@ -1389,7 +1393,7 @@ var EmbeddableChat = ({
 
 // src/components/FullChat.tsx
 import { useState as useState7, useCallback as useCallback7 } from "react";
-import { Plus, MessageSquare, Settings as Settings2, MoreHorizontal, Trash2, Edit3 } from "lucide-react";
+import { Plus, MessageSquare, Settings as Settings2, MoreHorizontal, Trash2, Edit3, Bot as Bot2, Users, BarChart3 } from "lucide-react";
 import { jsx as jsx6, jsxs as jsxs4 } from "react/jsx-runtime";
 var ThreadItem = ({
   thread,
@@ -1418,11 +1422,11 @@ var ThreadItem = ({
   return /* @__PURE__ */ jsx6(
     "div",
     {
-      className: `group relative p-3 rounded-lg cursor-pointer transition-colors ${isActive ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`,
+      className: `group relative p-3 rounded-lg cursor-pointer transition-colors ${isActive ? "bg-white/10 border border-white/20" : "hover:bg-white/5"}`,
       onClick,
       children: /* @__PURE__ */ jsxs4("div", { className: "flex items-center justify-between", children: [
         /* @__PURE__ */ jsxs4("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
-          /* @__PURE__ */ jsx6(MessageSquare, { className: "h-4 w-4 text-gray-400 flex-shrink-0" }),
+          /* @__PURE__ */ jsx6(MessageSquare, { className: `h-4 w-4 flex-shrink-0 ${isActive ? "text-white" : "text-white/60"}` }),
           isEditing ? /* @__PURE__ */ jsx6(
             "input",
             {
@@ -1430,13 +1434,13 @@ var ThreadItem = ({
               onChange: (e) => setEditTitle(e.target.value),
               onBlur: handleRename,
               onKeyPress: handleKeyPress,
-              className: "flex-1 text-sm bg-transparent border-none outline-none",
+              className: "flex-1 text-sm bg-transparent border-none outline-none text-white",
               autoFocus: true,
               onClick: (e) => e.stopPropagation()
             }
           ) : /* @__PURE__ */ jsxs4("div", { className: "flex-1 min-w-0", children: [
-            /* @__PURE__ */ jsx6("p", { className: "text-sm font-medium text-gray-900 dark:text-gray-100 truncate", children: thread.title || "New Chat" }),
-            /* @__PURE__ */ jsx6("p", { className: "text-xs text-gray-500 dark:text-gray-400 truncate", children: thread.last_message || "No messages yet" })
+            /* @__PURE__ */ jsx6("p", { className: `text-sm font-medium truncate ${isActive ? "text-white" : "text-white/90"}`, children: thread.title || "New Chat" }),
+            /* @__PURE__ */ jsx6("p", { className: "text-xs text-white/60 truncate", children: thread.last_message || "No messages yet" })
           ] })
         ] }),
         !isEditing && /* @__PURE__ */ jsxs4("div", { className: "relative", children: [
@@ -1447,11 +1451,11 @@ var ThreadItem = ({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               },
-              className: "opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity",
-              children: /* @__PURE__ */ jsx6(MoreHorizontal, { className: "h-4 w-4 text-gray-400" })
+              className: "opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10 transition-opacity",
+              children: /* @__PURE__ */ jsx6(MoreHorizontal, { className: "h-4 w-4 text-white/60" })
             }
           ),
-          showMenu && /* @__PURE__ */ jsxs4("div", { className: "absolute right-0 top-6 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10", children: [
+          showMenu && /* @__PURE__ */ jsxs4("div", { className: "absolute right-0 top-6 w-32 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10", children: [
             /* @__PURE__ */ jsxs4(
               "button",
               {
@@ -1460,7 +1464,7 @@ var ThreadItem = ({
                   setIsEditing(true);
                   setShowMenu(false);
                 },
-                className: "w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2",
+                className: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-white flex items-center space-x-2 rounded-t-lg",
                 children: [
                   /* @__PURE__ */ jsx6(Edit3, { className: "h-3 w-3" }),
                   /* @__PURE__ */ jsx6("span", { children: "Rename" })
@@ -1475,7 +1479,7 @@ var ThreadItem = ({
                   onDelete();
                   setShowMenu(false);
                 },
-                className: "w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2",
+                className: "w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-red-400 flex items-center space-x-2 rounded-b-lg",
                 children: [
                   /* @__PURE__ */ jsx6(Trash2, { className: "h-3 w-3" }),
                   /* @__PURE__ */ jsx6("span", { children: "Delete" })
@@ -1493,17 +1497,22 @@ var FullChat = ({
   agent,
   metadata,
   className = "",
+  availableAgents = [],
   UserMessageComponent,
   AssistantMessageComponent,
   AssistantWithToolCallsComponent,
   PlanMessageComponent,
-  theme = "auto",
+  theme = "dark",
   showDebug = false,
   showSidebar = true,
   sidebarWidth = 280,
+  currentPage = "chat",
+  onPageChange,
+  onAgentSelect,
   onThreadSelect,
   onThreadCreate,
-  onThreadDelete
+  onThreadDelete,
+  onLogoClick
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState7("default");
   const { threads, loading: threadsLoading, refetch: refetchThreads } = useThreads();
@@ -1539,46 +1548,112 @@ var FullChat = ({
   const mainStyle = {
     marginLeft: showSidebar ? `${sidebarWidth}px` : "0px"
   };
-  return /* @__PURE__ */ jsxs4("div", { className: `distri-chat ${themeClass} ${className} h-full flex`, children: [
+  const currentAgent = availableAgents.find((a) => a.id === agentId);
+  return /* @__PURE__ */ jsxs4("div", { className: `distri-chat ${themeClass} ${className} h-full flex bg-gray-900`, children: [
     showSidebar && /* @__PURE__ */ jsxs4(
       "div",
       {
-        className: "fixed left-0 top-0 h-full bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col",
+        className: "fixed left-0 top-0 h-full bg-gray-900 border-r border-gray-800 flex flex-col",
         style: sidebarStyle,
         children: [
-          /* @__PURE__ */ jsx6("div", { className: "p-4 border-b border-gray-200 dark:border-gray-700", children: /* @__PURE__ */ jsxs4(
+          /* @__PURE__ */ jsx6("div", { className: "p-4", children: /* @__PURE__ */ jsxs4(
+            "button",
+            {
+              onClick: onLogoClick,
+              className: "flex items-center space-x-2 text-white hover:bg-white/10 rounded-lg p-2 transition-colors w-full",
+              children: [
+                /* @__PURE__ */ jsx6(Bot2, { className: "h-6 w-6" }),
+                /* @__PURE__ */ jsx6("span", { className: "font-semibold", children: "Distri" })
+              ]
+            }
+          ) }),
+          /* @__PURE__ */ jsx6("div", { className: "px-4 pb-4", children: /* @__PURE__ */ jsxs4(
             "button",
             {
               onClick: handleNewChat,
-              className: "w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors",
+              className: "w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors",
               children: [
                 /* @__PURE__ */ jsx6(Plus, { className: "h-4 w-4" }),
                 /* @__PURE__ */ jsx6("span", { className: "text-sm font-medium", children: "New Chat" })
               ]
             }
           ) }),
-          /* @__PURE__ */ jsx6("div", { className: "flex-1 overflow-y-auto p-4 space-y-2 distri-scroll", children: threadsLoading ? /* @__PURE__ */ jsx6("div", { className: "text-center py-8", children: /* @__PURE__ */ jsx6("div", { className: "text-sm text-gray-500 dark:text-gray-400", children: "Loading threads..." }) }) : threads.length === 0 ? /* @__PURE__ */ jsxs4("div", { className: "text-center py-8", children: [
-            /* @__PURE__ */ jsx6(MessageSquare, { className: "h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" }),
-            /* @__PURE__ */ jsx6("div", { className: "text-sm text-gray-500 dark:text-gray-400", children: "No conversations yet" })
-          ] }) : threads.map((thread) => /* @__PURE__ */ jsx6(
-            ThreadItem,
-            {
-              thread,
-              isActive: thread.id === selectedThreadId,
-              onClick: () => handleThreadSelect(thread.id),
-              onDelete: () => handleThreadDelete(thread.id),
-              onRename: (newTitle) => handleThreadRename(thread.id, newTitle)
-            },
-            thread.id
-          )) }),
-          /* @__PURE__ */ jsx6("div", { className: "p-4 border-t border-gray-200 dark:border-gray-700", children: /* @__PURE__ */ jsxs4("button", { className: "w-full flex items-center space-x-2 px-3 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors", children: [
+          availableAgents.length > 0 && /* @__PURE__ */ jsxs4("div", { className: "px-4 pb-4", children: [
+            /* @__PURE__ */ jsx6("div", { className: "text-xs text-white/60 mb-2 px-2", children: "Agent" }),
+            /* @__PURE__ */ jsx6(
+              "select",
+              {
+                value: agentId,
+                onChange: (e) => onAgentSelect?.(e.target.value),
+                className: "w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
+                children: availableAgents.map((agent2) => /* @__PURE__ */ jsx6("option", { value: agent2.id, children: agent2.name }, agent2.id))
+              }
+            ),
+            currentAgent?.description && /* @__PURE__ */ jsx6("p", { className: "text-xs text-white/50 mt-1 px-2", children: currentAgent.description })
+          ] }),
+          /* @__PURE__ */ jsxs4("div", { className: "px-4 pb-4", children: [
+            /* @__PURE__ */ jsx6("div", { className: "text-xs text-white/60 mb-2 px-2", children: "Navigation" }),
+            /* @__PURE__ */ jsxs4("div", { className: "space-y-1", children: [
+              /* @__PURE__ */ jsxs4(
+                "button",
+                {
+                  onClick: () => onPageChange?.("chat"),
+                  className: `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === "chat" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"}`,
+                  children: [
+                    /* @__PURE__ */ jsx6(MessageSquare, { className: "h-4 w-4" }),
+                    /* @__PURE__ */ jsx6("span", { children: "Chat" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxs4(
+                "button",
+                {
+                  onClick: () => onPageChange?.("agents"),
+                  className: `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === "agents" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"}`,
+                  children: [
+                    /* @__PURE__ */ jsx6(Users, { className: "h-4 w-4" }),
+                    /* @__PURE__ */ jsx6("span", { children: "Agents" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxs4(
+                "button",
+                {
+                  onClick: () => onPageChange?.("tasks"),
+                  className: `w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === "tasks" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"}`,
+                  children: [
+                    /* @__PURE__ */ jsx6(BarChart3, { className: "h-4 w-4" }),
+                    /* @__PURE__ */ jsx6("span", { children: "Tasks" })
+                  ]
+                }
+              )
+            ] })
+          ] }),
+          currentPage === "chat" && /* @__PURE__ */ jsxs4("div", { className: "flex-1 overflow-y-auto px-4 space-y-2 distri-scroll", children: [
+            /* @__PURE__ */ jsx6("div", { className: "text-xs text-white/60 mb-2 px-2", children: "Conversations" }),
+            threadsLoading ? /* @__PURE__ */ jsx6("div", { className: "text-center py-8", children: /* @__PURE__ */ jsx6("div", { className: "text-sm text-white/60", children: "Loading threads..." }) }) : threads.length === 0 ? /* @__PURE__ */ jsxs4("div", { className: "text-center py-8", children: [
+              /* @__PURE__ */ jsx6(MessageSquare, { className: "h-8 w-8 text-white/30 mx-auto mb-2" }),
+              /* @__PURE__ */ jsx6("div", { className: "text-sm text-white/60", children: "No conversations yet" })
+            ] }) : threads.map((thread) => /* @__PURE__ */ jsx6(
+              ThreadItem,
+              {
+                thread,
+                isActive: thread.id === selectedThreadId,
+                onClick: () => handleThreadSelect(thread.id),
+                onDelete: () => handleThreadDelete(thread.id),
+                onRename: (newTitle) => handleThreadRename(thread.id, newTitle)
+              },
+              thread.id
+            ))
+          ] }),
+          /* @__PURE__ */ jsx6("div", { className: "p-4 border-t border-gray-800", children: /* @__PURE__ */ jsxs4("button", { className: "w-full flex items-center space-x-3 px-3 py-2 text-white/70 hover:bg-white/10 rounded-lg transition-colors", children: [
             /* @__PURE__ */ jsx6(Settings2, { className: "h-4 w-4" }),
             /* @__PURE__ */ jsx6("span", { className: "text-sm", children: "Settings" })
           ] }) })
         ]
       }
     ),
-    /* @__PURE__ */ jsx6("div", { className: "flex-1", style: mainStyle, children: /* @__PURE__ */ jsx6(
+    currentPage === "chat" && /* @__PURE__ */ jsx6("div", { className: "flex-1", style: mainStyle, children: /* @__PURE__ */ jsx6(
       EmbeddableChat,
       {
         agentId,
@@ -1775,7 +1850,7 @@ var Toast_default = Toast;
 
 // src/components/Chat.tsx
 import { useState as useState10, useRef as useRef5, useEffect as useEffect7, useCallback as useCallback8, useMemo as useMemo4 } from "react";
-import { Send as Send2, Loader2 as Loader22, Square, Eye, EyeOff, Bot as Bot2 } from "lucide-react";
+import { Send as Send2, Loader2 as Loader22, Square, Eye, EyeOff, Bot as Bot3 } from "lucide-react";
 import { Fragment as Fragment2, jsx as jsx10, jsxs as jsxs7 } from "react/jsx-runtime";
 var ChatInput = ({ value, onChange, onSend, disabled, isStreaming, placeholder = "Type a message..." }) => {
   const handleKeyPress = useCallback8((e) => {
@@ -1989,7 +2064,7 @@ var ChatContent = ({
         error.message
       ] }) }) }),
       /* @__PURE__ */ jsx10("div", { className: "min-h-full", children: messages.length === 0 ? /* @__PURE__ */ jsx10("div", { className: "flex-1 flex items-center justify-center", children: /* @__PURE__ */ jsxs7("div", { className: "text-center max-w-2xl mx-auto px-4", children: [
-        /* @__PURE__ */ jsx10("div", { className: "w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6", children: /* @__PURE__ */ jsx10(Bot2, { className: "h-8 w-8 text-white" }) }),
+        /* @__PURE__ */ jsx10("div", { className: "w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6", children: /* @__PURE__ */ jsx10(Bot3, { className: "h-8 w-8 text-white" }) }),
         /* @__PURE__ */ jsx10("h1", { className: "text-2xl font-semibold text-white mb-2", children: agent?.name || "Assistant" }),
         /* @__PURE__ */ jsx10("p", { className: "text-gray-400 text-lg mb-8", children: agent?.description || "How can I help you today?" }),
         /* @__PURE__ */ jsx10("div", { className: "text-sm text-gray-500", children: /* @__PURE__ */ jsx10("p", { children: "Start a conversation by typing a message below." }) })

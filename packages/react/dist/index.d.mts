@@ -188,6 +188,11 @@ interface FullChatProps {
     agent?: Agent;
     metadata?: any;
     className?: string;
+    availableAgents?: Array<{
+        id: string;
+        name: string;
+        description?: string;
+    }>;
     UserMessageComponent?: React.ComponentType<any>;
     AssistantMessageComponent?: React.ComponentType<any>;
     AssistantWithToolCallsComponent?: React.ComponentType<any>;
@@ -196,9 +201,13 @@ interface FullChatProps {
     showDebug?: boolean;
     showSidebar?: boolean;
     sidebarWidth?: number;
+    currentPage?: 'chat' | 'agents' | 'tasks';
+    onPageChange?: (page: 'chat' | 'agents' | 'tasks') => void;
+    onAgentSelect?: (agentId: string) => void;
     onThreadSelect?: (threadId: string) => void;
     onThreadCreate?: (threadId: string) => void;
     onThreadDelete?: (threadId: string) => void;
+    onLogoClick?: () => void;
 }
 declare const FullChat: React.FC<FullChatProps>;
 
