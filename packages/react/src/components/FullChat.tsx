@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Agent } from '@distri/core';
 import { useThreads } from '../useThreads';
 import { EmbeddableChat } from './EmbeddableChat';
-import { ThemeToggle } from './ThemeToggle';
 import AgentsPage from './AgentsPage';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from './ui/sidebar';
@@ -100,6 +99,11 @@ export const FullChat: React.FC<FullChatProps> = ({
     console.log('Rename thread', threadId, 'to', newTitle);
     refetchThreads();
   }, [refetchThreads]);
+
+  const handleMessagesUpdate = useCallback(() => {
+    // Refresh threads when messages are updated
+    refetchThreads();
+  }, [refetchThreads]);
   return (
     <div className={`distri-chat ${className} h-full`}>
       <SidebarProvider defaultOpen={defaultOpen}
@@ -118,12 +122,12 @@ export const FullChat: React.FC<FullChatProps> = ({
           onPageChange={setCurrentPage}
         />
         <SidebarInset>
-          {/* Header with sidebar trigger, agent selector, and theme toggle */}
+          {/* Header with agent selector and sidebar trigger */}
           <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
             <div className="flex items-center gap-2 flex-1">
               <SidebarTrigger className="-ml-1" />
               {availableAgents && availableAgents.length > 0 && (
-                <div className="ml-4 w-64">
+                <div className="w-64">
                   <AgentSelect
                     agents={availableAgents}
                     selectedAgentId={agentId}
@@ -132,9 +136,6 @@ export const FullChat: React.FC<FullChatProps> = ({
                   />
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
             </div>
           </header>
 
@@ -157,6 +158,7 @@ export const FullChat: React.FC<FullChatProps> = ({
                 showDebug={showDebug}
                 placeholder="Type your message..."
                 onAgentSelect={onAgentSelect}
+                onMessagesUpdate={handleMessagesUpdate}
               />
             )}
 

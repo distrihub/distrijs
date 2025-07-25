@@ -18,6 +18,8 @@ export interface UseChatOptions {
   agent?: Agent;
   // Optional: Metadata to pass to the agent
   metadata?: any;
+  // Optional: Callback when messages are updated
+  onMessagesUpdate?: () => void;
 }
 
 export interface UseChatResult {
@@ -41,6 +43,7 @@ export function useChat({
   threadId,
   agent: providedAgent,
   metadata,
+  onMessagesUpdate,
 }: UseChatOptions): UseChatResult {
   // Use provided agent or create one internally
   const { agent: internalAgent } = useAgent({
@@ -83,13 +86,14 @@ export function useChat({
       setError(null);
       const fetchedMessages = await agent.getThreadMessages(threadId);
       setMessages(fetchedMessages);
+      onMessagesUpdate?.();
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
       setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, [agent, threadId]);
+  }, [agent, threadId, onMessagesUpdate]);
 
   useEffect(() => {
     fetchMessages();
@@ -109,8 +113,8 @@ export function useChat({
 
     // Send tool responses back to the agent
     if (results.length > 0) {
-      const responseMessage = DistriClient.initMessage([], 'user', { 
-        contextId: threadId, 
+      const responseMessage = DistriClient.initMessage([], 'user', {
+        contextId: threadId,
         metadata: {
           type: 'tool_responses',
           results: results
@@ -118,15 +122,15 @@ export function useChat({
       });
 
       const params = DistriClient.initMessageParams(
-        responseMessage, 
-        invokeConfig.configuration, 
+        responseMessage,
+        invokeConfig.configuration,
         responseMessage.metadata as MessageMetadata
       );
 
       // Continue the conversation with tool results
       try {
         const stream = await agent.invokeStream(params);
-        
+
         for await (const event of stream) {
           if (abortControllerRef.current?.signal.aborted) break;
           await handleStreamEvent(event);
@@ -141,7 +145,7 @@ export function useChat({
   const handleStreamEvent = useCallback(async (event: any) => {
     if (event.kind === 'message') {
       const message = event as Message;
-      
+
       setMessages((prev) => {
         const idx = prev.findIndex((m) => m.messageId === message.messageId);
         if (idx !== -1) {
@@ -153,6 +157,9 @@ export function useChat({
         }
       });
 
+      // Notify that messages have been updated
+      onMessagesUpdate?.();
+
       // Handle tool calls if present
       if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
         const toolCalls = message.metadata.tool_calls as ToolCall[];
@@ -163,7 +170,7 @@ export function useChat({
       // These events can be used for progress indicators, etc.
       console.debug('Task status update:', event);
     }
-  }, [handleToolCalls]);
+  }, [handleToolCalls, onMessagesUpdate]);
 
   // Send a message (non-streaming)
   const sendMessage = useCallback(async (
@@ -175,6 +182,7 @@ export function useChat({
     // Add user message immediately
     const userMessage: Message = DistriClient.initMessage(input, 'user', { contextId: threadId, metadata });
     setMessages((prev) => [...prev, userMessage]);
+    onMessagesUpdate?.();
 
     const params = DistriClient.initMessageParams(userMessage, invokeConfig.configuration, metadata);
     try {
@@ -183,13 +191,14 @@ export function useChat({
       const result = await agent.invoke(params);
       if (result && 'message' in result && result.message) {
         setMessages((prev) => [...prev, result.message as Message]);
+        onMessagesUpdate?.();
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to send message'));
     } finally {
       setLoading(false);
     }
-  }, [agent, threadId, invokeConfig.configuration]);
+  }, [agent, threadId, invokeConfig.configuration, onMessagesUpdate]);
 
   // Send a message (streaming)
   const sendMessageStream = useCallback(async (
@@ -200,6 +209,7 @@ export function useChat({
 
     const userMessage: Message = DistriClient.initMessage(input, 'user', { contextId: threadId, metadata });
     setMessages((prev) => [...prev, userMessage]);
+    onMessagesUpdate?.();
 
     const params = DistriClient.initMessageParams(userMessage, invokeConfig.configuration, metadata);
 
@@ -207,7 +217,7 @@ export function useChat({
       setLoading(true);
       setIsStreaming(true);
       setError(null);
-      
+
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -226,7 +236,7 @@ export function useChat({
       setLoading(false);
       setIsStreaming(false);
     }
-  }, [agent, threadId, invokeConfig.configuration, handleStreamEvent]);
+  }, [agent, threadId, invokeConfig.configuration, handleStreamEvent, onMessagesUpdate]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);

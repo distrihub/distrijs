@@ -89,7 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </button>
           </div>
         </div>
-        <div className="h-8"></div>
+
       </div>
     </div>
   );

@@ -796,6 +796,9 @@ var Agent = class _Agent {
   get description() {
     return this.agentDefinition.description;
   }
+  get iconUrl() {
+    return this.agentDefinition.icon_url;
+  }
   /**
    * Fetch messages for a thread (public method for useChat)
    */
