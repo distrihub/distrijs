@@ -1,6 +1,6 @@
 import React from 'react';
 import AgentList from './AgentList';
-import { useAgents } from '@distri/react';
+import { useAgents } from '../useAgents';
 import { DistriAgent } from '@distri/core';
 
 const AgentsPage: React.FC<{
