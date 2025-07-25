@@ -27,7 +27,7 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
       console.warn('Cannot add tool: no agent provided');
       return;
     }
-    
+
     agent.addTool(tool);
     toolsRef.current.add(tool.name);
   }, [agent]);
@@ -37,7 +37,7 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
       console.warn('Cannot add tools: no agent provided');
       return;
     }
-    
+
     tools.forEach(tool => {
       agent.addTool(tool);
       toolsRef.current.add(tool.name);
@@ -49,7 +49,7 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
       console.warn('Cannot remove tool: no agent provided');
       return;
     }
-    
+
     agent.removeTool(toolName);
     toolsRef.current.delete(toolName);
   }, [agent]);
@@ -63,7 +63,7 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
         error: 'No agent provided'
       };
     }
-    
+
     return agent.executeTool(toolCall);
   }, [agent]);
 
@@ -88,31 +88,16 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
 }
 
 /**
- * Utility function to create common tool definitions
- */
-export const createTool = (
-  name: string,
-  description: string,
-  parameters: any,
-  handler: (input: any) => Promise<any> | any
-): DistriTool => ({
-  name,
-  description,
-  parameters,
-  handler
-});
-
-/**
  * Built-in tool definitions
  */
 export const createBuiltinTools = () => ({
   /**
    * Confirmation tool for user approval
    */
-  confirm: createTool(
-    'confirm',
-    'Ask user for confirmation',
-    {
+  confirm: {
+    name: 'confirm',
+    description: 'Ask user for confirmation',
+    parameters: {
       type: 'object',
       properties: {
         message: { type: 'string', description: 'Message to show to user' },
@@ -120,19 +105,19 @@ export const createBuiltinTools = () => ({
       },
       required: ['message']
     },
-    async (input: { message: string; defaultValue?: boolean }) => {
+    handler: async (input: { message: string; defaultValue?: boolean }) => {
       const result = confirm(input.message);
       return { confirmed: result };
     }
-  ),
+  },
 
   /**
    * Input request tool
    */
-  input: createTool(
-    'input',
-    'Request text input from user',
-    {
+  input: {
+    name: 'input',
+    description: 'Request text input from user',
+    parameters: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'Prompt to show to user' },
@@ -140,19 +125,19 @@ export const createBuiltinTools = () => ({
       },
       required: ['prompt']
     },
-    async (input: { prompt: string; placeholder?: string }) => {
+    handler: async (input: { prompt: string; placeholder?: string }) => {
       const result = prompt(input.prompt, input.placeholder);
       return { input: result };
     }
-  ),
+  },
 
   /**
    * Notification tool
    */
-  notify: createTool(
-    'notify',
-    'Show notification to user',
-    {
+  notify: {
+    name: 'notify',
+    description: 'Show notification to user',
+    parameters: {
       type: 'object',
       properties: {
         message: { type: 'string', description: 'Notification message' },
@@ -160,10 +145,10 @@ export const createBuiltinTools = () => ({
       },
       required: ['message']
     },
-    async (input: { message: string; type?: string }) => {
+    handler: async (input: { message: string; type?: string }) => {
       // In a real app, this would show a toast notification
       console.log(`[${input.type || 'info'}] ${input.message}`);
       return { notified: true };
     }
-  )
+  }
 });

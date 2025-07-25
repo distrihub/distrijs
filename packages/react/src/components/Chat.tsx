@@ -176,7 +176,7 @@ const ChatContent: React.FC<ChatProps> = ({
           );
         }
 
-        // Handle assistant messages with tool calls
+        // Handle assistant/agent messages with tool calls
         if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
           const toolCallsProps = message.metadata.tool_calls.map((toolCall: any) => ({
             toolCall,
@@ -209,16 +209,21 @@ const ChatContent: React.FC<ChatProps> = ({
           );
         }
 
-        // Handle regular assistant messages
-        return (
-          <AssistantMessageComponent
-            key={message.messageId || `assistant-${index}`}
-            content={messageText || 'Empty message'}
-            timestamp={timestamp}
-            isStreaming={isStreaming && index === messages.length - 1}
-            metadata={message.metadata}
-          />
-        );
+        // Handle regular assistant/agent messages (both 'assistant' and 'agent' roles)
+        if (message.role === 'assistant' || message.role === 'agent') {
+          return (
+            <AssistantMessageComponent
+              key={message.messageId || `assistant-${index}`}
+              content={messageText || 'Empty message'}
+              timestamp={timestamp}
+              isStreaming={isStreaming && index === messages.length - 1}
+              metadata={message.metadata}
+            />
+          );
+        }
+
+        // Fallback for unknown message types
+        return null;
       });
   }, [messages, shouldDisplayMessage, extractTextFromMessage, isStreaming, UserMessageComponent, AssistantMessageComponent, AssistantWithToolCallsComponent, PlanMessageComponent]);
 
