@@ -155,7 +155,7 @@ interface DistriTool {
     name: string;
     description: string;
     parameters: any;
-    handler: ToolHandler;
+    handler: ToolHandler$3;
 }
 /**
  * Tool call from agent
@@ -178,7 +178,7 @@ type ToolResponse = ToolResult;
 /**
  * Tool handler function
  */
-interface ToolHandler {
+interface ToolHandler$3 {
     (input: any): Promise<any> | any;
 }
 /**
@@ -448,6 +448,9 @@ interface UseAgentsResult {
 }
 declare function useAgents(): UseAgentsResult;
 
+interface ToolHandler$2 {
+    (input: any): Promise<any> | any;
+}
 interface UseChatOptions {
     threadId: string;
     agent?: Agent$1;
@@ -455,6 +458,7 @@ interface UseChatOptions {
     onError?: (error: Error) => void;
     metadata?: any;
     onMessagesUpdate?: () => void;
+    tools?: Record<string, ToolHandler$2>;
 }
 interface UseChatReturn {
     messages: DistriStreamEvent[];
@@ -465,8 +469,14 @@ interface UseChatReturn {
     error: Error | null;
     clearMessages: () => void;
     agent: Agent$1 | undefined;
+    pendingToolCalls: ToolCall[];
+    toolResults: ToolResult[];
+    sendToolResults: () => Promise<void>;
+    executeTool: (toolCall: ToolCall) => Promise<void>;
+    completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
+    getToolCallStatus: (toolCallId: string) => any;
 }
-declare function useChat({ threadId, onMessage, onError, metadata, onMessagesUpdate, agent, }: UseChatOptions): UseChatReturn;
+declare function useChat({ threadId, onMessage, onError, metadata, onMessagesUpdate, agent, tools, }: UseChatOptions): UseChatReturn;
 
 interface UseThreadsResult {
     threads: DistriThread[];
@@ -479,18 +489,57 @@ interface UseThreadsResult {
 }
 declare function useThreads(): UseThreadsResult;
 
+interface ToolCallState$1 {
+    toolCall: ToolCall;
+    status: 'pending' | 'running' | 'completed' | 'error';
+    result?: any;
+    error?: string;
+}
+interface ToolHandler$1 {
+    (input: any): Promise<any> | any;
+}
 interface UseToolsOptions {
-    agent?: Agent$1 | null;
+    tools?: Record<string, ToolHandler$1>;
+    onToolComplete?: (toolCallId: string, result: ToolResult) => void;
+    onAllToolsComplete?: (results: ToolResult[]) => void;
 }
-interface UseToolsResult {
-    registerTool: (tool: DistriTool) => void;
-    registerTools: (tools: DistriTool[]) => void;
-    unregisterTool: (toolName: string) => void;
-    executeTool: (toolCall: ToolCall) => Promise<ToolResult>;
-    getTools: () => string[];
-    hasTool: (toolName: string) => boolean;
+interface UseToolsReturn {
+    toolCalls: ToolCallState$1[];
+    executeTool: (toolCall: ToolCall) => Promise<void>;
+    executeAllTools: (toolCalls: ToolCall[]) => Promise<ToolResult[]>;
+    clearToolCalls: () => void;
+    isExecuting: boolean;
 }
-declare function useTools({ agent }: UseToolsOptions): UseToolsResult;
+declare function useTools(options?: UseToolsOptions): UseToolsReturn;
+
+interface ToolCallState {
+    toolCall: ToolCall;
+    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
+    result?: any;
+    error?: string;
+    startedAt?: Date;
+    completedAt?: Date;
+}
+interface ToolHandler {
+    (input: any): Promise<any> | any;
+}
+interface UseToolManagerOptions {
+    tools?: Record<string, ToolHandler>;
+    autoExecute?: boolean;
+    onToolComplete?: (toolCallId: string, result: ToolResult) => void;
+    onAllToolsComplete?: (results: ToolResult[]) => void;
+}
+interface UseToolManagerReturn {
+    toolCalls: ToolCallState[];
+    executeTool: (toolCall: ToolCall) => Promise<void>;
+    completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
+    executeAllTools: (toolCalls: ToolCall[]) => Promise<ToolResult[]>;
+    clearToolCalls: () => void;
+    isExecuting: boolean;
+    addToolCalls: (toolCalls: ToolCall[]) => void;
+    getToolCallStatus: (toolCallId: string) => ToolCallState | undefined;
+}
+declare function useToolManager(options?: UseToolManagerOptions): UseToolManagerReturn;
 
 interface DistriProviderProps {
     config: DistriClientConfig;
@@ -754,4 +803,4 @@ declare const SelectSeparator: React$1.ForwardRefExoticComponent<Omit<SelectPrim
 
 declare function cn(...inputs: ClassValue[]): string;
 
-export { AgentSelect, AppSidebar, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, Textarea, ThemeProvider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, cn, useAgent, useAgents, useChat, useSidebar, useTheme, useThreads, useTools };
+export { AgentSelect, AppSidebar, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, Textarea, ThemeProvider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, cn, useAgent, useAgents, useChat, useSidebar, useTheme, useThreads, useToolManager, useTools };

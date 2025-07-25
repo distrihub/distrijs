@@ -5,10 +5,17 @@ import {
   DistriPart,
   InvokeContext,
   DistriEvent,
-  convertDistriMessageToA2A
+  convertDistriMessageToA2A,
+  ToolCall,
+  ToolResult
 } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
 import { DistriStreamEvent, isDistriMessage } from '../../core/src/types';
+import { useToolManager } from './hooks/useToolManager';
+
+interface ToolHandler {
+  (input: any): Promise<any> | any;
+}
 
 export interface UseChatOptions {
   threadId: string;
@@ -17,6 +24,7 @@ export interface UseChatOptions {
   onError?: (error: Error) => void;
   metadata?: any;
   onMessagesUpdate?: () => void;
+  tools?: Record<string, ToolHandler>;
 }
 
 export interface UseChatReturn {
@@ -28,6 +36,12 @@ export interface UseChatReturn {
   error: Error | null;
   clearMessages: () => void;
   agent: Agent | undefined;
+  pendingToolCalls: ToolCall[];
+  toolResults: ToolResult[];
+  sendToolResults: () => Promise<void>;
+  executeTool: (toolCall: ToolCall) => Promise<void>;
+  completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
+  getToolCallStatus: (toolCallId: string) => any;
 }
 
 export function useChat({
@@ -37,12 +51,30 @@ export function useChat({
   metadata,
   onMessagesUpdate,
   agent,
+  tools = {},
 }: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Tool handling with the new manager
+  const [toolResults, setToolResults] = useState<ToolResult[]>([]);
+
+  const {
+    toolCalls,
+    addToolCalls,
+    executeTool,
+    completeTool,
+    getToolCallStatus
+  } = useToolManager({
+    tools,
+    autoExecute: false, // Don't auto-execute, let user control
+    onToolComplete: (_toolCallId, result) => {
+      setToolResults(prev => [...prev, result]);
+    }
+  });
 
 
   // Create InvokeContext for message construction
@@ -77,8 +109,6 @@ export function useChat({
 
   const handleStreamEvent = useCallback((event: DistriStreamEvent) => {
     // Handle DistriMessage (converted from A2A Message)
-
-
     setMessages(prev => {
       if (isDistriMessage(event)) {
         const distriMessage = event as DistriMessage;
@@ -108,9 +138,19 @@ export function useChat({
       }
     });
 
-    onMessage?.(event);
+    // Handle tool calls automatically
+    if (isDistriMessage(event)) {
+      const distriMessage = event as DistriMessage;
+      const toolCallParts = distriMessage.parts.filter(part => part.type === 'tool_call');
 
-  }, [onMessage]);
+      if (toolCallParts.length > 0) {
+        const toolCalls = toolCallParts.map(part => (part as any).tool_call);
+        addToolCalls(toolCalls);
+      }
+    }
+
+    onMessage?.(event);
+  }, [onMessage, tools]);
 
 
 
@@ -224,6 +264,31 @@ export function useChat({
     setMessages([]);
   }, []);
 
+  // Send all collected tool results
+  const sendToolResults = useCallback(async () => {
+    if (agent && toolResults.length > 0) {
+      const toolResultParts: DistriPart[] = toolResults.map(result => ({
+        type: 'tool_result',
+        tool_result: result
+      }));
+
+      const toolResultMessage = DistriClient.initDistriMessage('tool', toolResultParts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+
+      try {
+        await agent.invoke({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+        // Clear tool results after sending
+        setToolResults([]);
+      } catch (err) {
+        console.error('Failed to send tool results:', err);
+      }
+    }
+  }, [agent, toolResults, createInvokeContext]);
+
   return {
     messages,
     isStreaming,
@@ -232,6 +297,12 @@ export function useChat({
     isLoading,
     error,
     clearMessages,
-    agent: agent || undefined
+    agent: agent || undefined,
+    pendingToolCalls: toolCalls.map(tc => tc.toolCall),
+    toolResults,
+    sendToolResults,
+    executeTool,
+    completeTool,
+    getToolCallStatus
   };
 } 

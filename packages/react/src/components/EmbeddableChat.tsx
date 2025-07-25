@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, ToolCallState } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
@@ -69,7 +69,10 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     isLoading,
     isStreaming,
     error,
-    sendMessage: sendChatMessage
+    sendMessage: sendChatMessage,
+    executeTool,
+    completeTool,
+    getToolCallStatus
   } = useChat({
     threadId,
     agent: agent || undefined,
@@ -143,14 +146,21 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
               );
 
             case 'assistant_with_tools':
-              // Extract tool calls from message parts or metadata
+              // Extract tool calls from message parts and get their status from the tool manager
               const toolCalls = (message.parts || [])
                 .filter((part: any) => part.tool_call)
-                .map((part: any) => ({
-                  toolCall: part.tool_call,
-                  status: { running: false } as ToolCallState,
-                  result: part.tool_result || 'Completed successfully',
-                }));
+                .map((part: any) => {
+                  const toolCall = part.tool_call;
+                  const status = getToolCallStatus?.(toolCall.tool_call_id);
+                  return {
+                    toolCall,
+                    status: status?.status || 'pending',
+                    result: status?.result,
+                    error: status?.error,
+                    startedAt: status?.startedAt,
+                    completedAt: status?.completedAt,
+                  };
+                });
 
               return (
                 <AssistantWithToolCallsComponent
@@ -159,6 +169,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                   toolCalls={toolCalls}
                   timestamp={timestamp}
                   isStreaming={isStreaming && index === messages.length - 1}
+                  onExecuteTool={executeTool}
+                  onCompleteTool={completeTool}
                 />
               );
 

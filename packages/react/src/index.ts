@@ -3,7 +3,8 @@ export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
-export { useTools } from './useTools';
+export { useTools } from './hooks/useTools';
+export { useToolManager } from './hooks/useToolManager';
 
 // Core components
 export { DistriProvider } from './DistriProvider';

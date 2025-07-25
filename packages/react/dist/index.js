@@ -1206,26 +1206,180 @@ function useAgents() {
 }
 
 // src/useChat.ts
-import { useState as useState5, useCallback as useCallback3, useEffect as useEffect4, useRef as useRef2 } from "react";
+import { useState as useState6, useCallback as useCallback4, useEffect as useEffect4, useRef as useRef3 } from "react";
+
+// src/hooks/useToolManager.ts
+import { useState as useState5, useCallback as useCallback3, useRef as useRef2 } from "react";
+function useToolManager(options = {}) {
+  const [toolCalls, setToolCalls] = useState5([]);
+  const [isExecuting, setIsExecuting] = useState5(false);
+  const toolsRef = useRef2(options.tools || {});
+  const onToolCompleteRef = useRef2(options.onToolComplete);
+  const onAllToolsCompleteRef = useRef2(options.onAllToolsComplete);
+  const autoExecuteRef = useRef2(options.autoExecute ?? false);
+  if (options.tools !== toolsRef.current) {
+    toolsRef.current = options.tools || {};
+  }
+  if (options.onToolComplete !== onToolCompleteRef.current) {
+    onToolCompleteRef.current = options.onToolComplete;
+  }
+  if (options.onAllToolsComplete !== onAllToolsCompleteRef.current) {
+    onAllToolsCompleteRef.current = options.onAllToolsComplete;
+  }
+  if (options.autoExecute !== autoExecuteRef.current) {
+    autoExecuteRef.current = options.autoExecute ?? false;
+  }
+  const addToolCalls = useCallback3((newToolCalls) => {
+    setToolCalls((prev) => {
+      const existingIds = new Set(prev.map((tc) => tc.toolCall.tool_call_id));
+      const newToolCallStates = newToolCalls.filter((tc) => !existingIds.has(tc.tool_call_id)).map((tc) => ({
+        toolCall: tc,
+        status: "pending",
+        startedAt: /* @__PURE__ */ new Date()
+      }));
+      return [...prev, ...newToolCallStates];
+    });
+    if (autoExecuteRef.current) {
+      newToolCalls.forEach((tc) => executeTool(tc));
+    }
+  }, []);
+  const executeTool = useCallback3(async (toolCall) => {
+    const toolHandler = toolsRef.current[toolCall.tool_name];
+    setToolCalls((prev) => prev.map(
+      (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "running", startedAt: /* @__PURE__ */ new Date() } : tc
+    ));
+    if (!toolHandler) {
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "user_action_required" } : tc
+      ));
+      return;
+    }
+    try {
+      const result = await toolHandler(toolCall.input);
+      const successResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result,
+        success: true
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "completed", result, completedAt: /* @__PURE__ */ new Date() } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, successResult);
+    } catch (error) {
+      const errorResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "error", error: errorResult.error, completedAt: /* @__PURE__ */ new Date() } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+    }
+  }, []);
+  const completeTool = useCallback3((toolCallId, result, success = true, error) => {
+    const toolResult = {
+      tool_call_id: toolCallId,
+      result,
+      success,
+      error
+    };
+    setToolCalls((prev) => prev.map(
+      (tc) => tc.toolCall.tool_call_id === toolCallId ? {
+        ...tc,
+        status: success ? "completed" : "error",
+        result,
+        error,
+        completedAt: /* @__PURE__ */ new Date()
+      } : tc
+    ));
+    onToolCompleteRef.current?.(toolCallId, toolResult);
+  }, []);
+  const executeAllTools = useCallback3(async (toolCallsToExecute) => {
+    setIsExecuting(true);
+    try {
+      addToolCalls(toolCallsToExecute);
+      const promises = toolCallsToExecute.map((toolCall) => executeTool(toolCall));
+      await Promise.all(promises);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const results = toolCallsToExecute.map((toolCall) => {
+        const state = toolCalls.find((tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id);
+        if (!state) {
+          return {
+            tool_call_id: toolCall.tool_call_id,
+            result: null,
+            success: false,
+            error: "Tool call not found in state"
+          };
+        }
+        return {
+          tool_call_id: toolCall.tool_call_id,
+          result: state.result,
+          success: state.status === "completed",
+          error: state.error
+        };
+      });
+      onAllToolsCompleteRef.current?.(results);
+      return results;
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [executeTool, addToolCalls, toolCalls]);
+  const clearToolCalls = useCallback3(() => {
+    setToolCalls([]);
+  }, []);
+  const getToolCallStatus = useCallback3((toolCallId) => {
+    return toolCalls.find((tc) => tc.toolCall.tool_call_id === toolCallId);
+  }, [toolCalls]);
+  return {
+    toolCalls,
+    executeTool,
+    completeTool,
+    executeAllTools,
+    clearToolCalls,
+    isExecuting,
+    addToolCalls,
+    getToolCallStatus
+  };
+}
+
+// src/useChat.ts
 function useChat({
   threadId,
   onMessage,
   onError,
   metadata,
   onMessagesUpdate,
-  agent
+  agent,
+  tools = {}
 }) {
-  const [messages, setMessages] = useState5([]);
-  const [isLoading, setIsLoading] = useState5(false);
-  const [isStreaming, setIsStreaming] = useState5(false);
-  const [error, setError] = useState5(null);
-  const abortControllerRef = useRef2(null);
-  const createInvokeContext = useCallback3(() => ({
+  const [messages, setMessages] = useState6([]);
+  const [isLoading, setIsLoading] = useState6(false);
+  const [isStreaming, setIsStreaming] = useState6(false);
+  const [error, setError] = useState6(null);
+  const abortControllerRef = useRef3(null);
+  const [toolResults, setToolResults] = useState6([]);
+  const {
+    toolCalls,
+    addToolCalls,
+    executeTool,
+    completeTool,
+    getToolCallStatus
+  } = useToolManager({
+    tools,
+    autoExecute: false,
+    // Don't auto-execute, let user control
+    onToolComplete: (_toolCallId, result) => {
+      setToolResults((prev) => [...prev, result]);
+    }
+  });
+  const createInvokeContext = useCallback4(() => ({
     thread_id: threadId,
     run_id: void 0,
     metadata
   }), [threadId, metadata]);
-  const fetchMessages = useCallback3(async () => {
+  const fetchMessages = useCallback4(async () => {
     if (!agent) return;
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
@@ -1244,7 +1398,7 @@ function useChat({
       fetchMessages();
     }
   }, [fetchMessages, threadId]);
-  const handleStreamEvent = useCallback3((event) => {
+  const handleStreamEvent = useCallback4((event) => {
     setMessages((prev) => {
       if (isDistriMessage(event)) {
         const distriMessage = event;
@@ -1265,9 +1419,17 @@ function useChat({
         return [...prev, event];
       }
     });
+    if (isDistriMessage(event)) {
+      const distriMessage = event;
+      const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
+      if (toolCallParts.length > 0) {
+        const toolCalls2 = toolCallParts.map((part) => part.tool_call);
+        addToolCalls(toolCalls2);
+      }
+    }
     onMessage?.(event);
-  }, [onMessage]);
-  const sendMessage = useCallback3(async (content) => {
+  }, [onMessage, tools]);
+  const sendMessage = useCallback4(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1305,7 +1467,7 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
-  const sendMessageStream = useCallback3(async (content) => {
+  const sendMessageStream = useCallback4(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1343,9 +1505,29 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
-  const clearMessages = useCallback3(() => {
+  const clearMessages = useCallback4(() => {
     setMessages([]);
   }, []);
+  const sendToolResults = useCallback4(async () => {
+    if (agent && toolResults.length > 0) {
+      const toolResultParts = toolResults.map((result) => ({
+        type: "tool_result",
+        tool_result: result
+      }));
+      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+      try {
+        await agent.invoke({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+        setToolResults([]);
+      } catch (err) {
+        console.error("Failed to send tool results:", err);
+      }
+    }
+  }, [agent, toolResults, createInvokeContext]);
   return {
     messages,
     isStreaming,
@@ -1354,18 +1536,24 @@ function useChat({
     isLoading,
     error,
     clearMessages,
-    agent: agent || void 0
+    agent: agent || void 0,
+    pendingToolCalls: toolCalls.map((tc) => tc.toolCall),
+    toolResults,
+    sendToolResults,
+    executeTool,
+    completeTool,
+    getToolCallStatus
   };
 }
 
 // src/useThreads.ts
-import { useState as useState6, useEffect as useEffect5, useCallback as useCallback4 } from "react";
+import { useState as useState7, useEffect as useEffect5, useCallback as useCallback5 } from "react";
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = useState6([]);
-  const [loading, setLoading] = useState6(true);
-  const [error, setError] = useState6(null);
-  const fetchThreads = useCallback4(async () => {
+  const [threads, setThreads] = useState7([]);
+  const [loading, setLoading] = useState7(true);
+  const [error, setError] = useState7(null);
+  const fetchThreads = useCallback5(async () => {
     if (!client) {
       console.log("[useThreads] Client not available, skipping fetch");
       return;
@@ -1384,7 +1572,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const fetchThread = useCallback4(async (threadId) => {
+  const fetchThread = useCallback5(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1396,7 +1584,7 @@ function useThreads() {
       throw err;
     }
   }, [client]);
-  const deleteThread = useCallback4(async (threadId) => {
+  const deleteThread = useCallback5(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1413,7 +1601,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = useCallback4(async (threadId, localId) => {
+  const updateThread = useCallback5(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -1476,67 +1664,114 @@ function useThreads() {
   };
 }
 
-// src/useTools.ts
-import { useCallback as useCallback5, useRef as useRef3 } from "react";
-function useTools({ agent }) {
-  const toolsRef = useRef3(/* @__PURE__ */ new Set());
-  const registerTool = useCallback5((tool) => {
-    if (!agent) {
-      console.warn("Cannot add tool: no agent provided");
-      return;
-    }
-    agent.registerTool(tool);
-    toolsRef.current.add(tool.name);
-  }, [agent]);
-  const registerTools = useCallback5((tools) => {
-    if (!agent) {
-      console.warn("Cannot add tools: no agent provided");
-      return;
-    }
-    tools.forEach((tool) => {
-      agent.registerTool(tool);
-      toolsRef.current.add(tool.name);
-    });
-  }, [agent]);
-  const unregisterTool = useCallback5((toolName) => {
-    if (!agent) {
-      console.warn("Cannot remove tool: no agent provided");
-      return;
-    }
-    agent.unregisterTool(toolName);
-    toolsRef.current.delete(toolName);
-  }, [agent]);
-  const executeTool = useCallback5(async (toolCall) => {
-    if (!agent) {
-      return {
+// src/hooks/useTools.ts
+import { useState as useState8, useCallback as useCallback6, useRef as useRef4 } from "react";
+function useTools(options = {}) {
+  const [toolCalls, setToolCalls] = useState8([]);
+  const [isExecuting, setIsExecuting] = useState8(false);
+  const toolsRef = useRef4(options.tools || {});
+  const onToolCompleteRef = useRef4(options.onToolComplete);
+  const onAllToolsCompleteRef = useRef4(options.onAllToolsComplete);
+  if (options.tools !== toolsRef.current) {
+    toolsRef.current = options.tools || {};
+  }
+  if (options.onToolComplete !== onToolCompleteRef.current) {
+    onToolCompleteRef.current = options.onToolComplete;
+  }
+  if (options.onAllToolsComplete !== onAllToolsCompleteRef.current) {
+    onAllToolsCompleteRef.current = options.onAllToolsComplete;
+  }
+  const executeTool = useCallback6(async (toolCall) => {
+    const toolHandler = toolsRef.current[toolCall.tool_name];
+    if (!toolHandler) {
+      const errorResult = {
         tool_call_id: toolCall.tool_call_id,
         result: null,
         success: false,
-        error: "No agent provided"
+        error: `Tool '${toolCall.tool_name}' not found`
       };
+      setToolCalls((prev) => [...prev, {
+        toolCall,
+        status: "error",
+        error: errorResult.error
+      }]);
+      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+      return;
     }
-    return agent.executeTool(toolCall);
-  }, [agent]);
-  const getTools = useCallback5(() => {
-    if (!agent) return [];
-    return agent.getTools();
-  }, [agent]);
-  const hasTool = useCallback5((toolName) => {
-    if (!agent) return false;
-    return agent.hasTool(toolName);
-  }, [agent]);
+    setToolCalls((prev) => [...prev, {
+      toolCall,
+      status: "pending"
+    }]);
+    try {
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "running" } : tc
+      ));
+      const result = await toolHandler(toolCall.input);
+      const successResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result,
+        success: true
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "completed", result } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, successResult);
+    } catch (error) {
+      const errorResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "error", error: errorResult.error } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+    }
+  }, []);
+  const executeAllTools = useCallback6(async (toolCallsToExecute) => {
+    setIsExecuting(true);
+    try {
+      const promises = toolCallsToExecute.map((toolCall) => executeTool(toolCall));
+      await Promise.all(promises);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const results = toolCallsToExecute.map((toolCall) => {
+        const state = toolCalls.find((tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id);
+        if (!state) {
+          return {
+            tool_call_id: toolCall.tool_call_id,
+            result: null,
+            success: false,
+            error: "Tool call not found in state"
+          };
+        }
+        return {
+          tool_call_id: toolCall.tool_call_id,
+          result: state.result,
+          success: state.status === "completed",
+          error: state.error
+        };
+      });
+      onAllToolsCompleteRef.current?.(results);
+      return results;
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [executeTool]);
+  const clearToolCalls = useCallback6(() => {
+    setToolCalls([]);
+  }, []);
   return {
-    registerTool,
-    registerTools,
-    unregisterTool,
+    toolCalls,
     executeTool,
-    getTools,
-    hasTool
+    executeAllTools,
+    clearToolCalls,
+    isExecuting
   };
 }
 
 // src/components/EmbeddableChat.tsx
-import { useState as useState7, useRef as useRef5, useEffect as useEffect7, useMemo as useMemo2 } from "react";
+import { useState as useState9, useRef as useRef6, useEffect as useEffect7, useMemo as useMemo2 } from "react";
 import { MessageSquare } from "lucide-react";
 
 // src/components/MessageComponents.tsx
@@ -1742,7 +1977,7 @@ var PlanComponent = ({ plan, isDark = false }) => {
 var PartRenderer = ({ part, isDark = false }) => {
   switch (part.type) {
     case "text":
-      return /* @__PURE__ */ jsx4("div", { className: `whitespace-pre-wrap break-words ${isDark ? "text-gray-300" : "text-gray-700"}`, children: part.text });
+      return /* @__PURE__ */ jsx4("div", { className: `whitespace-pre-wrap break-words ${isDark ? "text-white" : "text-gray-700"}`, children: part.text });
     case "code_observation":
       return /* @__PURE__ */ jsx4(CodeObservationComponent, { thought: part.thought, code: part.code, isDark });
     case "tool_call":
@@ -2048,21 +2283,25 @@ var AssistantWithToolCalls = ({
               /* @__PURE__ */ jsx5("span", { className: "text-sm font-medium text-foreground", children: toolCall.toolCall.tool_name })
             ] }),
             /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2", children: [
-              !toolCall.status.running && !toolCall.result && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-yellow-600", children: [
+              toolCall.status === "pending" && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-yellow-600", children: [
                 /* @__PURE__ */ jsx5(Clock, { className: "h-3 w-3" }),
                 "Pending"
               ] }),
-              toolCall.status.running && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-blue-600", children: [
+              toolCall.status === "running" && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-blue-600", children: [
                 /* @__PURE__ */ jsx5(Settings, { className: "h-3 w-3 animate-spin" }),
                 "Running"
               ] }),
-              !toolCall.status.running && toolCall.result && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
+              toolCall.status === "completed" && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
                 /* @__PURE__ */ jsx5(CheckCircle, { className: "h-3 w-3" }),
                 "Completed"
               ] }),
-              !toolCall.status.running && !toolCall.result && toolCall.status.result === "error" && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
+              toolCall.status === "error" && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
                 /* @__PURE__ */ jsx5(XCircle, { className: "h-3 w-3" }),
                 "Failed"
+              ] }),
+              toolCall.status === "user_action_required" && /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 text-xs text-orange-600", children: [
+                /* @__PURE__ */ jsx5(Wrench2, { className: "h-3 w-3" }),
+                "User Action Required"
               ] })
             ] })
           ] }),
@@ -2296,7 +2535,7 @@ var AgentSelect = ({
 };
 
 // src/components/ChatInput.tsx
-import { useRef as useRef4, useEffect as useEffect6 } from "react";
+import { useRef as useRef5, useEffect as useEffect6 } from "react";
 import { Send, Square } from "lucide-react";
 import { jsx as jsx8, jsxs as jsxs5 } from "react/jsx-runtime";
 var ChatInput = ({
@@ -2309,7 +2548,7 @@ var ChatInput = ({
   isStreaming = false,
   className = ""
 }) => {
-  const textareaRef = useRef4(null);
+  const textareaRef = useRef5(null);
   useEffect6(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -2385,15 +2624,18 @@ var EmbeddableChat = ({
   onResponse: _onResponse,
   onMessagesUpdate
 }) => {
-  const [input, setInput] = useState7("");
-  const messagesEndRef = useRef5(null);
+  const [input, setInput] = useState9("");
+  const messagesEndRef = useRef6(null);
   const { agent } = useAgent({ agentId, agent: defaultAgent });
   const {
     messages,
     isLoading,
     isStreaming,
     error,
-    sendMessage: sendChatMessage
+    sendMessage: sendChatMessage,
+    executeTool,
+    completeTool,
+    getToolCallStatus
   } = useChat({
     threadId,
     agent: agent || void 0,
@@ -2454,18 +2696,27 @@ var EmbeddableChat = ({
               key
             );
           case "assistant_with_tools":
-            const toolCalls = (message.parts || []).filter((part) => part.tool_call).map((part) => ({
-              toolCall: part.tool_call,
-              status: { running: false },
-              result: part.tool_result || "Completed successfully"
-            }));
+            const toolCalls = (message.parts || []).filter((part) => part.tool_call).map((part) => {
+              const toolCall = part.tool_call;
+              const status = getToolCallStatus?.(toolCall.tool_call_id);
+              return {
+                toolCall,
+                status: status?.status || "pending",
+                result: status?.result,
+                error: status?.error,
+                startedAt: status?.startedAt,
+                completedAt: status?.completedAt
+              };
+            });
             return /* @__PURE__ */ jsx9(
               AssistantWithToolCallsComponent,
               {
                 message,
                 toolCalls,
                 timestamp,
-                isStreaming: isStreaming && index === messages.length - 1
+                isStreaming: isStreaming && index === messages.length - 1,
+                onExecuteTool: executeTool,
+                onCompleteTool: completeTool
               },
               key
             );
@@ -2560,7 +2811,7 @@ var EmbeddableChat = ({
 };
 
 // src/components/FullChat.tsx
-import { useState as useState10, useCallback as useCallback8, useEffect as useEffect9 } from "react";
+import { useState as useState12, useCallback as useCallback9, useEffect as useEffect9 } from "react";
 
 // src/components/AgentList.tsx
 import React8 from "react";
@@ -2664,7 +2915,7 @@ var AgentsPage = ({ onStartChat }) => {
 var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
-import { useState as useState9, useCallback as useCallback7 } from "react";
+import { useState as useState11, useCallback as useCallback8 } from "react";
 import { MessageSquare as MessageSquare2, MoreHorizontal, Trash2, Edit3, Bot as Bot4, Users, Edit2, RefreshCw as RefreshCw2, Github } from "lucide-react";
 
 // src/components/ui/sidebar.tsx
@@ -3421,16 +3672,16 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = useState9(false);
-  const [editTitle, setEditTitle] = useState9(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = useState9(false);
-  const handleRename = useCallback7(() => {
+  const [isEditing, setIsEditing] = useState11(false);
+  const [editTitle, setEditTitle] = useState11(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = useState11(false);
+  const handleRename = useCallback8(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = useCallback7((e) => {
+  const handleKeyPress = useCallback8((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -3516,7 +3767,7 @@ function AppSidebar({
 }) {
   const { threads, loading: threadsLoading, refetch } = useThreads();
   const { theme, setTheme } = useTheme();
-  const handleRefresh = useCallback7(() => {
+  const handleRefresh = useCallback8(() => {
     refetch();
   }, [refetch]);
   return /* @__PURE__ */ jsxs11(Sidebar, { children: [
@@ -3661,10 +3912,10 @@ var FullChat = ({
   availableAgents,
   onAgentSelect
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = useState10("default");
+  const [selectedThreadId, setSelectedThreadId] = useState12("default");
   const { threads, refetch: refetchThreads } = useThreads();
-  const [currentPage, setCurrentPage] = useState10("chat");
-  const [defaultOpen, setDefaultOpen] = useState10(true);
+  const [currentPage, setCurrentPage] = useState12("chat");
+  const [defaultOpen, setDefaultOpen] = useState12(true);
   const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
   const { theme } = useTheme();
   useEffect9(() => {
@@ -3673,17 +3924,17 @@ var FullChat = ({
       setDefaultOpen(savedState === "true");
     }
   }, []);
-  const handleNewChat = useCallback8(() => {
+  const handleNewChat = useCallback9(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = useCallback8((threadId) => {
+  const handleThreadSelect = useCallback9((threadId) => {
     setCurrentPage("chat");
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = useCallback8((threadId) => {
+  const handleThreadDelete = useCallback9((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -3695,11 +3946,11 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = useCallback8((threadId, newTitle) => {
+  const handleThreadRename = useCallback9((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
-  const handleMessagesUpdate = useCallback8(() => {
+  const handleMessagesUpdate = useCallback9(() => {
     refetchThreads();
   }, [refetchThreads]);
   return /* @__PURE__ */ jsx19("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ jsxs12(
@@ -4061,5 +4312,6 @@ export {
   useSidebar,
   useTheme,
   useThreads,
+  useToolManager,
   useTools
 };
