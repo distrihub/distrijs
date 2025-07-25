@@ -3,44 +3,40 @@
   "version": "0.1.2",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "distri/*"
   ],
   "exports": {
     "./core": {
-      "import": "./packages/core/dist/index.mjs",
-      "require": "./packages/core/dist/index.js",
-      "types": "./packages/core/dist/index.d.ts"
+      "types": "./distri/core/dist/index.d.ts",
+      "import": "./distri/core/dist/index.mjs",
+      "require": "./distri/core/dist/index.js"
     },
     "./react": {
-      "import": "./packages/react/dist/index.mjs",
-      "require": "./packages/react/dist/index.js",
-      "types": "./packages/react/dist/index.d.ts"
+      "types": "./distri/react/dist/index.d.ts",
+      "import": "./distri/react/dist/index.mjs",
+      "require": "./distri/react/dist/index.js"
     }
   },
   "files": [
-    "packages/core/dist/",
-    "packages/react/dist/",
+    "distri/core/dist/",
+    "distri/react/dist/",
     "README.md"
   ],
   "scripts": {
-    "build": "turbo build --filter=./packages/*",
+    "build": "turbo build --filter=./distri/*",
     "build:all": "turbo build",
     "build:prepare": "npm run build:all && npm run build:copy",
     "build:copy": "node scripts/build-copy.js",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "clean": "turbo clean",
     "type-check": "turbo type-check"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.11",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.11",
-    "turbo": "^1.10.0",
-    "typescript": "^5.0.0"
+    "turbo": "^2.0.0"
   },
   "dependencies": {
     "@a2a-js/sdk": "https://github.com/v3g42/a2a-js.git#51444c9",
-    "lucide-react": "^0.263.1"
+    "lucide-react": "^0.460.0"
   }
 }

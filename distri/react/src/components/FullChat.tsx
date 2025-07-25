@@ -4,7 +4,7 @@ import { Agent } from '@distri/core';
 import { useThreads } from '../useThreads';
 import { EmbeddableChat } from './EmbeddableChat';
 import { ModeToggle } from './ModeToggle';
-import '../styles/themes.css';
+
 
 export interface FullChatProps {
   agentId: string;

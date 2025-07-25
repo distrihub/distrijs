@@ -1,0 +1,19 @@
+import { defineConfig } from 'tsup'
+
+export default defineConfig({
+  entry: ['src/index.ts', 'src/globals.css'],
+  format: ['esm', 'cjs'],
+  dts: true,
+  sourcemap: true,
+  clean: true,
+  external: ['react', 'react-dom'],
+  injectStyle: false,
+  minify: false,
+  outDir: 'dist',
+  target: 'es2020',
+  esbuildOptions(options) {
+    options.banner = {
+      js: '"use client";'
+    }
+  }
+})
