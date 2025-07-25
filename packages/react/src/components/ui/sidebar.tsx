@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
-import { cn } from "./utils"
+import { cn } from "@/lib/utils"
 import { Button } from "./button"
 import { Separator } from "./separator"
 import { Sheet, SheetContent } from "./sheet"

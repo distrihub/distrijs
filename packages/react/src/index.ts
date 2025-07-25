@@ -50,6 +50,18 @@ export { Separator } from './components/ui/separator';
 export { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from './components/ui/sheet';
 export { Skeleton } from './components/ui/skeleton';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/ui/tooltip';
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from './components/ui/select';
 
 // Legacy exports (deprecated - use shadcn components instead)
 export { AgentDropdown } from './components/AgentDropdown';
@@ -59,4 +71,4 @@ export { default as MessageRenderer } from './components/MessageRenderer';
 
 export { createTool, createBuiltinTools } from './useTools';
 // Utilities
-export { cn } from './components/ui/utils';
+export { cn } from './lib/utils';

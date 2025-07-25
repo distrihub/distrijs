@@ -1,12 +1,12 @@
 "use client";
-var __defProp = Object.defineProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/useAgent.ts
 import React2, { useState as useState3, useCallback, useRef } from "react";
 
-// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
+// ../core/dist/index.mjs
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var A2AClient = class {
   /**
    * Constructs an A2AClient instance.
@@ -20,7 +20,6 @@ var A2AClient = class {
     __publicField(this, "agentCardPromise");
     __publicField(this, "requestIdCounter", 1);
     __publicField(this, "serviceEndpointUrl");
-    // To be populated from AgentCard after fetching
     __publicField(this, "fetchFn");
     this.agentBaseUrl = agentBaseUrl.replace(/\/$/, "");
     this.fetchFn = fetchFn || globalThis.fetch;
@@ -375,8 +374,6 @@ var A2AClient = class {
     return "error" in response;
   }
 };
-
-// ../core/src/types.ts
 var APPROVAL_REQUEST_TOOL_NAME = "approval_request";
 var DistriError = class extends Error {
   constructor(message, code, details) {
@@ -399,8 +396,6 @@ var ApiError = class extends DistriError {
     this.name = "ApiError";
   }
 };
-
-// ../core/src/distri-client.ts
 var DistriClient = class {
   constructor(config) {
     this.agentClients = /* @__PURE__ */ new Map();
@@ -689,8 +684,6 @@ function uuidv4() {
     (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
   ).join("");
 }
-
-// ../core/src/agent.ts
 var Agent = class _Agent {
   constructor(agentDefinition, client) {
     this.tools = /* @__PURE__ */ new Map();
@@ -2501,7 +2494,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva as cva2 } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
 
-// src/components/ui/utils.ts
+// src/lib/utils.ts
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 function cn(...inputs) {
@@ -4004,10 +3997,123 @@ var Textarea = React22.forwardRef(
 );
 Textarea.displayName = "Textarea";
 
+// src/components/ui/select.tsx
+import * as React23 from "react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { Check as Check3, ChevronDown as ChevronDown2, ChevronUp } from "lucide-react";
+import { jsx as jsx27, jsxs as jsxs15 } from "react/jsx-runtime";
+var Select = SelectPrimitive.Root;
+var SelectGroup = SelectPrimitive.Group;
+var SelectValue = SelectPrimitive.Value;
+var SelectTrigger = React23.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs15(
+  SelectPrimitive.Trigger,
+  {
+    ref,
+    className: cn(
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      className
+    ),
+    ...props,
+    children: [
+      children,
+      /* @__PURE__ */ jsx27(SelectPrimitive.Icon, { asChild: true, children: /* @__PURE__ */ jsx27(ChevronDown2, { className: "h-4 w-4 opacity-50" }) })
+    ]
+  }
+));
+SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
+var SelectScrollUpButton = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx27(
+  SelectPrimitive.ScrollUpButton,
+  {
+    ref,
+    className: cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ jsx27(ChevronUp, { className: "h-4 w-4" })
+  }
+));
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
+var SelectScrollDownButton = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx27(
+  SelectPrimitive.ScrollDownButton,
+  {
+    ref,
+    className: cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ jsx27(ChevronDown2, { className: "h-4 w-4" })
+  }
+));
+SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
+var SelectContent = React23.forwardRef(({ className, children, position = "popper", ...props }, ref) => /* @__PURE__ */ jsx27(SelectPrimitive.Portal, { children: /* @__PURE__ */ jsxs15(
+  SelectPrimitive.Content,
+  {
+    ref,
+    className: cn(
+      "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+      position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+      className
+    ),
+    position,
+    ...props,
+    children: [
+      /* @__PURE__ */ jsx27(SelectScrollUpButton, {}),
+      /* @__PURE__ */ jsx27(
+        SelectPrimitive.Viewport,
+        {
+          className: cn(
+            "p-1",
+            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          ),
+          children
+        }
+      ),
+      /* @__PURE__ */ jsx27(SelectScrollDownButton, {})
+    ]
+  }
+) }));
+SelectContent.displayName = SelectPrimitive.Content.displayName;
+var SelectLabel = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx27(
+  SelectPrimitive.Label,
+  {
+    ref,
+    className: cn("px-2 py-1.5 text-sm font-semibold", className),
+    ...props
+  }
+));
+SelectLabel.displayName = SelectPrimitive.Label.displayName;
+var SelectItem = React23.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs15(
+  SelectPrimitive.Item,
+  {
+    ref,
+    className: cn(
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    ),
+    ...props,
+    children: [
+      /* @__PURE__ */ jsx27("span", { className: "absolute right-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx27(SelectPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx27(Check3, { className: "h-4 w-4" }) }) }),
+      /* @__PURE__ */ jsx27(SelectPrimitive.ItemText, { children })
+    ]
+  }
+));
+SelectItem.displayName = SelectPrimitive.Item.displayName;
+var SelectSeparator = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx27(
+  SelectPrimitive.Separator,
+  {
+    ref,
+    className: cn("-mx-1 my-1 h-px bg-muted", className),
+    ...props
+  }
+));
+SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
+
 // src/components/ApprovalDialog.tsx
 import { useState as useState13 } from "react";
 import { AlertTriangle, CheckCircle as CheckCircle2, XCircle as XCircle2 } from "lucide-react";
-import { jsx as jsx27, jsxs as jsxs15 } from "react/jsx-runtime";
+import { jsx as jsx28, jsxs as jsxs16 } from "react/jsx-runtime";
 var ApprovalDialog = ({
   toolCalls,
   reason,
@@ -4029,46 +4135,46 @@ var ApprovalDialog = ({
     setIsVisible(false);
     onCancel();
   };
-  return /* @__PURE__ */ jsx27(DialogRoot, { children: /* @__PURE__ */ jsxs15(DialogContent, { children: [
-    /* @__PURE__ */ jsx27(DialogHeader, { children: /* @__PURE__ */ jsxs15("div", { className: "flex items-center", children: [
-      /* @__PURE__ */ jsx27(AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
-      /* @__PURE__ */ jsx27(DialogTitle, { children: "Tool Execution Approval" })
+  return /* @__PURE__ */ jsx28(DialogRoot, { children: /* @__PURE__ */ jsxs16(DialogContent, { children: [
+    /* @__PURE__ */ jsx28(DialogHeader, { children: /* @__PURE__ */ jsxs16("div", { className: "flex items-center", children: [
+      /* @__PURE__ */ jsx28(AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
+      /* @__PURE__ */ jsx28(DialogTitle, { children: "Tool Execution Approval" })
     ] }) }),
-    /* @__PURE__ */ jsxs15("div", { className: "p-4", children: [
-      reason && /* @__PURE__ */ jsx27("div", { className: "mb-4", children: /* @__PURE__ */ jsx27("p", { className: "text-sm text-muted-foreground", children: reason }) }),
-      /* @__PURE__ */ jsxs15("div", { className: "mb-4", children: [
-        /* @__PURE__ */ jsx27("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
-        /* @__PURE__ */ jsx27("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ jsx27("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ jsxs15("div", { className: "flex-1", children: [
-          /* @__PURE__ */ jsx27("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
-          toolCall.input && /* @__PURE__ */ jsx27("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
+    /* @__PURE__ */ jsxs16("div", { className: "p-4", children: [
+      reason && /* @__PURE__ */ jsx28("div", { className: "mb-4", children: /* @__PURE__ */ jsx28("p", { className: "text-sm text-muted-foreground", children: reason }) }),
+      /* @__PURE__ */ jsxs16("div", { className: "mb-4", children: [
+        /* @__PURE__ */ jsx28("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
+        /* @__PURE__ */ jsx28("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ jsx28("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ jsxs16("div", { className: "flex-1", children: [
+          /* @__PURE__ */ jsx28("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
+          toolCall.input && /* @__PURE__ */ jsx28("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
         ] }) }, toolCall.tool_call_id)) })
       ] }),
-      /* @__PURE__ */ jsxs15("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
-        /* @__PURE__ */ jsxs15(
+      /* @__PURE__ */ jsxs16("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
+        /* @__PURE__ */ jsxs16(
           Button,
           {
             onClick: handleApprove,
             variant: "default",
             className: "flex-1",
             children: [
-              /* @__PURE__ */ jsx27(CheckCircle2, { className: "w-4 h-4 mr-2" }),
+              /* @__PURE__ */ jsx28(CheckCircle2, { className: "w-4 h-4 mr-2" }),
               "Approve"
             ]
           }
         ),
-        /* @__PURE__ */ jsxs15(
+        /* @__PURE__ */ jsxs16(
           Button,
           {
             onClick: handleDeny,
             variant: "destructive",
             className: "flex-1",
             children: [
-              /* @__PURE__ */ jsx27(XCircle2, { className: "w-4 h-4 mr-2" }),
+              /* @__PURE__ */ jsx28(XCircle2, { className: "w-4 h-4 mr-2" }),
               "Deny"
             ]
           }
         ),
-        /* @__PURE__ */ jsx27(
+        /* @__PURE__ */ jsx28(
           Button,
           {
             onClick: handleCancel,
@@ -4106,6 +4212,16 @@ export {
   FullChat,
   Input,
   MessageRenderer_default as MessageRenderer,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
   Separator,
   Sheet,
   SheetContent,

@@ -6,7 +6,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -28,7 +27,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/index.ts
 var index_exports = {};
@@ -57,6 +55,16 @@ __export(index_exports, {
   FullChat: () => FullChat,
   Input: () => Input,
   MessageRenderer: () => MessageRenderer_default,
+  Select: () => Select,
+  SelectContent: () => SelectContent,
+  SelectGroup: () => SelectGroup,
+  SelectItem: () => SelectItem,
+  SelectLabel: () => SelectLabel,
+  SelectScrollDownButton: () => SelectScrollDownButton,
+  SelectScrollUpButton: () => SelectScrollUpButton,
+  SelectSeparator: () => SelectSeparator,
+  SelectTrigger: () => SelectTrigger,
+  SelectValue: () => SelectValue,
   Separator: () => Separator,
   Sheet: () => Sheet,
   SheetContent: () => SheetContent,
@@ -109,7 +117,10 @@ module.exports = __toCommonJS(index_exports);
 // src/useAgent.ts
 var import_react3 = __toESM(require("react"), 1);
 
-// ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
+// ../core/dist/index.mjs
+var __defProp2 = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var A2AClient = class {
   /**
    * Constructs an A2AClient instance.
@@ -123,7 +134,6 @@ var A2AClient = class {
     __publicField(this, "agentCardPromise");
     __publicField(this, "requestIdCounter", 1);
     __publicField(this, "serviceEndpointUrl");
-    // To be populated from AgentCard after fetching
     __publicField(this, "fetchFn");
     this.agentBaseUrl = agentBaseUrl.replace(/\/$/, "");
     this.fetchFn = fetchFn || globalThis.fetch;
@@ -478,8 +488,6 @@ var A2AClient = class {
     return "error" in response;
   }
 };
-
-// ../core/src/types.ts
 var APPROVAL_REQUEST_TOOL_NAME = "approval_request";
 var DistriError = class extends Error {
   constructor(message, code, details) {
@@ -502,8 +510,6 @@ var ApiError = class extends DistriError {
     this.name = "ApiError";
   }
 };
-
-// ../core/src/distri-client.ts
 var DistriClient = class {
   constructor(config) {
     this.agentClients = /* @__PURE__ */ new Map();
@@ -792,8 +798,6 @@ function uuidv4() {
     (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
   ).join("");
 }
-
-// ../core/src/agent.ts
 var Agent = class _Agent {
   constructor(agentDefinition, client) {
     this.tools = /* @__PURE__ */ new Map();
@@ -2470,7 +2474,7 @@ var EmbeddableChat = ({
 };
 
 // src/components/FullChat.tsx
-var import_react18 = require("react");
+var import_react17 = require("react");
 
 // src/components/ThemeToggle.tsx
 var import_react14 = __toESM(require("react"), 1);
@@ -2595,7 +2599,7 @@ var AgentsPage = ({ onStartChat }) => {
 var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
-var import_react17 = require("react");
+var import_react16 = require("react");
 var import_lucide_react10 = require("lucide-react");
 
 // src/components/ui/sidebar.tsx
@@ -2604,7 +2608,7 @@ var import_react_slot = require("@radix-ui/react-slot");
 var import_class_variance_authority2 = require("class-variance-authority");
 var import_lucide_react9 = require("lucide-react");
 
-// src/components/ui/utils.ts
+// src/lib/utils.ts
 var import_clsx = require("clsx");
 var import_tailwind_merge = require("tailwind-merge");
 function cn(...inputs) {
@@ -3359,16 +3363,16 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = (0, import_react17.useState)(false);
-  const [editTitle, setEditTitle] = (0, import_react17.useState)(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = (0, import_react17.useState)(false);
-  const handleRename = (0, import_react17.useCallback)(() => {
+  const [isEditing, setIsEditing] = (0, import_react16.useState)(false);
+  const [editTitle, setEditTitle] = (0, import_react16.useState)(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = (0, import_react16.useState)(false);
+  const handleRename = (0, import_react16.useCallback)(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = (0, import_react17.useCallback)((e) => {
+  const handleKeyPress = (0, import_react16.useCallback)((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -3541,26 +3545,26 @@ var FullChat = ({
   availableAgents,
   onAgentSelect
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = (0, import_react18.useState)("default");
+  const [selectedThreadId, setSelectedThreadId] = (0, import_react17.useState)("default");
   const { threads, refetch: refetchThreads } = useThreads();
-  const [currentPage, setCurrentPage] = (0, import_react18.useState)("chat");
-  const [defaultOpen, setDefaultOpen] = (0, import_react18.useState)(true);
-  (0, import_react18.useEffect)(() => {
+  const [currentPage, setCurrentPage] = (0, import_react17.useState)("chat");
+  const [defaultOpen, setDefaultOpen] = (0, import_react17.useState)(true);
+  (0, import_react17.useEffect)(() => {
     const savedState = localStorage.getItem("sidebar:state");
     if (savedState !== null) {
       setDefaultOpen(savedState === "true");
     }
   }, []);
-  const handleNewChat = (0, import_react18.useCallback)(() => {
+  const handleNewChat = (0, import_react17.useCallback)(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = (0, import_react18.useCallback)((threadId) => {
+  const handleThreadSelect = (0, import_react17.useCallback)((threadId) => {
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = (0, import_react18.useCallback)((threadId) => {
+  const handleThreadDelete = (0, import_react17.useCallback)((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -3572,7 +3576,7 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = (0, import_react18.useCallback)((threadId, newTitle) => {
+  const handleThreadRename = (0, import_react17.useCallback)((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
@@ -3687,7 +3691,7 @@ var ChatContainer = ({
 };
 
 // src/components/Chat.tsx
-var import_react19 = require("react");
+var import_react18 = require("react");
 var import_lucide_react11 = require("lucide-react");
 var import_jsx_runtime21 = require("react/jsx-runtime");
 var DebugToggle = ({ showDebug, onToggle }) => {
@@ -3720,8 +3724,8 @@ var ChatContent = ({
   PlanMessageComponent = PlanMessage,
   onExternalToolCall
 }) => {
-  const [input, setInput] = (0, import_react19.useState)("");
-  const messagesEndRef = (0, import_react19.useRef)(null);
+  const [input, setInput] = (0, import_react18.useState)("");
+  const messagesEndRef = (0, import_react18.useRef)(null);
   const { config, updateConfig } = useChatConfig();
   const {
     messages,
@@ -3735,18 +3739,18 @@ var ChatContent = ({
     agent,
     metadata
   });
-  (0, import_react19.useEffect)(() => {
+  (0, import_react18.useEffect)(() => {
     if (tools && onExternalToolCall) {
       console.warn("Legacy tools prop detected. Consider migrating to the new useTools hook for better performance.");
     }
   }, [tools, onExternalToolCall]);
-  const extractTextFromMessage2 = (0, import_react19.useCallback)((message) => {
+  const extractTextFromMessage2 = (0, import_react18.useCallback)((message) => {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
     return message.parts.filter((part) => part?.kind === "text" && part?.text).map((part) => part.text).join("") || "";
   }, []);
-  const shouldDisplayMessage2 = (0, import_react19.useCallback)((message) => {
+  const shouldDisplayMessage2 = (0, import_react18.useCallback)((message) => {
     if (!message) return false;
     if (message.role === "user") {
       const textContent2 = extractTextFromMessage2(message);
@@ -3765,15 +3769,15 @@ var ChatContent = ({
     }
     return false;
   }, [extractTextFromMessage2, config.showDebug]);
-  const scrollToBottom = (0, import_react19.useCallback)(() => {
+  const scrollToBottom = (0, import_react18.useCallback)(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
-  (0, import_react19.useEffect)(() => {
+  (0, import_react18.useEffect)(() => {
     if (threadId && messages.length > 0) {
       scrollToBottom();
     }
   }, [messages, threadId, scrollToBottom]);
-  const sendMessage = (0, import_react19.useCallback)(async () => {
+  const sendMessage = (0, import_react18.useCallback)(async () => {
     if (!input.trim() || loading || isStreaming) return;
     const messageText = input.trim();
     setInput("");
@@ -3785,7 +3789,7 @@ var ChatContent = ({
       setInput(messageText);
     }
   }, [input, loading, isStreaming, sendMessageStream, onThreadUpdate, threadId]);
-  const renderedMessages = (0, import_react19.useMemo)(() => {
+  const renderedMessages = (0, import_react18.useMemo)(() => {
     return messages.filter(shouldDisplayMessage2).map((message, index) => {
       const timestamp = new Date(message.timestamp || Date.now());
       const messageText = extractTextFromMessage2(message);
@@ -4107,10 +4111,123 @@ var Textarea = React22.forwardRef(
 );
 Textarea.displayName = "Textarea";
 
-// src/components/ApprovalDialog.tsx
-var import_react20 = require("react");
+// src/components/ui/select.tsx
+var React23 = __toESM(require("react"), 1);
+var SelectPrimitive = __toESM(require("@radix-ui/react-select"), 1);
 var import_lucide_react12 = require("lucide-react");
 var import_jsx_runtime27 = require("react/jsx-runtime");
+var Select = SelectPrimitive.Root;
+var SelectGroup = SelectPrimitive.Group;
+var SelectValue = SelectPrimitive.Value;
+var SelectTrigger = React23.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
+  SelectPrimitive.Trigger,
+  {
+    ref,
+    className: cn(
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      className
+    ),
+    ...props,
+    children: [
+      children,
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(SelectPrimitive.Icon, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.ChevronDown, { className: "h-4 w-4 opacity-50" }) })
+    ]
+  }
+));
+SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
+var SelectScrollUpButton = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+  SelectPrimitive.ScrollUpButton,
+  {
+    ref,
+    className: cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.ChevronUp, { className: "h-4 w-4" })
+  }
+));
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
+var SelectScrollDownButton = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+  SelectPrimitive.ScrollDownButton,
+  {
+    ref,
+    className: cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.ChevronDown, { className: "h-4 w-4" })
+  }
+));
+SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
+var SelectContent = React23.forwardRef(({ className, children, position = "popper", ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(SelectPrimitive.Portal, { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
+  SelectPrimitive.Content,
+  {
+    ref,
+    className: cn(
+      "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+      position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+      className
+    ),
+    position,
+    ...props,
+    children: [
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(SelectScrollUpButton, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+        SelectPrimitive.Viewport,
+        {
+          className: cn(
+            "p-1",
+            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          ),
+          children
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(SelectScrollDownButton, {})
+    ]
+  }
+) }));
+SelectContent.displayName = SelectPrimitive.Content.displayName;
+var SelectLabel = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+  SelectPrimitive.Label,
+  {
+    ref,
+    className: cn("px-2 py-1.5 text-sm font-semibold", className),
+    ...props
+  }
+));
+SelectLabel.displayName = SelectPrimitive.Label.displayName;
+var SelectItem = React23.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
+  SelectPrimitive.Item,
+  {
+    ref,
+    className: cn(
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    ),
+    ...props,
+    children: [
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("span", { className: "absolute right-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(SelectPrimitive.ItemIndicator, { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.Check, { className: "h-4 w-4" }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(SelectPrimitive.ItemText, { children })
+    ]
+  }
+));
+SelectItem.displayName = SelectPrimitive.Item.displayName;
+var SelectSeparator = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+  SelectPrimitive.Separator,
+  {
+    ref,
+    className: cn("-mx-1 my-1 h-px bg-muted", className),
+    ...props
+  }
+));
+SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
+
+// src/components/ApprovalDialog.tsx
+var import_react19 = require("react");
+var import_lucide_react13 = require("lucide-react");
+var import_jsx_runtime28 = require("react/jsx-runtime");
 var ApprovalDialog = ({
   toolCalls,
   reason,
@@ -4118,7 +4235,7 @@ var ApprovalDialog = ({
   onDeny,
   onCancel
 }) => {
-  const [isVisible, setIsVisible] = (0, import_react20.useState)(true);
+  const [isVisible, setIsVisible] = (0, import_react19.useState)(true);
   if (!isVisible) return null;
   const handleApprove = () => {
     setIsVisible(false);
@@ -4132,46 +4249,46 @@ var ApprovalDialog = ({
     setIsVisible(false);
     onCancel();
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(DialogRoot, { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(DialogContent, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(DialogHeader, { children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "flex items-center", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
-      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(DialogTitle, { children: "Tool Execution Approval" })
+  return /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(DialogRoot, { children: /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)(DialogContent, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(DialogHeader, { children: /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex items-center", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(import_lucide_react13.AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(DialogTitle, { children: "Tool Execution Approval" })
     ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "p-4", children: [
-      reason && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "text-sm text-muted-foreground", children: reason }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "mb-4", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "flex-1", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
-          toolCall.input && /* @__PURE__ */ (0, import_jsx_runtime27.jsx)("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
+    /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "p-4", children: [
+      reason && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("p", { className: "text-sm text-muted-foreground", children: reason }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "mb-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
+          toolCall.input && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
         ] }) }, toolCall.tool_call_id)) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
+      /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)(
           Button,
           {
             onClick: handleApprove,
             variant: "default",
             className: "flex-1",
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.CheckCircle, { className: "w-4 h-4 mr-2" }),
+              /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(import_lucide_react13.CheckCircle, { className: "w-4 h-4 mr-2" }),
               "Approve"
             ]
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)(
           Button,
           {
             onClick: handleDeny,
             variant: "destructive",
             className: "flex-1",
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(import_lucide_react12.XCircle, { className: "w-4 h-4 mr-2" }),
+              /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(import_lucide_react13.XCircle, { className: "w-4 h-4 mr-2" }),
               "Deny"
             ]
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(
           Button,
           {
             onClick: handleCancel,
@@ -4210,6 +4327,16 @@ var ApprovalDialog_default = ApprovalDialog;
   FullChat,
   Input,
   MessageRenderer,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
   Separator,
   Sheet,
   SheetContent,
