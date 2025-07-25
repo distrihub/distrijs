@@ -11,6 +11,7 @@ export { ChatContainer } from './components/ChatContainer';
 export { Chat } from './components/Chat';
 export { EmbeddableChat } from './components/EmbeddableChat';
 export { FullChat } from './components/FullChat';
+export { AppSidebar } from './components/AppSidebar';
 export { ThemeProvider, useTheme } from './components/ThemeProvider';
 
 // UI Components - shadcn
@@ -20,6 +21,35 @@ export { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription }
 export { Badge } from './components/ui/badge';
 export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 export { Textarea } from './components/ui/textarea';
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from './components/ui/sidebar';
+export { Separator } from './components/ui/separator';
+export { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from './components/ui/sheet';
+export { Skeleton } from './components/ui/skeleton';
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/ui/tooltip';
 
 // Legacy exports (deprecated - use shadcn components instead)
 export { AgentDropdown } from './components/AgentDropdown';
