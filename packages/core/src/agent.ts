@@ -3,7 +3,6 @@ import {
   DistriAgent,
   DistriTool,
   ToolCall,
-  ToolHandler,
   ToolResult,
   A2AStreamEventData,
   APPROVAL_REQUEST_TOOL_NAME
@@ -48,7 +47,7 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: DistriAgent;
-  private tools: Map<string, ToolHandler> = new Map();
+  private tools: Map<string, DistriTool> = new Map();
 
   constructor(agentDefinition: DistriAgent, client: DistriClient) {
     this.agentDefinition = agentDefinition;
@@ -61,7 +60,7 @@ export class Agent {
    * Initialize built-in tools
    */
   private initializeBuiltinTools() {
-    this.addTool({
+    this.registerTool({
       name: APPROVAL_REQUEST_TOOL_NAME,
       description: 'Request user approval for actions',
       parameters: {
@@ -82,21 +81,21 @@ export class Agent {
   /**
    * Add a tool to the agent (AG-UI style)
    */
-  addTool(tool: DistriTool): void {
-    this.tools.set(tool.name, tool.handler);
+  registerTool(tool: DistriTool): void {
+    this.tools.set(tool.name, tool);
   }
 
   /**
    * Add multiple tools at once
    */
-  addTools(tools: DistriTool[]): void {
-    tools.forEach(tool => this.addTool(tool));
+  registerTools(tools: DistriTool[]): void {
+    tools.forEach(tool => this.registerTool(tool));
   }
 
   /**
    * Remove a tool
    */
-  removeTool(toolName: string): void {
+  unregisterTool(toolName: string): void {
     this.tools.delete(toolName);
   }
 
@@ -118,9 +117,9 @@ export class Agent {
    * Execute a tool call
    */
   async executeTool(toolCall: ToolCall): Promise<ToolResult> {
-    const handler = this.tools.get(toolCall.tool_name);
-    
-    if (!handler) {
+    const tool = this.tools.get(toolCall.tool_name);
+
+    if (!tool) {
       return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -130,7 +129,7 @@ export class Agent {
     }
 
     try {
-      const result = await handler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
       return {
         tool_call_id: toolCall.tool_call_id,
         result,
@@ -151,12 +150,12 @@ export class Agent {
    */
   getToolDefinitions(): Record<string, any> {
     const definitions: Record<string, any> = {};
-    
+
     // Note: We only send tool names to the backend since handlers are frontend-only
     this.tools.forEach((_handler, name) => {
       definitions[name] = { name };
     });
-    
+
     return definitions;
   }
 
@@ -205,7 +204,7 @@ export class Agent {
    */
   private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
     const toolDefinitions = this.getToolDefinitions();
-    
+
     return {
       ...params,
       metadata: {

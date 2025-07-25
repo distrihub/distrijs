@@ -28,7 +28,7 @@ function AppContent() {
     return null;
   }
 
-  const availableAgents = agents.map(agent => ({
+  const availableAgents = agents.map((agent: DistriAgent) => ({
     id: agent.id,
     name: agent.name,
     description: agent.description
@@ -40,8 +40,8 @@ function AppContent() {
       <FullChat
         agentId={selectedAgent?.id || ''}
         availableAgents={availableAgents}
-        onAgentSelect={(agentId) => {
-          const agent = agents.find(a => a.id === agentId);
+        onAgentSelect={(agentId: string) => {
+          const agent = agents.find((a: DistriAgent) => a.id === agentId);
           if (agent) setSelectedAgent(agent);
         }}
 

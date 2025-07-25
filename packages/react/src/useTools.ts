@@ -6,9 +6,9 @@ export interface UseToolsOptions {
 }
 
 export interface UseToolsResult {
-  addTool: (tool: DistriTool) => void;
-  addTools: (tools: DistriTool[]) => void;
-  removeTool: (toolName: string) => void;
+  registerTool: (tool: DistriTool) => void;
+  registerTools: (tools: DistriTool[]) => void;
+  unregisterTool: (toolName: string) => void;
   executeTool: (toolCall: ToolCall) => Promise<ToolResult>;
   getTools: () => string[];
   hasTool: (toolName: string) => boolean;
@@ -22,35 +22,35 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
   // Keep track of tools added through this hook
   const toolsRef = useRef<Set<string>>(new Set());
 
-  const addTool = useCallback((tool: DistriTool) => {
+  const registerTool = useCallback((tool: DistriTool) => {
     if (!agent) {
       console.warn('Cannot add tool: no agent provided');
       return;
     }
 
-    agent.addTool(tool);
+    agent.registerTool(tool);
     toolsRef.current.add(tool.name);
   }, [agent]);
 
-  const addTools = useCallback((tools: DistriTool[]) => {
+  const registerTools = useCallback((tools: DistriTool[]) => {
     if (!agent) {
       console.warn('Cannot add tools: no agent provided');
       return;
     }
 
     tools.forEach(tool => {
-      agent.addTool(tool);
+      agent.registerTool(tool);
       toolsRef.current.add(tool.name);
     });
   }, [agent]);
 
-  const removeTool = useCallback((toolName: string) => {
+  const unregisterTool = useCallback((toolName: string) => {
     if (!agent) {
       console.warn('Cannot remove tool: no agent provided');
       return;
     }
 
-    agent.removeTool(toolName);
+    agent.unregisterTool(toolName);
     toolsRef.current.delete(toolName);
   }, [agent]);
 
@@ -78,9 +78,9 @@ export function useTools({ agent }: UseToolsOptions): UseToolsResult {
   }, [agent]);
 
   return {
-    addTool,
-    addTools,
-    removeTool,
+    registerTool,
+    registerTools,
+    unregisterTool,
     executeTool,
     getTools,
     hasTool
