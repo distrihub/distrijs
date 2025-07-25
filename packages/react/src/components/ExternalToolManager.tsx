@@ -1,16 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { ToolCall, ToolResult } from '@distri/core';
+import { ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
 import Toast from './Toast';
 import ApprovalDialog from './ApprovalDialog';
-import {
-  createBuiltinToolHandlers,
-  processExternalToolCalls,
-  initializeBuiltinHandlers,
-  clearPendingToolCalls
-} from '../builtinHandlers';
+import { Agent } from '@distri/core';
 
 export interface ExternalToolManagerProps {
+  agent: Agent;
   toolCalls: ToolCall[];
   onToolComplete: (results: ToolResult[]) => void;
   onCancel: () => void;
@@ -29,6 +25,7 @@ interface ApprovalDialogState {
 }
 
 const ExternalToolManager: React.FC<ExternalToolManagerProps> = ({
+  agent,
   toolCalls,
   onToolComplete,
   onCancel
@@ -38,53 +35,127 @@ const ExternalToolManager: React.FC<ExternalToolManagerProps> = ({
   const [approvalDialog, setApprovalDialog] = useState<ApprovalDialogState | null>(null);
   const [processingResults, setProcessingResults] = useState<ToolResult[]>([]);
 
-  // Initialize builtin handlers with callbacks
-  useEffect(() => {
-    initializeBuiltinHandlers({
-      onToolComplete: (results: ToolResult[]) => {
-        setProcessingResults(prev => [...prev, ...results]);
-        onToolComplete(results);
-      },
-      onCancel: () => {
-        clearPendingToolCalls();
-        onCancel();
-      },
-      showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-        const id = Math.random().toString(36).substr(2, 9);
-        setToasts(prev => [...prev, { id, message, type }]);
-      },
-      showApprovalDialog: (toolCalls: ToolCall[], reason?: string): Promise<boolean> => {
-        return new Promise((resolve) => {
-          setApprovalDialog({ toolCalls, reason, resolve });
-        });
-      }
+  // Show toast function
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 5000);
+  }, []);
+
+  // Show approval dialog function
+  const showApprovalDialog = useCallback((toolCalls: ToolCall[], reason?: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setApprovalDialog({ toolCalls, reason, resolve });
     });
-  }, [onToolComplete, onCancel]);
+  }, []);
 
   // Process tool calls when they are received
   useEffect(() => {
     if (toolCalls.length > 0 && !isProcessing) {
       processToolCalls();
     }
-  }, [toolCalls]);
+  }, [toolCalls, agent]);
 
   const processToolCalls = useCallback(async () => {
-    if (toolCalls.length === 0) return;
+    if (toolCalls.length === 0 || !agent) return;
 
     setIsProcessing(true);
     setProcessingResults([]);
 
     try {
-      const handlers = createBuiltinToolHandlers();
+      const results: ToolResult[] = [];
 
-      // Create a local onToolComplete callback for this processing session
-      const localOnToolComplete = async (results: ToolResult[]) => {
-        setProcessingResults(prev => [...prev, ...results]);
+      // Process each tool call
+      for (const toolCall of toolCalls) {
+        try {
+          // Handle special built-in tools with UI interactions
+          if (toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME) {
+            const input = toolCall.input;
+            const toolCallsToApprove: ToolCall[] = input.tool_calls || [];
+            const reason: string = input.reason || input.prompt || 'Approval required';
+
+            const approved = await showApprovalDialog(toolCallsToApprove, reason);
+            
+            const result: ToolResult = {
+              tool_call_id: toolCall.tool_call_id,
+              result: { 
+                approved, 
+                reason: approved ? 'Approved by user' : 'Denied by user',
+                tool_calls: toolCallsToApprove
+              },
+              success: true
+            };
+            results.push(result);
+          } 
+          else if (toolCall.tool_name === 'toast') {
+            const input = toolCall.input;
+            const message: string = input.message || 'Toast message';
+            const type: 'success' | 'error' | 'warning' | 'info' = input.type || 'info';
+
+            showToast(message, type);
+
+            const result: ToolResult = {
+              tool_call_id: toolCall.tool_call_id,
+              result: { success: true, message: 'Toast displayed successfully' },
+              success: true
+            };
+            results.push(result);
+          }
+          else if (toolCall.tool_name === 'input_request') {
+            const input = toolCall.input;
+            const prompt: string = input.prompt || 'Please provide input:';
+            const defaultValue: string = input.default || '';
+
+            const userInput = window.prompt(prompt, defaultValue);
+
+            if (userInput === null) {
+              const result: ToolResult = {
+                tool_call_id: toolCall.tool_call_id,
+                result: null,
+                success: false,
+                error: 'User cancelled input'
+              };
+              results.push(result);
+            } else {
+              const result: ToolResult = {
+                tool_call_id: toolCall.tool_call_id,
+                result: { input: userInput },
+                success: true
+              };
+              results.push(result);
+            }
+          }
+          else {
+            // Use agent's tool execution for all other tools
+            const result = await agent.executeTool(toolCall);
+            results.push(result);
+          }
+
+          // Update processing results as we go
+          setProcessingResults(prev => [...prev, ...results.slice(-1)]);
+          
+        } catch (error) {
+          console.error(`Error executing tool ${toolCall.tool_name}:`, error);
+          const errorResult: ToolResult = {
+            tool_call_id: toolCall.tool_call_id,
+            result: null,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+          results.push(errorResult);
+          setProcessingResults(prev => [...prev, errorResult]);
+        }
+      }
+
+      // Call completion callback with all results
+      if (results.length > 0) {
         onToolComplete(results);
-      };
-
-      await processExternalToolCalls(toolCalls, handlers, localOnToolComplete);
-      // Results will be handled by the onToolComplete callback
+      }
+      
     } catch (error) {
       console.error('Error processing tool calls:', error);
       const errorResults: ToolResult[] = toolCalls.map(toolCall => ({
@@ -98,7 +169,7 @@ const ExternalToolManager: React.FC<ExternalToolManagerProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [toolCalls, onToolComplete]);
+  }, [toolCalls, agent, onToolComplete, showToast, showApprovalDialog]);
 
   const handleApprovalDialogResponse = useCallback((approved: boolean) => {
     if (approvalDialog) {

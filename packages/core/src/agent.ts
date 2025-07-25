@@ -48,7 +48,7 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: DistriAgent;
-  private tools: Map<string, ToolHandler> = new Map();
+  private tools: Map<string, DistriTool> = new Map();
 
   constructor(agentDefinition: DistriAgent, client: DistriClient) {
     this.agentDefinition = agentDefinition;
@@ -68,13 +68,66 @@ export class Agent {
         type: 'object',
         properties: {
           prompt: { type: 'string', description: 'Approval prompt to show user' },
-          action: { type: 'string', description: 'Action requiring approval' }
+          action: { type: 'string', description: 'Action requiring approval' },
+          tool_calls: { 
+            type: 'array', 
+            description: 'Tool calls requiring approval',
+            items: {
+              type: 'object',
+              properties: {
+                tool_call_id: { type: 'string' },
+                tool_name: { type: 'string' },
+                input: { type: 'object' }
+              }
+            }
+          }
         },
         required: ['prompt']
       },
       handler: async (input: any) => {
-        const userInput = prompt(input.prompt || 'Please provide input:');
-        return { approved: !!userInput, input: userInput };
+        // This will be handled by the ExternalToolManager
+        return { approved: false, message: 'Approval handler not implemented' };
+      }
+    });
+
+    // Add other built-in tools
+    this.addTool({
+      name: 'toast',
+      description: 'Show a toast notification to the user',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: 'Message to display' },
+          type: { 
+            type: 'string', 
+            enum: ['success', 'error', 'warning', 'info'], 
+            default: 'info',
+            description: 'Type of toast notification' 
+          }
+        },
+        required: ['message']
+      },
+      handler: async (input: any) => {
+        // This will be handled by the ExternalToolManager
+        return { success: true, message: 'Toast displayed' };
+      }
+    });
+
+    this.addTool({
+      name: 'input_request',
+      description: 'Request text input from the user',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Prompt to show the user' },
+          default: { type: 'string', description: 'Default value for the input' }
+        },
+        required: ['prompt']
+      },
+      handler: async (input: any) => {
+        // This will be handled by the ExternalToolManager
+        const userInput = prompt(input.prompt || 'Please provide input:', input.default || '');
+        return { input: userInput };
       }
     });
   }
@@ -83,7 +136,7 @@ export class Agent {
    * Add a tool to the agent (AG-UI style)
    */
   addTool(tool: DistriTool): void {
-    this.tools.set(tool.name, tool.handler);
+    this.tools.set(tool.name, tool);
   }
 
   /**
@@ -108,6 +161,30 @@ export class Agent {
   }
 
   /**
+   * Get all registered tool definitions
+   */
+  getToolDefinitions(): Record<string, any> {
+    const definitions: Record<string, any> = {};
+    
+    this.tools.forEach((tool, name) => {
+      definitions[name] = {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      };
+    });
+    
+    return definitions;
+  }
+
+  /**
+   * Get a specific tool definition
+   */
+  getTool(toolName: string): DistriTool | undefined {
+    return this.tools.get(toolName);
+  }
+
+  /**
    * Check if a tool is registered
    */
   hasTool(toolName: string): boolean {
@@ -118,9 +195,9 @@ export class Agent {
    * Execute a tool call
    */
   async executeTool(toolCall: ToolCall): Promise<ToolResult> {
-    const handler = this.tools.get(toolCall.tool_name);
+    const tool = this.tools.get(toolCall.tool_name);
     
-    if (!handler) {
+    if (!tool) {
       return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -130,7 +207,7 @@ export class Agent {
     }
 
     try {
-      const result = await handler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
       return {
         tool_call_id: toolCall.tool_call_id,
         result,
@@ -147,17 +224,11 @@ export class Agent {
   }
 
   /**
-   * Get tool definitions for context metadata
+   * Execute multiple tool calls in parallel
    */
-  getToolDefinitions(): Record<string, any> {
-    const definitions: Record<string, any> = {};
-    
-    // Note: We only send tool names to the backend since handlers are frontend-only
-    this.tools.forEach((_handler, name) => {
-      definitions[name] = { name };
-    });
-    
-    return definitions;
+  async executeToolCalls(toolCalls: ToolCall[]): Promise<ToolResult[]> {
+    const promises = toolCalls.map(toolCall => this.executeTool(toolCall));
+    return Promise.all(promises);
   }
 
   /**

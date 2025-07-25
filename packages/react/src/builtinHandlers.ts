@@ -1,226 +1,159 @@
-import { ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
-
-// Legacy ToolHandler interface for backwards compatibility
-export interface LegacyToolHandler {
-  (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
-}
-
-// Global state for managing tool execution
-let pendingToolCalls: Map<string, { toolCall: ToolCall; resolve: (result: ToolResult) => void }> = new Map();
-
-// Toast management
-let showToast: ((message: string, type?: 'success' | 'error' | 'warning' | 'info') => void) | null = null;
-
-// Approval dialog management
-let showApprovalDialog: ((toolCalls: ToolCall[], reason?: string) => Promise<boolean>) | null = null;
+import { DistriTool, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
 
 /**
- * Initialize the builtin handlers with callbacks
+ * Create built-in tools that can be added to agents
+ * These tools provide common UI interactions
  */
-export const initializeBuiltinHandlers = (callbacks: {
-  onToolComplete: (results: ToolResult[]) => void;
-  onCancel: () => void;
-  showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
-  showApprovalDialog: (toolCalls: ToolCall[], reason?: string) => Promise<boolean>;
-}) => {
-  showToast = callbacks.showToast;
-  showApprovalDialog = callbacks.showApprovalDialog;
+export const createBuiltinTools = (): Record<string, DistriTool> => {
+  const tools: Record<string, DistriTool> = {
+    // Approval request tool
+    [APPROVAL_REQUEST_TOOL_NAME]: {
+      name: APPROVAL_REQUEST_TOOL_NAME,
+      description: 'Request user approval for actions',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Approval prompt to show user' },
+          action: { type: 'string', description: 'Action requiring approval' },
+          tool_calls: { 
+            type: 'array', 
+            description: 'Tool calls requiring approval',
+            items: {
+              type: 'object',
+              properties: {
+                tool_call_id: { type: 'string' },
+                tool_name: { type: 'string' },
+                input: { type: 'object' }
+              }
+            }
+          }
+        },
+        required: ['prompt']
+      },
+      handler: async (input: any) => {
+        // This is handled by ExternalToolManager for UI interaction
+        return { approved: false, message: 'Approval handled by UI' };
+      }
+    },
+
+    // Toast notification tool
+    toast: {
+      name: 'toast',
+      description: 'Show a toast notification to the user',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: 'Message to display' },
+          type: { 
+            type: 'string', 
+            enum: ['success', 'error', 'warning', 'info'], 
+            default: 'info',
+            description: 'Type of toast notification' 
+          }
+        },
+        required: ['message']
+      },
+      handler: async (input: any) => {
+        // This is handled by ExternalToolManager for UI interaction
+        return { success: true, message: 'Toast displayed' };
+      }
+    },
+
+    // Input request tool
+    input_request: {
+      name: 'input_request',
+      description: 'Request text input from the user',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Prompt to show the user' },
+          default: { type: 'string', description: 'Default value for the input' }
+        },
+        required: ['prompt']
+      },
+      handler: async (input: any) => {
+        // This is handled by ExternalToolManager for UI interaction
+        const userInput = prompt(input.prompt || 'Please provide input:', input.default || '');
+        return { input: userInput };
+      }
+    },
+
+    // Confirmation tool
+    confirm: {
+      name: 'confirm',
+      description: 'Ask user for confirmation',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: 'Confirmation message' },
+          title: { type: 'string', description: 'Title for the confirmation dialog' }
+        },
+        required: ['message']
+      },
+      handler: async (input: any) => {
+        const confirmed = confirm(input.message || 'Are you sure?');
+        return { confirmed };
+      }
+    },
+
+    // Notification tool
+    notify: {
+      name: 'notify',
+      description: 'Show a notification to the user',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Notification title' },
+          message: { type: 'string', description: 'Notification message' },
+          type: { 
+            type: 'string', 
+            enum: ['success', 'error', 'warning', 'info'], 
+            default: 'info',
+            description: 'Type of notification' 
+          }
+        },
+        required: ['message']
+      },
+      handler: async (input: any) => {
+        // Use the browser's notification API if available
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(input.title || 'Notification', {
+            body: input.message,
+            icon: '/favicon.ico'
+          });
+        } else {
+          // Fallback to alert
+          alert(`${input.title ? input.title + ': ' : ''}${input.message}`);
+        }
+        return { success: true };
+      }
+    }
+  };
+
+  return tools;
 };
 
 /**
- * Clear pending tool calls
+ * Helper function to create a custom tool with proper typing
  */
-export const clearPendingToolCalls = () => {
-  pendingToolCalls.clear();
+export const createTool = <T = any>(
+  name: string,
+  description: string,
+  parameters: any,
+  handler: (input: T) => Promise<any> | any
+): DistriTool => {
+  return {
+    name,
+    description,
+    parameters,
+    handler
+  };
 };
 
-/**
- * Legacy builtin tool handlers using the old ToolHandler interface
- * These are kept for backwards compatibility but work alongside the new system
- */
-export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> => ({
-  // Approval request handler - opens a dialog
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
-    try {
-      const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
-      const toolCallsToApprove: ToolCall[] = input.tool_calls || [];
-      const reason: string = input.reason;
-
-      if (!showApprovalDialog) {
-        console.warn('Approval dialog not initialized');
-        return null;
-      }
-
-      const approved = await showApprovalDialog(toolCallsToApprove, reason);
-
-      // Report completion
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: { approved, reason: approved ? 'Approved by user' : 'Denied by user' },
-        success: true
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-
-      return {
-        approved,
-        reason: approved ? 'Approved by user' : 'Denied by user',
-        tool_calls: toolCallsToApprove
-      };
-    } catch (error) {
-      console.error('Error in approval request handler:', error);
-
-      // Report error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-
-      return null;
-    }
-  },
-
-  // Toast handler - shows a toast and returns success
-  toast: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
-    try {
-      const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
-      const message: string = input.message || 'Toast message';
-      const type: 'success' | 'error' | 'warning' | 'info' = input.type || 'info';
-
-      if (!showToast) {
-        console.warn('Toast not initialized');
-        return null;
-      }
-
-      showToast(message, type);
-
-      // Report completion
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: { success: true, message: 'Toast displayed successfully' },
-        success: true
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-
-      return {
-        success: true,
-        message: 'Toast displayed successfully'
-      };
-    } catch (error) {
-      console.error('Error in toast handler:', error);
-
-      // Report error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-
-      return null;
-    }
-  },
-
-  // Input request handler - shows prompt
-  input_request: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
-    try {
-      const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
-      const prompt: string = input.prompt || 'Please provide input:';
-      const defaultValue: string = input.default || '';
-
-      const userInput = window.prompt(prompt, defaultValue);
-
-      if (userInput === null) {
-        // Report cancellation
-        const result: ToolResult = {
-          tool_call_id: toolCall.tool_call_id,
-          result: null,
-          success: false,
-          error: 'User cancelled input'
-        };
-        await onToolComplete(toolCall.tool_call_id, result);
-        return null; // User cancelled
-      }
-
-      // Report completion
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: { input: userInput },
-        success: true
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-
-      return {
-        input: userInput
-      };
-    } catch (error) {
-      console.error('Error in input request handler:', error);
-
-      // Report error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-      await onToolComplete(toolCall.tool_call_id, result);
-
-      return null;
-    }
-  }
-});
-
-/**
- * Process external tool calls with handlers
- * This is kept for backwards compatibility
- */
-export const processExternalToolCalls = async (
-  toolCalls: ToolCall[],
-  handlers: Record<string, LegacyToolHandler>,
-  onToolComplete: (results: ToolResult[]) => Promise<void>
-): Promise<void> => {
-  const results: ToolResult[] = [];
-
-  for (const toolCall of toolCalls) {
-    const handler = handlers[toolCall.tool_name];
-
-    if (!handler) {
-      // No handler found - report as error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: `No handler found for tool: ${toolCall.tool_name}`
-      };
-      results.push(result);
-      continue;
-    }
-
-    try {
-      // Create a wrapper onToolComplete that collects results
-      const singleToolComplete = async (_toolCallId: string, result: ToolResult) => {
-        results.push(result);
-        // Also call the main onToolComplete with all results so far
-        await onToolComplete([...results]);
-      };
-
-      // Execute handler with single tool complete callback
-      await handler(toolCall, singleToolComplete);
-    } catch (error) {
-      console.error(`Error executing tool ${toolCall.tool_name}:`, error);
-
-      // Report error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-      results.push(result);
-      await onToolComplete([...results]);
-    }
-  }
-}; 
+// Export individual builtin tools for convenience
+export const builtinTools = createBuiltinTools();
+export const approvalRequestTool = builtinTools[APPROVAL_REQUEST_TOOL_NAME];
+export const toastTool = builtinTools.toast;
+export const inputRequestTool = builtinTools.input_request;
+export const confirmTool = builtinTools.confirm;
+export const notifyTool = builtinTools.notify; 

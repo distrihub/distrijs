@@ -1,75 +1,51 @@
-// Core hooks
+// Core exports
+export * from '@distri/core';
+
+// React components
+export { default as Chat } from './components/Chat';
+export { EmbeddableChat } from './components/EmbeddableChat';
+export { default as ExternalToolManager } from './components/ExternalToolManager';
+export { default as MessageRenderer } from './components/MessageRenderer';
+export { default as ApprovalDialog } from './components/ApprovalDialog';
+export { default as Toast } from './components/Toast';
+
+// Provider and context
+export { DistriProvider } from './DistriProvider';
+
+// Hooks
 export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
 export { useTools } from './useTools';
 
-// Core components
-export { DistriProvider } from './DistriProvider';
-export { ChatContainer } from './components/ChatContainer';
-export { Chat } from './components/Chat';
-export { EmbeddableChat } from './components/EmbeddableChat';
-export { FullChat } from './components/FullChat';
-export { AppSidebar } from './components/AppSidebar';
-export { ThemeProvider, useTheme } from './components/ThemeProvider';
+// Tool utilities
+export { 
+  createBuiltinTools, 
+  createTool,
+  builtinTools,
+  approvalRequestTool,
+  toastTool,
+  inputRequestTool,
+  confirmTool,
+  notifyTool
+} from './builtinHandlers';
 
-// UI Components - shadcn
-export { Button } from './components/ui/button';
-export { Input } from './components/ui/input';
-export { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from './components/ui/card';
-export { Badge } from './components/ui/badge';
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
-export { Textarea } from './components/ui/textarea';
-export {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSkeleton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarSeparator,
-  SidebarTrigger,
-  useSidebar,
-} from './components/ui/sidebar';
-export { Separator } from './components/ui/separator';
-export { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from './components/ui/sheet';
-export { Skeleton } from './components/ui/skeleton';
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/ui/tooltip';
-export {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from './components/ui/select';
+// Utility functions
+export { extractExternalToolCalls } from './utils/toolCallUtils';
 
-// Legacy exports (deprecated - use shadcn components instead)
-export { AgentSelect } from './components/AgentSelect';
-export { AgentDropdown } from './components/AgentDropdown';
-export { default as ApprovalDialog } from './components/ApprovalDialog';
-export { ChatInput } from './components/ChatInput';
-export { default as MessageRenderer } from './components/MessageRenderer';
+// UI components (optional)
+export * from './components/ui/button';
+export * from './components/ui/input';
+export * from './components/ui/textarea';
 
-export { createBuiltinTools } from './useTools';
-// Utilities
-export { cn } from './lib/utils';
+// Re-export types for convenience
+export type {
+  DistriTool,
+  ToolCall,
+  ToolResult,
+  ToolHandler,
+  DistriAgent,
+  DistriThread,
+  MessageMetadata
+} from '@distri/core';

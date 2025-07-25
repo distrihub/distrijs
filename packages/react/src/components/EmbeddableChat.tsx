@@ -1,278 +1,277 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MessageSquare } from 'lucide-react';
-import { Agent } from '@distri/core';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Send, Bot, User, Loader2, AlertCircle } from 'lucide-react';
 import { useChat } from '../useChat';
-import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
-import { shouldDisplayMessage, extractTextFromMessage, getMessageType } from '../utils/messageUtils';
-import { AgentSelect } from './AgentSelect';
-
-import { ChatInput } from './ChatInput';
+import { useAgent } from '../useAgent';
+import MessageRenderer from './MessageRenderer';
+import ExternalToolManager from './ExternalToolManager';
+import { Agent, ToolCall } from '@distri/core';
 
 export interface EmbeddableChatProps {
   agentId: string;
-  threadId?: string;
+  threadId: string;
   agent?: Agent;
   height?: string;
-  className?: string;
-  style?: React.CSSProperties;
-  metadata?: any;
-  // Available agents for selection
-  availableAgents?: Array<{ id: string; name: string; description?: string }>;
-  // Customization props
-  UserMessageComponent?: React.ComponentType<any>;
-  AssistantMessageComponent?: React.ComponentType<any>;
-  AssistantWithToolCallsComponent?: React.ComponentType<any>;
-  PlanMessageComponent?: React.ComponentType<any>;
-  // Theme
-  theme?: 'light' | 'dark' | 'auto';
-  // Config overrides
-  showDebug?: boolean;
-  showAgentSelector?: boolean;
   placeholder?: string;
-  // Callbacks
-  onAgentSelect?: (agentId: string) => void;
-  onResponse?: (message: any) => void;
+  theme?: 'light' | 'dark';
+  showDebug?: boolean;
+  onThreadUpdate?: () => void;
+  className?: string;
 }
 
 export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   agentId,
-  threadId = 'default',
-  agent,
-  height = '600px',
-  className = '',
-  style = {},
-  metadata,
-  availableAgents = [],
-  UserMessageComponent = UserMessage,
-  AssistantMessageComponent = AssistantMessage,
-  AssistantWithToolCallsComponent = AssistantWithToolCalls,
-  PlanMessageComponent = PlanMessage,
-  theme: _theme = 'dark',
+  threadId,
+  agent: providedAgent,
+  height = "600px",
+  placeholder = "Type a message...",
+  theme = 'light',
   showDebug = false,
-  showAgentSelector = true,
-  placeholder = "Type your message...",
-  onAgentSelect,
-  onResponse: _onResponse,
+  onThreadUpdate,
+  className = ''
 }) => {
+  const { agent: internalAgent, loading: agentLoading } = useAgent({ agentId: providedAgent ? undefined : agentId });
+  const agent = providedAgent || internalAgent;
+
   const [input, setInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [hasExternalTools, setHasExternalTools] = useState(false);
+
+  const handleToolCalls = useCallback((toolCalls: ToolCall[]) => {
+    setHasExternalTools(toolCalls.length > 0);
+  }, []);
 
   const {
     messages,
     loading,
     error,
     sendMessageStream,
-    isStreaming,
+    externalToolCalls,
+    handleExternalToolComplete,
+    handleExternalToolCancel,
   } = useChat({
-    agentId,
+    agentId: agent?.id || agentId,
     threadId,
     agent,
-    metadata,
+    onToolCalls: handleToolCalls
   });
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading || !agent) return;
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-
-    const messageText = input.trim();
+    const message = input.trim();
     setInput('');
-
+    
     try {
-      await sendMessageStream(messageText, metadata);
+      await sendMessageStream(message);
+      onThreadUpdate?.();
     } catch (err) {
       console.error('Failed to send message:', err);
-      setInput(messageText); // Restore input on error
     }
-  };
+  }, [input, loading, agent, sendMessageStream, onThreadUpdate]);
 
-  const renderedMessages = useMemo(() => {
-    return messages
-      .filter(msg => shouldDisplayMessage(msg, showDebug))
-      .map((message, index) => {
-        const messageType = getMessageType(message);
-        const messageContent = extractTextFromMessage(message);
-        const key = `message-${index}`;
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  }, [handleSubmit]);
 
-        // Get timestamp from message metadata or parts
-        const timestamp = (message as any).created_at ? new Date((message as any).created_at) : undefined;
+  // Filter messages for display
+  const displayMessages = useMemo(() => {
+    return messages.filter(msg => {
+      // Show user messages
+      if (msg.role === 'user') return true;
+      
+      // Show assistant messages with content
+      if (msg.role === 'assistant') {
+        const hasContent = msg.parts?.some(part => 
+          (part.kind === 'text' && part.text?.trim()) ||
+          part.kind === 'image'
+        );
+        return hasContent;
+      }
+      
+      // Show debug messages if showDebug is enabled
+      if (showDebug && msg.metadata) return true;
+      
+      return false;
+    });
+  }, [messages, showDebug]);
 
-        switch (messageType) {
-          case 'user':
-            return (
-              <UserMessageComponent
-                key={key}
-                content={messageContent}
-                timestamp={timestamp}
-              />
-            );
+  // Theme styles
+  const isDark = theme === 'dark';
+  const bgClass = isDark ? 'bg-gray-900' : 'bg-white';
+  const textClass = isDark ? 'text-white' : 'text-gray-900';
+  const borderClass = isDark ? 'border-gray-700' : 'border-gray-200';
+  const headerBgClass = isDark ? 'bg-gray-800' : 'bg-gray-50';
 
-          case 'assistant':
-            return (
-              <AssistantMessageComponent
-                key={key}
-                content={messageContent}
-                timestamp={timestamp}
-                isStreaming={isStreaming && index === messages.length - 1}
-              />
-            );
+  if (agentLoading) {
+    return (
+      <div className={`flex items-center justify-center ${bgClass} ${className}`} style={{ height }}>
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className={textClass}>Loading agent...</span>
+        </div>
+      </div>
+    );
+  }
 
-          case 'assistant_with_tools':
-            // Extract tool calls from message parts or metadata
-            const toolCalls = (message.parts || [])
-              .filter((part: any) => part.tool_call)
-              .map((part: any) => ({
-                toolCall: part.tool_call,
-                status: 'completed' as const,
-                result: part.tool_result || 'Completed successfully',
-              }));
-
-            return (
-              <AssistantWithToolCallsComponent
-                key={key}
-                content={messageContent}
-                toolCalls={toolCalls}
-                timestamp={timestamp}
-                isStreaming={isStreaming && index === messages.length - 1}
-              />
-            );
-
-          case 'plan':
-            return (
-              <PlanMessageComponent
-                key={key}
-                content={messageContent}
-                timestamp={timestamp}
-              />
-            );
-
-          default:
-            return null;
-        }
-      })
-      .filter(Boolean);
-  }, [
-    messages,
-    showDebug,
-    isStreaming,
-    UserMessageComponent,
-    AssistantMessageComponent,
-    AssistantWithToolCallsComponent,
-    PlanMessageComponent,
-  ]);
+  if (!agent) {
+    return (
+      <div className={`flex items-center justify-center ${bgClass} ${className}`} style={{ height }}>
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-2" />
+          <p className={textClass}>Failed to load agent</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`distri-chat ${className} w-full bg-background text-foreground`}
-      style={{
-        height,
-        ...style
-      }}
-    >
-      <div className="h-full flex flex-col">
-        {/* Top padding and Agent Selector */}
-        <div className="pt-6 px-6 bg-background">
-          {showAgentSelector && availableAgents && availableAgents.length > 0 && (
-            <div className="mb-6">
-              <AgentSelect
-                agents={availableAgents}
-                selectedAgentId={agentId}
-                onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
-                className="w-full"
-              />
-            </div>
-          )}
+    <div className={`flex flex-col ${bgClass} ${textClass} ${className}`} style={{ height }}>
+      {/* Header */}
+      <div className={`flex-shrink-0 px-4 py-3 border-b ${borderClass} ${headerBgClass}`}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <Bot className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h2 className={`font-semibold ${textClass}`}>{agent.name}</h2>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {agent.description}
+            </p>
+          </div>
         </div>
+      </div>
 
-        {/* Main Chat Area - Centered with responsive max-width */}
-        <div className="flex-1 flex flex-col">
-          <div className="mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto distri-scroll bg-background">
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">
-                      Start a conversation
-                    </h3>
-                    <p className="text-muted-foreground max-w-sm">
-                      {placeholder || "Type your message below to begin chatting."}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-0">
-                  {renderedMessages}
-                </div>
-              )}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {error && (
+          <div className={`flex items-center gap-2 p-3 ${isDark ? 'bg-red-900 border-red-700' : 'bg-red-50 border-red-200'} border rounded-lg`}>
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <span className="text-red-700">{error.message}</span>
+          </div>
+        )}
 
-              {/* Loading state */}
-              {loading && (
-                <div className="px-6 py-4 flex items-center space-x-2 bg-muted">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
-                  <span className="text-muted-foreground text-sm">Thinking...</span>
-                </div>
-              )}
+        {displayMessages.length === 0 && !loading && (
+          <div className="text-center py-8">
+            <Bot className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+            <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>
+              Start a conversation with {agent.name}
+            </p>
+          </div>
+        )}
 
-              {/* Error state */}
-              {error && (
-                <div className="px-6 py-4 bg-destructive/20 border border-destructive/20 mx-4 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <div className="h-4 w-4 rounded-full bg-destructive"></div>
-                    <span className="text-destructive text-sm">{error.message || String(error)}</span>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
+        {displayMessages.map((message, index) => (
+          <div
+            key={`${message.messageId}-${index}`}
+            className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            {message.role === 'assistant' && (
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-blue-600" />
+              </div>
+            )}
+            
+            <div className={`max-w-[80%] ${message.role === 'user' ? 'order-first' : ''}`}>
+              <div
+                className={`rounded-lg px-4 py-2 ${
+                  message.role === 'user'
+                    ? 'bg-blue-600 text-white ml-auto'
+                    : isDark 
+                      ? 'bg-gray-800 text-gray-100' 
+                      : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                <MessageRenderer 
+                  message={message} 
+                  isUser={message.role === 'user'}
+                  isStreaming={loading && index === displayMessages.length - 1}
+                  theme={theme}
+                />
+              </div>
             </div>
-            <div className="flex items-center justify-center px-6 py-4">
-              <div className="w-full max-w-2xl">
-                {/* Input Area - Centered when no messages, bottom when messages exist */}
-                {messages.length === 0 ? (
 
-                  <ChatInput
-                    value={input}
-                    onChange={setInput}
-                    onSend={sendMessage}
-                    onStop={() => {
-                      // Stop streaming - this would need to be implemented in the useChat hook
-                      console.log('Stop streaming');
-                    }}
-                    placeholder={placeholder}
-                    disabled={loading}
-                    isStreaming={isStreaming}
-                    className="w-full"
-                  />
+            {message.role === 'user' && (
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                isDark ? 'bg-gray-700' : 'bg-gray-100'
+              }`}>
+                <User className={`w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-600'}`} />
+              </div>
+            )}
+          </div>
+        ))}
 
-                ) : (
-
-                  <ChatInput
-                    value={input}
-                    onChange={setInput}
-                    onSend={sendMessage}
-                    onStop={() => {
-                      // Stop streaming - this would need to be implemented in the useChat hook
-                      console.log('Stop streaming');
-                    }}
-                    placeholder={placeholder}
-                    disabled={loading}
-                    isStreaming={isStreaming}
-                    className="w-full"
-                  />
-
-
-                )}
+        {loading && displayMessages.length === 0 && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <Bot className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className={`rounded-lg px-4 py-2 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>Thinking...</span>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* External Tool Manager */}
+        {externalToolCalls.length > 0 && (
+          <ExternalToolManager
+            agent={agent}
+            toolCalls={externalToolCalls}
+            onToolComplete={handleExternalToolComplete}
+            onCancel={handleExternalToolCancel}
+          />
+        )}
+      </div>
+
+      {/* Input */}
+      <div className={`flex-shrink-0 border-t ${borderClass} p-4`}>
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <div className="flex-1 relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder || `Message ${agent.name}...`}
+              className={`w-full px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                isDark 
+                  ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+              }`}
+              rows={1}
+              disabled={loading || hasExternalTools}
+              style={{ 
+                minHeight: '40px',
+                maxHeight: '120px',
+                height: 'auto'
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!input.trim() || loading || hasExternalTools}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[40px]"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
+        </form>
+        
+        {hasExternalTools && (
+          <div className={`mt-2 text-sm px-3 py-2 rounded ${
+            isDark 
+              ? 'text-amber-300 bg-amber-900 border border-amber-700' 
+              : 'text-amber-600 bg-amber-50 border border-amber-200'
+          }`}>
+            Please respond to the tool requests above before sending a new message.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,141 +1,181 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { Agent, DistriClient, ToolCall, ToolResult, MessageMetadata } from '@distri/core';
+import { Message, Part } from '@a2a-js/sdk/client';
 import { useAgent } from './useAgent';
-import {
-  type Message,
-  type MessageMetadata,
-  type ToolResult,
-  type ToolCall,
-  InvokeConfig,
-  DistriClient,
-  Agent,
-} from '@distri/core';
-import type { Part } from '@a2a-js/sdk/client';
+import { extractExternalToolCalls } from './utils/toolCallUtils';
 
 export interface UseChatOptions {
   agentId: string;
   threadId: string;
-  // Optional: pre-configured agent from useAgent
   agent?: Agent;
-  // Optional: Metadata to pass to the agent
-  metadata?: any;
+  metadata?: MessageMetadata;
+  onToolCalls?: (toolCalls: ToolCall[]) => void;
 }
 
 export interface UseChatResult {
   messages: Message[];
   loading: boolean;
   error: Error | null;
-  isStreaming: boolean;
+  agent: Agent | null;
   sendMessage: (input: string | Part[], metadata?: MessageMetadata) => Promise<void>;
   sendMessageStream: (input: string | Part[], metadata?: MessageMetadata) => Promise<void>;
-  refreshMessages: () => Promise<void>;
-  clearMessages: () => void;
-  agent: Agent | null;
+  fetchMessages: () => Promise<void>;
+  externalToolCalls: ToolCall[];
+  handleExternalToolComplete: (results: ToolResult[]) => Promise<void>;
+  handleExternalToolCancel: () => void;
 }
 
 /**
- * useChat is the main hook for chat UIs with simplified tool handling.
- * Tools are now registered directly on the agent using agent.addTool() or useTools hook.
+ * Enhanced useChat hook with integrated tool system
  */
 export function useChat({
   agentId,
   threadId,
   agent: providedAgent,
   metadata,
+  onToolCalls,
 }: UseChatOptions): UseChatResult {
   // Use provided agent or create one internally
-  const { agent: internalAgent } = useAgent({
-    agentId,
-  });
+  const { agent: internalAgent } = useAgent({ agentId: providedAgent ? undefined : agentId });
+  const agent = providedAgent || internalAgent;
 
-  // Use provided agent if it's a proper Agent instance, otherwise use internal agent
-  const agent = (providedAgent && typeof providedAgent.getThreadMessages === 'function') ? providedAgent : internalAgent;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [externalToolCalls, setExternalToolCalls] = useState<ToolCall[]>([]);
+  
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  const invokeConfig = useMemo(() => ({
+    configuration: {
+      acceptedOutputModes: ['text/plain', 'text/markdown'],
+      blocking: true,
+    },
+  }), []);
 
-  // Clear messages when threadId changes
-  useEffect(() => {
-    setMessages([]);
-    setError(null);
-  }, [threadId]);
-
-  const invokeConfig = useMemo(() => {
-    return {
-      contextId: threadId,
-      configuration: {
-        acceptedOutputModes: ['text/plain'],
-        blocking: false
-      },
-      metadata: metadata
-    } as InvokeConfig;
-  }, [threadId, metadata]);
-
-  // Fetch messages for the thread
+  // Fetch existing messages
   const fetchMessages = useCallback(async () => {
-    if (!agent || !threadId) {
-      setMessages([]);
-      return;
-    }
+    if (!agent) return;
+
     try {
-      setLoading(true);
       setError(null);
-      const fetchedMessages = await agent.getThreadMessages(threadId);
-      setMessages(fetchedMessages);
+      const msgs = await agent.getThreadMessages(threadId);
+      setMessages(msgs);
+      
+      // Extract any unhandled external tool calls
+      const toolCalls = extractExternalToolCalls(msgs);
+      if (toolCalls.length > 0) {
+        setExternalToolCalls(toolCalls);
+        onToolCalls?.(toolCalls);
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
-      setMessages([]);
-    } finally {
-      setLoading(false);
     }
-  }, [agent, threadId]);
+  }, [agent, threadId, onToolCalls]);
 
+  // Fetch messages when agent or threadId changes
   useEffect(() => {
-    fetchMessages();
+    if (agent && threadId) {
+      fetchMessages();
+    }
   }, [fetchMessages]);
 
   // Handle tool calls from assistant messages
   const handleToolCalls = useCallback(async (toolCalls: ToolCall[]): Promise<void> => {
-    if (!agent) return;
+    if (!agent || toolCalls.length === 0) return;
 
-    const results: ToolResult[] = [];
+    // Check if any tool calls need UI interaction (external tools)
+    const externalToolNames = [
+      'approval_request',
+      'toast', 
+      'input_request',
+      // Add other UI-requiring tools here
+    ];
 
-    // Execute all tool calls
-    for (const toolCall of toolCalls) {
-      const result = await agent.executeTool(toolCall);
-      results.push(result);
-    }
+    const externalCalls = toolCalls.filter(tc => 
+      externalToolNames.includes(tc.tool_name) || !agent.hasTool(tc.tool_name)
+    );
+    
+    const internalCalls = toolCalls.filter(tc => 
+      !externalToolNames.includes(tc.tool_name) && agent.hasTool(tc.tool_name)
+    );
 
-    // Send tool responses back to the agent
-    if (results.length > 0) {
-      const responseMessage = DistriClient.initMessage([], 'user', { 
-        contextId: threadId, 
-        metadata: {
-          type: 'tool_responses',
-          results: results
-        } as MessageMetadata
-      });
+    let allResults: ToolResult[] = [];
 
-      const params = DistriClient.initMessageParams(
-        responseMessage, 
-        invokeConfig.configuration, 
-        responseMessage.metadata as MessageMetadata
-      );
-
-      // Continue the conversation with tool results
+    // Execute internal tools immediately
+    if (internalCalls.length > 0) {
       try {
-        const stream = await agent.invokeStream(params);
-        
-        for await (const event of stream) {
-          if (abortControllerRef.current?.signal.aborted) break;
-          await handleStreamEvent(event);
-        }
-      } catch (err) {
-        console.error('Error continuing conversation with tool results:', err);
+        const internalResults = await agent.executeToolCalls(internalCalls);
+        allResults = [...allResults, ...internalResults];
+      } catch (error) {
+        console.error('Error executing internal tools:', error);
+        const errorResults: ToolResult[] = internalCalls.map(tc => ({
+          tool_call_id: tc.tool_call_id,
+          result: null,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }));
+        allResults = [...allResults, ...errorResults];
       }
     }
+
+    // Set external tool calls for UI handling
+    if (externalCalls.length > 0) {
+      setExternalToolCalls(externalCalls);
+      onToolCalls?.(externalCalls);
+    }
+
+    // If we have internal results, send them back immediately
+    if (allResults.length > 0) {
+      await continueWithToolResults(allResults);
+    }
+  }, [agent, threadId, invokeConfig.configuration, onToolCalls]);
+
+  // Continue conversation with tool results
+  const continueWithToolResults = useCallback(async (results: ToolResult[]) => {
+    if (!agent || results.length === 0) return;
+
+    const responseMessage = DistriClient.initMessage([], 'user', { 
+      contextId: threadId, 
+      metadata: {
+        type: 'tool_responses',
+        results: results
+      } as MessageMetadata
+    });
+
+    const params = DistriClient.initMessageParams(
+      responseMessage, 
+      invokeConfig.configuration, 
+      responseMessage.metadata as MessageMetadata
+    );
+
+    try {
+      const stream = await agent.invokeStream(params);
+      
+      for await (const event of stream) {
+        if (abortControllerRef.current?.signal.aborted) break;
+        await handleStreamEvent(event);
+      }
+    } catch (err) {
+      console.error('Error continuing conversation with tool results:', err);
+      setError(err instanceof Error ? err : new Error('Failed to continue conversation'));
+    }
   }, [agent, threadId, invokeConfig.configuration]);
+
+  // Handle external tool completion
+  const handleExternalToolComplete = useCallback(async (results: ToolResult[]) => {
+    // Clear external tool calls
+    setExternalToolCalls([]);
+    
+    // Continue conversation with results
+    await continueWithToolResults(results);
+  }, [continueWithToolResults]);
+
+  // Handle external tool cancellation
+  const handleExternalToolCancel = useCallback(() => {
+    setExternalToolCalls([]);
+    setLoading(false);
+  }, []);
 
   // Handle individual stream events
   const handleStreamEvent = useCallback(async (event: any) => {
@@ -160,7 +200,6 @@ export function useChat({
       }
     } else if (event.kind === 'status-update') {
       // Handle task status updates if needed
-      // These events can be used for progress indicators, etc.
       console.debug('Task status update:', event);
     }
   }, [handleToolCalls]);
@@ -183,13 +222,19 @@ export function useChat({
       const result = await agent.invoke(params);
       if (result && 'message' in result && result.message) {
         setMessages((prev) => [...prev, result.message as Message]);
+        
+        // Handle tool calls if present in the response
+        if (result.message.metadata?.type === 'assistant_response' && result.message.metadata.tool_calls) {
+          const toolCalls = result.message.metadata.tool_calls as ToolCall[];
+          await handleToolCalls(toolCalls);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to send message'));
     } finally {
       setLoading(false);
     }
-  }, [agent, threadId, invokeConfig.configuration]);
+  }, [agent, threadId, invokeConfig.configuration, handleToolCalls]);
 
   // Send a message (streaming)
   const sendMessageStream = useCallback(async (
@@ -198,6 +243,13 @@ export function useChat({
   ) => {
     if (!agent) return;
 
+    // Cancel any ongoing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    // Add user message immediately
     const userMessage: Message = DistriClient.initMessage(input, 'user', { contextId: threadId, metadata });
     setMessages((prev) => [...prev, userMessage]);
 
@@ -205,14 +257,7 @@ export function useChat({
 
     try {
       setLoading(true);
-      setIsStreaming(true);
       setError(null);
-      
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-
       const stream = await agent.invokeStream(params);
 
       for await (const event of stream) {
@@ -220,31 +265,25 @@ export function useChat({
         await handleStreamEvent(event);
       }
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err : new Error('Failed to stream message'));
+      if (!abortControllerRef.current?.signal.aborted) {
+        setError(err instanceof Error ? err : new Error('Failed to send message'));
+      }
     } finally {
       setLoading(false);
-      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
   }, [agent, threadId, invokeConfig.configuration, handleStreamEvent]);
-
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-  }, []);
-
-  const refreshMessages = useCallback(async () => {
-    await fetchMessages();
-  }, [fetchMessages]);
 
   return {
     messages,
     loading,
     error,
-    isStreaming,
+    agent,
     sendMessage,
     sendMessageStream,
-    refreshMessages,
-    clearMessages,
-    agent: agent ? (agent as any) : null,
+    fetchMessages,
+    externalToolCalls,
+    handleExternalToolComplete,
+    handleExternalToolCancel,
   };
 } 

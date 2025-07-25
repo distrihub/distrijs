@@ -4,15 +4,15 @@
 
 DistriJS is a comprehensive TypeScript/JavaScript framework for building AI agent applications with external tool integration. It provides a simplified, type-safe way to create interactive AI agents that can execute tools, handle user input, and integrate with external services.
 
-## ✨ What's New - Major Refactor
+## ✨ What's New - Enhanced Tool System
 
-**🚀 Version 0.2.0** introduces a completely redesigned tool system following the AG-UI pattern:
+**🚀 Version 0.2.1** introduces significant improvements to the tool system:
 
-- **Simplified Tool Registration**: Register tools directly on agents using `agent.addTool()` or the `useTools` hook
-- **Automatic Tool Execution**: Tools are executed immediately when called by the AI - no more manual handling
-- **Type-Safe**: Full TypeScript support with proper type inference
-- **AG-UI Compatible**: Follows the same patterns as AG-UI for familiar developer experience
-- **No More External Tool Events**: Streamlined event handling without complex external tool managers
+- **Unified Tool Registration**: Tools are now registered directly on agents using `agent.addTool()` or the `useTools` hook
+- **Automatic Tool Execution**: Tools are executed automatically by the agent with proper UI integration
+- **Enhanced External Tool Support**: Better handling of UI-requiring tools like approvals, toasts, and input requests
+- **Improved Event Handling**: Streamlined message and event system aligned with the A2A protocol
+- **Type-Safe Tool Creation**: Full TypeScript support with proper type inference for tool inputs and outputs
 
 ## 🏗️ Architecture
 
@@ -25,67 +25,25 @@ DistriJS is a comprehensive TypeScript/JavaScript framework for building AI agen
 │ │ Components  │ │    │ │   Agent     │ │    │ │   Server    │ │
 │ └─────────────┘ │    │ │   Client    │ │    │ └─────────────┘ │
 │ ┌─────────────┐ │    │ └─────────────┘ │    │                 │
-│ │   Tools     │ │    │ ┌─────────────┐ │    │                 │
-│ │  Registry   │ │    │ │   Events    │ │    │                 │
-│ └─────────────┘ │    │ │  Streaming  │ │    │                 │
+│ │   External  │ │    │ ┌─────────────┐ │    │                 │
+│ │   Tools     │ │    │ │   Tool      │ │    │                 │
+│ └─────────────┘ │    │ │   Manager   │ │    │                 │
 └─────────────────┘    │ └─────────────┘ │    └─────────────────┘
                        └─────────────────┘
 ```
-
-## 📦 Packages
-
-- **`@distri/core`** - Core client, agent management, and tool system
-- **`@distri/react`** - React hooks and components for UI integration
-- **`@distri/widgets`** - 🆕 Reusable UI widgets (ChartWidget, etc.)
 
 ## 🚀 Quick Start
 
 ### Installation
 
 ```bash
-npm install @distri/react @distri/core
-# Optional: For widgets
-npm install @distri/widgets
+npm install @distri/core @distri/react
 ```
 
-### Basic Usage
+### Basic Setup
 
 ```tsx
-import { DistriProvider, useAgent, useTools, createTool, Chat } from '@distri/react';
-
-function MyApp() {
-  const { agent } = useAgent({ agentId: 'my-agent' });
-  const { addTool } = useTools({ agent });
-
-  // Register tools when agent is ready
-  useEffect(() => {
-    if (agent) {
-      addTool(createTool(
-        'get_weather',
-        'Get current weather for a location',
-        {
-          type: 'object',
-          properties: {
-            location: { type: 'string', description: 'City name' }
-          },
-          required: ['location']
-        },
-        async (input) => {
-          // Your tool implementation
-          return { weather: 'sunny', temperature: '75°F' };
-        }
-      ));
-    }
-  }, [agent, addTool]);
-
-  return (
-    <Chat
-      agentId="my-agent"
-      threadId="conversation-1"
-      agent={agent}
-    />
-  );
-}
+import { DistriProvider, EmbeddableChat, useAgent, useTools, createTool } from '@distri/react';
 
 function App() {
   return (
@@ -96,9 +54,9 @@ function App() {
 }
 ```
 
-## 🛠️ Tool System
+## 🛠️ Enhanced Tool System
 
-### Creating Tools
+### Creating Custom Tools
 
 Use the `createTool` helper for type-safe tool definitions:
 
@@ -122,20 +80,20 @@ const calculatorTool = createTool(
 );
 ```
 
-### Using Tools Hook
+### Registering Tools with Agents
 
 ```tsx
 import { useTools, createBuiltinTools } from '@distri/react';
 
 function MyComponent() {
   const { agent } = useAgent({ agentId: 'assistant' });
-  const { addTool, addTools, removeTool, getTools } = useTools({ agent });
+  const { addTool, addTools } = useTools({ agent });
 
   useEffect(() => {
     if (agent) {
       // Add built-in tools
       const builtins = createBuiltinTools();
-      addTools([builtins.confirm, builtins.input, builtins.notify]);
+      addTools([builtins.confirm, builtins.toast, builtins.notify]);
 
       // Add custom tools
       addTool(calculatorTool);
@@ -148,14 +106,47 @@ function MyComponent() {
 
 DistriJS includes common tools out of the box:
 
-- **`confirm`** - Ask user for confirmation
-- **`input`** - Request text input from user  
-- **`notify`** - Show notifications
-- **`approval_request`** - Built-in approval workflow
+- **`approval_request`** - Request user approval for actions with a dialog
+- **`toast`** - Show toast notifications to the user
+- **`input_request`** - Request text input from the user with a prompt
+- **`confirm`** - Ask user for confirmation with a dialog
+- **`notify`** - Show browser notifications
 
-## 📊 Widgets Package
+### External Tool Integration Example
 
-New `@distri/widgets` package provides reusable components:
+Here's how to create a Google Maps tool (from the maps demo):
+
+```tsx
+const mapTools = [
+  {
+    name: 'set_map_center',
+    description: 'Set the center location of the Google Maps view',
+    parameters: {
+      type: 'object',
+      properties: {
+        latitude: { type: 'number', description: 'Latitude coordinate' },
+        longitude: { type: 'number', description: 'Longitude coordinate' },
+        zoom: { type: 'number', description: 'Zoom level (1-20)', default: 13 }
+      },
+      required: ['latitude', 'longitude']
+    },
+    handler: async (input: { latitude: number; longitude: number; zoom?: number }) => {
+      return await mapManagerRef.current?.setMapCenter(input);
+    }
+  }
+];
+
+// Register with agent
+useEffect(() => {
+  if (agent) {
+    addTools(mapTools);
+  }
+}, [agent, addTools]);
+```
+
+## 📊 Widget System
+
+The `@distri/widgets` package provides reusable components:
 
 ```tsx
 import { ChartWidget } from '@distri/widgets';
@@ -178,148 +169,186 @@ const data = {
 
 ## 🎯 Examples & Samples
 
-### 1. **Google Maps Integration** (`samples/maps-chat/`)
+### 1. **Google Maps Integration** (`samples/maps-demo/`)
 
 Complete example showing external tool integration with Google Maps:
 
+- **Real-time Map Control**: Set center, add markers, get directions
+- **Place Search**: Search for restaurants, gas stations, etc.
 - **Split Layout**: Maps on left, chat on right
-- **Real-time Control**: AI agent controls map through natural language
-- **Multiple Tools**: Center map, add markers, get directions, search places
+- **Tool Approval Flow**: Request approval for map changes
 
 ```bash
-cd samples/maps-chat
+cd samples/maps-demo
 npm install
 npm run dev
 ```
 
-**Example interactions:**
-- "Show me directions from Times Square to Central Park"
-- "Find restaurants near my location"
-- "Add a marker at the Statue of Liberty"
+### 2. **Full Demo Application** (`samples/full-demo/`)
 
-### 2. **Data Analyst Agent** (`samples/data-analyst/`)
+Comprehensive example with multiple agents and tools:
 
-Agent definition for financial data analysis with chart generation:
-
-- **Trade Data**: Query stocks, crypto, forex, commodities  
-- **Visualizations**: Generate charts automatically
-- **Analytics**: Calculate metrics and generate reports
-
-### 3. **Tools Demo** (`samples/full-demo/`)
-
-Interactive demonstration of the new tool system:
-
-- **Live Tool Registration**: See tools being registered and removed
-- **Built-in Tools**: Test confirmation, input, and notification tools
-- **Custom Tools**: Calculator, random number generator, time tools
-
-## 🔧 Migration from v0.1.x
-
-### Major Changes
-
-1. **Simplified Tool System**: No more `external_tools` events or `ExternalToolManager`
-2. **Direct Registration**: Use `agent.addTool()` or `useTools` hook
-3. **Automatic Execution**: Tools execute immediately when called
-4. **Removed Props**: `tools` prop removed from `Chat` and `useChat`
-
-### Migration Steps
-
-**Before (v0.1.x):**
-```tsx
-const tools = {
-  my_tool: async (toolCall, onComplete) => {
-    const result = await doSomething(toolCall.input);
-    await onComplete(toolCall.tool_call_id, { result, success: true });
-  }
-};
-
-<Chat tools={tools} onExternalToolCall={handleToolCall} />
-```
-
-**After (v0.2.x):**
-```tsx
-const { agent } = useAgent({ agentId: 'my-agent' });
-const { addTool } = useTools({ agent });
-
-useEffect(() => {
-  if (agent) {
-    addTool(createTool(
-      'my_tool',
-      'Description',
-      { /* schema */ },
-      async (input) => {
-        return await doSomething(input);
-      }
-    ));
-  }
-}, [agent, addTool]);
-
-<Chat agent={agent} />
-```
-
-## 🏗️ Development
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm 8+
-
-### Setup
+- **Multi-agent Chat**: Switch between different specialized agents
+- **Tool Demonstrations**: Examples of all built-in tools
+- **Thread Management**: Multiple conversation threads
+- **Real-time Updates**: Live task monitoring
 
 ```bash
-# Clone the repository
-git clone https://github.com/distrihub/distrijs.git
-cd distrijs
-
-# Install dependencies
-pnpm install
-
-# Build packages
-pnpm build
-
-# Run samples
 cd samples/full-demo
+npm install
 npm run dev
 ```
 
-### Project Structure
+## 🔧 Advanced Usage
 
+### Custom Tool with UI Integration
+
+```tsx
+const complexTool = createTool(
+  'process_data',
+  'Process complex data with user approval',
+  {
+    type: 'object',
+    properties: {
+      data: { type: 'array', description: 'Data to process' },
+      operation: { type: 'string', description: 'Operation to perform' }
+    },
+    required: ['data', 'operation']
+  },
+  async (input: { data: any[]; operation: string }) => {
+    // For operations requiring approval, return approval request
+    if (input.operation === 'delete') {
+      return {
+        requiresApproval: true,
+        message: `Delete ${input.data.length} items?`,
+        action: 'delete_data'
+      };
+    }
+    
+    // Process data directly
+    const result = processData(input.data, input.operation);
+    return { processed: result.length, result };
+  }
+);
 ```
-distrijs/
-├── packages/
-│   ├── core/          # Core framework
-│   ├── react/         # React integration
-│   └── widgets/       # UI components
-├── samples/
-│   ├── full-demo/     # Complete demo app
-│   ├── maps-chat/     # Google Maps integration
-│   └── data-analyst/ # Financial analysis agent
-└── scripts/           # Build and release scripts
+
+### Event Handling
+
+```tsx
+const { 
+  messages, 
+  externalToolCalls, 
+  handleExternalToolComplete 
+} = useChat({
+  agentId: 'assistant',
+  threadId: 'thread-123',
+  onToolCalls: (toolCalls) => {
+    console.log('Tool calls received:', toolCalls);
+  }
+});
+
+// Handle external tool completion
+const onToolComplete = async (results: ToolResult[]) => {
+  await handleExternalToolComplete(results);
+  console.log('Tools completed:', results);
+};
 ```
 
-## 📚 Documentation
+### Multiple Agent Setup
 
-- **[API Reference](./docs/api/)** - Complete API documentation
-- **[Tool System Guide](./docs/tools.md)** - In-depth tool development
-- **[Migration Guide](./docs/migration.md)** - Upgrading from previous versions
-- **[Samples](./samples/)** - Working examples and tutorials
+```tsx
+function MultiAgentChat() {
+  const [selectedAgent, setSelectedAgent] = useState('assistant');
+  const { agent } = useAgent({ agentId: selectedAgent });
+  
+  return (
+    <div>
+      <AgentSelector 
+        selected={selectedAgent} 
+        onSelect={setSelectedAgent} 
+      />
+      <EmbeddableChat
+        agentId={selectedAgent}
+        agent={agent}
+        threadId={`thread-${selectedAgent}`}
+      />
+    </div>
+  );
+}
+```
+
+## 🔑 Key Improvements
+
+### Tool System Enhancements
+
+1. **Unified Registration**: All tools are registered on agents, eliminating the disconnect between internal and external tools
+2. **Automatic Execution**: Tools are executed immediately when called, with UI interactions handled seamlessly
+3. **Better Error Handling**: Comprehensive error reporting and recovery for failed tool executions
+4. **Type Safety**: Full TypeScript support with proper type inference for tool parameters and results
+
+### Event System Improvements
+
+1. **Streamlined Events**: Aligned with A2A protocol for better compatibility
+2. **Real-time Updates**: Proper SSE integration for live tool execution status
+3. **Message Structure**: Consistent message format for tool calls and responses
+
+### UI Integration
+
+1. **ExternalToolManager**: New component that handles UI-requiring tools automatically
+2. **Better UX**: Users are guided through tool interactions with clear feedback
+3. **Theme Support**: Dark/light theme support for all tool UIs
+
+## 📚 API Reference
+
+### Core Types
+
+```typescript
+interface DistriTool {
+  name: string;
+  description: string;
+  parameters: any; // JSON Schema
+  handler: ToolHandler;
+}
+
+interface ToolCall {
+  tool_call_id: string;
+  tool_name: string;
+  input: any;
+}
+
+interface ToolResult {
+  tool_call_id: string;
+  result: any;
+  success: boolean;
+  error?: string;
+}
+```
+
+### Hooks
+
+- **`useAgent(options)`** - Get or create an agent instance
+- **`useTools({ agent })`** - Manage tools for an agent
+- **`useChat(options)`** - Handle chat interactions with tool support
+- **`useThreads(agentId)`** - Manage conversation threads
+
+### Utilities
+
+- **`createTool(name, description, parameters, handler)`** - Type-safe tool creation
+- **`createBuiltinTools()`** - Get all built-in tools
+- **`extractExternalToolCalls(messages)`** - Extract tool calls from messages
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) guide for details.
 
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- **[Documentation](https://distrijs.dev)**
-- **[GitHub](https://github.com/distrihub/distrijs)**
-- **[npm Packages](https://www.npmjs.com/search?q=%40distri)**
-- **[Discord Community](https://discord.gg/distri)**
-
----
-
-**DistriJS** - Build intelligent AI agents with external tool integration 🚀
+- **Documentation**: [docs.distri.dev](https://docs.distri.dev)
+- **Examples**: [github.com/distrihub/distri/samples](https://github.com/distrihub/distri/tree/main/samples)
+- **Discord**: [Join our community](https://discord.gg/distri)
+- **Twitter**: [@distrihub](https://twitter.com/distrihub)
 
