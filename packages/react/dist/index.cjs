@@ -106,7 +106,6 @@ __export(index_exports, {
   TooltipTrigger: () => TooltipTrigger,
   cn: () => cn,
   createBuiltinTools: () => createBuiltinTools,
-  createTool: () => createTool,
   useAgent: () => useAgent,
   useAgents: () => useAgents,
   useChat: () => useChat,
@@ -1511,20 +1510,14 @@ function useTools({ agent }) {
     hasTool
   };
 }
-var createTool = (name, description, parameters, handler) => ({
-  name,
-  description,
-  parameters,
-  handler
-});
 var createBuiltinTools = () => ({
   /**
    * Confirmation tool for user approval
    */
-  confirm: createTool(
-    "confirm",
-    "Ask user for confirmation",
-    {
+  confirm: {
+    name: "confirm",
+    description: "Ask user for confirmation",
+    parameters: {
       type: "object",
       properties: {
         message: { type: "string", description: "Message to show to user" },
@@ -1532,18 +1525,18 @@ var createBuiltinTools = () => ({
       },
       required: ["message"]
     },
-    async (input) => {
+    handler: async (input) => {
       const result = confirm(input.message);
       return { confirmed: result };
     }
-  ),
+  },
   /**
    * Input request tool
    */
-  input: createTool(
-    "input",
-    "Request text input from user",
-    {
+  input: {
+    name: "input",
+    description: "Request text input from user",
+    parameters: {
       type: "object",
       properties: {
         prompt: { type: "string", description: "Prompt to show to user" },
@@ -1551,18 +1544,18 @@ var createBuiltinTools = () => ({
       },
       required: ["prompt"]
     },
-    async (input) => {
+    handler: async (input) => {
       const result = prompt(input.prompt, input.placeholder);
       return { input: result };
     }
-  ),
+  },
   /**
    * Notification tool
    */
-  notify: createTool(
-    "notify",
-    "Show notification to user",
-    {
+  notify: {
+    name: "notify",
+    description: "Show notification to user",
+    parameters: {
       type: "object",
       properties: {
         message: { type: "string", description: "Notification message" },
@@ -1570,11 +1563,11 @@ var createBuiltinTools = () => ({
       },
       required: ["message"]
     },
-    async (input) => {
+    handler: async (input) => {
       console.log(`[${input.type || "info"}] ${input.message}`);
       return { notified: true };
     }
-  )
+  }
 });
 
 // src/components/EmbeddableChat.tsx
@@ -2118,7 +2111,8 @@ var extractTextFromMessage = (message) => {
   if (!message?.parts || !Array.isArray(message.parts)) {
     return "";
   }
-  return message.parts.filter((part) => part?.kind === "text" && part?.text).map((part) => part.text).join("") || "";
+  const textParts = message.parts.filter((part) => part?.kind === "text" && part?.text).map((part) => part.text);
+  return textParts.join("") || "";
 };
 var shouldDisplayMessage = (message, showDebugMessages = false) => {
   if (!message) return false;
@@ -2141,13 +2135,15 @@ var shouldDisplayMessage = (message, showDebugMessages = false) => {
 };
 var getMessageType = (message) => {
   if (message.role === "user") return "user";
-  if (message.metadata?.type === "assistant_response" && message.metadata.tool_calls) {
-    return "assistant_with_tools";
+  if (message.role === "assistant" || message.role === "agent") {
+    if (message.metadata?.type === "assistant_response" && message.metadata.tool_calls) {
+      return "assistant_with_tools";
+    }
+    return "assistant";
   }
   if (message.metadata?.type === "plan" || message.metadata?.plan) {
     return "plan";
   }
-  if (message.role === "assistant") return "assistant";
   return "system";
 };
 
@@ -2399,7 +2395,7 @@ var EmbeddableChat = ({
     messages,
     loading,
     error,
-    sendMessage: chatSendMessage,
+    sendMessageStream,
     isStreaming
   } = useChat({
     agentId,
@@ -2417,7 +2413,7 @@ var EmbeddableChat = ({
     const messageText = input.trim();
     setInput("");
     try {
-      await chatSendMessage(messageText);
+      await sendMessageStream(messageText, metadata);
     } catch (err) {
       console.error("Failed to send message:", err);
       setInput(messageText);
@@ -3904,16 +3900,19 @@ var ChatContent = ({
           message.messageId || `plan-${index}`
         );
       }
-      return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-        AssistantMessageComponent,
-        {
-          content: messageText || "Empty message",
-          timestamp,
-          isStreaming: isStreaming && index === messages.length - 1,
-          metadata: message.metadata
-        },
-        message.messageId || `assistant-${index}`
-      );
+      if (message.role === "assistant" || message.role === "agent") {
+        return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+          AssistantMessageComponent,
+          {
+            content: messageText || "Empty message",
+            timestamp,
+            isStreaming: isStreaming && index === messages.length - 1,
+            metadata: message.metadata
+          },
+          message.messageId || `assistant-${index}`
+        );
+      }
+      return null;
     });
   }, [messages, shouldDisplayMessage2, extractTextFromMessage2, isStreaming, UserMessageComponent, AssistantMessageComponent, AssistantWithToolCallsComponent, PlanMessageComponent]);
   return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex flex-col bg-gray-900 text-white", style: { height }, children: [
@@ -4405,7 +4404,6 @@ var ApprovalDialog_default = ApprovalDialog;
   TooltipTrigger,
   cn,
   createBuiltinTools,
-  createTool,
   useAgent,
   useAgents,
   useChat,

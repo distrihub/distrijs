@@ -8,10 +8,11 @@ export const extractTextFromMessage = (message: any): string => {
     return '';
   }
 
-  return message.parts
+  const textParts = message.parts
     .filter((part: any) => part?.kind === 'text' && part?.text)
-    .map((part: any) => part.text)
-    .join('') || '';
+    .map((part: any) => part.text);
+
+  return textParts.join('') || '';
 };
 
 /**
@@ -55,17 +56,19 @@ export const shouldDisplayMessage = (message: any, showDebugMessages: boolean = 
  */
 export const getMessageType = (message: any): 'user' | 'assistant' | 'assistant_with_tools' | 'plan' | 'system' => {
   if (message.role === 'user') return 'user';
-  
-  if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
-    return 'assistant_with_tools';
+
+  // Handle both 'assistant' and 'agent' roles (A2A protocol uses 'agent')
+  if (message.role === 'assistant' || message.role === 'agent') {
+    if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
+      return 'assistant_with_tools';
+    }
+    return 'assistant';
   }
-  
+
   if (message.metadata?.type === 'plan' || message.metadata?.plan) {
     return 'plan';
   }
-  
-  if (message.role === 'assistant') return 'assistant';
-  
+
   return 'system';
 };
 

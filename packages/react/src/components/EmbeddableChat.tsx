@@ -61,7 +61,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     messages,
     loading,
     error,
-    sendMessage: chatSendMessage,
+    sendMessageStream,
     isStreaming,
   } = useChat({
     agentId,
@@ -84,7 +84,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     setInput('');
 
     try {
-      await chatSendMessage(messageText);
+      await sendMessageStream(messageText, metadata);
     } catch (err) {
       console.error('Failed to send message:', err);
       setInput(messageText); // Restore input on error

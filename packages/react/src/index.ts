@@ -70,6 +70,6 @@ export { default as ApprovalDialog } from './components/ApprovalDialog';
 export { ChatInput } from './components/ChatInput';
 export { default as MessageRenderer } from './components/MessageRenderer';
 
-export { createTool, createBuiltinTools } from './useTools';
+export { createBuiltinTools } from './useTools';
 // Utilities
 export { cn } from './lib/utils';

@@ -40,8 +40,6 @@ function AppContent() {
       <FullChat
         agentId={selectedAgent?.id || ''}
         availableAgents={availableAgents}
-        showSidebar={true}
-        sidebarWidth={280}
         onAgentSelect={(agentId) => {
           const agent = agents.find(a => a.id === agentId);
           if (agent) setSelectedAgent(agent);
