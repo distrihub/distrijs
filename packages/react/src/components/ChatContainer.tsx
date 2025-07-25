@@ -2,7 +2,7 @@ import React from 'react';
 import { Agent } from '@distri/core';
 import { EmbeddableChat } from './EmbeddableChat';
 import { FullChat } from './FullChat';
-import '../styles/themes.css';
+
 
 export interface ChatContainerProps {
   agentId: string;

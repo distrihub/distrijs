@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ToolCall } from '@distri/core';
 
 export interface ApprovalDialogProps {
@@ -76,7 +76,7 @@ const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="flex items-center justify-end space-x-2 p-6 pt-0">
             <Button
               onClick={handleApprove}
               variant="default"
@@ -99,7 +99,7 @@ const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
             >
               Cancel
             </Button>
-          </DialogFooter>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
