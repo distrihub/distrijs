@@ -5,10 +5,14 @@ import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/
 import { Copy, Check, Code2 } from 'lucide-react';
 import { useChatConfig } from './ChatContext';
 
-interface MessageRendererProps {
-  content: string;
+export interface MessageRendererProps {
+  message?: any;
+  content?: string;
   className?: string;
   metadata?: any;
+  isUser?: boolean;
+  isStreaming?: boolean;
+  theme?: 'light' | 'dark';
 }
 
 // Enhanced Code Block Component with better overflow handling
@@ -158,9 +162,25 @@ const CodeBlock: React.FC<{
 };
 
 const MessageRenderer: React.FC<MessageRendererProps> = ({
-  content,
+  message,
+  content: providedContent,
   className = "",
+  isUser = false,
+  isStreaming = false,
+  theme = 'light'
 }) => {
+  // Extract content from message if provided, otherwise use provided content
+  const content = useMemo(() => {
+    if (providedContent) return providedContent;
+    if (message?.parts) {
+      return message.parts
+        .filter((part: any) => part.kind === 'text')
+        .map((part: any) => part.text || '')
+        .join('');
+    }
+    return '';
+  }, [message, providedContent]);
+
   // Try to get chat config if available, otherwise use defaults
   let config;
   try {
@@ -171,16 +191,16 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     config = {
       enableMarkdown: true,
       enableCodeHighlighting: true,
-      theme: 'chatgpt' as const
+      theme: theme === 'dark' ? 'dark' : 'chatgpt'
     };
   }
 
-  // Detect if we're in a dark theme context (e.g., user message with white text)
-  const isDark = className.includes('text-white');
+  // Detect if we're in a dark theme context
+  const isDark = theme === 'dark' || isUser || className.includes('text-white');
 
   // Enhanced markdown detection
   const hasMarkdownSyntax = useMemo(() => {
-    if (!config.enableMarkdown) return false;
+    if (!config.enableMarkdown || !content) return false;
 
     const markdownPatterns = [
       /^#{1,6}\s+/m, // Headers
@@ -350,6 +370,18 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       >
         {content}
       </ReactMarkdown>
+      
+      {/* Streaming indicator */}
+      {isStreaming && (
+        <div className="flex items-center gap-2 mt-2 text-xs opacity-60">
+          <div className="flex space-x-1">
+            <div className="w-1 h-1 bg-current rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
+          <span>AI is typing...</span>
+        </div>
+      )}
     </div>
   );
 };

@@ -49,3 +49,7 @@ export type {
   DistriThread,
   MessageMetadata
 } from '@distri/core';
+
+// Component prop types for customization
+export type { ChatProps } from './components/Chat';
+export type { EmbeddableChatProps } from './components/EmbeddableChat';

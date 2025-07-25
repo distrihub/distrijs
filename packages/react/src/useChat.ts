@@ -8,7 +8,6 @@ export interface UseChatOptions {
   agentId: string;
   threadId: string;
   agent?: Agent;
-  metadata?: MessageMetadata;
   onToolCalls?: (toolCalls: ToolCall[]) => void;
 }
 
@@ -32,11 +31,12 @@ export function useChat({
   agentId,
   threadId,
   agent: providedAgent,
-  metadata,
   onToolCalls,
 }: UseChatOptions): UseChatResult {
   // Use provided agent or create one internally
-  const { agent: internalAgent } = useAgent({ agentId: providedAgent ? undefined : agentId });
+  const { agent: internalAgent } = useAgent({ 
+    agentId: providedAgent ? undefined : (agentId || undefined) 
+  });
   const agent = providedAgent || internalAgent;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -194,8 +194,9 @@ export function useChat({
       });
 
       // Handle tool calls if present
-      if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
-        const toolCalls = message.metadata.tool_calls as ToolCall[];
+      const msgMetadata = message.metadata as any;
+      if (msgMetadata?.type === 'assistant_response' && msgMetadata.tool_calls) {
+        const toolCalls = msgMetadata.tool_calls as ToolCall[];
         await handleToolCalls(toolCalls);
       }
     } else if (event.kind === 'status-update') {
@@ -224,8 +225,9 @@ export function useChat({
         setMessages((prev) => [...prev, result.message as Message]);
         
         // Handle tool calls if present in the response
-        if (result.message.metadata?.type === 'assistant_response' && result.message.metadata.tool_calls) {
-          const toolCalls = result.message.metadata.tool_calls as ToolCall[];
+        const resultMetadata = (result.message as any).metadata;
+        if (resultMetadata?.type === 'assistant_response' && resultMetadata.tool_calls) {
+          const toolCalls = resultMetadata.tool_calls as ToolCall[];
           await handleToolCalls(toolCalls);
         }
       }

@@ -3,7 +3,6 @@ import {
   DistriAgent,
   DistriTool,
   ToolCall,
-  ToolHandler,
   ToolResult,
   A2AStreamEventData,
   APPROVAL_REQUEST_TOOL_NAME
@@ -84,7 +83,7 @@ export class Agent {
         },
         required: ['prompt']
       },
-      handler: async (input: any) => {
+      handler: async (_input: any) => {
         // This will be handled by the ExternalToolManager
         return { approved: false, message: 'Approval handler not implemented' };
       }
@@ -107,7 +106,7 @@ export class Agent {
         },
         required: ['message']
       },
-      handler: async (input: any) => {
+      handler: async (_input: any) => {
         // This will be handled by the ExternalToolManager
         return { success: true, message: 'Toast displayed' };
       }

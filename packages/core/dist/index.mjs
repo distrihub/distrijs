@@ -1,6 +1,9 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
@@ -119,7 +122,8 @@ var A2AClient = class {
           throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
         }
       } catch (e) {
-        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for")) throw e;
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
+          throw e;
         throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
       }
     }
@@ -181,7 +185,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
@@ -272,7 +277,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
@@ -433,7 +439,8 @@ var DistriClient = class {
       });
       return agents;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
     }
   }
@@ -459,7 +466,8 @@ var DistriClient = class {
       }
       return agent;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
     }
   }
@@ -493,7 +501,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
     }
   }
@@ -525,7 +534,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
@@ -552,7 +562,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
     }
   }
@@ -564,7 +575,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -582,7 +594,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -705,13 +718,60 @@ var Agent = class _Agent {
         type: "object",
         properties: {
           prompt: { type: "string", description: "Approval prompt to show user" },
-          action: { type: "string", description: "Action requiring approval" }
+          action: { type: "string", description: "Action requiring approval" },
+          tool_calls: {
+            type: "array",
+            description: "Tool calls requiring approval",
+            items: {
+              type: "object",
+              properties: {
+                tool_call_id: { type: "string" },
+                tool_name: { type: "string" },
+                input: { type: "object" }
+              }
+            }
+          }
+        },
+        required: ["prompt"]
+      },
+      handler: async (_input) => {
+        return { approved: false, message: "Approval handler not implemented" };
+      }
+    });
+    this.addTool({
+      name: "toast",
+      description: "Show a toast notification to the user",
+      parameters: {
+        type: "object",
+        properties: {
+          message: { type: "string", description: "Message to display" },
+          type: {
+            type: "string",
+            enum: ["success", "error", "warning", "info"],
+            default: "info",
+            description: "Type of toast notification"
+          }
+        },
+        required: ["message"]
+      },
+      handler: async (_input) => {
+        return { success: true, message: "Toast displayed" };
+      }
+    });
+    this.addTool({
+      name: "input_request",
+      description: "Request text input from the user",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "Prompt to show the user" },
+          default: { type: "string", description: "Default value for the input" }
         },
         required: ["prompt"]
       },
       handler: async (input) => {
-        const userInput = prompt(input.prompt || "Please provide input:");
-        return { approved: !!userInput, input: userInput };
+        const userInput = prompt(input.prompt || "Please provide input:", input.default || "");
+        return { input: userInput };
       }
     });
   }
@@ -719,7 +779,7 @@ var Agent = class _Agent {
    * Add a tool to the agent (AG-UI style)
    */
   addTool(tool) {
-    this.tools.set(tool.name, tool.handler);
+    this.tools.set(tool.name, tool);
   }
   /**
    * Add multiple tools at once
@@ -740,6 +800,26 @@ var Agent = class _Agent {
     return Array.from(this.tools.keys());
   }
   /**
+   * Get all registered tool definitions
+   */
+  getToolDefinitions() {
+    const definitions = {};
+    this.tools.forEach((tool, name) => {
+      definitions[name] = {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      };
+    });
+    return definitions;
+  }
+  /**
+   * Get a specific tool definition
+   */
+  getTool(toolName) {
+    return this.tools.get(toolName);
+  }
+  /**
    * Check if a tool is registered
    */
   hasTool(toolName) {
@@ -749,8 +829,8 @@ var Agent = class _Agent {
    * Execute a tool call
    */
   async executeTool(toolCall) {
-    const handler = this.tools.get(toolCall.tool_name);
-    if (!handler) {
+    const tool = this.tools.get(toolCall.tool_name);
+    if (!tool) {
       return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -759,7 +839,7 @@ var Agent = class _Agent {
       };
     }
     try {
-      const result = await handler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
       return {
         tool_call_id: toolCall.tool_call_id,
         result,
@@ -775,14 +855,11 @@ var Agent = class _Agent {
     }
   }
   /**
-   * Get tool definitions for context metadata
+   * Execute multiple tool calls in parallel
    */
-  getToolDefinitions() {
-    const definitions = {};
-    this.tools.forEach((_handler, name) => {
-      definitions[name] = { name };
-    });
-    return definitions;
+  async executeToolCalls(toolCalls) {
+    const promises = toolCalls.map((toolCall) => this.executeTool(toolCall));
+    return Promise.all(promises);
   }
   /**
    * Get agent information

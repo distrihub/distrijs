@@ -30,7 +30,7 @@ export const createBuiltinTools = (): Record<string, DistriTool> => {
         },
         required: ['prompt']
       },
-      handler: async (input: any) => {
+      handler: async (_input: any) => {
         // This is handled by ExternalToolManager for UI interaction
         return { approved: false, message: 'Approval handled by UI' };
       }
@@ -53,7 +53,7 @@ export const createBuiltinTools = (): Record<string, DistriTool> => {
         },
         required: ['message']
       },
-      handler: async (input: any) => {
+      handler: async (_input: any) => {
         // This is handled by ExternalToolManager for UI interaction
         return { success: true, message: 'Toast displayed' };
       }

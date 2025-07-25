@@ -5,7 +5,7 @@ import {
 import { useDistri } from './DistriProvider';
 
 export interface UseAgentOptions {
-  agentId: string;
+  agentId?: string;
   autoCreateAgent?: boolean;
 }
 
@@ -34,8 +34,8 @@ export function useAgent({
 
   // Initialize agent
   const initializeAgent = useCallback(async () => {
-    if (!client || !agentId || agentRef.current) return;
-
+    if (!client || !agentId) return; // Don't create agent if no agentId provided
+    
     try {
       setLoading(true);
       setError(null);
@@ -51,10 +51,10 @@ export function useAgent({
 
   // Auto-initialize agent when client is ready
   React.useEffect(() => {
-    if (!clientLoading && !clientError && autoCreateAgent && client) {
+    if (!clientLoading && !clientError && autoCreateAgent && client && agentId) {
       initializeAgent();
     }
-  }, [clientLoading, clientError, autoCreateAgent, client, initializeAgent]);
+  }, [clientLoading, clientError, autoCreateAgent, client, agentId, initializeAgent]);
 
 
   return {

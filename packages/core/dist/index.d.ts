@@ -315,6 +315,14 @@ declare class Agent {
      */
     getTools(): string[];
     /**
+     * Get all registered tool definitions
+     */
+    getToolDefinitions(): Record<string, any>;
+    /**
+     * Get a specific tool definition
+     */
+    getTool(toolName: string): DistriTool | undefined;
+    /**
      * Check if a tool is registered
      */
     hasTool(toolName: string): boolean;
@@ -323,9 +331,9 @@ declare class Agent {
      */
     executeTool(toolCall: ToolCall): Promise<ToolResult>;
     /**
-     * Get tool definitions for context metadata
+     * Execute multiple tool calls in parallel
      */
-    getToolDefinitions(): Record<string, any>;
+    executeToolCalls(toolCalls: ToolCall[]): Promise<ToolResult[]>;
     /**
      * Get agent information
      */
