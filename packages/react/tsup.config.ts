@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ['src/index.ts', 'src/globals.css'],
   format: ['esm', 'cjs'],
   dts: true,
-  sourcemap: true,
+  sourcemap: false,
   clean: true,
   external: ['react', 'react-dom'],
   injectStyle: false,

@@ -4,6 +4,7 @@ export default {
 	content: [
 		"./index.html",
 		"./src/**/*.{js,ts,jsx,tsx}",
+		"../../packages/react/src/**/*.{js,ts,jsx,tsx}",
 	],
 	plugins: [
 		require("tailwindcss-animate")

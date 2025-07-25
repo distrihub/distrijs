@@ -367,6 +367,27 @@ interface UseToolsResult {
  * Follows AG-UI pattern for tool registration
  */
 declare function useTools({ agent }: UseToolsOptions): UseToolsResult;
+/**
+ * Utility function to create common tool definitions
+ */
+declare const createTool: (name: string, description: string, parameters: any, handler: (input: any) => Promise<any> | any) => DistriTool;
+/**
+ * Built-in tool definitions
+ */
+declare const createBuiltinTools: () => {
+    /**
+     * Confirmation tool for user approval
+     */
+    confirm: DistriTool;
+    /**
+     * Input request tool
+     */
+    input: DistriTool;
+    /**
+     * Notification tool
+     */
+    notify: DistriTool;
+};
 
 interface DistriProviderProps {
     config: DistriClientConfig;
@@ -624,4 +645,4 @@ declare const Toast: React__default.FC<ToastProps>;
 
 declare function cn(...inputs: ClassValue[]): string;
 
-export { AgentDropdown, ApprovalDialog, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatContainer, ChatInput, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, ModeToggle, Textarea, ThemeDropdown, ThemeProvider, ThemeToggle, Toast, cn, useAgent, useAgents, useChat, useTheme, useThreads, useTools };
+export { AgentDropdown, ApprovalDialog, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatContainer, ChatInput, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, ModeToggle, Textarea, ThemeDropdown, ThemeProvider, ThemeToggle, Toast, cn, createBuiltinTools, createTool, useAgent, useAgents, useChat, useTheme, useThreads, useTools };

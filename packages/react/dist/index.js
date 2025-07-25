@@ -1397,6 +1397,71 @@ function useTools({ agent }) {
     hasTool
   };
 }
+var createTool = (name, description, parameters, handler) => ({
+  name,
+  description,
+  parameters,
+  handler
+});
+var createBuiltinTools = () => ({
+  /**
+   * Confirmation tool for user approval
+   */
+  confirm: createTool(
+    "confirm",
+    "Ask user for confirmation",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Message to show to user" },
+        defaultValue: { type: "boolean", description: "Default value if user doesnt respond" }
+      },
+      required: ["message"]
+    },
+    async (input) => {
+      const result = confirm(input.message);
+      return { confirmed: result };
+    }
+  ),
+  /**
+   * Input request tool
+   */
+  input: createTool(
+    "input",
+    "Request text input from user",
+    {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "Prompt to show to user" },
+        placeholder: { type: "string", description: "Placeholder text" }
+      },
+      required: ["prompt"]
+    },
+    async (input) => {
+      const result = prompt(input.prompt, input.placeholder);
+      return { input: result };
+    }
+  ),
+  /**
+   * Notification tool
+   */
+  notify: createTool(
+    "notify",
+    "Show notification to user",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Notification message" },
+        type: { type: "string", enum: ["info", "success", "warning", "error"], description: "Notification type" }
+      },
+      required: ["message"]
+    },
+    async (input) => {
+      console.log(`[${input.type || "info"}] ${input.message}`);
+      return { notified: true };
+    }
+  )
+});
 
 // src/components/EmbeddableChat.tsx
 import { useState as useState8, useRef as useRef6, useEffect as useEffect8, useMemo as useMemo3 } from "react";
@@ -3427,6 +3492,8 @@ export {
   ThemeToggle,
   Toast_default as Toast,
   cn,
+  createBuiltinTools,
+  createTool,
   useAgent,
   useAgents,
   useChat,
@@ -3434,4 +3501,3 @@ export {
   useThreads,
   useTools
 };
-//# sourceMappingURL=index.js.map

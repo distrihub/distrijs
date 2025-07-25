@@ -31,5 +31,6 @@ export { ThemeDropdown } from './components/ThemeDropdown';
 export { ModeToggle } from './components/ModeToggle';
 export { default as Toast } from './components/Toast';
 
+export { createTool, createBuiltinTools } from './useTools';
 // Utilities
 export { cn } from './components/ui/utils';

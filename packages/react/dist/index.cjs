@@ -63,6 +63,8 @@ __export(index_exports, {
   ThemeToggle: () => ThemeToggle,
   Toast: () => Toast_default,
   cn: () => cn,
+  createBuiltinTools: () => createBuiltinTools,
+  createTool: () => createTool,
   useAgent: () => useAgent,
   useAgents: () => useAgents,
   useChat: () => useChat,
@@ -1466,6 +1468,71 @@ function useTools({ agent }) {
     hasTool
   };
 }
+var createTool = (name, description, parameters, handler) => ({
+  name,
+  description,
+  parameters,
+  handler
+});
+var createBuiltinTools = () => ({
+  /**
+   * Confirmation tool for user approval
+   */
+  confirm: createTool(
+    "confirm",
+    "Ask user for confirmation",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Message to show to user" },
+        defaultValue: { type: "boolean", description: "Default value if user doesnt respond" }
+      },
+      required: ["message"]
+    },
+    async (input) => {
+      const result = confirm(input.message);
+      return { confirmed: result };
+    }
+  ),
+  /**
+   * Input request tool
+   */
+  input: createTool(
+    "input",
+    "Request text input from user",
+    {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "Prompt to show to user" },
+        placeholder: { type: "string", description: "Placeholder text" }
+      },
+      required: ["prompt"]
+    },
+    async (input) => {
+      const result = prompt(input.prompt, input.placeholder);
+      return { input: result };
+    }
+  ),
+  /**
+   * Notification tool
+   */
+  notify: createTool(
+    "notify",
+    "Show notification to user",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Notification message" },
+        type: { type: "string", enum: ["info", "success", "warning", "error"], description: "Notification type" }
+      },
+      required: ["message"]
+    },
+    async (input) => {
+      console.log(`[${input.type || "info"}] ${input.message}`);
+      return { notified: true };
+    }
+  )
+});
 
 // src/components/EmbeddableChat.tsx
 var import_react13 = require("react");
@@ -3497,6 +3564,8 @@ var Toast_default = Toast;
   ThemeToggle,
   Toast,
   cn,
+  createBuiltinTools,
+  createTool,
   useAgent,
   useAgents,
   useChat,
@@ -3504,4 +3573,3 @@ var Toast_default = Toast;
   useThreads,
   useTools
 });
-//# sourceMappingURL=index.cjs.map
