@@ -29,6 +29,7 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src"
+    "src",
+    "../../packages/react/src/components/AgentsPage.tsx"
   ]
 }

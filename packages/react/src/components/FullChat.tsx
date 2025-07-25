@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, Settings, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2 } from 'lucide-react';
+import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2 } from 'lucide-react';
 import { Agent } from '@distri/core';
 import { useThreads } from '../useThreads';
 import { EmbeddableChat } from './EmbeddableChat';
-import { ModeToggle } from './ModeToggle';
+import { ThemeToggle } from './ThemeToggle';
+import AgentsPage from './AgentsPage';
 
 
 export interface FullChatProps {
@@ -25,9 +26,6 @@ export interface FullChatProps {
   // Sidebar
   showSidebar?: boolean;
   sidebarWidth?: number;
-  // Navigation
-  currentPage?: 'chat' | 'agents';
-  onPageChange?: (page: 'chat' | 'agents') => void;
   // Callbacks
   onAgentSelect?: (agentId: string) => void;
   onThreadSelect?: (threadId: string) => void;
@@ -150,6 +148,8 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
   );
 };
 
+type PageType = 'chat' | 'agents';
+
 export const FullChat: React.FC<FullChatProps> = ({
   agentId,
   agent,
@@ -163,8 +163,6 @@ export const FullChat: React.FC<FullChatProps> = ({
   showDebug = false,
   showSidebar = true,
   sidebarWidth = 280,
-  currentPage = 'chat',
-  onPageChange,
   onThreadSelect,
   onThreadCreate,
   onThreadDelete,
@@ -174,6 +172,7 @@ export const FullChat: React.FC<FullChatProps> = ({
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<string>('default');
   const { threads, loading: threadsLoading, refetch: refetchThreads } = useThreads();
+  const [currentPage, setCurrentPage] = useState<PageType>('chat');
 
   const handleNewChat = useCallback(() => {
     const newThreadId = `thread-${Date.now()}`;
@@ -227,7 +226,8 @@ export const FullChat: React.FC<FullChatProps> = ({
               className="flex items-center space-x-2 text-card-foreground hover:bg-accent hover:text-accent-foreground rounded-lg p-2 transition-colors w-full"
             >
               <Bot className="h-4 w-4" />
-              <span className="font-semibold">Distri</span>
+              <span className="font-semibold flex-1 text-left">Distri</span>
+              <ThemeToggle />
             </button>
           </div>
 
@@ -243,7 +243,7 @@ export const FullChat: React.FC<FullChatProps> = ({
             <div className="space-y-4 mt-4">
               <button
                 onClick={() => {
-                  onPageChange?.('chat');
+                  setCurrentPage('chat');
                   handleNewChat();
                 }}
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentPage === 'chat'
@@ -255,7 +255,7 @@ export const FullChat: React.FC<FullChatProps> = ({
                 <span>New Chat</span>
               </button>
               <button
-                onClick={() => onPageChange?.('agents')}
+                onClick={() => setCurrentPage('agents')}
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentPage === 'agents'
                   ? 'bg-accent text-accent-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -268,7 +268,7 @@ export const FullChat: React.FC<FullChatProps> = ({
           </div>
 
           {/* Threads List - Only show when on chat page */}
-          (
+
           <div className="flex-1 overflow-y-auto px-4 space-y-2 distri-scroll">
             <div className="text-sm text-muted-foreground mb-3 mt=3 px-2">Conversations</div>
             {threadsLoading ? (
@@ -293,21 +293,6 @@ export const FullChat: React.FC<FullChatProps> = ({
               ))
             )}
           </div>
-          )
-
-          {/* Settings */}
-          <div className="p-4 border-t ">
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Theme</label>
-                <ModeToggle />
-              </div>
-              <button className="w-full flex items-center space-x-3 px-3 py-2.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors">
-                <Settings className="h-4 w-4" />
-                <span className="text-sm">Settings</span>
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -331,6 +316,21 @@ export const FullChat: React.FC<FullChatProps> = ({
             placeholder="Type your message..."
             onAgentSelect={onAgentSelect}
           />
+        </div>
+      )}
+
+      {currentPage !== 'chat' && (
+        <div
+          className="fixed top-0 bg-background h-full overflow-auto"
+          style={{
+            left: '280px',
+            right: '0'
+          }}
+        >
+          {currentPage === 'agents' && <AgentsPage onStartChat={(agent) => {
+            setCurrentPage('chat');
+            onAgentSelect?.(agent.id);
+          }} />}
         </div>
       )}
     </div>

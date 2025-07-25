@@ -232,11 +232,11 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
               <div ref={messagesEndRef} />
             </div>
+            <div className="flex items-center justify-center px-6 py-4">
+              <div className="w-full max-w-2xl">
+                {/* Input Area - Centered when no messages, bottom when messages exist */}
+                {messages.length === 0 ? (
 
-            {/* Input Area - Centered when no messages, bottom when messages exist */}
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center px-6 py-8">
-                <div className="w-full max-w-2xl">
                   <ChatInput
                     value={input}
                     onChange={setInput}
@@ -250,25 +250,27 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                     isStreaming={isStreaming}
                     className="w-full"
                   />
-                </div>
+
+                ) : (
+
+                  <ChatInput
+                    value={input}
+                    onChange={setInput}
+                    onSend={sendMessage}
+                    onStop={() => {
+                      // Stop streaming - this would need to be implemented in the useChat hook
+                      console.log('Stop streaming');
+                    }}
+                    placeholder={placeholder}
+                    disabled={loading}
+                    isStreaming={isStreaming}
+                    className="w-full"
+                  />
+
+
+                )}
               </div>
-            ) : (
-              <div className="p-6 bg-muted">
-                <ChatInput
-                  value={input}
-                  onChange={setInput}
-                  onSend={sendMessage}
-                  onStop={() => {
-                    // Stop streaming - this would need to be implemented in the useChat hook
-                    console.log('Stop streaming');
-                  }}
-                  placeholder={placeholder}
-                  disabled={loading}
-                  isStreaming={isStreaming}
-                  className="w-full"
-                />
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

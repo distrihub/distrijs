@@ -26,10 +26,6 @@ export { AgentDropdown } from './components/AgentDropdown';
 export { default as ApprovalDialog } from './components/ApprovalDialog';
 export { ChatInput } from './components/ChatInput';
 export { default as MessageRenderer } from './components/MessageRenderer';
-export { ThemeToggle } from './components/ThemeToggle';
-export { ThemeDropdown } from './components/ThemeDropdown';
-export { ModeToggle } from './components/ModeToggle';
-export { default as Toast } from './components/Toast';
 
 export { createTool, createBuiltinTools } from './useTools';
 // Utilities

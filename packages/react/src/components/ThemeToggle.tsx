@@ -1,40 +1,19 @@
-import { Moon, Sun, Monitor } from 'lucide-react';
+import React from 'react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   return (
-    <div className="flex items-center space-x-2">
+    <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setTheme('light')}
-        className={`p-2 rounded-lg transition-colors ${theme === 'light'
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-          }`}
-        title="Light mode"
+        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        className="flex items-center justify-center w-9 h-9 rounded-md border  bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
       >
-        <Sun className="h-4 w-4" />
-      </button>
-      <button
-        onClick={() => setTheme('dark')}
-        className={`p-2 rounded-lg transition-colors ${theme === 'dark'
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-          }`}
-        title="Dark mode"
-      >
-        <Moon className="h-4 w-4" />
-      </button>
-      <button
-        onClick={() => setTheme('system')}
-        className={`p-2 rounded-lg transition-colors ${theme === 'system'
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-          }`}
-        title="System theme"
-      >
-        <Monitor className="h-4 w-4" />
+        <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+        <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+        <span className="sr-only">Toggle theme</span>
       </button>
     </div>
   );

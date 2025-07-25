@@ -59,7 +59,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className={`relative flex min-h-14 w-full items-end ${className}`}>
       <div className="relative flex w-full flex-auto flex-col">
-        <div className="relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start">
+        <div className="relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full">
           <textarea
             ref={textareaRef}
             value={value}
@@ -70,7 +70,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             rows={1}
             className="max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-20 text-foreground min-h-[52px] max-h-[120px]"
           />
-          <div className="absolute right-2 bottom-2 flex items-center h-full">
+          <div className="absolute right-2 bottom-0 flex items-center h-full">
             <button
               onClick={isStreaming ? handleStop : handleSend}
               disabled={!hasContent && !isStreaming}
@@ -89,7 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </button>
           </div>
         </div>
-        <div className="h-12"></div>
+        <div className="h-8"></div>
       </div>
     </div>
   );

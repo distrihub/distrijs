@@ -509,8 +509,6 @@ interface FullChatProps {
     showDebug?: boolean;
     showSidebar?: boolean;
     sidebarWidth?: number;
-    currentPage?: 'chat' | 'agents';
-    onPageChange?: (page: 'chat' | 'agents') => void;
     onAgentSelect?: (agentId: string) => void;
     onThreadSelect?: (threadId: string) => void;
     onThreadCreate?: (threadId: string) => void;
@@ -629,20 +627,6 @@ interface MessageRendererProps {
 }
 declare const MessageRenderer: React__default.FC<MessageRendererProps>;
 
-declare function ThemeToggle(): react_jsx_runtime.JSX.Element;
-
-declare function ThemeDropdown(): react_jsx_runtime.JSX.Element;
-
-declare function ModeToggle(): react_jsx_runtime.JSX.Element;
-
-interface ToastProps {
-    message: string;
-    type?: 'success' | 'error' | 'warning' | 'info';
-    duration?: number;
-    onClose?: () => void;
-}
-declare const Toast: React__default.FC<ToastProps>;
-
 declare function cn(...inputs: ClassValue[]): string;
 
-export { AgentDropdown, ApprovalDialog, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatContainer, ChatInput, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, ModeToggle, Textarea, ThemeDropdown, ThemeProvider, ThemeToggle, Toast, cn, createBuiltinTools, createTool, useAgent, useAgents, useChat, useTheme, useThreads, useTools };
+export { AgentDropdown, ApprovalDialog, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatContainer, ChatInput, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, Textarea, ThemeProvider, cn, createBuiltinTools, createTool, useAgent, useAgents, useChat, useTheme, useThreads, useTools };
