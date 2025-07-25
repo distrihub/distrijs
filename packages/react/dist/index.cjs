@@ -56,12 +56,8 @@ __export(index_exports, {
   FullChat: () => FullChat,
   Input: () => Input,
   MessageRenderer: () => MessageRenderer_default,
-  ModeToggle: () => ModeToggle,
   Textarea: () => Textarea,
-  ThemeDropdown: () => ThemeDropdown,
   ThemeProvider: () => ThemeProvider,
-  ThemeToggle: () => ThemeToggle,
-  Toast: () => Toast_default,
   cn: () => cn,
   createBuiltinTools: () => createBuiltinTools,
   createTool: () => createTool,
@@ -2223,7 +2219,7 @@ var ChatInput = ({
   const hasContent = value.trim().length > 0;
   const isDisabled = disabled || isStreaming;
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: `relative flex min-h-14 w-full items-end ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "relative flex w-full flex-auto flex-col", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         "textarea",
         {
@@ -2237,7 +2233,7 @@ var ChatInput = ({
           className: "max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-20 text-foreground min-h-[52px] max-h-[120px]"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "absolute right-2 bottom-2 flex items-center h-full", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "absolute right-2 bottom-0 flex items-center h-full", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         "button",
         {
           onClick: isStreaming ? handleStop : handleSend,
@@ -2247,7 +2243,7 @@ var ChatInput = ({
         }
       ) })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "h-12" })
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "h-8" })
   ] }) });
 };
 
@@ -2402,7 +2398,7 @@ var EmbeddableChat = ({
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { ref: messagesEndRef })
           ] }),
-          messages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "flex items-center justify-center px-6 py-8", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "w-full max-w-2xl", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "flex items-center justify-center px-6 py-4", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "w-full max-w-2xl", children: messages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             ChatInput,
             {
               value: input,
@@ -2416,7 +2412,7 @@ var EmbeddableChat = ({
               isStreaming,
               className: "w-full"
             }
-          ) }) }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "p-6 bg-muted", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+          ) : /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             ChatInput,
             {
               value: input,
@@ -2430,7 +2426,7 @@ var EmbeddableChat = ({
               isStreaming,
               className: "w-full"
             }
-          ) })
+          ) }) })
         ] }) })
       ] })
     }
@@ -2438,88 +2434,133 @@ var EmbeddableChat = ({
 };
 
 // src/components/FullChat.tsx
-var import_react15 = require("react");
-var import_lucide_react7 = require("lucide-react");
+var import_react17 = require("react");
+var import_lucide_react8 = require("lucide-react");
 
-// src/components/ModeToggle.tsx
+// src/components/ThemeToggle.tsx
 var import_react14 = __toESM(require("react"), 1);
 var import_lucide_react6 = require("lucide-react");
 var import_jsx_runtime9 = require("react/jsx-runtime");
-function ModeToggle() {
+function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [isOpen, setIsOpen] = import_react14.default.useState(false);
   const dropdownRef = import_react14.default.useRef(null);
-  import_react14.default.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "relative", ref: dropdownRef, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
-      "button",
-      {
-        onClick: () => setIsOpen(!isOpen),
-        className: "flex items-center justify-center w-9 h-9 rounded-md border  bg-background hover:bg-accent hover:text-accent-foreground transition-colors",
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Sun, { className: "h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Moon, { className: "absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: "sr-only", children: "Toggle theme" })
-        ]
-      }
-    ),
-    isOpen && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "absolute right-0 top-full mt-1 w-32 bg-card border  rounded-md shadow-lg z-50", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "relative", ref: dropdownRef, children: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
+    "button",
+    {
+      onClick: () => setTheme(theme === "light" ? "dark" : "light"),
+      className: "flex items-center justify-center w-9 h-9 rounded-md border  bg-background hover:bg-accent hover:text-accent-foreground transition-colors",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Sun, { className: "h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Moon, { className: "absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: "sr-only", children: "Toggle theme" })
+      ]
+    }
+  ) });
+}
+
+// src/components/AgentList.tsx
+var import_react15 = __toESM(require("react"), 1);
+var import_lucide_react7 = require("lucide-react");
+var import_jsx_runtime10 = require("react/jsx-runtime");
+var AgentList = ({ agents, onRefresh, onStartChat }) => {
+  const [refreshing, setRefreshing] = import_react15.default.useState(false);
+  console.log("agents", agents);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex items-center justify-between p-6 border-b border-border", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h2", { className: "text-xl font-semibold text-foreground", children: "Available Agents" }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
         "button",
         {
-          onClick: () => {
-            setTheme("light");
-            setIsOpen(false);
-          },
-          className: `w-full flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${theme === "light" ? "bg-accent text-accent-foreground" : "text-card-foreground"} rounded-t-md`,
+          onClick: handleRefresh,
+          disabled: refreshing,
+          className: "flex items-center space-x-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors",
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Sun, { className: "h-4 w-4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "Light" })
-          ]
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
-        "button",
-        {
-          onClick: () => {
-            setTheme("dark");
-            setIsOpen(false);
-          },
-          className: `w-full flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${theme === "dark" ? "bg-accent text-accent-foreground" : "text-card-foreground"}`,
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Moon, { className: "h-4 w-4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "Dark" })
-          ]
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
-        "button",
-        {
-          onClick: () => {
-            setTheme("system");
-            setIsOpen(false);
-          },
-          className: `w-full flex items-center space-x-2 px-3 py-2 text-sm hover:bg-accent transition-colors ${theme === "system" ? "bg-accent text-accent-foreground" : "text-card-foreground"} rounded-b-md`,
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.Monitor, { className: "h-4 w-4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "System" })
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.RefreshCw, { className: `h-4 w-4 ${refreshing ? "animate-spin" : ""}` }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: "Refresh" })
           ]
         }
       )
-    ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "p-6", children: agents.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "text-center py-12", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Bot, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "text-muted-foreground text-lg", children: "No agents available" }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "text-sm text-muted-foreground mt-2", children: "Check your server connection" })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "grid gap-6 md:grid-cols-2 lg:grid-cols-3", children: agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+      "div",
+      {
+        className: "bg-card border border-border rounded-xl p-6 hover:border-border/80 hover:bg-card/80 transition-all duration-200",
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "flex items-start justify-between mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex items-center space-x-3", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "w-12 h-12 bg-primary rounded-full flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Bot, { className: "h-6 w-6 text-primary-foreground" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h3", { className: "font-semibold text-foreground text-lg", children: agent.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "flex items-center space-x-1", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { className: "text-xs text-muted-foreground capitalize", children: agent.version ? `v${agent.version}` : "Latest" }) })
+            ] })
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "text-sm text-muted-foreground mb-6 line-clamp-3", children: agent.description || "No description available" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex items-center justify-between", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-xs text-muted-foreground", children: agent.version && `Version ${agent.version}` }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "flex items-center space-x-2", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+              "button",
+              {
+                onClick: () => onStartChat(agent),
+                className: "flex items-center space-x-1 px-3 py-2 text-xs bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors",
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Play, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: "Chat" })
+                ]
+              }
+            ) })
+          ] })
+        ]
+      },
+      agent.name
+    )) }) })
   ] });
-}
+};
+var AgentList_default = AgentList;
+
+// src/components/AgentsPage.tsx
+var import_jsx_runtime11 = require("react/jsx-runtime");
+var AgentsPage = ({ onStartChat }) => {
+  const { agents, loading, refetch } = useAgents();
+  const handleRefresh = async () => {
+    await refetch();
+  };
+  const handleStartChat = (agent) => {
+    console.log("Starting chat with agent:", agent.name);
+    onStartChat?.(agent);
+  };
+  if (loading) {
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "h-full bg-background flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "flex items-center space-x-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { className: "text-foreground", children: "Loading agents..." })
+    ] }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "h-full bg-background overflow-auto", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "container mx-auto p-6", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h1", { className: "text-3xl font-bold text-foreground mb-6", children: "Agents" }),
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+      AgentList_default,
+      {
+        agents,
+        onRefresh: handleRefresh,
+        onStartChat: handleStartChat
+      }
+    )
+  ] }) });
+};
+var AgentsPage_default = AgentsPage;
 
 // src/components/FullChat.tsx
-var import_jsx_runtime10 = require("react/jsx-runtime");
+var import_jsx_runtime12 = require("react/jsx-runtime");
 var ThreadItem = ({
   thread,
   isActive,
@@ -2527,16 +2568,16 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = (0, import_react15.useState)(false);
-  const [editTitle, setEditTitle] = (0, import_react15.useState)(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = (0, import_react15.useState)(false);
-  const handleRename = (0, import_react15.useCallback)(() => {
+  const [isEditing, setIsEditing] = (0, import_react17.useState)(false);
+  const [editTitle, setEditTitle] = (0, import_react17.useState)(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = (0, import_react17.useState)(false);
+  const handleRename = (0, import_react17.useCallback)(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = (0, import_react15.useCallback)((e) => {
+  const handleKeyPress = (0, import_react17.useCallback)((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -2544,15 +2585,15 @@ var ThreadItem = ({
       setIsEditing(false);
     }
   }, [handleRename, thread.title]);
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
     "div",
     {
       className: `group relative p-3 rounded-lg cursor-pointer transition-colors ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`,
       onClick,
-      children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex items-center justify-between", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.MessageSquare, { className: `h-4 w-4 flex-shrink-0 ${isActive ? "text-accent-foreground" : "text-muted-foreground"}` }),
-          isEditing ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+      children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center justify-between", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.MessageSquare, { className: `h-4 w-4 flex-shrink-0 ${isActive ? "text-accent-foreground" : "text-muted-foreground"}` }),
+          isEditing ? /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
             "input",
             {
               value: editTitle,
@@ -2563,13 +2604,13 @@ var ThreadItem = ({
               autoFocus: true,
               onClick: (e) => e.stopPropagation()
             }
-          ) : /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex-1 min-w-0", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: `text-sm font-medium truncate ${isActive ? "text-accent-foreground" : "text-card-foreground"}`, children: thread.title || "New Chat" }),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "text-xs text-muted-foreground truncate", children: thread.last_message || "No messages yet" })
+          ) : /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex-1 min-w-0", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: `text-sm font-medium truncate ${isActive ? "text-accent-foreground" : "text-card-foreground"}`, children: thread.title || "New Chat" }),
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "text-xs text-muted-foreground truncate", children: thread.last_message || "No messages yet" })
           ] })
         ] }),
-        !isEditing && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "relative", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+        !isEditing && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "relative", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
             "button",
             {
               onClick: (e) => {
@@ -2577,11 +2618,11 @@ var ThreadItem = ({
                 setShowMenu(!showMenu);
               },
               className: "opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity",
-              children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.MoreHorizontal, { className: "h-4 w-4 text-muted-foreground" })
+              children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.MoreHorizontal, { className: "h-4 w-4 text-muted-foreground" })
             }
           ),
-          showMenu && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "absolute right-0 top-6 w-32 bg-card border  rounded-lg shadow-lg z-10", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+          showMenu && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "absolute right-0 top-6 w-32 bg-card border  rounded-lg shadow-lg z-10", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
               "button",
               {
                 onClick: (e) => {
@@ -2591,12 +2632,12 @@ var ThreadItem = ({
                 },
                 className: "w-full text-left px-3 py-2 text-sm hover:bg-accent text-card-foreground flex items-center space-x-2 rounded-t-lg",
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Edit3, { className: "h-3 w-3" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: "Rename" })
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.Edit3, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "Rename" })
                 ]
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
               "button",
               {
                 onClick: (e) => {
@@ -2606,8 +2647,8 @@ var ThreadItem = ({
                 },
                 className: "w-full text-left px-3 py-2 text-sm hover:bg-accent text-destructive flex items-center space-x-2 rounded-b-lg",
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Trash2, { className: "h-3 w-3" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: "Delete" })
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.Trash2, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "Delete" })
                 ]
               }
             )
@@ -2630,8 +2671,6 @@ var FullChat = ({
   showDebug = false,
   showSidebar = true,
   sidebarWidth = 280,
-  currentPage = "chat",
-  onPageChange,
   onThreadSelect,
   onThreadCreate,
   onThreadDelete,
@@ -2639,18 +2678,19 @@ var FullChat = ({
   availableAgents,
   onAgentSelect
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = (0, import_react15.useState)("default");
+  const [selectedThreadId, setSelectedThreadId] = (0, import_react17.useState)("default");
   const { threads, loading: threadsLoading, refetch: refetchThreads } = useThreads();
-  const handleNewChat = (0, import_react15.useCallback)(() => {
+  const [currentPage, setCurrentPage] = (0, import_react17.useState)("chat");
+  const handleNewChat = (0, import_react17.useCallback)(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = (0, import_react15.useCallback)((threadId) => {
+  const handleThreadSelect = (0, import_react17.useCallback)((threadId) => {
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = (0, import_react15.useCallback)((threadId) => {
+  const handleThreadDelete = (0, import_react17.useCallback)((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -2662,15 +2702,15 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = (0, import_react15.useCallback)((threadId, newTitle) => {
+  const handleThreadRename = (0, import_react17.useCallback)((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
   const mainStyle = {
     marginLeft: showSidebar ? `${sidebarWidth}px` : "0px"
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: `distri-chat ${className} h-full flex bg-background text-foreground`, children: [
-    showSidebar && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: `distri-chat ${className} h-full flex bg-background text-foreground`, children: [
+    showSidebar && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
       "div",
       {
         className: "fixed left-0 top-0 h-full border-r  flex flex-col distri-sidebar bg-card text-card-foreground",
@@ -2678,51 +2718,51 @@ var FullChat = ({
           width: `${sidebarWidth}px`
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "p-4", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "p-4", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
             "button",
             {
               onClick: onLogoClick,
               className: "flex items-center space-x-2 text-card-foreground hover:bg-accent hover:text-accent-foreground rounded-lg p-2 transition-colors w-full",
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Bot, { className: "h-4 w-4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { className: "font-semibold", children: "Distri" })
+                /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.Bot, { className: "h-4 w-4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "font-semibold flex-1 text-left", children: "Distri" }),
+                /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(ThemeToggle, {})
               ]
             }
           ) }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "px-4 pb-6", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "space-y-4 mt-4", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "px-4 pb-6", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "space-y-4 mt-4", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
               "button",
               {
                 onClick: () => {
-                  onPageChange?.("chat");
+                  setCurrentPage("chat");
                   handleNewChat();
                 },
                 className: `w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentPage === "chat" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`,
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Edit2, { className: "h-4 w-4" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: "New Chat" })
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.Edit2, { className: "h-4 w-4" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "New Chat" })
                 ]
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
               "button",
               {
-                onClick: () => onPageChange?.("agents"),
+                onClick: () => setCurrentPage("agents"),
                 className: `w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${currentPage === "agents" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`,
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Users, { className: "h-4 w-4" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: "Agents" })
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.Users, { className: "h-4 w-4" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "Agents" })
                 ]
               }
             )
           ] }) }),
-          "(",
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex-1 overflow-y-auto px-4 space-y-2 distri-scroll", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-sm text-muted-foreground mb-3 mt=3 px-2", children: "Conversations" }),
-            threadsLoading ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-center py-12", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-sm text-muted-foreground", children: "Loading threads..." }) }) : threads.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "text-center py-12", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.MessageSquare, { className: "h-8 w-8 text-muted-foreground mx-auto mb-3" }),
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-sm text-muted-foreground", children: "No conversations yet" })
-            ] }) : threads.map((thread) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex-1 overflow-y-auto px-4 space-y-2 distri-scroll", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-sm text-muted-foreground mb-3 mt=3 px-2", children: "Conversations" }),
+            threadsLoading ? /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-center py-12", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-sm text-muted-foreground", children: "Loading threads..." }) }) : threads.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "text-center py-12", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react8.MessageSquare, { className: "h-8 w-8 text-muted-foreground mx-auto mb-3" }),
+              /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-sm text-muted-foreground", children: "No conversations yet" })
+            ] }) : threads.map((thread) => /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
               ThreadItem,
               {
                 thread,
@@ -2733,22 +2773,11 @@ var FullChat = ({
               },
               thread.id
             ))
-          ] }),
-          ")",
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "p-4 border-t ", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "space-y-4", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("label", { className: "text-xs text-muted-foreground mb-2 block", children: "Theme" }),
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(ModeToggle, {})
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("button", { className: "w-full flex items-center space-x-3 px-3 py-2.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react7.Settings, { className: "h-4 w-4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { className: "text-sm", children: "Settings" })
-            ] })
-          ] }) })
+          ] })
         ]
       }
     ),
-    currentPage === "chat" && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "flex-1", style: mainStyle, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+    currentPage === "chat" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "flex-1", style: mainStyle, children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
       EmbeddableChat,
       {
         agentId,
@@ -2767,12 +2796,26 @@ var FullChat = ({
         placeholder: "Type your message...",
         onAgentSelect
       }
-    ) })
+    ) }),
+    currentPage !== "chat" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
+      "div",
+      {
+        className: "fixed top-0 bg-background h-full overflow-auto",
+        style: {
+          left: "280px",
+          right: "0"
+        },
+        children: currentPage === "agents" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AgentsPage_default, { onStartChat: (agent2) => {
+          setCurrentPage("chat");
+          onAgentSelect?.(agent2.id);
+        } })
+      }
+    )
   ] });
 };
 
 // src/components/ChatContainer.tsx
-var import_jsx_runtime11 = require("react/jsx-runtime");
+var import_jsx_runtime13 = require("react/jsx-runtime");
 var ChatContainer = ({
   variant = "embedded",
   height = 500,
@@ -2783,7 +2826,7 @@ var ChatContainer = ({
 }) => {
   const heightString = typeof height === "number" ? `${height}px` : height;
   if (variant === "full") {
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
       FullChat,
       {
         ...props,
@@ -2792,7 +2835,7 @@ var ChatContainer = ({
       }
     );
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
     EmbeddableChat,
     {
       ...props,
@@ -2805,11 +2848,11 @@ var ChatContainer = ({
 };
 
 // src/components/Chat.tsx
-var import_react16 = require("react");
-var import_lucide_react8 = require("lucide-react");
+var import_react18 = require("react");
+var import_lucide_react9 = require("lucide-react");
 
 // src/components/ui/button.tsx
-var React11 = __toESM(require("react"), 1);
+var React12 = __toESM(require("react"), 1);
 
 // src/components/ui/utils.ts
 var import_clsx = require("clsx");
@@ -2819,7 +2862,7 @@ function cn(...inputs) {
 }
 
 // src/components/ui/button.tsx
-var import_jsx_runtime12 = require("react/jsx-runtime");
+var import_jsx_runtime14 = require("react/jsx-runtime");
 var buttonVariants = {
   variant: {
     default: "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -2836,9 +2879,9 @@ var buttonVariants = {
     icon: "h-10 w-10"
   }
 };
-var Button = React11.forwardRef(
+var Button = React12.forwardRef(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
-    return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
       "button",
       {
         className: cn(
@@ -2856,9 +2899,9 @@ var Button = React11.forwardRef(
 Button.displayName = "Button";
 
 // src/components/Chat.tsx
-var import_jsx_runtime13 = require("react/jsx-runtime");
+var import_jsx_runtime15 = require("react/jsx-runtime");
 var DebugToggle = ({ showDebug, onToggle }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(
     Button,
     {
       onClick: onToggle,
@@ -2866,7 +2909,7 @@ var DebugToggle = ({ showDebug, onToggle }) => {
       size: "sm",
       className: "flex items-center gap-2",
       children: [
-        showDebug ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(import_lucide_react8.EyeOff, { className: "h-4 w-4" }) : /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(import_lucide_react8.Eye, { className: "h-4 w-4" }),
+        showDebug ? /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react9.EyeOff, { className: "h-4 w-4" }) : /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react9.Eye, { className: "h-4 w-4" }),
         "Debug"
       ]
     }
@@ -2887,8 +2930,8 @@ var ChatContent = ({
   PlanMessageComponent = PlanMessage,
   onExternalToolCall
 }) => {
-  const [input, setInput] = (0, import_react16.useState)("");
-  const messagesEndRef = (0, import_react16.useRef)(null);
+  const [input, setInput] = (0, import_react18.useState)("");
+  const messagesEndRef = (0, import_react18.useRef)(null);
   const { config, updateConfig } = useChatConfig();
   const {
     messages,
@@ -2902,18 +2945,18 @@ var ChatContent = ({
     agent,
     metadata
   });
-  (0, import_react16.useEffect)(() => {
+  (0, import_react18.useEffect)(() => {
     if (tools && onExternalToolCall) {
       console.warn("Legacy tools prop detected. Consider migrating to the new useTools hook for better performance.");
     }
   }, [tools, onExternalToolCall]);
-  const extractTextFromMessage2 = (0, import_react16.useCallback)((message) => {
+  const extractTextFromMessage2 = (0, import_react18.useCallback)((message) => {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
     return message.parts.filter((part) => part?.kind === "text" && part?.text).map((part) => part.text).join("") || "";
   }, []);
-  const shouldDisplayMessage2 = (0, import_react16.useCallback)((message) => {
+  const shouldDisplayMessage2 = (0, import_react18.useCallback)((message) => {
     if (!message) return false;
     if (message.role === "user") {
       const textContent2 = extractTextFromMessage2(message);
@@ -2932,15 +2975,15 @@ var ChatContent = ({
     }
     return false;
   }, [extractTextFromMessage2, config.showDebug]);
-  const scrollToBottom = (0, import_react16.useCallback)(() => {
+  const scrollToBottom = (0, import_react18.useCallback)(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
-  (0, import_react16.useEffect)(() => {
+  (0, import_react18.useEffect)(() => {
     if (threadId && messages.length > 0) {
       scrollToBottom();
     }
   }, [messages, threadId, scrollToBottom]);
-  const sendMessage = (0, import_react16.useCallback)(async () => {
+  const sendMessage = (0, import_react18.useCallback)(async () => {
     if (!input.trim() || loading || isStreaming) return;
     const messageText = input.trim();
     setInput("");
@@ -2952,13 +2995,13 @@ var ChatContent = ({
       setInput(messageText);
     }
   }, [input, loading, isStreaming, sendMessageStream, onThreadUpdate, threadId]);
-  const renderedMessages = (0, import_react16.useMemo)(() => {
+  const renderedMessages = (0, import_react18.useMemo)(() => {
     return messages.filter(shouldDisplayMessage2).map((message, index) => {
       const timestamp = new Date(message.timestamp || Date.now());
       const messageText = extractTextFromMessage2(message);
       const isUser = message.role === "user";
       if (isUser) {
-        return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
           UserMessageComponent,
           {
             content: messageText,
@@ -2975,7 +3018,7 @@ var ChatContent = ({
           result: "Tool executed successfully",
           error: null
         }));
-        return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
           AssistantWithToolCallsComponent,
           {
             content: messageText,
@@ -2988,7 +3031,7 @@ var ChatContent = ({
         );
       }
       if (message.metadata?.type === "plan" || message.metadata?.plan) {
-        return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
           PlanMessageComponent,
           {
             content: messageText || message.metadata?.plan || "Planning...",
@@ -2998,7 +3041,7 @@ var ChatContent = ({
           message.messageId || `plan-${index}`
         );
       }
-      return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
         AssistantMessageComponent,
         {
           content: messageText || "Empty message",
@@ -3010,40 +3053,40 @@ var ChatContent = ({
       );
     });
   }, [messages, shouldDisplayMessage2, extractTextFromMessage2, isStreaming, UserMessageComponent, AssistantMessageComponent, AssistantWithToolCallsComponent, PlanMessageComponent]);
-  return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "flex flex-col bg-gray-900 text-white", style: { height }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "flex-shrink-0 border-b border-gray-700 bg-gray-900 p-4", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "max-w-4xl mx-auto flex items-center justify-between", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { children: agent && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(import_jsx_runtime13.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("h2", { className: "text-lg font-semibold text-white", children: agent.name }),
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "text-sm text-gray-400", children: agent.description })
+  return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex flex-col bg-gray-900 text-white", style: { height }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "flex-shrink-0 border-b border-gray-700 bg-gray-900 p-4", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "max-w-4xl mx-auto flex items-center justify-between", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { children: agent && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(import_jsx_runtime15.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("h2", { className: "text-lg font-semibold text-white", children: agent.name }),
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("p", { className: "text-sm text-gray-400", children: agent.description })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
           DebugToggle,
           {
             showDebug: config.showDebug,
             onToggle: () => updateConfig({ showDebug: !config.showDebug })
           }
         ),
-        (loading || isStreaming) && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "flex items-center text-blue-400", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(import_lucide_react8.Loader2, { className: "h-4 w-4 animate-spin mr-2" }),
-          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("span", { className: "text-sm", children: "Processing..." })
+        (loading || isStreaming) && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center text-blue-400", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react9.Loader2, { className: "h-4 w-4 animate-spin mr-2" }),
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("span", { className: "text-sm", children: "Processing..." })
         ] })
       ] })
     ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "flex-1 overflow-y-auto bg-gray-900", children: [
-      error && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "max-w-4xl mx-auto px-4 py-4", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "bg-red-900 border border-red-700 rounded-lg p-4", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { className: "text-red-200", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex-1 overflow-y-auto bg-gray-900", children: [
+      error && /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "max-w-4xl mx-auto px-4 py-4", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "bg-red-900 border border-red-700 rounded-lg p-4", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("p", { className: "text-red-200", children: [
         "Error: ",
         error.message
       ] }) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "min-h-full", children: messages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "flex-1 flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "text-center max-w-2xl mx-auto px-4", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(import_lucide_react8.Bot, { className: "h-8 w-8 text-white" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("h1", { className: "text-2xl font-semibold text-white mb-2", children: agent?.name || "Assistant" }),
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "text-gray-400 text-lg mb-8", children: agent?.description || "How can I help you today?" }),
-        /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "text-sm text-gray-500", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { children: "Start a conversation by typing a message below." }) })
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "min-h-full", children: messages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "flex-1 flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "text-center max-w-2xl mx-auto px-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react9.Bot, { className: "h-8 w-8 text-white" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("h1", { className: "text-2xl font-semibold text-white mb-2", children: agent?.name || "Assistant" }),
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("p", { className: "text-gray-400 text-lg mb-8", children: agent?.description || "How can I help you today?" }),
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "text-sm text-gray-500", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("p", { children: "Start a conversation by typing a message below." }) })
       ] }) }) : renderedMessages }),
-      /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { ref: messagesEndRef })
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { ref: messagesEndRef })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
       ChatInput,
       {
         value: input,
@@ -3060,15 +3103,15 @@ var ChatContent = ({
   ] });
 };
 var Chat = (props) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(ChatProvider, { children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(ChatContent, { ...props }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(ChatProvider, { children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(ChatContent, { ...props }) });
 };
 
 // src/components/ui/input.tsx
-var React13 = __toESM(require("react"), 1);
-var import_jsx_runtime14 = require("react/jsx-runtime");
-var Input = React13.forwardRef(
+var React14 = __toESM(require("react"), 1);
+var import_jsx_runtime16 = require("react/jsx-runtime");
+var Input = React14.forwardRef(
   ({ className, type, ...props }, ref) => {
-    return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(
       "input",
       {
         type,
@@ -3085,9 +3128,9 @@ var Input = React13.forwardRef(
 Input.displayName = "Input";
 
 // src/components/ui/card.tsx
-var React14 = __toESM(require("react"), 1);
-var import_jsx_runtime15 = require("react/jsx-runtime");
-var Card = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+var React15 = __toESM(require("react"), 1);
+var import_jsx_runtime17 = require("react/jsx-runtime");
+var Card = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
   "div",
   {
     ref,
@@ -3099,7 +3142,7 @@ var Card = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ 
   }
 ));
 Card.displayName = "Card";
-var CardHeader = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+var CardHeader = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
   "div",
   {
     ref,
@@ -3108,7 +3151,7 @@ var CardHeader = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE
   }
 ));
 CardHeader.displayName = "CardHeader";
-var CardTitle = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+var CardTitle = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
   "h3",
   {
     ref,
@@ -3120,7 +3163,7 @@ var CardTitle = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE_
   }
 ));
 CardTitle.displayName = "CardTitle";
-var CardDescription = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+var CardDescription = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
   "p",
   {
     ref,
@@ -3129,9 +3172,9 @@ var CardDescription = React14.forwardRef(({ className, ...props }, ref) => /* @_
   }
 ));
 CardDescription.displayName = "CardDescription";
-var CardContent = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { ref, className: cn("p-6 pt-0", className), ...props }));
+var CardContent = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { ref, className: cn("p-6 pt-0", className), ...props }));
 CardContent.displayName = "CardContent";
-var CardFooter = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+var CardFooter = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
   "div",
   {
     ref,
@@ -3143,7 +3186,7 @@ CardFooter.displayName = "CardFooter";
 
 // src/components/ui/badge.tsx
 var import_class_variance_authority = require("class-variance-authority");
-var import_jsx_runtime16 = require("react/jsx-runtime");
+var import_jsx_runtime18 = require("react/jsx-runtime");
 var badgeVariants = (0, import_class_variance_authority.cva)(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
@@ -3161,19 +3204,19 @@ var badgeVariants = (0, import_class_variance_authority.cva)(
   }
 );
 function Badge({ className, variant, ...props }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: cn(badgeVariants({ variant }), className), ...props });
+  return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: cn(badgeVariants({ variant }), className), ...props });
 }
 
 // src/components/ui/dialog.tsx
-var React15 = __toESM(require("react"), 1);
-var import_jsx_runtime17 = require("react/jsx-runtime");
-var Dialog = React15.createContext({});
+var React16 = __toESM(require("react"), 1);
+var import_jsx_runtime19 = require("react/jsx-runtime");
+var Dialog = React16.createContext({});
 var DialogRoot = ({ open, onOpenChange, children }) => {
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(Dialog.Provider, { value: { open, onOpenChange }, children });
+  return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Dialog.Provider, { value: { open, onOpenChange }, children });
 };
-var DialogTrigger = React15.forwardRef(({ className, children, ...props }, ref) => {
-  const context = React15.useContext(Dialog);
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+var DialogTrigger = React16.forwardRef(({ className, children, ...props }, ref) => {
+  const context = React16.useContext(Dialog);
+  return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
     "button",
     {
       ref,
@@ -3185,10 +3228,10 @@ var DialogTrigger = React15.forwardRef(({ className, children, ...props }, ref) 
   );
 });
 DialogTrigger.displayName = "DialogTrigger";
-var DialogContent = React15.forwardRef(({ className, children, ...props }, ref) => {
-  const context = React15.useContext(Dialog);
+var DialogContent = React16.forwardRef(({ className, children, ...props }, ref) => {
+  const context = React16.useContext(Dialog);
   if (!context.open) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
     "div",
     {
       ref,
@@ -3199,12 +3242,12 @@ var DialogContent = React15.forwardRef(({ className, children, ...props }, ref) 
       ...props,
       children: [
         children,
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
           "button",
           {
             className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
             onClick: () => context.onOpenChange?.(false),
-            children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(
+            children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
               "svg",
               {
                 width: "24",
@@ -3217,8 +3260,8 @@ var DialogContent = React15.forwardRef(({ className, children, ...props }, ref) 
                 strokeLinejoin: "round",
                 className: "h-4 w-4",
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("path", { d: "m18 6-12 12" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("path", { d: "m6 6 12 12" })
+                  /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("path", { d: "m18 6-12 12" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("path", { d: "m6 6 12 12" })
                 ]
               }
             )
@@ -3229,7 +3272,7 @@ var DialogContent = React15.forwardRef(({ className, children, ...props }, ref) 
   ) });
 });
 DialogContent.displayName = "DialogContent";
-var DialogHeader = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+var DialogHeader = React16.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
   "div",
   {
     ref,
@@ -3241,7 +3284,7 @@ var DialogHeader = React15.forwardRef(({ className, ...props }, ref) => /* @__PU
   }
 ));
 DialogHeader.displayName = "DialogHeader";
-var DialogTitle = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+var DialogTitle = React16.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
   "h3",
   {
     ref,
@@ -3255,11 +3298,11 @@ var DialogTitle = React15.forwardRef(({ className, ...props }, ref) => /* @__PUR
 DialogTitle.displayName = "DialogTitle";
 
 // src/components/ui/textarea.tsx
-var React16 = __toESM(require("react"), 1);
-var import_jsx_runtime18 = require("react/jsx-runtime");
-var Textarea = React16.forwardRef(
+var React17 = __toESM(require("react"), 1);
+var import_jsx_runtime20 = require("react/jsx-runtime");
+var Textarea = React17.forwardRef(
   ({ className, ...props }, ref) => {
-    return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
       "textarea",
       {
         className: cn(
@@ -3275,9 +3318,9 @@ var Textarea = React16.forwardRef(
 Textarea.displayName = "Textarea";
 
 // src/components/ApprovalDialog.tsx
-var import_react17 = require("react");
-var import_lucide_react9 = require("lucide-react");
-var import_jsx_runtime19 = require("react/jsx-runtime");
+var import_react19 = require("react");
+var import_lucide_react10 = require("lucide-react");
+var import_jsx_runtime21 = require("react/jsx-runtime");
 var ApprovalDialog = ({
   toolCalls,
   reason,
@@ -3285,7 +3328,7 @@ var ApprovalDialog = ({
   onDeny,
   onCancel
 }) => {
-  const [isVisible, setIsVisible] = (0, import_react17.useState)(true);
+  const [isVisible, setIsVisible] = (0, import_react19.useState)(true);
   if (!isVisible) return null;
   const handleApprove = () => {
     setIsVisible(false);
@@ -3299,46 +3342,46 @@ var ApprovalDialog = ({
     setIsVisible(false);
     onCancel();
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DialogRoot, { children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(DialogContent, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DialogHeader, { children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "flex items-center", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(import_lucide_react9.AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DialogTitle, { children: "Tool Execution Approval" })
+  return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(DialogRoot, { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(DialogContent, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(DialogHeader, { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex items-center", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react10.AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(DialogTitle, { children: "Tool Execution Approval" })
     ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "p-4", children: [
-      reason && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "text-sm text-muted-foreground", children: reason }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "mb-4", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "flex-1", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
-          toolCall.input && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
+    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "p-4", children: [
+      reason && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { className: "text-sm text-muted-foreground", children: reason }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "mb-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
+          toolCall.input && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
         ] }) }, toolCall.tool_call_id)) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
           Button,
           {
             onClick: handleApprove,
             variant: "default",
             className: "flex-1",
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(import_lucide_react9.CheckCircle, { className: "w-4 h-4 mr-2" }),
+              /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react10.CheckCircle, { className: "w-4 h-4 mr-2" }),
               "Approve"
             ]
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
           Button,
           {
             onClick: handleDeny,
             variant: "destructive",
             className: "flex-1",
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(import_lucide_react9.XCircle, { className: "w-4 h-4 mr-2" }),
+              /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react10.XCircle, { className: "w-4 h-4 mr-2" }),
               "Deny"
             ]
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
           Button,
           {
             onClick: handleCancel,
@@ -3351,187 +3394,6 @@ var ApprovalDialog = ({
   ] }) });
 };
 var ApprovalDialog_default = ApprovalDialog;
-
-// src/components/ThemeToggle.tsx
-var import_lucide_react10 = require("lucide-react");
-var import_jsx_runtime20 = require("react/jsx-runtime");
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  return /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "flex items-center space-x-2", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
-      "button",
-      {
-        onClick: () => setTheme("light"),
-        className: `p-2 rounded-lg transition-colors ${theme === "light" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"}`,
-        title: "Light mode",
-        children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(import_lucide_react10.Sun, { className: "h-4 w-4" })
-      }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
-      "button",
-      {
-        onClick: () => setTheme("dark"),
-        className: `p-2 rounded-lg transition-colors ${theme === "dark" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"}`,
-        title: "Dark mode",
-        children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(import_lucide_react10.Moon, { className: "h-4 w-4" })
-      }
-    ),
-    /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
-      "button",
-      {
-        onClick: () => setTheme("system"),
-        className: `p-2 rounded-lg transition-colors ${theme === "system" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"}`,
-        title: "System theme",
-        children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(import_lucide_react10.Monitor, { className: "h-4 w-4" })
-      }
-    )
-  ] });
-}
-
-// src/components/ThemeDropdown.tsx
-var import_react18 = require("react");
-var import_lucide_react11 = require("lucide-react");
-var import_jsx_runtime21 = require("react/jsx-runtime");
-var themeOptions = [
-  {
-    value: "light",
-    label: "Light",
-    icon: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react11.Sun, { className: "h-4 w-4" }),
-    description: "Light mode"
-  },
-  {
-    value: "dark",
-    label: "Dark",
-    icon: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react11.Moon, { className: "h-4 w-4" }),
-    description: "Dark mode"
-  },
-  {
-    value: "chatgpt",
-    label: "ChatGPT",
-    icon: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react11.Bot, { className: "h-4 w-4" }),
-    description: "ChatGPT-inspired theme"
-  },
-  {
-    value: "system",
-    label: "System",
-    icon: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react11.Monitor, { className: "h-4 w-4" }),
-    description: "Follow system preference"
-  }
-];
-function ThemeDropdown() {
-  const { theme, setTheme } = useTheme();
-  const [isOpen, setIsOpen] = (0, import_react18.useState)(false);
-  const dropdownRef = (0, import_react18.useRef)(null);
-  const currentTheme = themeOptions.find((option) => option.value === theme) || themeOptions[0];
-  (0, import_react18.useEffect)(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-  return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "relative", ref: dropdownRef, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-      "button",
-      {
-        onClick: () => setIsOpen(!isOpen),
-        className: "flex items-center justify-between w-full px-3 py-2 text-sm bg-card border  rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors text-card-foreground",
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex items-center space-x-2", children: [
-            currentTheme.icon,
-            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { children: currentTheme.label })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(import_lucide_react11.ChevronDown, { className: `h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}` })
-        ]
-      }
-    ),
-    isOpen && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "absolute top-full left-0 right-0 mt-1 bg-card border  rounded-lg shadow-lg z-50", children: themeOptions.map((option) => /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(
-      "button",
-      {
-        onClick: () => {
-          setTheme(option.value);
-          setIsOpen(false);
-        },
-        className: `w-full flex items-center space-x-3 px-3 py-2 text-sm hover:bg-accent transition-colors ${theme === option.value ? "bg-accent text-accent-foreground" : "text-card-foreground"} ${option.value === "chatgpt" ? "rounded-t-lg" : ""} ${option.value === "system" ? "rounded-b-lg" : ""}`,
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "flex-shrink-0", children: option.icon }),
-          /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "flex-1 text-left", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "font-medium", children: option.label }),
-            /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { className: "text-xs text-muted-foreground", children: option.description })
-          ] })
-        ]
-      },
-      option.value
-    )) })
-  ] });
-}
-
-// src/components/Toast.tsx
-var import_react19 = require("react");
-var import_lucide_react12 = require("lucide-react");
-var import_jsx_runtime22 = require("react/jsx-runtime");
-var Toast = ({
-  message,
-  type = "info",
-  duration = 3e3,
-  onClose
-}) => {
-  const [isVisible, setIsVisible] = (0, import_react19.useState)(true);
-  (0, import_react19.useEffect)(() => {
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-        setTimeout(() => onClose?.(), 300);
-      }, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [duration, onClose]);
-  const getIcon = () => {
-    switch (type) {
-      case "success":
-        return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(import_lucide_react12.CheckCircle, { className: "w-5 h-5 text-green-500" });
-      case "error":
-        return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(import_lucide_react12.XCircle, { className: "w-5 h-5 text-red-500" });
-      case "warning":
-        return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(import_lucide_react12.AlertTriangle, { className: "w-5 h-5 text-yellow-500" });
-      case "info":
-      default:
-        return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(import_lucide_react12.Info, { className: "w-5 h-5 text-blue-500" });
-    }
-  };
-  const getBgColor = () => {
-    switch (type) {
-      case "success":
-        return "bg-green-50 border-green-200";
-      case "error":
-        return "bg-red-50 border-red-200";
-      case "warning":
-        return "bg-yellow-50 border-yellow-200";
-      case "info":
-      default:
-        return "bg-blue-50 border-blue-200";
-    }
-  };
-  if (!isVisible) return null;
-  return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: `fixed top-4 right-4 z-50 max-w-sm w-full ${getBgColor()} border rounded-lg shadow-lg transition-opacity duration-300 ${isVisible ? "opacity-100" : "opacity-0"}`, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "flex items-start p-4", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "flex-shrink-0", children: getIcon() }),
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "ml-3 flex-1", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "text-sm font-medium text-gray-900", children: message }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "ml-4 flex-shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-      "button",
-      {
-        onClick: () => {
-          setIsVisible(false);
-          setTimeout(() => onClose?.(), 300);
-        },
-        className: "inline-flex text-gray-400 hover:text-gray-600 focus:outline-none",
-        children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(import_lucide_react12.X, { className: "w-4 h-4" })
-      }
-    ) })
-  ] }) });
-};
-var Toast_default = Toast;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AgentDropdown,
@@ -3557,12 +3419,8 @@ var Toast_default = Toast;
   FullChat,
   Input,
   MessageRenderer,
-  ModeToggle,
   Textarea,
-  ThemeDropdown,
   ThemeProvider,
-  ThemeToggle,
-  Toast,
   cn,
   createBuiltinTools,
   createTool,

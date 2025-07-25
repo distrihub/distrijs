@@ -1,9 +1,11 @@
 import React from 'react';
-import AgentList from '../components/AgentList';
+import AgentList from './AgentList';
 import { useAgents } from '@distri/react';
 import { DistriAgent } from '@distri/core';
 
-const AgentsPage: React.FC = () => {
+const AgentsPage: React.FC<{
+  onStartChat?: (agent: DistriAgent) => void;
+}> = ({ onStartChat }) => {
   const { agents, loading, refetch } = useAgents();
 
   const handleRefresh = async () => {
@@ -13,13 +15,7 @@ const AgentsPage: React.FC = () => {
   const handleStartChat = (agent: DistriAgent) => {
     // This would typically navigate to chat or update the selected agent
     console.log('Starting chat with agent:', agent.name);
-  };
-
-  const handleUpdateAgent = async (agent: DistriAgent) => {
-    // This would typically make an API call to update the agent
-    console.log('Updating agent:', agent.name);
-    // For now, just refresh the list
-    await refetch();
+    onStartChat?.(agent);
   };
 
   if (loading) {
@@ -41,7 +37,6 @@ const AgentsPage: React.FC = () => {
           agents={agents}
           onRefresh={handleRefresh}
           onStartChat={handleStartChat}
-          onUpdateAgent={handleUpdateAgent}
         />
       </div>
     </div>

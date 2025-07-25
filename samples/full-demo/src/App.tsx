@@ -1,14 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { DistriProvider, useAgents, FullChat, ThemeProvider } from '@distri/react';
 import { DistriAgent } from '@distri/core';
-import AgentsPage from './pages/AgentsPage';
-
-type PageType = 'chat' | 'agents';
 
 function AppContent() {
   const { agents, loading } = useAgents();
   const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(null);
-  const [currentPage, setCurrentPage] = useState<PageType>('chat');
 
   useEffect(() => {
     if (!loading && agents.length > 0 && !selectedAgent) {
@@ -46,27 +42,12 @@ function AppContent() {
         availableAgents={availableAgents}
         showSidebar={true}
         sidebarWidth={280}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
         onAgentSelect={(agentId) => {
           const agent = agents.find(a => a.id === agentId);
           if (agent) setSelectedAgent(agent);
         }}
-        onLogoClick={() => setCurrentPage('chat')}
-      />
 
-      {/* Render page content in the main area when not on chat */}
-      {currentPage !== 'chat' && (
-        <div
-          className="fixed top-0 bg-background h-full overflow-auto"
-          style={{
-            left: '280px',
-            right: '0'
-          }}
-        >
-          {currentPage === 'agents' && <AgentsPage />}
-        </div>
-      )}
+      />
     </div>
   );
 }
