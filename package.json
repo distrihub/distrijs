@@ -2,28 +2,29 @@
   "name": "@distri/workspace",
   "version": "0.1.2",
   "private": true,
+  "packageManager": "pnpm@10.11.1",
   "workspaces": [
-    "distri/*"
+    "packages/*"
   ],
   "exports": {
     "./core": {
-      "types": "./distri/core/dist/index.d.ts",
-      "import": "./distri/core/dist/index.mjs",
-      "require": "./distri/core/dist/index.js"
+      "types": "./packages/core/dist/index.d.ts",
+      "import": "./packages/core/dist/index.mjs",
+      "require": "./packages/core/dist/index.js"
     },
     "./react": {
-      "types": "./distri/react/dist/index.d.ts",
-      "import": "./distri/react/dist/index.mjs",
-      "require": "./distri/react/dist/index.js"
+      "types": "./packages/react/dist/index.d.ts",
+      "import": "./packages/react/dist/index.mjs",
+      "require": "./packages/react/dist/index.js"
     }
   },
   "files": [
-    "distri/core/dist/",
-    "distri/react/dist/",
+    "packages/core/dist/",
+    "packages/react/dist/",
     "README.md"
   ],
   "scripts": {
-    "build": "turbo build --filter=./distri/*",
+    "build": "turbo build --filter=./packages/*",
     "build:all": "turbo build",
     "build:prepare": "npm run build:all && npm run build:copy",
     "build:copy": "node scripts/build-copy.js",
