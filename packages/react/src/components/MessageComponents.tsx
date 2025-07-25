@@ -8,6 +8,7 @@ export interface BaseMessageProps {
   timestamp?: Date;
   className?: string;
   avatar?: React.ReactNode;
+  name?: string;
 }
 
 export interface UserMessageProps extends BaseMessageProps {
@@ -18,6 +19,7 @@ export interface AssistantMessageProps extends BaseMessageProps {
   content: string;
   isStreaming?: boolean;
   metadata?: any;
+  name?: string;
 }
 
 export interface ToolCallProps {
@@ -144,7 +146,8 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   isStreaming = false,
   metadata: _metadata,
   className = '',
-  avatar
+  avatar,
+  name = "Assistant"
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
@@ -154,7 +157,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-            ChatGPT
+            {name}
             {isStreaming && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>

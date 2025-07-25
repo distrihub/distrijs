@@ -1,12 +1,15 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2 } from 'lucide-react';
+import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2, RefreshCw, Github } from 'lucide-react';
 import { useThreads } from '../useThreads';
+import { useTheme } from './ThemeProvider';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarGroupAction,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
@@ -145,17 +148,22 @@ export function AppSidebar({
   onLogoClick,
   onPageChange,
 }: AppSidebarProps) {
-  const { threads, loading: threadsLoading } = useThreads();
+  const { threads, loading: threadsLoading, refetch } = useThreads();
+  const { theme, setTheme } = useTheme();
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
         <button
           onClick={onLogoClick}
-          className="flex items-center space-x-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2 transition-colors w-full"
+          className="flex items-center space-x-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2 transition-colors"
         >
           <Bot className="h-4 w-4" />
-          <span className="font-semibold flex-1 text-left">Distri</span>
+          <span className="font-semibold">Distri</span>
         </button>
       </SidebarHeader>
 
@@ -163,6 +171,7 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel className="px-3 py-2">Actions</SidebarGroupLabel>
           <SidebarGroupContent className="px-2">
             <SidebarMenu>
               <SidebarMenuItem className="mb-1">
@@ -192,6 +201,19 @@ export function AppSidebar({
                     <Users className="h-4 w-4" />
                     <span>Agents</span>
                   </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Action buttons as regular menu items */}
+              <SidebarMenuItem className="mb-1">
+                <SidebarMenuButton
+                  onClick={handleRefresh}
+                  disabled={threadsLoading}
+                  className="py-3 px-3 rounded-lg"
+                  title="Refresh threads"
+                >
+                  <RefreshCw className={`h-4 w-4 ${threadsLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -225,8 +247,52 @@ export function AppSidebar({
               )}
             </SidebarMenu>
           </SidebarGroupContent>
+
+          {/* Refresh action for conversations */}
+          <SidebarGroupAction
+            onClick={handleRefresh}
+            disabled={threadsLoading}
+            title="Refresh conversations"
+          >
+            <RefreshCw className={`h-4 w-4 ${threadsLoading ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh conversations</span>
+          </SidebarGroupAction>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center justify-between">
+          {/* Distri logo and GitHub link */}
+          <div className="flex items-center space-x-2">
+            <Bot className="h-4 w-4" />
+            <span className="text-sm font-medium">Distri</span>
+            <button
+              onClick={() => window.open('https://github.com/your-repo/distri', '_blank')}
+              className="p-1 rounded-md hover:bg-sidebar-accent transition-colors"
+              title="GitHub"
+            >
+              <Github className="h-3 w-3" />
+            </button>
+          </div>
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="p-1 rounded-md hover:bg-sidebar-accent transition-colors"
+            title="Toggle theme"
+          >
+            <div className="flex items-center justify-center w-4 h-4 relative">
+              <svg className="h-4 w-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+              <svg className="absolute h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </div>
+          </button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

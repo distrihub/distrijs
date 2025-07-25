@@ -361,6 +361,7 @@ video {
   --sidebar-accent-foreground: 240 5.9% 10%;
   --sidebar-border: 220 13% 91%;
   --sidebar-ring: 217.2 91.2% 59.8%;
+  --thread-content-max-width: 768px;
 }
 .dark {
   --background: 222.2 84% 4.9%;
@@ -390,6 +391,7 @@ video {
   --sidebar-accent-foreground: 240 4.8% 95.9%;
   --sidebar-border: 240 3.7% 15.9%;
   --sidebar-ring: 217.2 91.2% 59.8%;
+  --thread-content-max-width: 768px;
 }
 * {
   border-color: hsl(var(--border));
@@ -426,6 +428,33 @@ body {
     max-width: 1536px;
   }
 }
+.distri-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) transparent;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+.distri-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.distri-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.distri-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground));
+  border-radius: 3px;
+}
+.distri-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--foreground));
+}
+.distri-chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.distri-chat .distri-scroll {
+  padding-bottom: 100px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -442,6 +471,9 @@ body {
 }
 .visible {
   visibility: visible;
+}
+.collapse {
+  visibility: collapse;
 }
 .static {
   position: static;
@@ -523,10 +555,6 @@ body {
   margin-left: 0.875rem;
   margin-right: 0.875rem;
 }
-.mx-4 {
-  margin-left: 1rem;
-  margin-right: 1rem;
-}
 .mx-5 {
   margin-left: 1.25rem;
   margin-right: 1.25rem;
@@ -584,6 +612,9 @@ body {
 }
 .mt-2 {
   margin-top: 0.5rem;
+}
+.mt-4 {
+  margin-top: 1rem;
 }
 .line-clamp-3 {
   overflow: hidden;
@@ -673,6 +704,9 @@ body {
 .h-svh {
   height: 100svh;
 }
+.h-2 {
+  height: 0.5rem;
+}
 .max-h-\[--radix-select-content-available-height\] {
   max-height: var(--radix-select-content-available-height);
 }
@@ -687,6 +721,9 @@ body {
 }
 .min-h-14 {
   min-height: 3.5rem;
+}
+.min-h-\[400px\] {
+  min-height: 400px;
 }
 .min-h-\[52px\] {
   min-height: 52px;
@@ -1326,6 +1363,9 @@ body {
 }
 .pt-0 {
   padding-top: 0px;
+}
+.pt-4 {
+  padding-top: 1rem;
 }
 .pt-6 {
   padding-top: 1.5rem;

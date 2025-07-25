@@ -126,6 +126,18 @@ export function useThreads(): UseThreadsResult {
     }
   }, [clientLoading, clientError, client, fetchThreads]);
 
+  // Set up periodic refresh every 30 seconds
+  useEffect(() => {
+    if (!client) return;
+
+    const interval = setInterval(() => {
+      console.log('[useThreads] Periodic refresh of threads');
+      fetchThreads();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [client, fetchThreads]);
+
   return {
     threads,
     loading: loading || clientLoading,

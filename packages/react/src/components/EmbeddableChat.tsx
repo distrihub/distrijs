@@ -32,6 +32,7 @@ export interface EmbeddableChatProps {
   // Callbacks
   onAgentSelect?: (agentId: string) => void;
   onResponse?: (message: any) => void;
+  onMessagesUpdate?: () => void;
 }
 
 export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
@@ -53,6 +54,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   placeholder = "Type your message...",
   onAgentSelect,
   onResponse: _onResponse,
+  onMessagesUpdate,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -68,6 +70,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     threadId,
     agent,
     metadata,
+    onMessagesUpdate,
   });
 
   // Auto-scroll to bottom when new messages arrive
@@ -116,6 +119,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
             return (
               <AssistantMessageComponent
                 key={key}
+                name={agent?.name || agentId}
+                avatar={agent?.iconUrl || undefined}
                 content={messageContent}
                 timestamp={timestamp}
                 isStreaming={isStreaming && index === messages.length - 1}
@@ -168,34 +173,34 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
   return (
     <div
-      className={`distri-chat ${className} w-full bg-background text-foreground`}
+      className={`distri-chat ${className} w-full bg-background text-foreground flex flex-col relative`}
       style={{
         height,
         ...style
       }}
     >
-      <div className="h-full flex flex-col">
-        {/* Top padding and Agent Selector */}
-        <div className="pt-6 px-6 bg-background">
-          {showAgentSelector && availableAgents && availableAgents.length > 0 && (
-            <div className="mb-6">
-              <AgentSelect
-                agents={availableAgents}
-                selectedAgentId={agentId}
-                onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
-                className="w-full"
-              />
-            </div>
-          )}
-        </div>
+      {/* Top padding and Agent Selector */}
+      <div className="pt-6 px-6 bg-background flex-shrink-0 z-10">
+        {showAgentSelector && availableAgents && availableAgents.length > 0 && (
+          <div className="mb-6">
+            <AgentSelect
+              agents={availableAgents}
+              selectedAgentId={agentId}
+              onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
+              className="w-full"
+            />
+          </div>
+        )}
+      </div>
 
-        {/* Main Chat Area - Centered with responsive max-width */}
-        <div className="flex-1 flex flex-col">
-          <div className="mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto distri-scroll bg-background">
+      {/* Main Chat Area - Full height scrollable container */}
+      <div className="flex-1 relative min-h-0">
+        <div className="absolute inset-0 flex flex-col">
+          {/* Messages Area - Full height scrollable */}
+          <div className="flex-1 overflow-y-auto distri-scroll bg-background px-6">
+            <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
               {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
+                <div className="h-full flex items-center justify-center min-h-[400px]">
                   <div className="text-center">
                     <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-foreground mb-2">
@@ -207,14 +212,14 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-0">
+                <div className="space-y-0 pt-4">
                   {renderedMessages}
                 </div>
               )}
 
               {/* Loading state */}
               {loading && (
-                <div className="px-6 py-4 flex items-center space-x-2 bg-muted">
+                <div className="px-6 py-4 flex items-center space-x-2 bg-muted rounded-lg mt-4">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
                   <span className="text-muted-foreground text-sm">Thinking...</span>
                 </div>
@@ -222,7 +227,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
               {/* Error state */}
               {error && (
-                <div className="px-6 py-4 bg-destructive/20 border border-destructive/20 mx-4 rounded-lg">
+                <div className="px-6 py-4 bg-destructive/20 border border-destructive/20 rounded-lg mt-4">
                   <div className="flex items-center space-x-2">
                     <div className="h-4 w-4 rounded-full bg-destructive"></div>
                     <span className="text-destructive text-sm">{error.message || String(error)}</span>
@@ -232,44 +237,24 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
               <div ref={messagesEndRef} />
             </div>
-            <div className="flex items-center justify-center px-6 py-4">
-              <div className="w-full max-w-2xl">
-                {/* Input Area - Centered when no messages, bottom when messages exist */}
-                {messages.length === 0 ? (
+          </div>
 
-                  <ChatInput
-                    value={input}
-                    onChange={setInput}
-                    onSend={sendMessage}
-                    onStop={() => {
-                      // Stop streaming - this would need to be implemented in the useChat hook
-                      console.log('Stop streaming');
-                    }}
-                    placeholder={placeholder}
-                    disabled={loading}
-                    isStreaming={isStreaming}
-                    className="w-full"
-                  />
-
-                ) : (
-
-                  <ChatInput
-                    value={input}
-                    onChange={setInput}
-                    onSend={sendMessage}
-                    onStop={() => {
-                      // Stop streaming - this would need to be implemented in the useChat hook
-                      console.log('Stop streaming');
-                    }}
-                    placeholder={placeholder}
-                    disabled={loading}
-                    isStreaming={isStreaming}
-                    className="w-full"
-                  />
-
-
-                )}
-              </div>
+          {/* Input Area - Absolutely positioned at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 bg-background px-6 py-4">
+            <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSend={sendMessage}
+                onStop={() => {
+                  // Stop streaming - this would need to be implemented in the useChat hook
+                  console.log('Stop streaming');
+                }}
+                placeholder={placeholder}
+                disabled={loading}
+                isStreaming={isStreaming}
+                className="w-full"
+              />
             </div>
           </div>
         </div>

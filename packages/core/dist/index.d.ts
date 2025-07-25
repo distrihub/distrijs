@@ -332,6 +332,7 @@ declare class Agent {
     get id(): string;
     get name(): string;
     get description(): string | undefined;
+    get iconUrl(): string | undefined;
     /**
      * Fetch messages for a thread (public method for useChat)
      */

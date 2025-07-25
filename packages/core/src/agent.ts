@@ -174,6 +174,10 @@ export class Agent {
     return this.agentDefinition.description;
   }
 
+  get iconUrl(): string | undefined {
+    return this.agentDefinition.icon_url;
+  }
+
   /**
    * Fetch messages for a thread (public method for useChat)
    */
