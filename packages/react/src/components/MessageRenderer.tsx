@@ -338,11 +338,43 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
 
   // If we have a DistriMessage, render its parts
   if (message && isDistriMessage(message)) {
+    // Group consecutive text parts for concatenation
+    const groupedParts: DistriPart[][] = [];
+    let currentTextGroup: DistriPart[] = [];
+    
+    for (const part of message.parts) {
+      if (part.type === 'text') {
+        currentTextGroup.push(part);
+      } else {
+        if (currentTextGroup.length > 0) {
+          groupedParts.push([...currentTextGroup]);
+          currentTextGroup = [];
+        }
+        groupedParts.push([part]);
+      }
+    }
+    
+    // Don't forget the last text group
+    if (currentTextGroup.length > 0) {
+      groupedParts.push(currentTextGroup);
+    }
+
     return (
       <div className={`space-y-2 ${className}`}>
-        {message.parts.map((part, index) => (
-          <PartRenderer key={index} part={part} isDark={isDark} />
-        ))}
+        {groupedParts.map((group, groupIndex) => {
+          if (group.length > 1 && group.every(part => part.type === 'text')) {
+            // Concatenate consecutive text parts
+            const concatenatedText = group.map(part => part.type === 'text' ? part.text : '').join('');
+            return (
+              <div key={groupIndex} className={`whitespace-pre-wrap break-words ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                {concatenatedText}
+              </div>
+            );
+          } else {
+            // Render single part normally
+            return <PartRenderer key={groupIndex} part={group[0]} isDark={isDark} />;
+          }
+        })}
       </div>
     );
   }
