@@ -1,39 +1,6 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField = (obj, key, value) => {
-  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-  return value;
-};
-
-// src/types.ts
-var APPROVAL_REQUEST_TOOL_NAME = "approval_request";
-var DistriError = class extends Error {
-  constructor(message, code, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "DistriError";
-  }
-};
-var A2AProtocolError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "A2A_PROTOCOL_ERROR", details);
-    this.name = "A2AProtocolError";
-  }
-};
-var ApiError = class extends DistriError {
-  constructor(message, statusCode, details) {
-    super(message, "API_ERROR", details);
-    this.statusCode = statusCode;
-    this.name = "ApiError";
-  }
-};
-var ConnectionError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "CONNECTION_ERROR", details);
-    this.name = "ConnectionError";
-  }
-};
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
@@ -152,8 +119,7 @@ var A2AClient = class {
           throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
         }
       } catch (e) {
-        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
-          throw e;
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for")) throw e;
         throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
       }
     }
@@ -215,8 +181,7 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream"))
-          throw e;
+        if (e.message.startsWith("HTTP error establishing stream")) throw e;
         throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
@@ -307,8 +272,7 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream"))
-          throw e;
+        if (e.message.startsWith("HTTP error establishing stream")) throw e;
         throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
@@ -408,6 +372,30 @@ var A2AClient = class {
   }
 };
 
+// src/types.ts
+var APPROVAL_REQUEST_TOOL_NAME = "approval_request";
+var DistriError = class extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "DistriError";
+  }
+};
+var A2AProtocolError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "A2A_PROTOCOL_ERROR", details);
+    this.name = "A2AProtocolError";
+  }
+};
+var ApiError = class extends DistriError {
+  constructor(message, statusCode, details) {
+    super(message, "API_ERROR", details);
+    this.statusCode = statusCode;
+    this.name = "ApiError";
+  }
+};
+
 // src/distri-client.ts
 var DistriClient = class {
   constructor(config) {
@@ -445,8 +433,7 @@ var DistriClient = class {
       });
       return agents;
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
     }
   }
@@ -472,8 +459,7 @@ var DistriClient = class {
       }
       return agent;
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
     }
   }
@@ -507,8 +493,7 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError)
-        throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
     }
   }
@@ -540,8 +525,7 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError)
-        throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
@@ -568,8 +552,7 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
     }
   }
@@ -581,8 +564,7 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -600,8 +582,7 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -708,8 +689,100 @@ function uuidv4() {
 // src/agent.ts
 var Agent = class _Agent {
   constructor(agentDefinition, client) {
+    this.tools = /* @__PURE__ */ new Map();
     this.agentDefinition = agentDefinition;
     this.client = client;
+    this.initializeBuiltinTools();
+  }
+  /**
+   * Initialize built-in tools
+   */
+  initializeBuiltinTools() {
+    this.addTool({
+      name: APPROVAL_REQUEST_TOOL_NAME,
+      description: "Request user approval for actions",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "Approval prompt to show user" },
+          action: { type: "string", description: "Action requiring approval" }
+        },
+        required: ["prompt"]
+      },
+      handler: async (input) => {
+        const userInput = prompt(input.prompt || "Please provide input:");
+        return { approved: !!userInput, input: userInput };
+      }
+    });
+  }
+  /**
+   * Add a tool to the agent (AG-UI style)
+   */
+  addTool(tool) {
+    this.tools.set(tool.name, tool.handler);
+  }
+  /**
+   * Add multiple tools at once
+   */
+  addTools(tools) {
+    tools.forEach((tool) => this.addTool(tool));
+  }
+  /**
+   * Remove a tool
+   */
+  removeTool(toolName) {
+    this.tools.delete(toolName);
+  }
+  /**
+   * Get all registered tools
+   */
+  getTools() {
+    return Array.from(this.tools.keys());
+  }
+  /**
+   * Check if a tool is registered
+   */
+  hasTool(toolName) {
+    return this.tools.has(toolName);
+  }
+  /**
+   * Execute a tool call
+   */
+  async executeTool(toolCall) {
+    const handler = this.tools.get(toolCall.tool_name);
+    if (!handler) {
+      return {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: `Tool '${toolCall.tool_name}' not found`
+      };
+    }
+    try {
+      const result = await handler(toolCall.input);
+      return {
+        tool_call_id: toolCall.tool_call_id,
+        result,
+        success: true
+      };
+    } catch (error) {
+      return {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+  /**
+   * Get tool definitions for context metadata
+   */
+  getToolDefinitions() {
+    const definitions = {};
+    this.tools.forEach((_handler, name) => {
+      definitions[name] = { name };
+    });
+    return definitions;
   }
   /**
    * Get agent information
@@ -723,9 +796,6 @@ var Agent = class _Agent {
   get description() {
     return this.agentDefinition.description;
   }
-  get externalTools() {
-    return this.agentDefinition.external_tools || [];
-  }
   /**
    * Fetch messages for a thread (public method for useChat)
    */
@@ -736,13 +806,28 @@ var Agent = class _Agent {
    * Direct (non-streaming) invoke
    */
   async invoke(params) {
-    return await this.client.sendMessage(this.agentDefinition.id, params);
+    const enhancedParams = this.enhanceParamsWithTools(params);
+    return await this.client.sendMessage(this.agentDefinition.id, enhancedParams);
   }
   /**
    * Streaming invoke
    */
   async invokeStream(params) {
-    return this.client.sendMessageStream(this.agentDefinition.id, params);
+    const enhancedParams = this.enhanceParamsWithTools(params);
+    return this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
+  }
+  /**
+   * Enhance message params with tool definitions
+   */
+  enhanceParamsWithTools(params) {
+    const toolDefinitions = this.getToolDefinitions();
+    return {
+      ...params,
+      metadata: {
+        ...params.metadata,
+        tools: Object.keys(toolDefinitions).length > 0 ? toolDefinitions : void 0
+      }
+    };
   }
   /**
    * Create an agent instance from an agent ID
@@ -759,41 +844,9 @@ var Agent = class _Agent {
     return agentDefinitions.map((def) => new _Agent(def, client));
   }
 };
-var createBuiltinToolHandlers = () => ({
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall, onToolComplete) => {
-    const input = JSON.parse(toolCall.input);
-    const userInput = prompt(input.prompt || "Please provide input:");
-    const result = {
-      tool_call_id: toolCall.tool_call_id,
-      result: { input: userInput },
-      success: true
-    };
-    await onToolComplete(toolCall.tool_call_id, result);
-    return { input: userInput };
-  },
-  // Input request handler
-  input_request: async (toolCall, onToolComplete) => {
-    const input = JSON.parse(toolCall.input);
-    const userInput = prompt(input.prompt || "Please provide input:");
-    const result = {
-      tool_call_id: toolCall.tool_call_id,
-      result: { input: userInput },
-      success: true
-    };
-    await onToolComplete(toolCall.tool_call_id, result);
-    return { input: userInput };
-  }
-});
 export {
-  A2AClient,
-  A2AProtocolError,
   APPROVAL_REQUEST_TOOL_NAME,
   Agent,
-  ApiError,
-  ConnectionError,
-  DistriClient,
-  DistriError,
-  createBuiltinToolHandlers,
-  uuidv4
+  DistriClient
 };
 //# sourceMappingURL=index.mjs.map

@@ -242,7 +242,8 @@ const AgentEditForm: React.FC<AgentEditFormProps> = ({
               <div className="flex-1 flex flex-col">
                 <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">Agent JSON Configuration</label>
                 <textarea
-                  className="font-mono w-full h-[400px] border rounded p-2 text-xs bg-gray-50"
+                  className="font-mono w-full h-[400px] border border-gray-600 rounded p-2 text-xs text-white"
+                  style={{ backgroundColor: '#40414f' }}
                   value={rawValue}
                   onChange={handleRawChange}
                   spellCheck={false}

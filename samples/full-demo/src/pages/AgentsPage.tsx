@@ -1,78 +1,51 @@
-import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
-import { useAgents, DistriAgent } from '@distri/react';
+import React from 'react';
 import AgentList from '../components/AgentList';
+import { useAgents } from '@distri/react';
+import { DistriAgent } from '@distri/core';
 
-function AgentsPage() {
-  const { agents, loading, refetch: refetchAgents } = useAgents();
+const AgentsPage: React.FC = () => {
+  const { agents, loading, refetch } = useAgents();
 
-
-  const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(null);
-
-  // Auto-select first agent when agents load
-  useEffect(() => {
-    if (agents.length > 0 && !selectedAgent) {
-      setSelectedAgent(agents[0]);
-    }
-  }, [agents, selectedAgent]);
-
-
-
-  const startChatWithAgent = async (agent: DistriAgent) => {
-    setSelectedAgent(agent);
+  const handleRefresh = async () => {
+    await refetch();
   };
 
+  const handleStartChat = (agent: DistriAgent) => {
+    // This would typically navigate to chat or update the selected agent
+    console.log('Starting chat with agent:', agent.name);
+  };
 
-
-
+  const handleUpdateAgent = async (agent: DistriAgent) => {
+    // This would typically make an API call to update the agent
+    console.log('Updating agent:', agent.name);
+    // For now, just refresh the list
+    await refetch();
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-background flex items-center justify-center">
         <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading agents...</span>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <span className="text-foreground">Loading agents...</span>
         </div>
       </div>
     );
   }
 
   return (
-
-    <main className="flex-1 flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-
-      <div className="h-full max-w-6xl">
+    <div className="h-full bg-background overflow-auto">
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold text-foreground mb-6">Agents</h1>
         <AgentList
           agents={agents}
-          onRefresh={refetchAgents}
-          onStartChat={startChatWithAgent}
-          onUpdateAgent={async (agent) => {
-            try {
-              const id = agent.id || agent.name;
-              // Make API call to update agent
-              const response = await fetch(`/api/v1/agents/${id}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(agent),
-              });
-
-              if (!response.ok) {
-                throw new Error(`Failed to update agent: ${response.statusText}`);
-              }
-
-              // Refresh the agents list
-              await refetchAgents();
-            } catch (error) {
-              console.error('Failed to update agent:', error);
-              throw error;
-            }
-          }}
+          onRefresh={handleRefresh}
+          onStartChat={handleStartChat}
+          onUpdateAgent={handleUpdateAgent}
         />
       </div>
-    </main>
+    </div>
   );
-}
+};
 
 export default AgentsPage;

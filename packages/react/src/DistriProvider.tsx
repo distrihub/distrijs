@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { DistriClient, DistriClientConfig } from '@distri/core';
+import { ThemeProvider } from './components/ThemeProvider';
 
 interface DistriContextValue {
   client: DistriClient | null;
@@ -16,6 +17,7 @@ const DistriContext = createContext<DistriContextValue>({
 interface DistriProviderProps {
   config: DistriClientConfig;
   children: ReactNode;
+  defaultTheme?: 'dark' | 'light' | 'system';
 }
 
 const debug = (config: DistriClientConfig, ...args: any[]): void => {
@@ -25,7 +27,7 @@ const debug = (config: DistriClientConfig, ...args: any[]): void => {
 }
 
 
-export function DistriProvider({ config, children }: DistriProviderProps) {
+export function DistriProvider({ config, children, defaultTheme = 'dark' }: DistriProviderProps) {
   const [client, setClient] = useState<DistriClient | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,9 +71,11 @@ export function DistriProvider({ config, children }: DistriProviderProps) {
   }
 
   return (
-    <DistriContext.Provider value={contextValue}>
-      {children}
-    </DistriContext.Provider>
+    <ThemeProvider defaultTheme={defaultTheme}>
+      <DistriContext.Provider value={contextValue}>
+        {children}
+      </DistriContext.Provider>
+    </ThemeProvider>
   );
 }
 

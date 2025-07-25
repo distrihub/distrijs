@@ -2,31 +2,22 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAgent } from './useAgent';
 import {
   type Message,
-  type ToolHandler,
   type MessageMetadata,
   type ToolResult,
   type ToolCall,
   InvokeConfig,
   DistriClient,
-  DistriEvent,
-  ToolCallResultEvent,
-  ToolCallStartEvent,
-  ToolCallArgsEvent,
-  ToolCallEndEvent,
   Agent,
 } from '@distri/core';
-import type { Part, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
-import { ToolCallState, ToolHandlerResult } from './utils/toolCallUtils';
+import type { Part } from '@a2a-js/sdk/client';
 
 export interface UseChatOptions {
   agentId: string;
   threadId: string;
   // Optional: pre-configured agent from useAgent
   agent?: Agent;
-  // Optional: agent configuration
-  tools?: Record<string, ToolHandler>;
   // Optional: Metadata to pass to the agent
-  metadata?: any
+  metadata?: any;
 }
 
 export interface UseChatResult {
@@ -39,45 +30,16 @@ export interface UseChatResult {
   refreshMessages: () => Promise<void>;
   clearMessages: () => void;
   agent: Agent | null;
-  // Tool call state - updated during streaming
-  toolCallStatus: Record<string, ToolCallState>;
-  toolHandlerResults: Record<string, ToolHandlerResult>;
-  cancelToolExecution: () => void;
 }
 
 /**
- * useChat is the main hook for chat UIs.
- * It handles all chat logic internally and can optionally accept a pre-configured agent.
- * For advanced agent configuration, use useAgent and pass the agent to useChat.
- * 
- * sendParams: MessageSendParams configuration (auth, output modes, etc.)
- * {
- *   configuration: {
- *     acceptedOutputModes: ['text/plain'],
- *     blocking: false
- *   },
- *   // Executor Metadata (https://github.com/distrihub/distri/blob/main/distri/src/agent/types.rs#L97)
- *   metadata: {
- *     tools: {
- *       tool1: { .. },
- *       tool2: { ... }
- *     }
- *   }
- * }
- * 
- * contextMetadata: MessageMetadata for tool responses and content
- * {
- *   type: 'tool_response',
- *   tool_call_id: '...',
- *   result: '...'
- * }
+ * useChat is the main hook for chat UIs with simplified tool handling.
+ * Tools are now registered directly on the agent using agent.addTool() or useTools hook.
  */
-
 export function useChat({
   agentId,
   threadId,
   agent: providedAgent,
-  tools,
   metadata,
 }: UseChatOptions): UseChatResult {
   // Use provided agent or create one internally
@@ -91,10 +53,16 @@ export function useChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Clear messages when threadId changes
+  useEffect(() => {
+    setMessages([]);
+    setError(null);
+  }, [threadId]);
 
   const invokeConfig = useMemo(() => {
     return {
-      tools: tools,
       contextId: threadId,
       configuration: {
         acceptedOutputModes: ['text/plain'],
@@ -102,15 +70,7 @@ export function useChat({
       },
       metadata: metadata
     } as InvokeConfig;
-  }, [tools]);
-
-  // Tool call status - updated during streaming
-  const [toolCallStatus, setToolCallStatus] = useState<Record<string, ToolCallState>>({});
-
-  // External tool calls - handled separately after streaming
-  const [toolHandlerResults, setToolHandlerResults] = useState<Record<string, ToolHandlerResult>>({});
-
-  const abortControllerRef = useRef<AbortController | null>(null);
+  }, [threadId, metadata]);
 
   // Fetch messages for the thread
   const fetchMessages = useCallback(async () => {
@@ -133,67 +93,77 @@ export function useChat({
 
   useEffect(() => {
     fetchMessages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agent, threadId]);
+  }, [fetchMessages]);
 
-  // Update tool call status during streaming
-  const updateToolCallStatus = useCallback((toolCallId: string, updates: Partial<ToolCallState>) => {
-    setToolCallStatus(prev => ({
-      ...prev,
-      [toolCallId]: {
-        ...prev[toolCallId],
-        ...updates
-      }
-    }));
-  }, []);
+  // Handle tool calls from assistant messages
+  const handleToolCalls = useCallback(async (toolCalls: ToolCall[]): Promise<void> => {
+    if (!agent) return;
 
-  // Initialize tool call status from streaming events
-  const initializeToolCallStatus = useCallback((event: ToolCallStartEvent) => {
-    const toolCall = event.data;
-    setToolCallStatus(prev => ({
-      ...prev,
-      [toolCall.tool_call_id]: {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolCall.tool_call_name,
-        status: 'running',
-        input: '',
-        result: null,
-        error: null,
-      }
-    }));
-  }, []);
+    const results: ToolResult[] = [];
 
-  // Cancel tool execution
-  const cancelToolExecution = useCallback(() => {
-    setToolHandlerResults({});
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    // Execute all tool calls
+    for (const toolCall of toolCalls) {
+      const result = await agent.executeTool(toolCall);
+      results.push(result);
     }
-  }, []);
 
-  const onToolComplete = async (toolCallId: string, result: ToolResult) => {
+    // Send tool responses back to the agent
+    if (results.length > 0) {
+      const responseMessage = DistriClient.initMessage([], 'user', { 
+        contextId: threadId, 
+        metadata: {
+          type: 'tool_responses',
+          results: results
+        } as MessageMetadata
+      });
 
-    setToolHandlerResults((prev) => ({
-      ...prev,
-      [toolCallId]: {
-        tool_call_id: toolCallId,
-        result: result.result,
-        success: result.success,
-        error: result.error || null
-      }
-    }));
+      const params = DistriClient.initMessageParams(
+        responseMessage, 
+        invokeConfig.configuration, 
+        responseMessage.metadata as MessageMetadata
+      );
 
-    let completed = true;
-    for (const toolCallId in toolHandlerResults) {
-      if (!toolHandlerResults[toolCallId]) {
-        completed = false;
-        break;
+      // Continue the conversation with tool results
+      try {
+        const stream = await agent.invokeStream(params);
+        
+        for await (const event of stream) {
+          if (abortControllerRef.current?.signal.aborted) break;
+          await handleStreamEvent(event);
+        }
+      } catch (err) {
+        console.error('Error continuing conversation with tool results:', err);
       }
     }
-    if (completed) {
-      sendToolResponses(invokeConfig);
+  }, [agent, threadId, invokeConfig.configuration]);
+
+  // Handle individual stream events
+  const handleStreamEvent = useCallback(async (event: any) => {
+    if (event.kind === 'message') {
+      const message = event as Message;
+      
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.messageId === message.messageId);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], parts: [...updated[idx].parts, ...message.parts] };
+          return updated;
+        } else {
+          return [...prev, message];
+        }
+      });
+
+      // Handle tool calls if present
+      if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
+        const toolCalls = message.metadata.tool_calls as ToolCall[];
+        await handleToolCalls(toolCalls);
+      }
+    } else if (event.kind === 'status-update') {
+      // Handle task status updates if needed
+      // These events can be used for progress indicators, etc.
+      console.debug('Task status update:', event);
     }
-  };
+  }, [handleToolCalls]);
 
   // Send a message (non-streaming)
   const sendMessage = useCallback(async (
@@ -219,93 +189,8 @@ export function useChat({
     } finally {
       setLoading(false);
     }
-  }, [agent, threadId]);
+  }, [agent, threadId, invokeConfig.configuration]);
 
-
-
-  const handleToolCalls = async (toolcalls: ToolCall[], config: InvokeConfig): Promise<void> => {
-    // Handle external tool calls from assistant_response metadata
-    for (const toolCall of toolcalls) {
-      await handleToolCall(toolCall, config);
-    }
-  }
-
-  /**
-* Handle a single external tool call
-*/
-  const handleToolCall = async (toolCall: ToolCall, invokeConfig: InvokeConfig): Promise<any> => {
-    if (!invokeConfig.tools || !invokeConfig.tools[toolCall.tool_name]) {
-      throw new Error(`No handler found for external tool: ${toolCall.tool_name}`);
-    }
-
-
-    const result = await invokeConfig.tools[toolCall.tool_name](toolCall, onToolComplete);
-    return result;
-  }
-
-  const sendToolResponses = async (invokeConfig: InvokeConfig): Promise<void> => {
-    const responseMessage = DistriClient.initMessage([], 'user', { contextId: invokeConfig.contextId });
-    let results: ToolResult[] = [];
-    for (const toolCallId in toolHandlerResults) {
-      results.push({
-        tool_call_id: toolCallId,
-        result: toolHandlerResults[toolCallId].result,
-        success: toolHandlerResults[toolCallId].success,
-        error: toolHandlerResults[toolCallId].error || undefined
-      });
-    }
-    const metadata = {
-      type: 'tool_responses',
-      results: results
-    } as MessageMetadata;
-
-    await sendMessage(responseMessage.parts, metadata);
-  }
-
-  const handleMessageEvent = async (event: Message) => {
-    setMessages((prev) => {
-      const idx = prev.findIndex((m) => m.messageId === event.messageId);
-      if (idx !== -1) {
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], parts: [...updated[idx].parts, ...event.parts] };
-        return updated;
-      } else {
-        return [...prev, event as Message];
-      }
-    });
-
-    if (event.metadata?.type === 'assistant_response' && event.metadata.tool_calls) {
-
-      console.log('tool calls', event.metadata.tool_calls);
-      let toolCalls = event.metadata.tool_calls as ToolCall[];
-      await handleToolCalls(toolCalls, invokeConfig);
-    }
-  }
-
-  const handleTaskStatusUpdateEvent = async (task_event: TaskStatusUpdateEvent) => {
-    let event = task_event.metadata as unknown as DistriEvent;
-    if (event.type === 'tool_call_start') {
-      let tool_call_start = event as ToolCallStartEvent;
-      initializeToolCallStatus(tool_call_start);
-    } else if (event.type === 'tool_call_args') {
-      let tool_call_args = event as ToolCallArgsEvent;
-      updateToolCallStatus(tool_call_args.data.tool_call_id, {
-        input: tool_call_args.data.delta,
-      });
-    } else if (event.type === 'tool_call_end') {
-      let tool_call_end = event as ToolCallEndEvent;
-      updateToolCallStatus(tool_call_end.data.tool_call_id, {
-        status: 'completed',
-      });
-    } else if (event.type === 'tool_call_result') {
-      let tool_call_result = event as ToolCallResultEvent;
-      updateToolCallStatus(tool_call_result.data.tool_call_id, {
-        status: 'completed',
-        result: tool_call_result.data.result,
-        error: null,
-      });
-    }
-  }
   // Send a message (streaming)
   const sendMessageStream = useCallback(async (
     input: string | Part[],
@@ -322,6 +207,7 @@ export function useChat({
       setLoading(true);
       setIsStreaming(true);
       setError(null);
+      
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -331,11 +217,7 @@ export function useChat({
 
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) break;
-        if (event.kind === 'message') {
-          await handleMessageEvent(event);
-        } else if (event.kind === 'status-update') {
-          await handleTaskStatusUpdateEvent(event);
-        }
+        await handleStreamEvent(event);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
@@ -344,20 +226,15 @@ export function useChat({
       setLoading(false);
       setIsStreaming(false);
     }
-  }, [agent, threadId, initializeToolCallStatus, updateToolCallStatus]);
-
-
+  }, [agent, threadId, invokeConfig.configuration, handleStreamEvent]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-    setToolCallStatus({});
-    setToolHandlerResults({});
   }, []);
 
   const refreshMessages = useCallback(async () => {
     await fetchMessages();
   }, [fetchMessages]);
-
 
   return {
     messages,
@@ -369,9 +246,5 @@ export function useChat({
     refreshMessages,
     clearMessages,
     agent: agent ? (agent as any) : null,
-    // Tool call state - updated during streaming
-    toolCallStatus,
-    toolHandlerResults,
-    cancelToolExecution,
   };
 } 

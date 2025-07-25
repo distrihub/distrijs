@@ -8,5 +8,12 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   minify: false,
-  external: ['react', 'react-dom', '@distri/core']
+  external: [
+    'react', 
+    'react-dom', 
+    '@distri/core',
+    'lucide-react',
+    'react-markdown',
+    'react-syntax-highlighter'
+  ]
 })
