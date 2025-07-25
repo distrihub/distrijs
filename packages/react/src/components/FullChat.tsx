@@ -6,6 +6,7 @@ import { ThemeToggle } from './ThemeToggle';
 import AgentsPage from './AgentsPage';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from './ui/sidebar';
+import { AgentSelect } from './AgentSelect';
 
 
 export interface FullChatProps {
@@ -24,9 +25,7 @@ export interface FullChatProps {
   theme?: 'light' | 'dark' | 'auto';
   // Show debug info
   showDebug?: boolean;
-  // Sidebar
-  showSidebar?: boolean;
-  sidebarWidth?: number;
+
   // Callbacks
   onAgentSelect?: (agentId: string) => void;
   onThreadSelect?: (threadId: string) => void;
@@ -50,8 +49,6 @@ export const FullChat: React.FC<FullChatProps> = ({
   PlanMessageComponent,
   theme = 'dark',
   showDebug = false,
-  showSidebar = true,
-  sidebarWidth: _sidebarWidth = 280, // Unused but kept for API compatibility
   onThreadSelect,
   onThreadCreate,
   onThreadDelete,
@@ -79,6 +76,7 @@ export const FullChat: React.FC<FullChatProps> = ({
   }, [onThreadCreate]);
 
   const handleThreadSelect = useCallback((threadId: string) => {
+    setCurrentPage('chat');
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
@@ -102,43 +100,13 @@ export const FullChat: React.FC<FullChatProps> = ({
     console.log('Rename thread', threadId, 'to', newTitle);
     refetchThreads();
   }, [refetchThreads]);
-
-  if (!showSidebar) {
-    // Fallback for when sidebar is disabled
-    return (
-      <div className={`distri-chat ${className} h-full flex bg-background text-foreground`}>
-        {currentPage === 'chat' && (
-          <div className="flex-1">
-            <EmbeddableChat
-              agentId={agentId}
-              threadId={selectedThreadId}
-              showAgentSelector={true}
-              agent={agent}
-              metadata={metadata}
-              height="100vh"
-              availableAgents={availableAgents}
-              UserMessageComponent={UserMessageComponent}
-              AssistantMessageComponent={AssistantMessageComponent}
-              AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
-              PlanMessageComponent={PlanMessageComponent}
-              theme={theme}
-              showDebug={showDebug}
-              placeholder="Type your message..."
-              onAgentSelect={onAgentSelect}
-            />
-          </div>
-        )}
-        {currentPage === 'agents' && <AgentsPage onStartChat={(agent) => {
-          setCurrentPage('chat');
-          onAgentSelect?.(agent.id);
-        }} />}
-      </div>
-    );
-  }
-
   return (
     <div className={`distri-chat ${className} h-full`}>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <SidebarProvider defaultOpen={defaultOpen}
+        style={{
+          "--sidebar-width": "20rem",
+          "--sidebar-width-mobile": "18rem",
+        } as React.CSSProperties}>
         <AppSidebar
           selectedThreadId={selectedThreadId}
           currentPage={currentPage}
@@ -150,10 +118,20 @@ export const FullChat: React.FC<FullChatProps> = ({
           onPageChange={setCurrentPage}
         />
         <SidebarInset>
-          {/* Header with sidebar trigger and theme toggle */}
+          {/* Header with sidebar trigger, agent selector, and theme toggle */}
           <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
             <div className="flex items-center gap-2 flex-1">
               <SidebarTrigger className="-ml-1" />
+              {availableAgents && availableAgents.length > 0 && (
+                <div className="ml-4 w-64">
+                  <AgentSelect
+                    agents={availableAgents}
+                    selectedAgentId={agentId}
+                    onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
+                    placeholder="Select an agent..."
+                  />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -166,7 +144,7 @@ export const FullChat: React.FC<FullChatProps> = ({
               <EmbeddableChat
                 agentId={agentId}
                 threadId={selectedThreadId}
-                showAgentSelector={true}
+                showAgentSelector={false}
                 agent={agent}
                 metadata={metadata}
                 height="calc(100vh - 4rem)"

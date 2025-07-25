@@ -4,7 +4,7 @@ import { Agent } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage, getMessageType } from '../utils/messageUtils';
-import { AgentDropdown } from './AgentDropdown';
+import { AgentSelect } from './AgentSelect';
 
 import { ChatInput } from './ChatInput';
 
@@ -179,10 +179,10 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
         <div className="pt-6 px-6 bg-background">
           {showAgentSelector && availableAgents && availableAgents.length > 0 && (
             <div className="mb-6">
-              <AgentDropdown
+              <AgentSelect
                 agents={availableAgents}
                 selectedAgentId={agentId}
-                onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
+                onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
                 className="w-full"
               />
             </div>

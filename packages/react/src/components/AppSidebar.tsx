@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2 } from 'lucide-react';
 import { useThreads } from '../useThreads';
-import { ThemeToggle } from './ThemeToggle';
 import {
   Sidebar,
   SidebarContent,
@@ -52,8 +51,8 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
   }, [handleRename, thread.title]);
 
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive} className="group">
+    <SidebarMenuItem className="mb-3">
+      <SidebarMenuButton asChild isActive={isActive} className="group py-3 px-3 rounded-lg">
         <div onClick={onClick} className="flex items-center space-x-3 flex-1 min-w-0">
           <MessageSquare className="h-4 w-4 flex-shrink-0" />
           {isEditing ? (
@@ -68,17 +67,17 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
             />
           ) : (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="text-sm font-medium truncate leading-tight">
                 {thread.title || 'New Chat'}
               </p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
                 {thread.last_message || 'No messages yet'}
               </p>
             </div>
           )}
         </div>
       </SidebarMenuButton>
-      
+
       {!isEditing && (
         <SidebarMenuAction showOnHover>
           <div className="relative">
@@ -87,7 +86,7 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="p-1 rounded hover:bg-sidebar-accent transition-opacity"
+              className="p-1.5 rounded-md hover:bg-sidebar-accent transition-opacity"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
@@ -157,17 +156,16 @@ export function AppSidebar({
         >
           <Bot className="h-4 w-4" />
           <span className="font-semibold flex-1 text-left">Distri</span>
-          <ThemeToggle />
         </button>
       </SidebarHeader>
-      
+
       <SidebarSeparator />
-      
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupContent>
+          <SidebarGroupContent className="px-2">
             <SidebarMenu>
-              <SidebarMenuItem>
+              <SidebarMenuItem className="mb-1">
                 <SidebarMenuButton
                   asChild
                   isActive={currentPage === 'chat'}
@@ -175,6 +173,7 @@ export function AppSidebar({
                     onPageChange('chat');
                     onNewChat();
                   }}
+                  className="py-3 px-3 rounded-lg"
                 >
                   <button className="flex items-center space-x-3 w-full">
                     <Edit2 className="h-4 w-4" />
@@ -182,11 +181,12 @@ export function AppSidebar({
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
+              <SidebarMenuItem className="mb-1">
                 <SidebarMenuButton
                   asChild
                   isActive={currentPage === 'agents'}
                   onClick={() => onPageChange('agents')}
+                  className="py-3 px-3 rounded-lg"
                 >
                   <button className="flex items-center space-x-3 w-full">
                     <Users className="h-4 w-4" />
@@ -199,15 +199,15 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Conversations</SidebarGroupLabel>
-          <SidebarGroupContent>
+          <SidebarGroupLabel className="px-3 py-2">Conversations</SidebarGroupLabel>
+          <SidebarGroupContent className="px-2">
             <SidebarMenu>
               {threadsLoading ? (
-                <div className="text-center py-12">
+                <div className="text-center py-8">
                   <div className="text-sm text-muted-foreground">Loading threads...</div>
                 </div>
               ) : threads.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-8">
                   <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                   <div className="text-sm text-muted-foreground">No conversations yet</div>
                 </div>

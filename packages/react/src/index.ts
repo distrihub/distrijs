@@ -64,6 +64,7 @@ export {
 } from './components/ui/select';
 
 // Legacy exports (deprecated - use shadcn components instead)
+export { AgentSelect } from './components/AgentSelect';
 export { AgentDropdown } from './components/AgentDropdown';
 export { default as ApprovalDialog } from './components/ApprovalDialog';
 export { ChatInput } from './components/ChatInput';
