@@ -1,22 +1,17 @@
+import { A2AClient, Message, MessageSendParams, Task, SendMessageResponse, GetTaskResponse, Part } from '@a2a-js/sdk/client';
 import {
-  A2AClient,
-  Message,
-  MessageSendParams,
-  Task,
-  SendMessageResponse,
-  GetTaskResponse,
-  Part,
-
-} from '@a2a-js/sdk/client';
-import {
+  DistriMessage,
+  DistriPart,
+  DistriAgent,
+  DistriThread,
+  InvokeContext,
   DistriClientConfig,
   DistriError,
   ApiError,
   A2AProtocolError,
-  DistriAgent,
-  DistriThread,
   A2AStreamEventData
 } from './types';
+import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
  */
@@ -240,6 +235,26 @@ export class DistriClient {
   }
 
   /**
+   * Get messages from a thread as DistriMessage format
+   */
+  async getThreadMessagesAsDistri(threadId: string): Promise<DistriMessage[]> {
+    const messages = await this.getThreadMessages(threadId);
+    return messages.map(convertA2AMessageToDistri);
+  }
+
+  /**
+   * Send a DistriMessage to a thread
+   */
+  async sendDistriMessage(threadId: string, message: DistriMessage, context: InvokeContext): Promise<void> {
+    const a2aMessage = convertDistriMessageToA2A(message, context);
+    const params: MessageSendParams = {
+      message: a2aMessage,
+      metadata: context.metadata
+    };
+    await this.sendMessage(threadId, params);
+  }
+
+  /**
    * Get the base URL for making direct requests
    */
   get baseUrl(): string {
@@ -329,6 +344,23 @@ export class DistriClient {
   }
 
   /**
+   * Create a DistriMessage instance
+   */
+  static initDistriMessage(
+    role: DistriMessage['role'],
+    parts: DistriPart[],
+    id?: string,
+    created_at?: string,
+  ): DistriMessage {
+    return {
+      id: id || uuidv4(),
+      role,
+      parts,
+      created_at,
+    };
+  }
+
+  /**
    * Helper method to create message send parameters
    */
   static initMessageParams(
@@ -344,6 +376,17 @@ export class DistriClient {
         ...configuration
       },
       metadata
+    };
+  }
+
+  /**
+   * Create MessageSendParams from a DistriMessage using InvokeContext
+   */
+  static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams {
+    const a2aMessage = convertDistriMessageToA2A(message, context);
+    return {
+      message: a2aMessage,
+      metadata: context.metadata
     };
   }
 }

@@ -1,5 +1,60 @@
 // Distri Framework Types - Based on A2A Protocol and SSE
 import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
+import { DistriEvent } from './events';
+
+/**
+ * Message roles supported by Distri
+ */
+export type MessageRole = 'system' | 'assistant' | 'user' | 'tool';
+
+/**
+ * Distri-specific message structure with parts
+ */
+export interface DistriMessage {
+  id: string;
+  role: MessageRole;
+  parts: DistriPart[];
+  created_at?: string;
+}
+
+export type DistriStreamEvent = DistriMessage | DistriEvent;
+
+
+
+/**
+ * Context required for constructing A2A messages from DistriMessage
+ */
+export interface InvokeContext {
+  thread_id: string;
+  run_id?: string;
+  metadata?: any; // Additional metadata to attach to MessageSendParams
+}
+
+/**
+ * Distri message parts - equivalent to Rust enum Part
+ */
+
+export type TextPart = { type: 'text'; text: string }
+export type CodeObservationPart = { type: 'code_observation'; thought: string; code: string }
+export type ImagePart = { type: 'image'; image: FileType }
+export type DataPart = { type: 'data'; data: any }
+export type ToolCallPart = { type: 'tool_call'; tool_call: ToolCall }
+export type ToolResultPart = { type: 'tool_result'; tool_result: ToolResponse }
+export type PlanPart = { type: 'plan'; plan: string }
+export type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCallPart | ToolResultPart | PlanPart;
+
+
+
+/**
+ * File type for images
+ */
+export interface FileType {
+  mime_type: string;
+  data: string; // Base64 encoded data
+  filename?: string;
+}
+
+
 
 /**
  * Tool definition interface following AG-UI pattern
@@ -29,6 +84,9 @@ export interface ToolResult {
   success: boolean;
   error?: string;
 }
+
+// Alias for ToolResponse to maintain backward compatibility
+export type ToolResponse = ToolResult;
 
 /**
  * Tool handler function
@@ -77,8 +135,6 @@ export interface DistriAgent {
   /** List of sub-agents that this agent can transfer control to */
   sub_agents?: string[];
 
-  /** Tool approval configuration */
-  tool_approval?: ApprovalMode;
 }
 
 export interface McpDefinition {
@@ -92,35 +148,6 @@ export interface McpDefinition {
   type?: McpServerType; // Use 'type' here instead of 'r#type'
 }
 
-/**
- * Mode for tool approval requirements
- */
-export type ApprovalMode =
-  | { type: 'none' }
-  | { type: 'all' }
-  | { type: 'filter'; tools: string[] };
-
-/**
- * Message metadata types for tool responses and content
- */
-export type MessageMetadata =
-  | {
-    type: 'tool_response';
-    tool_call_id: string;
-    result: any;
-  }
-  | {
-    type: 'assistant_response';
-    tool_calls: ToolCall[];
-  }
-  | {
-    type: 'plan';
-    plan: string;
-  }
-  | {
-    type: 'tool_responses';
-    results: ToolResult[];
-  };
 
 /**
  * Approval request tool name constant
@@ -233,4 +260,14 @@ export class ConnectionError extends DistriError {
 // Re-export A2A types for convenience
 export type { AgentCard, Message, Task, TaskStatus, MessageSendParams, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from '@a2a-js/sdk/client';
 
+
 export type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Task;
+
+
+export function isDistriMessage(event: DistriStreamEvent): event is DistriMessage {
+  return 'id' in event && 'role' in event && 'parts' in event;
+}
+
+export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
+  return 'type' in event && 'metadata' in event;
+}

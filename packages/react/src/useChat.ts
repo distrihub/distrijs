@@ -1,260 +1,237 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useAgent } from './useAgent';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Agent, DistriClient } from '@distri/core';
 import {
-  type Message,
-  type MessageMetadata,
-  type ToolResult,
-  type ToolCall,
-  InvokeConfig,
-  DistriClient,
-  Agent,
+  DistriMessage,
+  DistriPart,
+  InvokeContext,
+  DistriEvent,
+  convertDistriMessageToA2A
 } from '@distri/core';
-import type { Part } from '@a2a-js/sdk/client';
+import { decodeA2AStreamEvent } from '../../core/src/encoder';
+import { DistriStreamEvent, isDistriMessage } from '../../core/src/types';
 
 export interface UseChatOptions {
-  agentId: string;
   threadId: string;
-  // Optional: pre-configured agent from useAgent
   agent?: Agent;
-  // Optional: Metadata to pass to the agent
+  onMessage?: (message: DistriStreamEvent) => void;
+  onError?: (error: Error) => void;
   metadata?: any;
-  // Optional: Callback when messages are updated
   onMessagesUpdate?: () => void;
 }
 
-export interface UseChatResult {
-  messages: Message[];
-  loading: boolean;
-  error: Error | null;
+export interface UseChatReturn {
+  messages: DistriStreamEvent[];
   isStreaming: boolean;
-  sendMessage: (input: string | Part[], metadata?: MessageMetadata) => Promise<void>;
-  sendMessageStream: (input: string | Part[], metadata?: MessageMetadata) => Promise<void>;
-  refreshMessages: () => Promise<void>;
+  sendMessage: (content: string | DistriPart[]) => Promise<void>;
+  sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+  isLoading: boolean;
+  error: Error | null;
   clearMessages: () => void;
-  agent: Agent | null;
+  agent: Agent | undefined;
 }
 
-/**
- * useChat is the main hook for chat UIs with simplified tool handling.
- * Tools are now registered directly on the agent using agent.addTool() or useTools hook.
- */
 export function useChat({
-  agentId,
   threadId,
-  agent: providedAgent,
+  onMessage,
+  onError,
   metadata,
   onMessagesUpdate,
-}: UseChatOptions): UseChatResult {
-  // Use provided agent or create one internally
-  const { agent: internalAgent } = useAgent({
-    agentId,
-  });
-
-  // Use provided agent if it's a proper Agent instance, otherwise use internal agent
-  const agent = (providedAgent && typeof providedAgent.getThreadMessages === 'function') ? providedAgent : internalAgent;
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  agent,
+}: UseChatOptions): UseChatReturn {
+  const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Clear messages when threadId changes
-  useEffect(() => {
-    setMessages([]);
-    setError(null);
-  }, [threadId]);
 
-  const invokeConfig = useMemo(() => {
-    return {
-      contextId: threadId,
-      configuration: {
-        acceptedOutputModes: ['text/plain'],
-        blocking: false
-      },
-      metadata: metadata
-    } as InvokeConfig;
-  }, [threadId, metadata]);
+  // Create InvokeContext for message construction
+  const createInvokeContext = useCallback((): InvokeContext => ({
+    thread_id: threadId,
+    run_id: undefined,
+    metadata
+  }), [threadId, metadata]);
 
-  // Fetch messages for the thread
   const fetchMessages = useCallback(async () => {
-    if (!agent || !threadId) {
-      setMessages([]);
-      return;
-    }
+    if (!agent) return;
+
     try {
-      setLoading(true);
-      setError(null);
-      const fetchedMessages = await agent.getThreadMessages(threadId);
-      setMessages(fetchedMessages);
+      const a2aMessages = await agent.getThreadMessages(threadId);
+      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
+      console.log('distriMessages', distriMessages);
+      setMessages(distriMessages);
       onMessagesUpdate?.();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
-      setMessages([]);
-    } finally {
-      setLoading(false);
+      const error = err instanceof Error ? err : new Error('Failed to fetch messages');
+      setError(error);
+      onError?.(error);
     }
-  }, [agent, threadId, onMessagesUpdate]);
+  }, [threadId, agent, onError, onMessagesUpdate]);
 
+  // Fetch messages on mount and when threadId changes
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  // Handle tool calls from assistant messages
-  const handleToolCalls = useCallback(async (toolCalls: ToolCall[]): Promise<void> => {
-    if (!agent) return;
-
-    const results: ToolResult[] = [];
-
-    // Execute all tool calls
-    for (const toolCall of toolCalls) {
-      const result = await agent.executeTool(toolCall);
-      results.push(result);
+    if (threadId) {
+      fetchMessages();
     }
+  }, [fetchMessages, threadId]);
 
-    // Send tool responses back to the agent
-    if (results.length > 0) {
-      const responseMessage = DistriClient.initMessage([], 'user', {
-        contextId: threadId,
-        metadata: {
-          type: 'tool_responses',
-          results: results
-        } as MessageMetadata
-      });
+  const handleStreamEvent = useCallback((event: DistriStreamEvent) => {
+    // Handle DistriMessage (converted from A2A Message)
 
-      const params = DistriClient.initMessageParams(
-        responseMessage,
-        invokeConfig.configuration,
-        responseMessage.metadata as MessageMetadata
-      );
 
-      // Continue the conversation with tool results
-      try {
-        const stream = await agent.invokeStream(params);
+    setMessages(prev => {
+      if (isDistriMessage(event)) {
+        const distriMessage = event as DistriMessage;
+        const existingMessageIndex = prev
+          .filter(msg => isDistriMessage(msg))
+          .findIndex(msg => msg.id === distriMessage.id);
 
-        for await (const event of stream) {
-          if (abortControllerRef.current?.signal.aborted) break;
-          await handleStreamEvent(event);
-        }
-      } catch (err) {
-        console.error('Error continuing conversation with tool results:', err);
-      }
-    }
-  }, [agent, threadId, invokeConfig.configuration]);
+        if (existingMessageIndex >= 0) {
+          // Update existing message by merging parts
+          const updatedMessages = [...prev];
+          const existingMessage = updatedMessages[existingMessageIndex] as DistriMessage;
+          // Merge parts from the new message into the existing one
+          const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
 
-  // Handle individual stream events
-  const handleStreamEvent = useCallback(async (event: any) => {
-    if (event.kind === 'message') {
-      const message = event as Message;
+          updatedMessages[existingMessageIndex] = {
+            ...existingMessage,
+            parts: mergedParts,
+          };
 
-      setMessages((prev) => {
-        const idx = prev.findIndex((m) => m.messageId === message.messageId);
-        if (idx !== -1) {
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], parts: [...updated[idx].parts, ...message.parts] };
-          return updated;
+          return updatedMessages;
         } else {
-          return [...prev, message];
+          // Add new message
+          return [...prev, distriMessage];
         }
+      } else {
+        return [...prev, event];
+      }
+    });
+
+    onMessage?.(event);
+
+  }, [onMessage]);
+
+
+
+  const sendMessage = useCallback(async (content: string | DistriPart[]) => {
+    if (!agent) return;
+
+    setIsLoading(true);
+    setIsStreaming(true);
+    setError(null);
+
+    // Cancel any existing stream
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const parts: DistriPart[] = typeof content === 'string'
+        ? [{ type: 'text', text: content }]
+        : content;
+
+      const distriMessage = DistriClient.initDistriMessage('user', parts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
+
+      // Add user message to state immediately
+      setMessages(prev => [...prev, distriMessage]);
+
+      // Start streaming
+      const stream = await agent.invokeStream({
+        message: a2aMessage,
+        metadata: context.metadata
       });
-
-      // Notify that messages have been updated
-      onMessagesUpdate?.();
-
-      // Handle tool calls if present
-      if (message.metadata?.type === 'assistant_response' && message.metadata.tool_calls) {
-        const toolCalls = message.metadata.tool_calls as ToolCall[];
-        await handleToolCalls(toolCalls);
-      }
-    } else if (event.kind === 'status-update') {
-      // Handle task status updates if needed
-      // These events can be used for progress indicators, etc.
-      console.debug('Task status update:', event);
-    }
-  }, [handleToolCalls, onMessagesUpdate]);
-
-  // Send a message (non-streaming)
-  const sendMessage = useCallback(async (
-    input: string | Part[],
-    metadata?: MessageMetadata
-  ) => {
-    if (!agent) return;
-
-    // Add user message immediately
-    const userMessage: Message = DistriClient.initMessage(input, 'user', { contextId: threadId, metadata });
-    setMessages((prev) => [...prev, userMessage]);
-    onMessagesUpdate?.();
-
-    const params = DistriClient.initMessageParams(userMessage, invokeConfig.configuration, metadata);
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await agent.invoke(params);
-      if (result && 'message' in result && result.message) {
-        setMessages((prev) => [...prev, result.message as Message]);
-        onMessagesUpdate?.();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to send message'));
-    } finally {
-      setLoading(false);
-    }
-  }, [agent, threadId, invokeConfig.configuration, onMessagesUpdate]);
-
-  // Send a message (streaming)
-  const sendMessageStream = useCallback(async (
-    input: string | Part[],
-    metadata?: MessageMetadata
-  ) => {
-    if (!agent) return;
-
-    const userMessage: Message = DistriClient.initMessage(input, 'user', { contextId: threadId, metadata });
-    setMessages((prev) => [...prev, userMessage]);
-    onMessagesUpdate?.();
-
-    const params = DistriClient.initMessageParams(userMessage, invokeConfig.configuration, metadata);
-
-    try {
-      setLoading(true);
-      setIsStreaming(true);
-      setError(null);
-
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-
-      const stream = await agent.invokeStream(params);
 
       for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) break;
-        await handleStreamEvent(event);
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
+        }
+        handleStreamEvent(event);
       }
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err : new Error('Failed to stream message'));
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Stream was cancelled, don't show error
+        return;
+      }
+      const error = err instanceof Error ? err : new Error('Failed to send message');
+      setError(error);
+      onError?.(error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
       setIsStreaming(false);
+      abortControllerRef.current = null;
     }
-  }, [agent, threadId, invokeConfig.configuration, handleStreamEvent, onMessagesUpdate]);
+  }, [agent, createInvokeContext, handleStreamEvent, onError]);
+
+  const sendMessageStream = useCallback(async (content: string | DistriPart[]) => {
+    if (!agent) return;
+
+    setIsLoading(true);
+    setIsStreaming(true);
+    setError(null);
+
+    // Cancel any existing stream
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const parts: DistriPart[] = typeof content === 'string'
+        ? [{ type: 'text', text: content }]
+        : content;
+
+      const distriMessage = DistriClient.initDistriMessage('user', parts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
+
+      // Add user message to state immediately
+      setMessages(prev => [...prev, distriMessage]);
+
+      // Start streaming
+      const stream = await agent.invokeStream({
+        message: a2aMessage,
+        metadata: context.metadata
+      });
+
+      for await (const event of stream) {
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
+        }
+        handleStreamEvent(event);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Stream was cancelled, don't show error
+        return;
+      }
+      const error = err instanceof Error ? err : new Error('Failed to send message');
+      setError(error);
+      onError?.(error);
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+      abortControllerRef.current = null;
+    }
+  }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
 
-  const refreshMessages = useCallback(async () => {
-    await fetchMessages();
-  }, [fetchMessages]);
-
   return {
     messages,
-    loading,
-    error,
     isStreaming,
     sendMessage,
     sendMessageStream,
-    refreshMessages,
+    isLoading,
+    error,
     clearMessages,
-    agent: agent ? (agent as any) : null,
+    agent: agent || undefined
   };
 } 

@@ -6,6 +6,8 @@ import AgentsPage from './AgentsPage';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from './ui/sidebar';
 import { AgentSelect } from './AgentSelect';
+import { useAgent } from '@/useAgent';
+import { useTheme } from './ThemeProvider';
 
 
 export interface FullChatProps {
@@ -39,14 +41,12 @@ type PageType = 'chat' | 'agents';
 
 export const FullChat: React.FC<FullChatProps> = ({
   agentId,
-  agent,
   metadata,
   className = '',
   UserMessageComponent,
   AssistantMessageComponent,
   AssistantWithToolCallsComponent,
   PlanMessageComponent,
-  theme = 'dark',
   showDebug = false,
   onThreadSelect,
   onThreadCreate,
@@ -59,6 +59,8 @@ export const FullChat: React.FC<FullChatProps> = ({
   const { threads, refetch: refetchThreads } = useThreads();
   const [currentPage, setCurrentPage] = useState<PageType>('chat');
   const [defaultOpen, setDefaultOpen] = useState(true);
+  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
+  const { theme } = useTheme();
 
   // Load sidebar state from localStorage
   useEffect(() => {
@@ -122,11 +124,10 @@ export const FullChat: React.FC<FullChatProps> = ({
           onPageChange={setCurrentPage}
         />
         <SidebarInset>
-          {/* Header with agent selector and sidebar trigger */}
+          {/* Header with agent selector only */}
           <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
             <div className="flex items-center gap-2 flex-1">
-              <SidebarTrigger className="-ml-1" />
-              {availableAgents && availableAgents.length > 0 && (
+              <SidebarTrigger className="-ml-1" />              {availableAgents && availableAgents.length > 0 && (
                 <div className="w-64">
                   <AgentSelect
                     agents={availableAgents}
@@ -141,7 +142,7 @@ export const FullChat: React.FC<FullChatProps> = ({
 
           {/* Main content area */}
           <main className="flex-1 overflow-hidden">
-            {currentPage === 'chat' && (
+            {currentPage === 'chat' && agent && (
               <EmbeddableChat
                 agentId={agentId}
                 threadId={selectedThreadId}
@@ -154,7 +155,7 @@ export const FullChat: React.FC<FullChatProps> = ({
                 AssistantMessageComponent={AssistantMessageComponent}
                 AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
                 PlanMessageComponent={PlanMessageComponent}
-                theme={theme}
+                theme={theme as 'light' | 'dark' | 'auto'}
                 showDebug={showDebug}
                 placeholder="Type your message..."
                 onAgentSelect={onAgentSelect}
@@ -162,6 +163,9 @@ export const FullChat: React.FC<FullChatProps> = ({
               />
             )}
 
+            {agentLoading && <div>Loading agent...</div>}
+            {agentError && <div>Error loading agent: {agentError.message}</div>}
+            {!agent && !agentLoading && <div>No agent selected</div>}
             {currentPage === 'agents' && (
               <div className="h-full overflow-auto">
                 <AgentsPage onStartChat={(agent) => {

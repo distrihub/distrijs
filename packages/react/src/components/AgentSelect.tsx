@@ -16,7 +16,7 @@ interface Agent {
 
 interface AgentSelectProps {
   agents: Agent[];
-  selectedAgentId: string;
+  selectedAgentId?: string;
   onAgentSelect: (agentId: string) => void;
   className?: string;
   placeholder?: string;
