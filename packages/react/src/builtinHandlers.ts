@@ -1,4 +1,9 @@
-import { ToolHandler, ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
+import { ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
+
+// Legacy ToolHandler interface for backwards compatibility
+export interface LegacyToolHandler {
+  (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
+}
 
 // Global state for managing tool execution
 let pendingToolCalls: Map<string, { toolCall: ToolCall; resolve: (result: ToolResult) => void }> = new Map();
@@ -30,13 +35,14 @@ export const clearPendingToolCalls = () => {
 };
 
 /**
- * Builtin tool handlers using the new ToolHandler interface
+ * Legacy builtin tool handlers using the old ToolHandler interface
+ * These are kept for backwards compatibility but work alongside the new system
  */
-export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
+export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> => ({
   // Approval request handler - opens a dialog
   [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
-      const input = JSON.parse(toolCall.input);
+      const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
       const toolCallsToApprove: ToolCall[] = input.tool_calls || [];
       const reason: string = input.reason;
 
@@ -79,7 +85,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
   // Toast handler - shows a toast and returns success
   toast: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
-      const input = JSON.parse(toolCall.input);
+      const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
       const message: string = input.message || 'Toast message';
       const type: 'success' | 'error' | 'warning' | 'info' = input.type || 'info';
 
@@ -121,7 +127,7 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
   // Input request handler - shows prompt
   input_request: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
-      const input = JSON.parse(toolCall.input);
+      const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
       const prompt: string = input.prompt || 'Please provide input:';
       const defaultValue: string = input.default || '';
 
@@ -169,10 +175,11 @@ export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
 
 /**
  * Process external tool calls with handlers
+ * This is kept for backwards compatibility
  */
 export const processExternalToolCalls = async (
   toolCalls: ToolCall[],
-  handlers: Record<string, ToolHandler>,
+  handlers: Record<string, LegacyToolHandler>,
   onToolComplete: (results: ToolResult[]) => Promise<void>
 ): Promise<void> => {
   const results: ToolResult[] = [];

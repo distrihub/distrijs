@@ -1,10 +1,10 @@
 import { DistriClient } from './distri-client';
 import {
   DistriAgent,
+  DistriTool,
   ToolCall,
   ToolHandler,
   ToolResult,
-  ExternalTool,
   A2AStreamEventData,
   APPROVAL_REQUEST_TOOL_NAME
 } from './types';
@@ -18,8 +18,6 @@ export interface InvokeConfig {
   configuration?: MessageSendParams['configuration'];
   /** Context/thread ID */
   contextId?: string;
-  /** External tool handlers */
-  tools?: Record<string, ToolHandler>;
   /** Metadata for the requests */
   metadata?: any;
 }
@@ -44,17 +42,122 @@ export interface InvokeResult {
   streamed: boolean;
 }
 
-
 /**
- * Enhanced Agent class with nice API
+ * Enhanced Agent class with simple tool system following AG-UI pattern
  */
 export class Agent {
   private client: DistriClient;
   private agentDefinition: DistriAgent;
+  private tools: Map<string, ToolHandler> = new Map();
 
   constructor(agentDefinition: DistriAgent, client: DistriClient) {
     this.agentDefinition = agentDefinition;
     this.client = client;
+    // Initialize with built-in tools
+    this.initializeBuiltinTools();
+  }
+
+  /**
+   * Initialize built-in tools
+   */
+  private initializeBuiltinTools() {
+    this.addTool({
+      name: APPROVAL_REQUEST_TOOL_NAME,
+      description: 'Request user approval for actions',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Approval prompt to show user' },
+          action: { type: 'string', description: 'Action requiring approval' }
+        },
+        required: ['prompt']
+      },
+      handler: async (input: any) => {
+        const userInput = prompt(input.prompt || 'Please provide input:');
+        return { approved: !!userInput, input: userInput };
+      }
+    });
+  }
+
+  /**
+   * Add a tool to the agent (AG-UI style)
+   */
+  addTool(tool: DistriTool): void {
+    this.tools.set(tool.name, tool.handler);
+  }
+
+  /**
+   * Add multiple tools at once
+   */
+  addTools(tools: DistriTool[]): void {
+    tools.forEach(tool => this.addTool(tool));
+  }
+
+  /**
+   * Remove a tool
+   */
+  removeTool(toolName: string): void {
+    this.tools.delete(toolName);
+  }
+
+  /**
+   * Get all registered tools
+   */
+  getTools(): string[] {
+    return Array.from(this.tools.keys());
+  }
+
+  /**
+   * Check if a tool is registered
+   */
+  hasTool(toolName: string): boolean {
+    return this.tools.has(toolName);
+  }
+
+  /**
+   * Execute a tool call
+   */
+  async executeTool(toolCall: ToolCall): Promise<ToolResult> {
+    const handler = this.tools.get(toolCall.tool_name);
+    
+    if (!handler) {
+      return {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: `Tool '${toolCall.tool_name}' not found`
+      };
+    }
+
+    try {
+      const result = await handler(toolCall.input);
+      return {
+        tool_call_id: toolCall.tool_call_id,
+        result,
+        success: true
+      };
+    } catch (error) {
+      return {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Get tool definitions for context metadata
+   */
+  getToolDefinitions(): Record<string, any> {
+    const definitions: Record<string, any> = {};
+    
+    // Note: We only send tool names to the backend since handlers are frontend-only
+    this.tools.forEach((_handler, name) => {
+      definitions[name] = { name };
+    });
+    
+    return definitions;
   }
 
   /**
@@ -72,10 +175,6 @@ export class Agent {
     return this.agentDefinition.description;
   }
 
-  get externalTools(): ExternalTool[] {
-    return this.agentDefinition.external_tools || [];
-  }
-
   /**
    * Fetch messages for a thread (public method for useChat)
    */
@@ -83,22 +182,38 @@ export class Agent {
     return this.client.getThreadMessages(threadId);
   }
 
-
-
   /**
    * Direct (non-streaming) invoke
    */
   public async invoke(params: MessageSendParams): Promise<Message> {
-    return await this.client.sendMessage(this.agentDefinition.id, params) as Message;
+    // Inject tool definitions into metadata
+    const enhancedParams = this.enhanceParamsWithTools(params);
+    return await this.client.sendMessage(this.agentDefinition.id, enhancedParams) as Message;
   }
 
   /**
    * Streaming invoke
    */
   public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<A2AStreamEventData>> {
-    return this.client.sendMessageStream(this.agentDefinition.id, params) as AsyncGenerator<A2AStreamEventData>;
+    // Inject tool definitions into metadata
+    const enhancedParams = this.enhanceParamsWithTools(params);
+    return this.client.sendMessageStream(this.agentDefinition.id, enhancedParams) as AsyncGenerator<A2AStreamEventData>;
   }
 
+  /**
+   * Enhance message params with tool definitions
+   */
+  private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
+    const toolDefinitions = this.getToolDefinitions();
+    
+    return {
+      ...params,
+      metadata: {
+        ...params.metadata,
+        tools: Object.keys(toolDefinitions).length > 0 ? toolDefinitions : undefined
+      }
+    };
+  }
 
   /**
    * Create an agent instance from an agent ID
@@ -116,33 +231,3 @@ export class Agent {
     return agentDefinitions.map(def => new Agent(def, client));
   }
 }
-
-/**
- * Built-in external tool handlers
- */
-export const createBuiltinToolHandlers = (): Record<string, ToolHandler> => ({
-  [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>) => {
-    const input = JSON.parse(toolCall.input);
-    const userInput = prompt(input.prompt || 'Please provide input:');
-    const result: ToolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      result: { input: userInput },
-      success: true
-    };
-    await onToolComplete(toolCall.tool_call_id, result);
-    return { input: userInput };
-  },
-
-  // Input request handler
-  input_request: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>) => {
-    const input = JSON.parse(toolCall.input);
-    const userInput = prompt(input.prompt || 'Please provide input:');
-    const result: ToolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      result: { input: userInput },
-      success: true
-    };
-    await onToolComplete(toolCall.tool_call_id, result);
-    return { input: userInput };
-  },
-});

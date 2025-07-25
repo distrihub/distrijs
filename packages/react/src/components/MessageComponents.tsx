@@ -42,12 +42,29 @@ export const MessageContainer: React.FC<{
   children: React.ReactNode;
   align: 'left' | 'right' | 'center';
   className?: string;
-}> = ({ children, align, className = '' }) => {
+  backgroundColor?: string;
+}> = ({ children, align, className = '', backgroundColor }) => {
   const justifyClass = align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start';
 
+  // Use shadcn/ui convention for theme-aware backgrounds
+  const getBgClass = (color: string) => {
+    switch (color) {
+      case '#343541':
+        return 'bg-background';
+      case '#444654':
+        return 'bg-muted';
+      case '#40414f':
+        return 'bg-background';
+      default:
+        return '';
+    }
+  };
+
+  const bgClass = backgroundColor ? getBgClass(backgroundColor) : '';
+
   return (
-    <div className={`flex ${justifyClass} w-full ${className} mb-4`}>
-      <div className="w-full max-w-4xl mx-auto px-4">
+    <div className={`flex ${justifyClass} w-full ${bgClass} ${className}`}>
+      <div className="w-full max-w-4xl mx-auto px-6">
         {children}
       </div>
     </div>
@@ -62,16 +79,16 @@ export const PlanMessage: React.FC<PlanMessageProps> = ({
   className = ''
 }) => {
   return (
-    <MessageContainer align="center" className={`bg-gray-800 ${className}`}>
-      <div className="flex items-start gap-4 py-6">
+    <MessageContainer align="center" className={className} backgroundColor="#444654">
+      <div className="flex items-start gap-4 py-6 px-4">
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-600">
           <Brain className="h-4 w-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1 flex items-center gap-2">
+          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
             Thought{duration ? ` for ${duration}s` : ''}
           </div>
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none text-white">
             <MessageRenderer
               content={content}
               className="text-white"
@@ -88,7 +105,7 @@ export const PlanMessage: React.FC<PlanMessageProps> = ({
   );
 };
 
-// User Message Component
+// User Message Component - ChatGPT style
 export const UserMessage: React.FC<UserMessageProps> = ({
   content,
   timestamp,
@@ -96,21 +113,21 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={className}>
-      <div className="flex items-start gap-4 py-6">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-blue-600">
-          {avatar || <User className="h-4 w-4 text-white" />}
+    <MessageContainer align="center" className={className} backgroundColor="#343541">
+      <div className="flex items-start gap-4 py-6 px-4">
+        <div className="distri-avatar distri-avatar-user">
+          {avatar || <User className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1">You</div>
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="text-sm font-medium text-foreground mb-2">You</div>
+          <div className="prose prose-sm max-w-none text-foreground">
             <MessageRenderer
               content={content}
-              className="text-white"
+              className="text-foreground"
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -120,41 +137,40 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   );
 };
 
-// Assistant Message Component
+// Assistant Message Component - ChatGPT style
 export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   content,
   timestamp,
   isStreaming = false,
-  metadata,
+  metadata: _metadata,
   className = '',
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={`bg-gray-800 ${className}`}>
-      <div className="flex items-start gap-4 py-6">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-600">
-          {avatar || <Bot className="h-4 w-4 text-white" />}
+    <MessageContainer align="center" className={className} backgroundColor="#444654">
+      <div className="flex items-start gap-4 py-6 px-4">
+        <div className="distri-avatar distri-avatar-assistant">
+          {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1 flex items-center gap-2">
-            Assistant
+          <div className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+            ChatGPT
             {isStreaming && (
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-75"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
               </div>
             )}
           </div>
-          <div className="prose prose-sm max-w-none prose-invert">
+          <div className="prose prose-sm max-w-none text-foreground">
             <MessageRenderer
               content={content}
-              className="text-white"
-              metadata={metadata}
+              className="text-foreground"
             />
           </div>
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
@@ -164,7 +180,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   );
 };
 
-// Tool Call Component
+// Tool Call Component - ChatGPT style
 export const Tool: React.FC<ToolCallProps> = ({
   toolCall,
   status = 'pending',
@@ -178,11 +194,11 @@ export const Tool: React.FC<ToolCallProps> = ({
       case 'pending':
         return <Clock className="h-4 w-4 text-gray-400" />;
       case 'running':
-        return <Settings className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <Settings className="h-4 w-4 text-blue-400 distri-animate-spin" />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-400" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-400" />;
       default:
         return <Clock className="h-4 w-4 text-gray-400" />;
     }
@@ -191,15 +207,15 @@ export const Tool: React.FC<ToolCallProps> = ({
   const getStatusColor = () => {
     switch (status) {
       case 'pending':
-        return 'border-gray-600 bg-gray-800';
+        return 'border-gray-600 bg-gray-800/50';
       case 'running':
-        return 'border-blue-600 bg-blue-900';
+        return 'border-blue-500 bg-blue-900/20';
       case 'completed':
-        return 'border-green-600 bg-green-900';
+        return 'border-green-500/50 bg-green-900/20';
       case 'error':
-        return 'border-red-600 bg-red-900';
+        return 'border-red-500/50 bg-red-900/20';
       default:
-        return 'border-gray-600 bg-gray-800';
+        return 'border-gray-600 bg-gray-800/50';
     }
   };
 
@@ -211,35 +227,37 @@ export const Tool: React.FC<ToolCallProps> = ({
   const shouldShowExpand = input || result || error;
 
   return (
-    <div className={`border rounded-lg ${getStatusColor()}`}>
+    <div className={`distri-tool ${getStatusColor()}`}>
       <div
-        className="flex items-center gap-2 p-4 cursor-pointer hover:bg-gray-700 transition-colors"
+        className="distri-tool-header"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        {getStatusIcon()}
-        <span className="font-medium text-sm text-white flex-1">{toolName}</span>
-        <span className="text-xs text-gray-400 font-mono">{toolId}</span>
-        {shouldShowExpand && (
-          <button className="text-gray-400 hover:text-white transition-colors">
-            {isExpanded ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-3 w-full">
+          {getStatusIcon()}
+          <span className="font-medium text-sm text-white flex-1">{toolName}</span>
+          <span className="text-xs text-gray-400 font-mono">{toolId}</span>
+          {shouldShowExpand && (
+            <button className="text-gray-400 hover:text-white transition-colors ml-2">
+              {isExpanded ? (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="p-4 space-y-4 border-t border-gray-600/50">
           {input && (
             <div>
-              <div className="text-xs font-medium text-gray-300 mb-1">Input:</div>
-              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-2 font-mono text-white">
+              <div className="text-xs font-medium text-gray-300 mb-2">Input:</div>
+              <div className="distri-tool-content">
                 {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
               </div>
             </div>
@@ -247,8 +265,8 @@ export const Tool: React.FC<ToolCallProps> = ({
 
           {result && (
             <div>
-              <div className="text-xs font-medium text-gray-300 mb-1">Result:</div>
-              <div className="text-sm bg-gray-700 rounded border border-gray-600 p-2 font-mono text-white">
+              <div className="text-xs font-medium text-gray-300 mb-2">Output:</div>
+              <div className="distri-tool-content">
                 {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
               </div>
             </div>
@@ -256,8 +274,8 @@ export const Tool: React.FC<ToolCallProps> = ({
 
           {error && (
             <div>
-              <div className="text-xs font-medium text-red-400 mb-1">Error:</div>
-              <div className="text-sm bg-red-900 rounded border border-red-700 p-2 text-red-200">
+              <div className="text-xs font-medium text-red-300 mb-2">Error:</div>
+              <div className="text-sm bg-red-900/20 border border-red-500/50 rounded p-3 text-red-200">
                 {error}
               </div>
             </div>
@@ -268,25 +286,25 @@ export const Tool: React.FC<ToolCallProps> = ({
   );
 };
 
-// Assistant with Tool Calls Component
+// Assistant Message With Tool Calls - ChatGPT style
 export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   content,
   toolCalls,
   timestamp,
   isStreaming = false,
-  metadata,
+  metadata: _metadata,
   className = '',
   avatar
 }) => {
   return (
-    <MessageContainer align="center" className={`bg-gray-800 ${className}`}>
-      <div className="flex items-start gap-4 py-6">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-600">
-          {avatar || <Bot className="h-4 w-4 text-white" />}
+    <MessageContainer align="center" className={className} backgroundColor="#444654">
+      <div className="flex items-start gap-4 py-6 px-4">
+        <div className="distri-avatar distri-avatar-assistant">
+          {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-1 flex items-center gap-2">
-            Assistant
+          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+            ChatGPT
             {isStreaming && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
@@ -297,11 +315,10 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           </div>
 
           {content && (
-            <div className="prose prose-sm max-w-none mb-4 prose-invert">
+            <div className="prose prose-sm max-w-none mb-4 text-white">
               <MessageRenderer
                 content={content}
                 className="text-white"
-                metadata={metadata}
               />
             </div>
           )}

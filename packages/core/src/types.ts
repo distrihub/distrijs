@@ -2,6 +2,42 @@
 import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
 
 /**
+ * Tool definition interface following AG-UI pattern
+ */
+export interface DistriTool {
+  name: string;
+  description: string;
+  parameters: any; // JSON Schema
+  handler: ToolHandler;
+}
+
+/**
+ * Tool call from agent
+ */
+export interface ToolCall {
+  tool_call_id: string;
+  tool_name: string;
+  input: any; // Parsed JSON input
+}
+
+/**
+ * Tool result for responding to tool calls
+ */
+export interface ToolResult {
+  tool_call_id: string;
+  result: any;
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Tool handler function
+ */
+export interface ToolHandler {
+  (input: any): Promise<any> | any;
+}
+
+/**
  * Distri-specific Agent type that wraps A2A AgentCard
  */
 export interface DistriAgent {
@@ -41,9 +77,6 @@ export interface DistriAgent {
   /** List of sub-agents that this agent can transfer control to */
   sub_agents?: string[];
 
-  /** External tools that are handled by the frontend */
-  external_tools?: ExternalTool[];
-
   /** Tool approval configuration */
   tool_approval?: ApprovalMode;
 }
@@ -60,15 +93,6 @@ export interface McpDefinition {
 }
 
 /**
- * External tool definition
- */
-export interface ExternalTool {
-  name: string;
-  description: string;
-  input_schema: any;
-}
-
-/**
  * Mode for tool approval requirements
  */
 export type ApprovalMode =
@@ -77,35 +101,7 @@ export type ApprovalMode =
   | { type: 'filter'; tools: string[] };
 
 /**
- * Tool call definition
- */
-export interface ToolCall {
-  tool_call_id: string;
-  tool_name: string;
-  input: string;
-}
-
-/**
- * Tool result datastructure for external tool responses
- */
-export interface ToolResult {
-  tool_call_id: string;
-  result: any;
-  success: boolean;
-  error?: string;
-}
-
-/**
- * ToolHandler interface for handling external tool calls
- * Returns {} | null - if there's a value, add a new message with ToolResult
- * If no response, add a response saying "Skipped"
- */
-export interface ToolHandler {
-  (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
-}
-
-/**
- * Message metadata types for external tools and approval system
+ * Message metadata types for tool responses and content
  */
 export type MessageMetadata =
   | {
