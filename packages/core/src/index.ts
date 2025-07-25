@@ -1,11 +1,7 @@
-// Main client
+// Core client
 export { DistriClient } from './distri-client';
-
-// Enhanced agent class
 export { Agent } from './agent';
-
-// Event types
-export * from './events';
+export type { ToolCallState, InvokeConfig, InvokeResult } from './agent';
 
 // All types
 export type {
@@ -15,8 +11,6 @@ export type {
   ToolCall,
   ToolResult,
   ToolHandler,
-  ApprovalMode,
-  MessageMetadata,
   ModelSettings,
   McpDefinition,
   McpServerType,
@@ -26,30 +20,54 @@ export type {
   ChatProps,
   ConnectionStatus,
   DistriClientConfig,
-  
-  // Error types
-  DistriError,
-  A2AProtocolError,
-  ApiError,
-  ConnectionError,
-  
-  // A2A re-exports
-  AgentCard,
-  Message,
-  Task,
-  TaskStatus,
-  MessageSendParams,
-  TaskStatusUpdateEvent,
-  TaskArtifactUpdateEvent,
-  A2AStreamEventData,
+
+  // New Distri message types
+  DistriMessage,
+  DistriPart,
+  MessageRole,
+  CodeObservationPart,
+  ImagePart,
+  DataPart,
+  ToolCallPart,
+  ToolResultPart,
+  TextPart,
+  PlanPart,
+  FileType,
+  ToolResponse,
+  InvokeContext,
+  DistriStreamEvent,
 } from './types';
 
-// Agent types
+export {
+  isDistriMessage,
+  isDistriEvent,
+} from './types';
+
 export type {
-  InvokeConfig,
-  ToolCallState,
-  InvokeResult,
-} from './agent';
+  DistriEvent,
+  RunStartedEvent,
+  RunFinishedEvent,
+  RunErrorEvent,
+  TextMessageStartEvent,
+  TextMessageContentEvent,
+  TextMessageEndEvent,
+  ToolCallStartEvent,
+  ToolCallArgsEvent,
+  ToolCallEndEvent,
+  ToolCallResultEvent,
+  AgentHandoverEvent,
+} from './events';
+
+// Message converter utilities
+export {
+  convertA2AMessageToDistri,
+  convertDistriMessageToA2A,
+  convertA2APartToDistri,
+  convertDistriPartToA2A,
+  extractTextFromDistriMessage,
+  extractToolCallsFromDistriMessage,
+  extractToolResultsFromDistriMessage,
+} from './encoder';
 
 // Constants
 export { APPROVAL_REQUEST_TOOL_NAME } from './types';

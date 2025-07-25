@@ -6,6 +6,7 @@ import { useDistri } from './DistriProvider';
 
 export interface UseAgentOptions {
   agentId: string;
+  agent?: Agent;
   autoCreateAgent?: boolean;
 }
 

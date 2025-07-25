@@ -24,7 +24,16 @@ var index_exports = {};
 __export(index_exports, {
   APPROVAL_REQUEST_TOOL_NAME: () => APPROVAL_REQUEST_TOOL_NAME,
   Agent: () => Agent,
-  DistriClient: () => DistriClient
+  DistriClient: () => DistriClient,
+  convertA2AMessageToDistri: () => convertA2AMessageToDistri,
+  convertA2APartToDistri: () => convertA2APartToDistri,
+  convertDistriMessageToA2A: () => convertDistriMessageToA2A,
+  convertDistriPartToA2A: () => convertDistriPartToA2A,
+  extractTextFromDistriMessage: () => extractTextFromDistriMessage,
+  extractToolCallsFromDistriMessage: () => extractToolCallsFromDistriMessage,
+  extractToolResultsFromDistriMessage: () => extractToolResultsFromDistriMessage,
+  isDistriEvent: () => isDistriEvent,
+  isDistriMessage: () => isDistriMessage
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -421,6 +430,95 @@ var ApiError = class extends DistriError {
     this.name = "ApiError";
   }
 };
+function isDistriMessage(event) {
+  return "id" in event && "role" in event && "parts" in event;
+}
+function isDistriEvent(event) {
+  return "type" in event && "metadata" in event;
+}
+
+// src/encoder.ts
+function convertA2AMessageToDistri(a2aMessage) {
+  const role = a2aMessage.role === "agent" ? "assistant" : "user";
+  return {
+    id: a2aMessage.messageId,
+    role,
+    parts: a2aMessage.parts.map(convertA2APartToDistri),
+    created_at: a2aMessage.createdAt
+  };
+}
+function convertA2APartToDistri(a2aPart) {
+  switch (a2aPart.kind) {
+    case "text":
+      return { type: "text", text: a2aPart.text };
+    case "file":
+      return { type: "image", image: a2aPart.file };
+    case "tool_call":
+      return { type: "tool_call", tool_call: a2aPart.tool_call };
+    case "tool_result":
+      return { type: "tool_result", tool_result: a2aPart.tool_result };
+    case "code_observation":
+      return { type: "code_observation", thought: a2aPart.thought, code: a2aPart.code };
+    case "plan":
+      return { type: "plan", plan: a2aPart.plan };
+    case "data":
+      return { type: "data", data: a2aPart.data };
+    default:
+      return { type: "text", text: JSON.stringify(a2aPart) };
+  }
+}
+function convertDistriMessageToA2A(distriMessage, context) {
+  let role;
+  switch (distriMessage.role) {
+    case "assistant":
+      role = "agent";
+      break;
+    case "user":
+      role = "user";
+      break;
+    case "system":
+    case "tool":
+      role = "user";
+      break;
+    default:
+      role = "user";
+  }
+  return {
+    messageId: distriMessage.id,
+    role,
+    parts: distriMessage.parts.map(convertDistriPartToA2A),
+    kind: "message",
+    contextId: context.thread_id,
+    taskId: context.run_id
+  };
+}
+function convertDistriPartToA2A(distriPart) {
+  switch (distriPart.type) {
+    case "text":
+      return { kind: "text", text: distriPart.text };
+    case "image":
+      return { kind: "file", file: distriPart.image };
+    case "tool_call":
+      return { kind: "tool_call", tool_call: distriPart.tool_call };
+    case "tool_result":
+      return { kind: "tool_result", tool_result: distriPart.tool_result };
+    case "code_observation":
+      return { kind: "code_observation", thought: distriPart.thought, code: distriPart.code };
+    case "plan":
+      return { kind: "plan", plan: distriPart.plan };
+    case "data":
+      return { kind: "data", data: distriPart.data };
+  }
+}
+function extractTextFromDistriMessage(message) {
+  return message.parts.filter((part) => part.type === "text").map((part) => part.text).join("\n");
+}
+function extractToolCallsFromDistriMessage(message) {
+  return message.parts.filter((part) => part.type === "tool_call").map((part) => part.tool_call);
+}
+function extractToolResultsFromDistriMessage(message) {
+  return message.parts.filter((part) => part.type === "tool_result").map((part) => part.tool_result);
+}
 
 // src/distri-client.ts
 var DistriClient = class {
@@ -613,6 +711,24 @@ var DistriClient = class {
     }
   }
   /**
+   * Get messages from a thread as DistriMessage format
+   */
+  async getThreadMessagesAsDistri(threadId) {
+    const messages = await this.getThreadMessages(threadId);
+    return messages.map(convertA2AMessageToDistri);
+  }
+  /**
+   * Send a DistriMessage to a thread
+   */
+  async sendDistriMessage(threadId, message, context) {
+    const a2aMessage = convertDistriMessageToA2A(message, context);
+    const params = {
+      message: a2aMessage,
+      metadata: context.metadata
+    };
+    await this.sendMessage(threadId, params);
+  }
+  /**
    * Get the base URL for making direct requests
    */
   get baseUrl() {
@@ -684,6 +800,17 @@ var DistriClient = class {
     };
   }
   /**
+   * Create a DistriMessage instance
+   */
+  static initDistriMessage(role, parts, id, created_at) {
+    return {
+      id: id || uuidv4(),
+      role,
+      parts,
+      created_at
+    };
+  }
+  /**
    * Helper method to create message send parameters
    */
   static initMessageParams(message, configuration, metadata) {
@@ -696,6 +823,16 @@ var DistriClient = class {
         ...configuration
       },
       metadata
+    };
+  }
+  /**
+   * Create MessageSendParams from a DistriMessage using InvokeContext
+   */
+  static initDistriMessageParams(message, context) {
+    const a2aMessage = convertDistriMessageToA2A(message, context);
+    return {
+      message: a2aMessage,
+      metadata: context.metadata
     };
   }
 };
@@ -843,7 +980,20 @@ var Agent = class _Agent {
    */
   async invokeStream(params) {
     const enhancedParams = this.enhanceParamsWithTools(params);
-    return this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
+    const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
+    return async function* () {
+      for await (const event of a2aStream) {
+        if (event.kind === "message") {
+          yield convertA2AMessageToDistri(event);
+        } else if (event.kind === "status-update") {
+          yield event;
+        } else if (event.kind === "artifact-update") {
+          yield event;
+        } else {
+          yield event;
+        }
+      }
+    }();
   }
   /**
    * Enhance message params with tool definitions
@@ -877,6 +1027,15 @@ var Agent = class _Agent {
 0 && (module.exports = {
   APPROVAL_REQUEST_TOOL_NAME,
   Agent,
-  DistriClient
+  DistriClient,
+  convertA2AMessageToDistri,
+  convertA2APartToDistri,
+  convertDistriMessageToA2A,
+  convertDistriPartToA2A,
+  extractTextFromDistriMessage,
+  extractToolCallsFromDistriMessage,
+  extractToolResultsFromDistriMessage,
+  isDistriEvent,
+  isDistriMessage
 });
 //# sourceMappingURL=index.js.map

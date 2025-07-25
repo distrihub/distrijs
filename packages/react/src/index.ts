@@ -7,8 +7,6 @@ export { useTools } from './useTools';
 
 // Core components
 export { DistriProvider } from './DistriProvider';
-export { ChatContainer } from './components/ChatContainer';
-export { Chat } from './components/Chat';
 export { EmbeddableChat } from './components/EmbeddableChat';
 export { FullChat } from './components/FullChat';
 export { AppSidebar } from './components/AppSidebar';

@@ -4,10 +4,12 @@ import {
   DistriTool,
   ToolCall,
   ToolResult,
-  A2AStreamEventData,
-  APPROVAL_REQUEST_TOOL_NAME
+  APPROVAL_REQUEST_TOOL_NAME,
+  DistriMessage
 } from './types';
+import { convertA2AMessageToDistri } from './encoder';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
+import { DistriEvent } from './events';
 
 /**
  * Configuration for Agent invoke method
@@ -197,10 +199,28 @@ export class Agent {
   /**
    * Streaming invoke
    */
-  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<A2AStreamEventData>> {
+  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriEvent | DistriMessage>> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
-    return this.client.sendMessageStream(this.agentDefinition.id, enhancedParams) as AsyncGenerator<A2AStreamEventData>;
+    const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
+
+    return (async function* () {
+      for await (const event of a2aStream) {
+
+        if (event.kind === 'message') {
+          yield convertA2AMessageToDistri(event as Message);
+        }
+        else if (event.kind === 'status-update') {
+          yield event as unknown as DistriEvent;
+        }
+        else if (event.kind === 'artifact-update') {
+          yield event as unknown as DistriEvent;
+        }
+        else {
+          yield event as unknown as DistriEvent;
+        }
+      }
+    })();
   }
 
   /**

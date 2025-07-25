@@ -1,10 +1,11 @@
 import React from 'react';
-import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain } from 'lucide-react';
-import { ToolCallState, ToolCall } from '@distri/core';
+import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench } from 'lucide-react';
+import { ToolCallState, ToolCall, DistriMessage } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
 
 export interface BaseMessageProps {
   content?: string;
+  message?: DistriMessage;
   timestamp?: Date;
   className?: string;
   avatar?: React.ReactNode;
@@ -12,43 +13,57 @@ export interface BaseMessageProps {
 }
 
 export interface UserMessageProps extends BaseMessageProps {
-  content: string;
+  content?: string;
 }
 
 export interface AssistantMessageProps extends BaseMessageProps {
-  content: string;
+  content?: string;
+  message?: DistriMessage;
   isStreaming?: boolean;
   metadata?: any;
   name?: string;
 }
 
-export interface ToolCallProps {
-  toolCall: ToolCall | ToolCallState;
-  status?: 'pending' | 'running' | 'completed' | 'error';
-  result?: any;
-  error?: string;
-}
-
-export interface AssistantWithToolCallsProps extends AssistantMessageProps {
-  toolCalls: ToolCallProps[];
+export interface AssistantWithToolCallsProps extends BaseMessageProps {
+  content?: string;
+  message?: DistriMessage;
+  toolCalls: Array<{
+    toolCall: ToolCall;
+    status: ToolCallState;
+    result?: any;
+  }>;
+  timestamp?: Date;
+  isStreaming?: boolean;
 }
 
 export interface PlanMessageProps extends BaseMessageProps {
-  content: string;
-  duration?: number;
+  message?: DistriMessage;
+  plan: string;
   timestamp?: Date;
 }
 
-// Base Message Container
+export interface SystemMessageProps extends BaseMessageProps {
+  content: string;
+  timestamp?: Date;
+}
+
+export interface ToolMessageProps {
+  message: DistriMessage;
+  className?: string;
+}
+export interface DebugMessageProps extends BaseMessageProps {
+  className?: string;
+}
+
+// Message Container Component
 export const MessageContainer: React.FC<{
   children: React.ReactNode;
-  align: 'left' | 'right' | 'center';
+  align?: 'left' | 'center' | 'right';
   className?: string;
   backgroundColor?: string;
-}> = ({ children, align, className = '', backgroundColor }) => {
+}> = ({ children, align = 'left', className = '', backgroundColor }) => {
   const justifyClass = align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start';
 
-  // Use shadcn/ui convention for theme-aware backgrounds
   const getBgClass = (color: string) => {
     switch (color) {
       case '#343541':
@@ -73,43 +88,10 @@ export const MessageContainer: React.FC<{
   );
 };
 
-// Plan Message Component
-export const PlanMessage: React.FC<PlanMessageProps> = ({
-  content,
-  duration,
-  timestamp,
-  className = ''
-}) => {
-  return (
-    <MessageContainer align="center" className={className} backgroundColor="#444654">
-      <div className="flex items-start gap-4 py-6 px-4">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-600">
-          <Brain className="h-4 w-4 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
-            Thought{duration ? ` for ${duration}s` : ''}
-          </div>
-          <div className="prose prose-sm max-w-none text-white">
-            <MessageRenderer
-              content={content}
-              className="text-white"
-            />
-          </div>
-          {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
-              {timestamp.toLocaleTimeString()}
-            </div>
-          )}
-        </div>
-      </div>
-    </MessageContainer>
-  );
-};
-
 // User Message Component - ChatGPT style
 export const UserMessage: React.FC<UserMessageProps> = ({
   content,
+  message,
   timestamp,
   className = '',
   avatar
@@ -125,6 +107,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
           <div className="prose prose-sm max-w-none text-foreground">
             <MessageRenderer
               content={content}
+              message={message}
               className="text-foreground"
             />
           </div>
@@ -142,6 +125,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
 // Assistant Message Component - ChatGPT style
 export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   content,
+  message,
   timestamp,
   isStreaming = false,
   metadata: _metadata,
@@ -169,6 +153,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
           <div className="prose prose-sm max-w-none text-foreground">
             <MessageRenderer
               content={content}
+              message={message}
               className="text-foreground"
             />
           </div>
@@ -183,121 +168,16 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   );
 };
 
-// Tool Call Component - ChatGPT style
-export const Tool: React.FC<ToolCallProps> = ({
-  toolCall,
-  status = 'pending',
-  result,
-  error
-}) => {
-  const [isExpanded, setIsExpanded] = React.useState(true);
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-4 w-4 text-gray-400" />;
-      case 'running':
-        return <Settings className="h-4 w-4 text-blue-400 distri-animate-spin" />;
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-400" />;
-      case 'error':
-        return <XCircle className="h-4 w-4 text-red-400" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (status) {
-      case 'pending':
-        return 'border-gray-600 bg-gray-800/50';
-      case 'running':
-        return 'border-blue-500 bg-blue-900/20';
-      case 'completed':
-        return 'border-green-500/50 bg-green-900/20';
-      case 'error':
-        return 'border-red-500/50 bg-red-900/20';
-      default:
-        return 'border-gray-600 bg-gray-800/50';
-    }
-  };
-
-  const toolName = 'tool_name' in toolCall ? toolCall.tool_name : (toolCall as any).tool_name;
-  const toolId = 'tool_call_id' in toolCall ? toolCall.tool_call_id : (toolCall as any).tool_call_id;
-  const input = 'input' in toolCall ? toolCall.input : (toolCall as any).args;
-
-  // Always show the expand/collapse button if there's any content
-  const shouldShowExpand = input || result || error;
-
-  return (
-    <div className={`distri-tool ${getStatusColor()}`}>
-      <div
-        className="distri-tool-header"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-3 w-full">
-          {getStatusIcon()}
-          <span className="font-medium text-sm text-white flex-1">{toolName}</span>
-          <span className="text-xs text-gray-400 font-mono">{toolId}</span>
-          {shouldShowExpand && (
-            <button className="text-gray-400 hover:text-white transition-colors ml-2">
-              {isExpanded ? (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-gray-600/50">
-          {input && (
-            <div>
-              <div className="text-xs font-medium text-gray-300 mb-2">Input:</div>
-              <div className="distri-tool-content">
-                {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
-              </div>
-            </div>
-          )}
-
-          {result && (
-            <div>
-              <div className="text-xs font-medium text-gray-300 mb-2">Output:</div>
-              <div className="distri-tool-content">
-                {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div>
-              <div className="text-xs font-medium text-red-300 mb-2">Error:</div>
-              <div className="text-sm bg-red-900/20 border border-red-500/50 rounded p-3 text-red-200">
-                {error}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Assistant Message With Tool Calls - ChatGPT style
+// Assistant with Tool Calls Component
 export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   content,
+  message,
   toolCalls,
   timestamp,
   isStreaming = false,
-  metadata: _metadata,
   className = '',
-  avatar
+  avatar,
+  name = "Assistant"
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
@@ -306,41 +186,194 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           {avatar || <Bot className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white mb-2 flex items-center gap-2">
-            ChatGPT
+          <div className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+            {name}
             {isStreaming && (
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-75"></div>
-                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
               </div>
             )}
           </div>
 
-          {content && (
-            <div className="prose prose-sm max-w-none mb-4 text-white">
-              <MessageRenderer
-                content={content}
-                className="text-white"
-              />
-            </div>
-          )}
+          <div className="prose prose-sm max-w-none text-foreground">
+            <MessageRenderer
+              content={content}
+              message={message}
+              className="text-foreground"
+            />
+          </div>
 
+          {/* Tool Calls Section */}
           {toolCalls.length > 0 && (
-            <div className="space-y-3">
-              {toolCalls.map((toolCallProps, index) => (
-                <Tool key={index} {...toolCallProps} />
+            <div className="mt-4 space-y-3">
+              <div className="text-sm font-medium text-foreground">Tool Calls</div>
+              {toolCalls.map((toolCall, index) => (
+                <div key={index} className="border rounded-lg p-3 bg-background">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium text-foreground">
+                        {toolCall.toolCall.tool_name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!toolCall.status.running && !toolCall.result && (
+                        <div className="flex items-center gap-1 text-xs text-yellow-600">
+                          <Clock className="h-3 w-3" />
+                          Pending
+                        </div>
+                      )}
+                      {toolCall.status.running && (
+                        <div className="flex items-center gap-1 text-xs text-blue-600">
+                          <Settings className="h-3 w-3 animate-spin" />
+                          Running
+                        </div>
+                      )}
+                      {!toolCall.status.running && toolCall.result && (
+                        <div className="flex items-center gap-1 text-xs text-green-600">
+                          <CheckCircle className="h-3 w-3" />
+                          Completed
+                        </div>
+                      )}
+                      {!toolCall.status.running && !toolCall.result && toolCall.status.result === 'error' && (
+                        <div className="flex items-center gap-1 text-xs text-red-600">
+                          <XCircle className="h-3 w-3" />
+                          Failed
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Input: {JSON.stringify(toolCall.toolCall.input)}
+                  </div>
+
+                  {toolCall.result && (
+                    <div className="text-xs text-muted-foreground">
+                      Result: {JSON.stringify(toolCall.result)}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
 
           {timestamp && (
-            <div className="text-xs text-gray-400 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {timestamp.toLocaleTimeString()}
             </div>
           )}
         </div>
       </div>
     </MessageContainer>
+  );
+};
+
+// Plan Message Component
+export const PlanMessage: React.FC<PlanMessageProps> = ({
+  message,
+  plan,
+  timestamp,
+  className = '',
+  avatar
+}) => {
+  return (
+    <MessageContainer align="center" className={className} backgroundColor="#40414f">
+      <div className="flex items-start gap-4 py-6 px-4">
+        <div className="distri-avatar distri-avatar-plan">
+          {avatar || <Brain className="h-4 w-4" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-foreground mb-2">Plan</div>
+          <div className="prose prose-sm max-w-none text-foreground">
+            <MessageRenderer
+              content={plan}
+              message={message}
+              className="text-foreground"
+            />
+          </div>
+          {timestamp && (
+            <div className="text-xs text-muted-foreground mt-2">
+              {timestamp.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
+      </div>
+    </MessageContainer>
+  );
+};
+
+export const DebugMessage: React.FC<DebugMessageProps> = ({
+  message,
+  className = '',
+  timestamp
+}) => {
+  return (
+    <MessageContainer align="center" className={className} backgroundColor="#343541">
+      <div className="flex items-start gap-4 py-6 px-4">
+        <div className="prose prose-sm max-w-none text-foreground">
+          <MessageRenderer
+            content={JSON.stringify(message)}
+            className="text-foreground"
+          />
+        </div>
+        {timestamp && (
+          <div className="text-xs text-muted-foreground mt-2">
+            {timestamp.toLocaleTimeString()}
+          </div>
+        )}
+      </div>
+    </MessageContainer>
+  );
+};
+// System Message Component
+export const SystemMessage: React.FC<SystemMessageProps> = ({
+  content,
+  timestamp,
+  className = '',
+  avatar
+}) => {
+  return (
+    <MessageContainer align="center" className={className} backgroundColor="#343541">
+      <div className="flex items-start gap-4 py-6 px-4">
+        <div className="distri-avatar distri-avatar-system">
+          {avatar || <Settings className="h-4 w-4" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-foreground mb-2">System</div>
+          <div className="prose prose-sm max-w-none text-foreground">
+            <MessageRenderer
+              content={content}
+              className="text-foreground"
+            />
+          </div>
+          {timestamp && (
+            <div className="text-xs text-muted-foreground mt-2">
+              {timestamp.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
+      </div>
+    </MessageContainer>
+  );
+};
+
+export const ToolMessage: React.FC<ToolMessageProps> = ({ message, className = '' }) => {
+  return (
+    <div className={`flex items-start space-x-3 p-4 ${className}`}>
+      <div className="flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+          <Wrench className="w-4 h-4 text-orange-600" />
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center space-x-2 mb-2">
+          <span className="text-sm font-medium text-orange-700">Tool Response</span>
+        </div>
+        <MessageRenderer message={message} />
+      </div>
+    </div>
   );
 };

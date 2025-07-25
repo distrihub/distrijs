@@ -14,10 +14,6 @@ export interface UseToolsResult {
   hasTool: (toolName: string) => boolean;
 }
 
-/**
- * Hook for managing tools in an agent
- * Follows AG-UI pattern for tool registration
- */
 export function useTools({ agent }: UseToolsOptions): UseToolsResult {
   // Keep track of tools added through this hook
   const toolsRef = useRef<Set<string>>(new Set());

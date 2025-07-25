@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, ToolCallState } from '@distri/core';
 import { useChat } from '../useChat';
-import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
-import { shouldDisplayMessage, extractTextFromMessage, getMessageType } from '../utils/messageUtils';
+import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
+import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
 
 import { ChatInput } from './ChatInput';
+import { uuidv4 } from '../../../core/src/distri-client';
+import { useAgent } from '@/useAgent';
 
 export interface EmbeddableChatProps {
+  agent?: Agent;
   agentId: string;
   threadId?: string;
-  agent?: Agent;
   height?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -35,10 +37,12 @@ export interface EmbeddableChatProps {
   onMessagesUpdate?: () => void;
 }
 
+export type MessageComponentType = MessageRole | 'assistant_with_tools' | 'plan' | 'debug' | 'tool';
+
 export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
+  threadId = uuidv4(),
+  agent: defaultAgent,
   agentId,
-  threadId = 'default',
-  agent,
   height = '600px',
   className = '',
   style = {},
@@ -48,7 +52,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
-  theme: _theme = 'dark',
+  theme = 'dark',
   showDebug = false,
   showAgentSelector = true,
   placeholder = "Type your message...",
@@ -58,19 +62,19 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { agent } = useAgent({ agentId, agent: defaultAgent });
 
   const {
     messages,
-    loading,
-    error,
-    sendMessageStream,
+    isLoading,
     isStreaming,
+    error,
+    sendMessage: sendChatMessage
   } = useChat({
-    agentId,
     threadId,
-    agent,
+    agent: agent || undefined,
     metadata,
-    onMessagesUpdate,
+    onMessagesUpdate
   });
 
   // Auto-scroll to bottom when new messages arrive
@@ -81,90 +85,113 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   }, [messages]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || isLoading) return;
 
     const messageText = input.trim();
     setInput('');
 
     try {
-      await sendMessageStream(messageText, metadata);
+      await sendChatMessage(messageText);
     } catch (err) {
       console.error('Failed to send message:', err);
       setInput(messageText); // Restore input on error
     }
   };
 
+
+  const getMessageType = (message: DistriMessage): MessageComponentType => {
+    if (message.parts.some((part: DistriPart) => part.type === 'tool_call')) {
+      return 'assistant_with_tools';
+    }
+    if (message.parts.some((part: DistriPart) => part.type === 'plan')) {
+      return 'plan';
+    }
+    return message.role;
+  };
+
   const renderedMessages = useMemo(() => {
     return messages
       .filter(msg => shouldDisplayMessage(msg, showDebug))
       .map((message, index) => {
-        const messageType = getMessageType(message);
         const messageContent = extractTextFromMessage(message);
         const key = `message-${index}`;
 
         // Get timestamp from message metadata or parts
         const timestamp = (message as any).created_at ? new Date((message as any).created_at) : undefined;
 
-        switch (messageType) {
-          case 'user':
-            return (
-              <UserMessageComponent
-                key={key}
-                content={messageContent}
-                timestamp={timestamp}
-              />
-            );
+        if (isDistriMessage(message)) {
+          switch (getMessageType(message)) {
+            case 'user':
+              return (
+                <UserMessageComponent
+                  key={key}
+                  message={message}
+                  timestamp={timestamp}
+                />
+              );
 
-          case 'assistant':
-            return (
-              <AssistantMessageComponent
-                key={key}
-                name={agent?.name || agentId}
-                avatar={agent?.iconUrl || undefined}
-                content={messageContent}
-                timestamp={timestamp}
-                isStreaming={isStreaming && index === messages.length - 1}
-              />
-            );
+            case 'assistant':
+              return (
+                <AssistantMessageComponent
+                  key={key}
+                  name={agent?.name}
+                  avatar={agent?.iconUrl || undefined}
+                  message={message}
+                  timestamp={timestamp}
+                  isStreaming={isStreaming && index === messages.length - 1}
+                />
+              );
 
-          case 'assistant_with_tools':
-            // Extract tool calls from message parts or metadata
-            const toolCalls = (message.parts || [])
-              .filter((part: any) => part.tool_call)
-              .map((part: any) => ({
-                toolCall: part.tool_call,
-                status: 'completed' as const,
-                result: part.tool_result || 'Completed successfully',
-              }));
+            case 'assistant_with_tools':
+              // Extract tool calls from message parts or metadata
+              const toolCalls = (message.parts || [])
+                .filter((part: any) => part.tool_call)
+                .map((part: any) => ({
+                  toolCall: part.tool_call,
+                  status: { running: false } as ToolCallState,
+                  result: part.tool_result || 'Completed successfully',
+                }));
 
-            return (
-              <AssistantWithToolCallsComponent
-                key={key}
-                content={messageContent}
-                toolCalls={toolCalls}
-                timestamp={timestamp}
-                isStreaming={isStreaming && index === messages.length - 1}
-              />
-            );
+              return (
+                <AssistantWithToolCallsComponent
+                  key={key}
+                  message={message}
+                  toolCalls={toolCalls}
+                  timestamp={timestamp}
+                  isStreaming={isStreaming && index === messages.length - 1}
+                />
+              );
 
-          case 'plan':
-            return (
-              <PlanMessageComponent
-                key={key}
-                content={messageContent}
-                timestamp={timestamp}
-              />
-            );
+            case 'plan':
+              return (
+                <PlanMessageComponent
+                  key={key}
+                  message={message}
+                  plan={messageContent}
+                  timestamp={timestamp}
+                />
+              );
 
-          default:
-            return null;
+            case 'debug':
+              return (
+                <DebugMessage
+                  key={key}
+                  message={message}
+                  timestamp={timestamp}
+                />
+              );
+
+            default:
+              return null;
+          }
+        } else {
+          return null;
         }
       })
       .filter(Boolean);
   }, [
     messages,
     showDebug,
-    isStreaming,
     UserMessageComponent,
     AssistantMessageComponent,
     AssistantWithToolCallsComponent,
@@ -173,7 +200,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
   return (
     <div
-      className={`distri-chat ${className} w-full bg-background text-foreground flex flex-col relative`}
+      className={`distri-chat ${className} ${theme === 'dark' ? 'dark' : 'light'} w-full bg-background text-foreground flex flex-col relative`}
       style={{
         height,
         ...style
@@ -185,7 +212,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           <div className="mb-6">
             <AgentSelect
               agents={availableAgents}
-              selectedAgentId={agentId}
+              selectedAgentId={agent?.id}
               onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
               className="w-full"
             />
@@ -218,7 +245,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
               )}
 
               {/* Loading state */}
-              {loading && (
+              {isLoading && (
                 <div className="px-6 py-4 flex items-center space-x-2 bg-muted rounded-lg mt-4">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
                   <span className="text-muted-foreground text-sm">Thinking...</span>
@@ -251,7 +278,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                   console.log('Stop streaming');
                 }}
                 placeholder={placeholder}
-                disabled={loading}
+                disabled={isLoading}
                 isStreaming={isStreaming}
                 className="w-full"
               />
