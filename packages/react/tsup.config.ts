@@ -1,19 +1,19 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/index.ts'],
-  format: ['cjs', 'esm'],
+  entry: ['src/index.ts', 'src/globals.css'],
+  format: ['esm', 'cjs'],
   dts: true,
-  splitting: false,
-  sourcemap: true,
+  sourcemap: false,
   clean: true,
+  external: ['react', 'react-dom'],
+  injectStyle: false,
   minify: false,
-  external: [
-    'react', 
-    'react-dom', 
-    '@distri/core',
-    'lucide-react',
-    'react-markdown',
-    'react-syntax-highlighter'
-  ]
+  outDir: 'dist',
+  target: 'es2020',
+  esbuildOptions(options) {
+    options.banner = {
+      js: '"use client";'
+    }
+  }
 })

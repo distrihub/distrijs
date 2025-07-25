@@ -59,7 +59,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className={`relative flex min-h-14 w-full items-end ${className}`}>
       <div className="relative flex w-full flex-auto flex-col">
-        <div className="relative mx-5 flex min-h-14 flex-auto rounded-lg border  items-start bg-input">
+        <div className="relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start">
           <textarea
             ref={textareaRef}
             value={value}
@@ -68,24 +68,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             placeholder={placeholder}
             disabled={isDisabled}
             rows={1}
-            className="max-h-[25dvh] max-h-52 flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-20 text-foreground"
-            style={{
-              minHeight: '52px',
-              maxHeight: '120px',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-            }}
+            className="max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-20 text-foreground min-h-[52px] max-h-[120px]"
           />
           <div className="absolute right-2 bottom-2 flex items-center h-full">
             <button
               onClick={isStreaming ? handleStop : handleSend}
               disabled={!hasContent && !isStreaming}
               className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming
-                ? 'bg-red-500 hover:bg-red-600 text-white'
+                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                 : hasContent && !disabled
-                  ? 'bg-green-500 hover:bg-green-600 text-white'
-                  : 'bg-gray-600 text-gray-400 hover:bg-gray-600'
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted'
                 }`}
             >
               {isStreaming ? (
@@ -96,10 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </button>
           </div>
         </div>
-        <div className="justify-content-end relative ms-2 flex w-full flex-auto flex-col">
-          <div className="flex-auto"></div>
-        </div>
-        <div style={{ height: '48px' }}></div>
+        <div className="h-12"></div>
       </div>
     </div>
   );

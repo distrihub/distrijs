@@ -2,15 +2,17 @@
   "name": "@distri/react",
   "version": "0.1.7",
   "description": "React hooks and components for Distri Framework",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./globals.css": "./dist/globals.css"
   },
   "scripts": {
     "build": "tsup",
@@ -25,39 +27,30 @@
   "dependencies": {
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^15.5.0",
-    "lucide-react": "^0.525.0",
+    "lucide-react": "^0.460.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^3.3.1"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "@distri/core": "workspace:*"
+    "tailwind-merge": "^2.0.0",
+    "class-variance-authority": "^0.7.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@types/react": "^19.1.0",
+    "@distri/core": "workspace:*",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
     "@types/react-syntax-highlighter": "^15.5.0",
-    "@typescript-eslint/eslint-plugin": "^8.25.0",
-    "@typescript-eslint/parser": "^8.25.0",
-    "eslint": "^9.22.0",
-    "react": "^19.0.0",
-    "tsup": "^8.3.5",
-    "typescript": "^5.7.3"
+    "@types/node": "^20.0.0",
+    "eslint": "^8.57.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16"
   },
-  "keywords": [
-    "distri",
-    "react",
-    "hooks",
-    "threads",
-    "messages",
-    "chat",
-    "ai",
-    "agents"
-  ],
-  "author": "Distri Team",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/distrihub/distrijs.git",
-    "directory": "packages/react"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

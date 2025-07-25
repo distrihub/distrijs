@@ -5,7 +5,7 @@ import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage, getMessageType } from '../utils/messageUtils';
 import { AgentDropdown } from './AgentDropdown';
-import '../styles/themes.css';
+
 import { ChatInput } from './ChatInput';
 
 export interface EmbeddableChatProps {
@@ -47,7 +47,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
-  theme = 'dark',
+  theme: _theme = 'dark',
   showDebug = false,
   showAgentSelector = true,
   placeholder = "Type your message...",
