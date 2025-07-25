@@ -106,6 +106,7 @@ __export(index_exports, {
   useSidebar: () => useSidebar,
   useTheme: () => useTheme,
   useThreads: () => useThreads,
+  useToolManager: () => useToolManager,
   useTools: () => useTools
 });
 module.exports = __toCommonJS(index_exports);
@@ -1313,26 +1314,180 @@ function useAgents() {
 }
 
 // src/useChat.ts
+var import_react6 = require("react");
+
+// src/hooks/useToolManager.ts
 var import_react5 = require("react");
+function useToolManager(options = {}) {
+  const [toolCalls, setToolCalls] = (0, import_react5.useState)([]);
+  const [isExecuting, setIsExecuting] = (0, import_react5.useState)(false);
+  const toolsRef = (0, import_react5.useRef)(options.tools || {});
+  const onToolCompleteRef = (0, import_react5.useRef)(options.onToolComplete);
+  const onAllToolsCompleteRef = (0, import_react5.useRef)(options.onAllToolsComplete);
+  const autoExecuteRef = (0, import_react5.useRef)(options.autoExecute ?? false);
+  if (options.tools !== toolsRef.current) {
+    toolsRef.current = options.tools || {};
+  }
+  if (options.onToolComplete !== onToolCompleteRef.current) {
+    onToolCompleteRef.current = options.onToolComplete;
+  }
+  if (options.onAllToolsComplete !== onAllToolsCompleteRef.current) {
+    onAllToolsCompleteRef.current = options.onAllToolsComplete;
+  }
+  if (options.autoExecute !== autoExecuteRef.current) {
+    autoExecuteRef.current = options.autoExecute ?? false;
+  }
+  const addToolCalls = (0, import_react5.useCallback)((newToolCalls) => {
+    setToolCalls((prev) => {
+      const existingIds = new Set(prev.map((tc) => tc.toolCall.tool_call_id));
+      const newToolCallStates = newToolCalls.filter((tc) => !existingIds.has(tc.tool_call_id)).map((tc) => ({
+        toolCall: tc,
+        status: "pending",
+        startedAt: /* @__PURE__ */ new Date()
+      }));
+      return [...prev, ...newToolCallStates];
+    });
+    if (autoExecuteRef.current) {
+      newToolCalls.forEach((tc) => executeTool(tc));
+    }
+  }, []);
+  const executeTool = (0, import_react5.useCallback)(async (toolCall) => {
+    const toolHandler = toolsRef.current[toolCall.tool_name];
+    setToolCalls((prev) => prev.map(
+      (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "running", startedAt: /* @__PURE__ */ new Date() } : tc
+    ));
+    if (!toolHandler) {
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "user_action_required" } : tc
+      ));
+      return;
+    }
+    try {
+      const result = await toolHandler(toolCall.input);
+      const successResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result,
+        success: true
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "completed", result, completedAt: /* @__PURE__ */ new Date() } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, successResult);
+    } catch (error) {
+      const errorResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "error", error: errorResult.error, completedAt: /* @__PURE__ */ new Date() } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+    }
+  }, []);
+  const completeTool = (0, import_react5.useCallback)((toolCallId, result, success = true, error) => {
+    const toolResult = {
+      tool_call_id: toolCallId,
+      result,
+      success,
+      error
+    };
+    setToolCalls((prev) => prev.map(
+      (tc) => tc.toolCall.tool_call_id === toolCallId ? {
+        ...tc,
+        status: success ? "completed" : "error",
+        result,
+        error,
+        completedAt: /* @__PURE__ */ new Date()
+      } : tc
+    ));
+    onToolCompleteRef.current?.(toolCallId, toolResult);
+  }, []);
+  const executeAllTools = (0, import_react5.useCallback)(async (toolCallsToExecute) => {
+    setIsExecuting(true);
+    try {
+      addToolCalls(toolCallsToExecute);
+      const promises = toolCallsToExecute.map((toolCall) => executeTool(toolCall));
+      await Promise.all(promises);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const results = toolCallsToExecute.map((toolCall) => {
+        const state = toolCalls.find((tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id);
+        if (!state) {
+          return {
+            tool_call_id: toolCall.tool_call_id,
+            result: null,
+            success: false,
+            error: "Tool call not found in state"
+          };
+        }
+        return {
+          tool_call_id: toolCall.tool_call_id,
+          result: state.result,
+          success: state.status === "completed",
+          error: state.error
+        };
+      });
+      onAllToolsCompleteRef.current?.(results);
+      return results;
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [executeTool, addToolCalls, toolCalls]);
+  const clearToolCalls = (0, import_react5.useCallback)(() => {
+    setToolCalls([]);
+  }, []);
+  const getToolCallStatus = (0, import_react5.useCallback)((toolCallId) => {
+    return toolCalls.find((tc) => tc.toolCall.tool_call_id === toolCallId);
+  }, [toolCalls]);
+  return {
+    toolCalls,
+    executeTool,
+    completeTool,
+    executeAllTools,
+    clearToolCalls,
+    isExecuting,
+    addToolCalls,
+    getToolCallStatus
+  };
+}
+
+// src/useChat.ts
 function useChat({
   threadId,
   onMessage,
   onError,
   metadata,
   onMessagesUpdate,
-  agent
+  agent,
+  tools = {}
 }) {
-  const [messages, setMessages] = (0, import_react5.useState)([]);
-  const [isLoading, setIsLoading] = (0, import_react5.useState)(false);
-  const [isStreaming, setIsStreaming] = (0, import_react5.useState)(false);
-  const [error, setError] = (0, import_react5.useState)(null);
-  const abortControllerRef = (0, import_react5.useRef)(null);
-  const createInvokeContext = (0, import_react5.useCallback)(() => ({
+  const [messages, setMessages] = (0, import_react6.useState)([]);
+  const [isLoading, setIsLoading] = (0, import_react6.useState)(false);
+  const [isStreaming, setIsStreaming] = (0, import_react6.useState)(false);
+  const [error, setError] = (0, import_react6.useState)(null);
+  const abortControllerRef = (0, import_react6.useRef)(null);
+  const [toolResults, setToolResults] = (0, import_react6.useState)([]);
+  const {
+    toolCalls,
+    addToolCalls,
+    executeTool,
+    completeTool,
+    getToolCallStatus
+  } = useToolManager({
+    tools,
+    autoExecute: false,
+    // Don't auto-execute, let user control
+    onToolComplete: (_toolCallId, result) => {
+      setToolResults((prev) => [...prev, result]);
+    }
+  });
+  const createInvokeContext = (0, import_react6.useCallback)(() => ({
     thread_id: threadId,
     run_id: void 0,
     metadata
   }), [threadId, metadata]);
-  const fetchMessages = (0, import_react5.useCallback)(async () => {
+  const fetchMessages = (0, import_react6.useCallback)(async () => {
     if (!agent) return;
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
@@ -1346,12 +1501,12 @@ function useChat({
       onError?.(error2);
     }
   }, [threadId, agent, onError, onMessagesUpdate]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react6.useEffect)(() => {
     if (threadId) {
       fetchMessages();
     }
   }, [fetchMessages, threadId]);
-  const handleStreamEvent = (0, import_react5.useCallback)((event) => {
+  const handleStreamEvent = (0, import_react6.useCallback)((event) => {
     setMessages((prev) => {
       if (isDistriMessage(event)) {
         const distriMessage = event;
@@ -1372,9 +1527,17 @@ function useChat({
         return [...prev, event];
       }
     });
+    if (isDistriMessage(event)) {
+      const distriMessage = event;
+      const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
+      if (toolCallParts.length > 0) {
+        const toolCalls2 = toolCallParts.map((part) => part.tool_call);
+        addToolCalls(toolCalls2);
+      }
+    }
     onMessage?.(event);
-  }, [onMessage]);
-  const sendMessage = (0, import_react5.useCallback)(async (content) => {
+  }, [onMessage, tools]);
+  const sendMessage = (0, import_react6.useCallback)(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1412,7 +1575,7 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
-  const sendMessageStream = (0, import_react5.useCallback)(async (content) => {
+  const sendMessageStream = (0, import_react6.useCallback)(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1450,9 +1613,29 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
-  const clearMessages = (0, import_react5.useCallback)(() => {
+  const clearMessages = (0, import_react6.useCallback)(() => {
     setMessages([]);
   }, []);
+  const sendToolResults = (0, import_react6.useCallback)(async () => {
+    if (agent && toolResults.length > 0) {
+      const toolResultParts = toolResults.map((result) => ({
+        type: "tool_result",
+        tool_result: result
+      }));
+      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+      try {
+        await agent.invoke({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+        setToolResults([]);
+      } catch (err) {
+        console.error("Failed to send tool results:", err);
+      }
+    }
+  }, [agent, toolResults, createInvokeContext]);
   return {
     messages,
     isStreaming,
@@ -1461,18 +1644,24 @@ function useChat({
     isLoading,
     error,
     clearMessages,
-    agent: agent || void 0
+    agent: agent || void 0,
+    pendingToolCalls: toolCalls.map((tc) => tc.toolCall),
+    toolResults,
+    sendToolResults,
+    executeTool,
+    completeTool,
+    getToolCallStatus
   };
 }
 
 // src/useThreads.ts
-var import_react6 = require("react");
+var import_react7 = require("react");
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = (0, import_react6.useState)([]);
-  const [loading, setLoading] = (0, import_react6.useState)(true);
-  const [error, setError] = (0, import_react6.useState)(null);
-  const fetchThreads = (0, import_react6.useCallback)(async () => {
+  const [threads, setThreads] = (0, import_react7.useState)([]);
+  const [loading, setLoading] = (0, import_react7.useState)(true);
+  const [error, setError] = (0, import_react7.useState)(null);
+  const fetchThreads = (0, import_react7.useCallback)(async () => {
     if (!client) {
       console.log("[useThreads] Client not available, skipping fetch");
       return;
@@ -1491,7 +1680,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const fetchThread = (0, import_react6.useCallback)(async (threadId) => {
+  const fetchThread = (0, import_react7.useCallback)(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1503,7 +1692,7 @@ function useThreads() {
       throw err;
     }
   }, [client]);
-  const deleteThread = (0, import_react6.useCallback)(async (threadId) => {
+  const deleteThread = (0, import_react7.useCallback)(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1520,7 +1709,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = (0, import_react6.useCallback)(async (threadId, localId) => {
+  const updateThread = (0, import_react7.useCallback)(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -1544,7 +1733,7 @@ function useThreads() {
       console.warn("Failed to update thread:", err);
     }
   }, [client]);
-  (0, import_react6.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (clientLoading) {
       console.log("[useThreads] Client is loading, waiting...");
       setLoading(true);
@@ -1564,7 +1753,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchThreads]);
-  (0, import_react6.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (!client) return;
     const interval = setInterval(() => {
       console.log("[useThreads] Periodic refresh of threads");
@@ -1583,81 +1772,128 @@ function useThreads() {
   };
 }
 
-// src/useTools.ts
-var import_react7 = require("react");
-function useTools({ agent }) {
-  const toolsRef = (0, import_react7.useRef)(/* @__PURE__ */ new Set());
-  const registerTool = (0, import_react7.useCallback)((tool) => {
-    if (!agent) {
-      console.warn("Cannot add tool: no agent provided");
-      return;
-    }
-    agent.registerTool(tool);
-    toolsRef.current.add(tool.name);
-  }, [agent]);
-  const registerTools = (0, import_react7.useCallback)((tools) => {
-    if (!agent) {
-      console.warn("Cannot add tools: no agent provided");
-      return;
-    }
-    tools.forEach((tool) => {
-      agent.registerTool(tool);
-      toolsRef.current.add(tool.name);
-    });
-  }, [agent]);
-  const unregisterTool = (0, import_react7.useCallback)((toolName) => {
-    if (!agent) {
-      console.warn("Cannot remove tool: no agent provided");
-      return;
-    }
-    agent.unregisterTool(toolName);
-    toolsRef.current.delete(toolName);
-  }, [agent]);
-  const executeTool = (0, import_react7.useCallback)(async (toolCall) => {
-    if (!agent) {
-      return {
+// src/hooks/useTools.ts
+var import_react8 = require("react");
+function useTools(options = {}) {
+  const [toolCalls, setToolCalls] = (0, import_react8.useState)([]);
+  const [isExecuting, setIsExecuting] = (0, import_react8.useState)(false);
+  const toolsRef = (0, import_react8.useRef)(options.tools || {});
+  const onToolCompleteRef = (0, import_react8.useRef)(options.onToolComplete);
+  const onAllToolsCompleteRef = (0, import_react8.useRef)(options.onAllToolsComplete);
+  if (options.tools !== toolsRef.current) {
+    toolsRef.current = options.tools || {};
+  }
+  if (options.onToolComplete !== onToolCompleteRef.current) {
+    onToolCompleteRef.current = options.onToolComplete;
+  }
+  if (options.onAllToolsComplete !== onAllToolsCompleteRef.current) {
+    onAllToolsCompleteRef.current = options.onAllToolsComplete;
+  }
+  const executeTool = (0, import_react8.useCallback)(async (toolCall) => {
+    const toolHandler = toolsRef.current[toolCall.tool_name];
+    if (!toolHandler) {
+      const errorResult = {
         tool_call_id: toolCall.tool_call_id,
         result: null,
         success: false,
-        error: "No agent provided"
+        error: `Tool '${toolCall.tool_name}' not found`
       };
+      setToolCalls((prev) => [...prev, {
+        toolCall,
+        status: "error",
+        error: errorResult.error
+      }]);
+      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+      return;
     }
-    return agent.executeTool(toolCall);
-  }, [agent]);
-  const getTools = (0, import_react7.useCallback)(() => {
-    if (!agent) return [];
-    return agent.getTools();
-  }, [agent]);
-  const hasTool = (0, import_react7.useCallback)((toolName) => {
-    if (!agent) return false;
-    return agent.hasTool(toolName);
-  }, [agent]);
+    setToolCalls((prev) => [...prev, {
+      toolCall,
+      status: "pending"
+    }]);
+    try {
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "running" } : tc
+      ));
+      const result = await toolHandler(toolCall.input);
+      const successResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result,
+        success: true
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "completed", result } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, successResult);
+    } catch (error) {
+      const errorResult = {
+        tool_call_id: toolCall.tool_call_id,
+        result: null,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+      setToolCalls((prev) => prev.map(
+        (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "error", error: errorResult.error } : tc
+      ));
+      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+    }
+  }, []);
+  const executeAllTools = (0, import_react8.useCallback)(async (toolCallsToExecute) => {
+    setIsExecuting(true);
+    try {
+      const promises = toolCallsToExecute.map((toolCall) => executeTool(toolCall));
+      await Promise.all(promises);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const results = toolCallsToExecute.map((toolCall) => {
+        const state = toolCalls.find((tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id);
+        if (!state) {
+          return {
+            tool_call_id: toolCall.tool_call_id,
+            result: null,
+            success: false,
+            error: "Tool call not found in state"
+          };
+        }
+        return {
+          tool_call_id: toolCall.tool_call_id,
+          result: state.result,
+          success: state.status === "completed",
+          error: state.error
+        };
+      });
+      onAllToolsCompleteRef.current?.(results);
+      return results;
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [executeTool]);
+  const clearToolCalls = (0, import_react8.useCallback)(() => {
+    setToolCalls([]);
+  }, []);
   return {
-    registerTool,
-    registerTools,
-    unregisterTool,
+    toolCalls,
     executeTool,
-    getTools,
-    hasTool
+    executeAllTools,
+    clearToolCalls,
+    isExecuting
   };
 }
 
 // src/components/EmbeddableChat.tsx
-var import_react11 = require("react");
+var import_react12 = require("react");
 var import_lucide_react6 = require("lucide-react");
 
 // src/components/MessageComponents.tsx
 var import_lucide_react2 = require("lucide-react");
 
 // src/components/MessageRenderer.tsx
-var import_react9 = __toESM(require("react"), 1);
+var import_react10 = __toESM(require("react"), 1);
 var import_react_markdown = __toESM(require("react-markdown"), 1);
 var import_react_syntax_highlighter = require("react-syntax-highlighter");
 var import_prism = require("react-syntax-highlighter/dist/esm/styles/prism");
 var import_lucide_react = require("lucide-react");
 
 // src/components/ChatContext.tsx
-var import_react8 = __toESM(require("react"), 1);
+var import_react9 = __toESM(require("react"), 1);
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var defaultConfig = {
   theme: "auto",
@@ -1667,9 +1903,9 @@ var defaultConfig = {
   enableMarkdown: true,
   enableCodeHighlighting: true
 };
-var ChatContext = (0, import_react8.createContext)(null);
+var ChatContext = (0, import_react9.createContext)(null);
 var useChatConfig = () => {
-  const context = (0, import_react8.useContext)(ChatContext);
+  const context = (0, import_react9.useContext)(ChatContext);
   if (!context) {
     return {
       config: defaultConfig,
@@ -1683,7 +1919,7 @@ var useChatConfig = () => {
 // src/components/MessageRenderer.tsx
 var import_jsx_runtime4 = require("react/jsx-runtime");
 var CodeBlock = ({ language, children, inline = false, isDark = false }) => {
-  const [copied, setCopied] = import_react9.default.useState(false);
+  const [copied, setCopied] = import_react10.default.useState(false);
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(children);
@@ -1849,7 +2085,7 @@ var PlanComponent = ({ plan, isDark = false }) => {
 var PartRenderer = ({ part, isDark = false }) => {
   switch (part.type) {
     case "text":
-      return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: `whitespace-pre-wrap break-words ${isDark ? "text-gray-300" : "text-gray-700"}`, children: part.text });
+      return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: `whitespace-pre-wrap break-words ${isDark ? "text-white" : "text-gray-700"}`, children: part.text });
     case "code_observation":
       return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(CodeObservationComponent, { thought: part.thought, code: part.code, isDark });
     case "tool_call":
@@ -1895,7 +2131,7 @@ var MessageRenderer = ({
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: `space-y-2 ${className}`, children: message.parts.map((part, index) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PartRenderer, { part, isDark }, index)) });
   }
   if (!content) return null;
-  const hasMarkdownSyntax = (0, import_react9.useMemo)(() => {
+  const hasMarkdownSyntax = (0, import_react10.useMemo)(() => {
     if (!config.enableMarkdown) return false;
     const markdownPatterns = [
       /^#{1,6}\s+/m,
@@ -1923,7 +2159,7 @@ var MessageRenderer = ({
     ];
     return markdownPatterns.some((pattern) => pattern.test(content));
   }, [content, config.enableMarkdown]);
-  const looksLikeCode = (0, import_react9.useMemo)(() => {
+  const looksLikeCode = (0, import_react10.useMemo)(() => {
     if (!config.enableCodeHighlighting) return false;
     if (hasMarkdownSyntax) return false;
     const lines = content.split("\n");
@@ -1977,7 +2213,7 @@ var MessageRenderer = ({
     }, 0);
     return structureCount >= 3;
   }, [content, hasMarkdownSyntax, config.enableCodeHighlighting]);
-  const detectLanguage = (0, import_react9.useMemo)(() => {
+  const detectLanguage = (0, import_react10.useMemo)(() => {
     if (/\b(function|const|let|var|=>|console\.log)\b/.test(content)) return "javascript";
     if (/\b(interface|type|as\s+\w+)\b/.test(content)) return "typescript";
     if (/\b(def|import|from|print|if\s+\w+:)\b/.test(content)) return "python";
@@ -2155,21 +2391,25 @@ var AssistantWithToolCalls = ({
               /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "text-sm font-medium text-foreground", children: toolCall.toolCall.tool_name })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2", children: [
-              !toolCall.status.running && !toolCall.result && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-yellow-600", children: [
+              toolCall.status === "pending" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-yellow-600", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.Clock, { className: "h-3 w-3" }),
                 "Pending"
               ] }),
-              toolCall.status.running && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-blue-600", children: [
+              toolCall.status === "running" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-blue-600", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.Settings, { className: "h-3 w-3 animate-spin" }),
                 "Running"
               ] }),
-              !toolCall.status.running && toolCall.result && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
+              toolCall.status === "completed" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.CheckCircle, { className: "h-3 w-3" }),
                 "Completed"
               ] }),
-              !toolCall.status.running && !toolCall.result && toolCall.status.result === "error" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
+              toolCall.status === "error" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.XCircle, { className: "h-3 w-3" }),
                 "Failed"
+              ] }),
+              toolCall.status === "user_action_required" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-orange-600", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.Wrench, { className: "h-3 w-3" }),
+                "User Action Required"
               ] })
             ] })
           ] }),
@@ -2403,7 +2643,7 @@ var AgentSelect = ({
 };
 
 // src/components/ChatInput.tsx
-var import_react10 = require("react");
+var import_react11 = require("react");
 var import_lucide_react5 = require("lucide-react");
 var import_jsx_runtime8 = require("react/jsx-runtime");
 var ChatInput = ({
@@ -2416,8 +2656,8 @@ var ChatInput = ({
   isStreaming = false,
   className = ""
 }) => {
-  const textareaRef = (0, import_react10.useRef)(null);
-  (0, import_react10.useEffect)(() => {
+  const textareaRef = (0, import_react11.useRef)(null);
+  (0, import_react11.useEffect)(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -2492,22 +2732,25 @@ var EmbeddableChat = ({
   onResponse: _onResponse,
   onMessagesUpdate
 }) => {
-  const [input, setInput] = (0, import_react11.useState)("");
-  const messagesEndRef = (0, import_react11.useRef)(null);
+  const [input, setInput] = (0, import_react12.useState)("");
+  const messagesEndRef = (0, import_react12.useRef)(null);
   const { agent } = useAgent({ agentId, agent: defaultAgent });
   const {
     messages,
     isLoading,
     isStreaming,
     error,
-    sendMessage: sendChatMessage
+    sendMessage: sendChatMessage,
+    executeTool,
+    completeTool,
+    getToolCallStatus
   } = useChat({
     threadId,
     agent: agent || void 0,
     metadata,
     onMessagesUpdate
   });
-  (0, import_react11.useEffect)(() => {
+  (0, import_react12.useEffect)(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -2532,7 +2775,7 @@ var EmbeddableChat = ({
     }
     return message.role;
   };
-  const renderedMessages = (0, import_react11.useMemo)(() => {
+  const renderedMessages = (0, import_react12.useMemo)(() => {
     return messages.filter((msg) => shouldDisplayMessage(msg, showDebug)).map((message, index) => {
       const messageContent = extractTextFromMessage(message);
       const key = `message-${index}`;
@@ -2561,18 +2804,27 @@ var EmbeddableChat = ({
               key
             );
           case "assistant_with_tools":
-            const toolCalls = (message.parts || []).filter((part) => part.tool_call).map((part) => ({
-              toolCall: part.tool_call,
-              status: { running: false },
-              result: part.tool_result || "Completed successfully"
-            }));
+            const toolCalls = (message.parts || []).filter((part) => part.tool_call).map((part) => {
+              const toolCall = part.tool_call;
+              const status = getToolCallStatus?.(toolCall.tool_call_id);
+              return {
+                toolCall,
+                status: status?.status || "pending",
+                result: status?.result,
+                error: status?.error,
+                startedAt: status?.startedAt,
+                completedAt: status?.completedAt
+              };
+            });
             return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
               AssistantWithToolCallsComponent,
               {
                 message,
                 toolCalls,
                 timestamp,
-                isStreaming: isStreaming && index === messages.length - 1
+                isStreaming: isStreaming && index === messages.length - 1,
+                onExecuteTool: executeTool,
+                onCompleteTool: completeTool
               },
               key
             );
@@ -2667,14 +2919,14 @@ var EmbeddableChat = ({
 };
 
 // src/components/FullChat.tsx
-var import_react14 = require("react");
+var import_react15 = require("react");
 
 // src/components/AgentList.tsx
-var import_react12 = __toESM(require("react"), 1);
+var import_react13 = __toESM(require("react"), 1);
 var import_lucide_react7 = require("lucide-react");
 var import_jsx_runtime10 = require("react/jsx-runtime");
 var AgentList = ({ agents, onRefresh, onStartChat }) => {
-  const [refreshing, setRefreshing] = import_react12.default.useState(false);
+  const [refreshing, setRefreshing] = import_react13.default.useState(false);
   console.log("agents", agents);
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -2771,7 +3023,7 @@ var AgentsPage = ({ onStartChat }) => {
 var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
-var import_react13 = require("react");
+var import_react14 = require("react");
 var import_lucide_react10 = require("lucide-react");
 
 // src/components/ui/sidebar.tsx
@@ -3528,16 +3780,16 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = (0, import_react13.useState)(false);
-  const [editTitle, setEditTitle] = (0, import_react13.useState)(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = (0, import_react13.useState)(false);
-  const handleRename = (0, import_react13.useCallback)(() => {
+  const [isEditing, setIsEditing] = (0, import_react14.useState)(false);
+  const [editTitle, setEditTitle] = (0, import_react14.useState)(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = (0, import_react14.useState)(false);
+  const handleRename = (0, import_react14.useCallback)(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = (0, import_react13.useCallback)((e) => {
+  const handleKeyPress = (0, import_react14.useCallback)((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -3623,7 +3875,7 @@ function AppSidebar({
 }) {
   const { threads, loading: threadsLoading, refetch } = useThreads();
   const { theme, setTheme } = useTheme();
-  const handleRefresh = (0, import_react13.useCallback)(() => {
+  const handleRefresh = (0, import_react14.useCallback)(() => {
     refetch();
   }, [refetch]);
   return /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)(Sidebar, { children: [
@@ -3768,29 +4020,29 @@ var FullChat = ({
   availableAgents,
   onAgentSelect
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = (0, import_react14.useState)("default");
+  const [selectedThreadId, setSelectedThreadId] = (0, import_react15.useState)("default");
   const { threads, refetch: refetchThreads } = useThreads();
-  const [currentPage, setCurrentPage] = (0, import_react14.useState)("chat");
-  const [defaultOpen, setDefaultOpen] = (0, import_react14.useState)(true);
+  const [currentPage, setCurrentPage] = (0, import_react15.useState)("chat");
+  const [defaultOpen, setDefaultOpen] = (0, import_react15.useState)(true);
   const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
   const { theme } = useTheme();
-  (0, import_react14.useEffect)(() => {
+  (0, import_react15.useEffect)(() => {
     const savedState = localStorage.getItem("sidebar:state");
     if (savedState !== null) {
       setDefaultOpen(savedState === "true");
     }
   }, []);
-  const handleNewChat = (0, import_react14.useCallback)(() => {
+  const handleNewChat = (0, import_react15.useCallback)(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = (0, import_react14.useCallback)((threadId) => {
+  const handleThreadSelect = (0, import_react15.useCallback)((threadId) => {
     setCurrentPage("chat");
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = (0, import_react14.useCallback)((threadId) => {
+  const handleThreadDelete = (0, import_react15.useCallback)((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -3802,11 +4054,11 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = (0, import_react14.useCallback)((threadId, newTitle) => {
+  const handleThreadRename = (0, import_react15.useCallback)((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
-  const handleMessagesUpdate = (0, import_react14.useCallback)(() => {
+  const handleMessagesUpdate = (0, import_react15.useCallback)(() => {
     refetchThreads();
   }, [refetchThreads]);
   return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(
@@ -4169,5 +4421,6 @@ Textarea.displayName = "Textarea";
   useSidebar,
   useTheme,
   useThreads,
+  useToolManager,
   useTools
 });

@@ -271,7 +271,7 @@ const PartRenderer: React.FC<{
   switch (part.type) {
     case 'text':
       return (
-        <div className={`whitespace-pre-wrap break-words ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className={`whitespace-pre-wrap break-words ${isDark ? 'text-white' : 'text-gray-700'}`}>
           {part.text}
         </div>
       );

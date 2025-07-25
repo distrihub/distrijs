@@ -29,11 +29,16 @@ export interface AssistantWithToolCallsProps extends BaseMessageProps {
   message?: DistriMessage;
   toolCalls: Array<{
     toolCall: ToolCall;
-    status: ToolCallState;
+    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
     result?: any;
+    error?: string;
+    startedAt?: Date;
+    completedAt?: Date;
   }>;
   timestamp?: Date;
   isStreaming?: boolean;
+  onExecuteTool?: (toolCall: ToolCall) => void;
+  onCompleteTool?: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
 }
 
 export interface PlanMessageProps extends BaseMessageProps {
@@ -219,28 +224,34 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!toolCall.status.running && !toolCall.result && (
+                      {toolCall.status === 'pending' && (
                         <div className="flex items-center gap-1 text-xs text-yellow-600">
                           <Clock className="h-3 w-3" />
                           Pending
                         </div>
                       )}
-                      {toolCall.status.running && (
+                      {toolCall.status === 'running' && (
                         <div className="flex items-center gap-1 text-xs text-blue-600">
                           <Settings className="h-3 w-3 animate-spin" />
                           Running
                         </div>
                       )}
-                      {!toolCall.status.running && toolCall.result && (
+                      {toolCall.status === 'completed' && (
                         <div className="flex items-center gap-1 text-xs text-green-600">
                           <CheckCircle className="h-3 w-3" />
                           Completed
                         </div>
                       )}
-                      {!toolCall.status.running && !toolCall.result && toolCall.status.result === 'error' && (
+                      {toolCall.status === 'error' && (
                         <div className="flex items-center gap-1 text-xs text-red-600">
                           <XCircle className="h-3 w-3" />
                           Failed
+                        </div>
+                      )}
+                      {toolCall.status === 'user_action_required' && (
+                        <div className="flex items-center gap-1 text-xs text-orange-600">
+                          <Wrench className="h-3 w-3" />
+                          User Action Required
                         </div>
                       )}
                     </div>
