@@ -724,7 +724,7 @@ var Agent = class _Agent {
    * Initialize built-in tools
    */
   initializeBuiltinTools() {
-    this.addTool({
+    this.registerTool({
       name: APPROVAL_REQUEST_TOOL_NAME,
       description: "Request user approval for actions",
       parameters: {
@@ -744,19 +744,19 @@ var Agent = class _Agent {
   /**
    * Add a tool to the agent (AG-UI style)
    */
-  addTool(tool) {
-    this.tools.set(tool.name, tool.handler);
+  registerTool(tool) {
+    this.tools.set(tool.name, tool);
   }
   /**
    * Add multiple tools at once
    */
-  addTools(tools) {
-    tools.forEach((tool) => this.addTool(tool));
+  registerTools(tools) {
+    tools.forEach((tool) => this.registerTool(tool));
   }
   /**
    * Remove a tool
    */
-  removeTool(toolName) {
+  unregisterTool(toolName) {
     this.tools.delete(toolName);
   }
   /**
@@ -775,8 +775,8 @@ var Agent = class _Agent {
    * Execute a tool call
    */
   async executeTool(toolCall) {
-    const handler = this.tools.get(toolCall.tool_name);
-    if (!handler) {
+    const tool = this.tools.get(toolCall.tool_name);
+    if (!tool) {
       return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -785,7 +785,7 @@ var Agent = class _Agent {
       };
     }
     try {
-      const result = await handler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
       return {
         tool_call_id: toolCall.tool_call_id,
         result,

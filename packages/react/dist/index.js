@@ -702,7 +702,7 @@ var Agent = class _Agent {
    * Initialize built-in tools
    */
   initializeBuiltinTools() {
-    this.addTool({
+    this.registerTool({
       name: APPROVAL_REQUEST_TOOL_NAME,
       description: "Request user approval for actions",
       parameters: {
@@ -722,19 +722,19 @@ var Agent = class _Agent {
   /**
    * Add a tool to the agent (AG-UI style)
    */
-  addTool(tool) {
-    this.tools.set(tool.name, tool.handler);
+  registerTool(tool) {
+    this.tools.set(tool.name, tool);
   }
   /**
    * Add multiple tools at once
    */
-  addTools(tools) {
-    tools.forEach((tool) => this.addTool(tool));
+  registerTools(tools) {
+    tools.forEach((tool) => this.registerTool(tool));
   }
   /**
    * Remove a tool
    */
-  removeTool(toolName) {
+  unregisterTool(toolName) {
     this.tools.delete(toolName);
   }
   /**
@@ -753,8 +753,8 @@ var Agent = class _Agent {
    * Execute a tool call
    */
   async executeTool(toolCall) {
-    const handler = this.tools.get(toolCall.tool_name);
-    if (!handler) {
+    const tool = this.tools.get(toolCall.tool_name);
+    if (!tool) {
       return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -763,7 +763,7 @@ var Agent = class _Agent {
       };
     }
     try {
-      const result = await handler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
       return {
         tool_call_id: toolCall.tool_call_id,
         result,
@@ -1343,30 +1343,30 @@ function useThreads() {
 import { useCallback as useCallback5, useRef as useRef3 } from "react";
 function useTools({ agent }) {
   const toolsRef = useRef3(/* @__PURE__ */ new Set());
-  const addTool = useCallback5((tool) => {
+  const registerTool = useCallback5((tool) => {
     if (!agent) {
       console.warn("Cannot add tool: no agent provided");
       return;
     }
-    agent.addTool(tool);
+    agent.registerTool(tool);
     toolsRef.current.add(tool.name);
   }, [agent]);
-  const addTools = useCallback5((tools) => {
+  const registerTools = useCallback5((tools) => {
     if (!agent) {
       console.warn("Cannot add tools: no agent provided");
       return;
     }
     tools.forEach((tool) => {
-      agent.addTool(tool);
+      agent.registerTool(tool);
       toolsRef.current.add(tool.name);
     });
   }, [agent]);
-  const removeTool = useCallback5((toolName) => {
+  const unregisterTool = useCallback5((toolName) => {
     if (!agent) {
       console.warn("Cannot remove tool: no agent provided");
       return;
     }
-    agent.removeTool(toolName);
+    agent.unregisterTool(toolName);
     toolsRef.current.delete(toolName);
   }, [agent]);
   const executeTool = useCallback5(async (toolCall) => {
@@ -1389,73 +1389,14 @@ function useTools({ agent }) {
     return agent.hasTool(toolName);
   }, [agent]);
   return {
-    addTool,
-    addTools,
-    removeTool,
+    registerTool,
+    registerTools,
+    unregisterTool,
     executeTool,
     getTools,
     hasTool
   };
 }
-var createBuiltinTools = () => ({
-  /**
-   * Confirmation tool for user approval
-   */
-  confirm: {
-    name: "confirm",
-    description: "Ask user for confirmation",
-    parameters: {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Message to show to user" },
-        defaultValue: { type: "boolean", description: "Default value if user doesnt respond" }
-      },
-      required: ["message"]
-    },
-    handler: async (input) => {
-      const result = confirm(input.message);
-      return { confirmed: result };
-    }
-  },
-  /**
-   * Input request tool
-   */
-  input: {
-    name: "input",
-    description: "Request text input from user",
-    parameters: {
-      type: "object",
-      properties: {
-        prompt: { type: "string", description: "Prompt to show to user" },
-        placeholder: { type: "string", description: "Placeholder text" }
-      },
-      required: ["prompt"]
-    },
-    handler: async (input) => {
-      const result = prompt(input.prompt, input.placeholder);
-      return { input: result };
-    }
-  },
-  /**
-   * Notification tool
-   */
-  notify: {
-    name: "notify",
-    description: "Show notification to user",
-    parameters: {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Notification message" },
-        type: { type: "string", enum: ["info", "success", "warning", "error"], description: "Notification type" }
-      },
-      required: ["message"]
-    },
-    handler: async (input) => {
-      console.log(`[${input.type || "info"}] ${input.message}`);
-      return { notified: true };
-    }
-  }
-});
 
 // src/components/EmbeddableChat.tsx
 import { useState as useState7, useRef as useRef5, useEffect as useEffect7, useMemo as useMemo3 } from "react";
@@ -2388,8 +2329,8 @@ var EmbeddableChat = ({
             className: "w-full"
           }
         ) }) }),
-        /* @__PURE__ */ jsx9("div", { className: "flex-1 flex flex-col", children: /* @__PURE__ */ jsxs6("div", { className: "mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col", style: { maxWidth: "var(--thread-content-max-width)" }, children: [
-          /* @__PURE__ */ jsxs6("div", { className: "flex-1 overflow-y-auto distri-scroll bg-background", children: [
+        /* @__PURE__ */ jsx9("div", { className: "flex-1 flex flex-col min-h-0", children: /* @__PURE__ */ jsxs6("div", { className: "mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col", style: { maxWidth: "var(--thread-content-max-width)" }, children: [
+          /* @__PURE__ */ jsxs6("div", { className: "flex-1 overflow-y-auto distri-scroll bg-background min-h-0", children: [
             messages.length === 0 ? /* @__PURE__ */ jsx9("div", { className: "h-full flex items-center justify-center", children: /* @__PURE__ */ jsxs6("div", { className: "text-center", children: [
               /* @__PURE__ */ jsx9(MessageSquare, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
               /* @__PURE__ */ jsx9("h3", { className: "text-lg font-medium text-foreground mb-2", children: "Start a conversation" }),
@@ -4065,162 +4006,9 @@ var Textarea = React22.forwardRef(
   }
 );
 Textarea.displayName = "Textarea";
-
-// src/components/AgentDropdown.tsx
-import { useState as useState12, useRef as useRef7, useEffect as useEffect11 } from "react";
-import { ChevronDown as ChevronDown2, Bot as Bot6, Check as Check3 } from "lucide-react";
-import { jsx as jsx28, jsxs as jsxs16 } from "react/jsx-runtime";
-var AgentDropdown = ({
-  agents,
-  selectedAgentId,
-  onAgentSelect,
-  className = "",
-  placeholder = "Select an agent..."
-}) => {
-  const [isOpen, setIsOpen] = useState12(false);
-  const dropdownRef = useRef7(null);
-  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
-  useEffect11(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-  const handleAgentSelect = (agentId) => {
-    onAgentSelect(agentId);
-    setIsOpen(false);
-  };
-  return /* @__PURE__ */ jsxs16("div", { ref: dropdownRef, className: `distri-dropdown ${className}`, children: [
-    /* @__PURE__ */ jsxs16(
-      "button",
-      {
-        onClick: () => setIsOpen(!isOpen),
-        className: "distri-dropdown-trigger w-full",
-        children: [
-          /* @__PURE__ */ jsxs16("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
-            /* @__PURE__ */ jsx28("div", { className: "distri-avatar distri-avatar-assistant", children: /* @__PURE__ */ jsx28(Bot6, { className: "h-4 w-4" }) }),
-            /* @__PURE__ */ jsxs16("div", { className: "flex-1 text-left min-w-0", children: [
-              /* @__PURE__ */ jsx28("div", { className: "text-sm font-medium text-white truncate", children: selectedAgent?.name || placeholder }),
-              selectedAgent?.description && /* @__PURE__ */ jsx28("div", { className: "text-xs text-gray-400 truncate", children: selectedAgent.description })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsx28(
-            ChevronDown2,
-            {
-              className: `h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`
-            }
-          )
-        ]
-      }
-    ),
-    isOpen && /* @__PURE__ */ jsx28("div", { className: "distri-dropdown-content", children: agents.map((agent) => /* @__PURE__ */ jsx28(
-      "div",
-      {
-        onClick: () => handleAgentSelect(agent.id),
-        className: `distri-dropdown-item ${agent.id === selectedAgentId ? "selected" : ""}`,
-        children: /* @__PURE__ */ jsxs16("div", { className: "flex items-center space-x-3 w-full", children: [
-          /* @__PURE__ */ jsx28("div", { className: "distri-avatar distri-avatar-assistant", children: /* @__PURE__ */ jsx28(Bot6, { className: "h-4 w-4" }) }),
-          /* @__PURE__ */ jsxs16("div", { className: "flex-1 min-w-0", children: [
-            /* @__PURE__ */ jsxs16("div", { className: "flex items-center justify-between", children: [
-              /* @__PURE__ */ jsx28("div", { className: "text-sm font-medium text-white truncate", children: agent.name }),
-              agent.id === selectedAgentId && /* @__PURE__ */ jsx28(Check3, { className: "h-4 w-4 text-blue-400 flex-shrink-0 ml-2" })
-            ] }),
-            agent.description && /* @__PURE__ */ jsx28("div", { className: "text-xs text-gray-400 truncate", children: agent.description })
-          ] })
-        ] })
-      },
-      agent.id
-    )) })
-  ] });
-};
-
-// src/components/ApprovalDialog.tsx
-import { useState as useState13 } from "react";
-import { AlertTriangle, CheckCircle as CheckCircle2, XCircle as XCircle2 } from "lucide-react";
-import { jsx as jsx29, jsxs as jsxs17 } from "react/jsx-runtime";
-var ApprovalDialog = ({
-  toolCalls,
-  reason,
-  onApprove,
-  onDeny,
-  onCancel
-}) => {
-  const [isVisible, setIsVisible] = useState13(true);
-  if (!isVisible) return null;
-  const handleApprove = () => {
-    setIsVisible(false);
-    onApprove();
-  };
-  const handleDeny = () => {
-    setIsVisible(false);
-    onDeny();
-  };
-  const handleCancel = () => {
-    setIsVisible(false);
-    onCancel();
-  };
-  return /* @__PURE__ */ jsx29(DialogRoot, { children: /* @__PURE__ */ jsxs17(DialogContent, { children: [
-    /* @__PURE__ */ jsx29(DialogHeader, { children: /* @__PURE__ */ jsxs17("div", { className: "flex items-center", children: [
-      /* @__PURE__ */ jsx29(AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
-      /* @__PURE__ */ jsx29(DialogTitle, { children: "Tool Execution Approval" })
-    ] }) }),
-    /* @__PURE__ */ jsxs17("div", { className: "p-4", children: [
-      reason && /* @__PURE__ */ jsx29("div", { className: "mb-4", children: /* @__PURE__ */ jsx29("p", { className: "text-sm text-muted-foreground", children: reason }) }),
-      /* @__PURE__ */ jsxs17("div", { className: "mb-4", children: [
-        /* @__PURE__ */ jsx29("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
-        /* @__PURE__ */ jsx29("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ jsx29("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ jsxs17("div", { className: "flex-1", children: [
-          /* @__PURE__ */ jsx29("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
-          toolCall.input && /* @__PURE__ */ jsx29("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
-        ] }) }, toolCall.tool_call_id)) })
-      ] }),
-      /* @__PURE__ */ jsxs17("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
-        /* @__PURE__ */ jsxs17(
-          Button,
-          {
-            onClick: handleApprove,
-            variant: "default",
-            className: "flex-1",
-            children: [
-              /* @__PURE__ */ jsx29(CheckCircle2, { className: "w-4 h-4 mr-2" }),
-              "Approve"
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxs17(
-          Button,
-          {
-            onClick: handleDeny,
-            variant: "destructive",
-            className: "flex-1",
-            children: [
-              /* @__PURE__ */ jsx29(XCircle2, { className: "w-4 h-4 mr-2" }),
-              "Deny"
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsx29(
-          Button,
-          {
-            onClick: handleCancel,
-            variant: "outline",
-            children: "Cancel"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
-};
-var ApprovalDialog_default = ApprovalDialog;
 export {
-  AgentDropdown,
   AgentSelect,
   AppSidebar,
-  ApprovalDialog_default as ApprovalDialog,
   Badge,
   Button,
   Card,
@@ -4231,7 +4019,6 @@ export {
   CardTitle,
   Chat,
   ChatContainer,
-  ChatInput,
   DialogRoot as Dialog,
   DialogContent,
   DialogHeader,
@@ -4289,7 +4076,6 @@ export {
   TooltipProvider,
   TooltipTrigger,
   cn,
-  createBuiltinTools,
   useAgent,
   useAgents,
   useChat,

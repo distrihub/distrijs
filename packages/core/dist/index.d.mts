@@ -301,15 +301,15 @@ declare class Agent {
     /**
      * Add a tool to the agent (AG-UI style)
      */
-    addTool(tool: DistriTool): void;
+    registerTool(tool: DistriTool): void;
     /**
      * Add multiple tools at once
      */
-    addTools(tools: DistriTool[]): void;
+    registerTools(tools: DistriTool[]): void;
     /**
      * Remove a tool
      */
-    removeTool(toolName: string): void;
+    unregisterTool(toolName: string): void;
     /**
      * Get all registered tools
      */

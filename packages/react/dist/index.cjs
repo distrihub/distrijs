@@ -33,10 +33,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
-  AgentDropdown: () => AgentDropdown,
   AgentSelect: () => AgentSelect,
   AppSidebar: () => AppSidebar,
-  ApprovalDialog: () => ApprovalDialog_default,
   Badge: () => Badge,
   Button: () => Button,
   Card: () => Card,
@@ -47,7 +45,6 @@ __export(index_exports, {
   CardTitle: () => CardTitle,
   Chat: () => Chat,
   ChatContainer: () => ChatContainer,
-  ChatInput: () => ChatInput,
   Dialog: () => DialogRoot,
   DialogContent: () => DialogContent,
   DialogHeader: () => DialogHeader,
@@ -105,7 +102,6 @@ __export(index_exports, {
   TooltipProvider: () => TooltipProvider,
   TooltipTrigger: () => TooltipTrigger,
   cn: () => cn,
-  createBuiltinTools: () => createBuiltinTools,
   useAgent: () => useAgent,
   useAgents: () => useAgents,
   useChat: () => useChat,
@@ -815,7 +811,7 @@ var Agent = class _Agent {
    * Initialize built-in tools
    */
   initializeBuiltinTools() {
-    this.addTool({
+    this.registerTool({
       name: APPROVAL_REQUEST_TOOL_NAME,
       description: "Request user approval for actions",
       parameters: {
@@ -835,19 +831,19 @@ var Agent = class _Agent {
   /**
    * Add a tool to the agent (AG-UI style)
    */
-  addTool(tool) {
-    this.tools.set(tool.name, tool.handler);
+  registerTool(tool) {
+    this.tools.set(tool.name, tool);
   }
   /**
    * Add multiple tools at once
    */
-  addTools(tools) {
-    tools.forEach((tool) => this.addTool(tool));
+  registerTools(tools) {
+    tools.forEach((tool) => this.registerTool(tool));
   }
   /**
    * Remove a tool
    */
-  removeTool(toolName) {
+  unregisterTool(toolName) {
     this.tools.delete(toolName);
   }
   /**
@@ -866,8 +862,8 @@ var Agent = class _Agent {
    * Execute a tool call
    */
   async executeTool(toolCall) {
-    const handler = this.tools.get(toolCall.tool_name);
-    if (!handler) {
+    const tool = this.tools.get(toolCall.tool_name);
+    if (!tool) {
       return {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -876,7 +872,7 @@ var Agent = class _Agent {
       };
     }
     try {
-      const result = await handler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
       return {
         tool_call_id: toolCall.tool_call_id,
         result,
@@ -1456,30 +1452,30 @@ function useThreads() {
 var import_react7 = require("react");
 function useTools({ agent }) {
   const toolsRef = (0, import_react7.useRef)(/* @__PURE__ */ new Set());
-  const addTool = (0, import_react7.useCallback)((tool) => {
+  const registerTool = (0, import_react7.useCallback)((tool) => {
     if (!agent) {
       console.warn("Cannot add tool: no agent provided");
       return;
     }
-    agent.addTool(tool);
+    agent.registerTool(tool);
     toolsRef.current.add(tool.name);
   }, [agent]);
-  const addTools = (0, import_react7.useCallback)((tools) => {
+  const registerTools = (0, import_react7.useCallback)((tools) => {
     if (!agent) {
       console.warn("Cannot add tools: no agent provided");
       return;
     }
     tools.forEach((tool) => {
-      agent.addTool(tool);
+      agent.registerTool(tool);
       toolsRef.current.add(tool.name);
     });
   }, [agent]);
-  const removeTool = (0, import_react7.useCallback)((toolName) => {
+  const unregisterTool = (0, import_react7.useCallback)((toolName) => {
     if (!agent) {
       console.warn("Cannot remove tool: no agent provided");
       return;
     }
-    agent.removeTool(toolName);
+    agent.unregisterTool(toolName);
     toolsRef.current.delete(toolName);
   }, [agent]);
   const executeTool = (0, import_react7.useCallback)(async (toolCall) => {
@@ -1502,73 +1498,14 @@ function useTools({ agent }) {
     return agent.hasTool(toolName);
   }, [agent]);
   return {
-    addTool,
-    addTools,
-    removeTool,
+    registerTool,
+    registerTools,
+    unregisterTool,
     executeTool,
     getTools,
     hasTool
   };
 }
-var createBuiltinTools = () => ({
-  /**
-   * Confirmation tool for user approval
-   */
-  confirm: {
-    name: "confirm",
-    description: "Ask user for confirmation",
-    parameters: {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Message to show to user" },
-        defaultValue: { type: "boolean", description: "Default value if user doesnt respond" }
-      },
-      required: ["message"]
-    },
-    handler: async (input) => {
-      const result = confirm(input.message);
-      return { confirmed: result };
-    }
-  },
-  /**
-   * Input request tool
-   */
-  input: {
-    name: "input",
-    description: "Request text input from user",
-    parameters: {
-      type: "object",
-      properties: {
-        prompt: { type: "string", description: "Prompt to show to user" },
-        placeholder: { type: "string", description: "Placeholder text" }
-      },
-      required: ["prompt"]
-    },
-    handler: async (input) => {
-      const result = prompt(input.prompt, input.placeholder);
-      return { input: result };
-    }
-  },
-  /**
-   * Notification tool
-   */
-  notify: {
-    name: "notify",
-    description: "Show notification to user",
-    parameters: {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Notification message" },
-        type: { type: "string", enum: ["info", "success", "warning", "error"], description: "Notification type" }
-      },
-      required: ["message"]
-    },
-    handler: async (input) => {
-      console.log(`[${input.type || "info"}] ${input.message}`);
-      return { notified: true };
-    }
-  }
-});
 
 // src/components/EmbeddableChat.tsx
 var import_react12 = require("react");
@@ -2501,8 +2438,8 @@ var EmbeddableChat = ({
             className: "w-full"
           }
         ) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "flex-1 flex flex-col", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col", style: { maxWidth: "var(--thread-content-max-width)" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "flex-1 overflow-y-auto distri-scroll bg-background", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "flex-1 flex flex-col min-h-0", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "mx-auto flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col", style: { maxWidth: "var(--thread-content-max-width)" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "flex-1 overflow-y-auto distri-scroll bg-background min-h-0", children: [
             messages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "h-full flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "text-center", children: [
               /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react6.MessageSquare, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
               /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h3", { className: "text-lg font-medium text-foreground mb-2", children: "Start a conversation" }),
@@ -4178,163 +4115,10 @@ var Textarea = React22.forwardRef(
   }
 );
 Textarea.displayName = "Textarea";
-
-// src/components/AgentDropdown.tsx
-var import_react18 = require("react");
-var import_lucide_react13 = require("lucide-react");
-var import_jsx_runtime28 = require("react/jsx-runtime");
-var AgentDropdown = ({
-  agents,
-  selectedAgentId,
-  onAgentSelect,
-  className = "",
-  placeholder = "Select an agent..."
-}) => {
-  const [isOpen, setIsOpen] = (0, import_react18.useState)(false);
-  const dropdownRef = (0, import_react18.useRef)(null);
-  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
-  (0, import_react18.useEffect)(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-  const handleAgentSelect = (agentId) => {
-    onAgentSelect(agentId);
-    setIsOpen(false);
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { ref: dropdownRef, className: `distri-dropdown ${className}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)(
-      "button",
-      {
-        onClick: () => setIsOpen(!isOpen),
-        className: "distri-dropdown-trigger w-full",
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex items-center space-x-3 flex-1 min-w-0", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "distri-avatar distri-avatar-assistant", children: /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(import_lucide_react13.Bot, { className: "h-4 w-4" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex-1 text-left min-w-0", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "text-sm font-medium text-white truncate", children: selectedAgent?.name || placeholder }),
-              selectedAgent?.description && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "text-xs text-gray-400 truncate", children: selectedAgent.description })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(
-            import_lucide_react13.ChevronDown,
-            {
-              className: `h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`
-            }
-          )
-        ]
-      }
-    ),
-    isOpen && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "distri-dropdown-content", children: agents.map((agent) => /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(
-      "div",
-      {
-        onClick: () => handleAgentSelect(agent.id),
-        className: `distri-dropdown-item ${agent.id === selectedAgentId ? "selected" : ""}`,
-        children: /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex items-center space-x-3 w-full", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "distri-avatar distri-avatar-assistant", children: /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(import_lucide_react13.Bot, { className: "h-4 w-4" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex-1 min-w-0", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)("div", { className: "flex items-center justify-between", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "text-sm font-medium text-white truncate", children: agent.name }),
-              agent.id === selectedAgentId && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(import_lucide_react13.Check, { className: "h-4 w-4 text-blue-400 flex-shrink-0 ml-2" })
-            ] }),
-            agent.description && /* @__PURE__ */ (0, import_jsx_runtime28.jsx)("div", { className: "text-xs text-gray-400 truncate", children: agent.description })
-          ] })
-        ] })
-      },
-      agent.id
-    )) })
-  ] });
-};
-
-// src/components/ApprovalDialog.tsx
-var import_react19 = require("react");
-var import_lucide_react14 = require("lucide-react");
-var import_jsx_runtime29 = require("react/jsx-runtime");
-var ApprovalDialog = ({
-  toolCalls,
-  reason,
-  onApprove,
-  onDeny,
-  onCancel
-}) => {
-  const [isVisible, setIsVisible] = (0, import_react19.useState)(true);
-  if (!isVisible) return null;
-  const handleApprove = () => {
-    setIsVisible(false);
-    onApprove();
-  };
-  const handleDeny = () => {
-    setIsVisible(false);
-    onDeny();
-  };
-  const handleCancel = () => {
-    setIsVisible(false);
-    onCancel();
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(DialogRoot, { children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)(DialogContent, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(DialogHeader, { children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex items-center", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(import_lucide_react14.AlertTriangle, { className: "w-6 h-6 text-yellow-500 mr-3" }),
-      /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(DialogTitle, { children: "Tool Execution Approval" })
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "p-4", children: [
-      reason && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("p", { className: "text-sm text-muted-foreground", children: reason }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "mb-4", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("h4", { className: "text-sm font-medium mb-2", children: "Tools to execute:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "space-y-2", children: toolCalls.map((toolCall) => /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "flex items-center p-2 bg-muted rounded", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex-1", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("p", { className: "text-sm font-medium", children: toolCall.tool_name }),
-          toolCall.input && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("p", { className: "text-xs text-muted-foreground mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input) })
-        ] }) }, toolCall.tool_call_id)) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex items-center justify-end space-x-2 p-6 pt-0", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)(
-          Button,
-          {
-            onClick: handleApprove,
-            variant: "default",
-            className: "flex-1",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(import_lucide_react14.CheckCircle, { className: "w-4 h-4 mr-2" }),
-              "Approve"
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)(
-          Button,
-          {
-            onClick: handleDeny,
-            variant: "destructive",
-            className: "flex-1",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(import_lucide_react14.XCircle, { className: "w-4 h-4 mr-2" }),
-              "Deny"
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(
-          Button,
-          {
-            onClick: handleCancel,
-            variant: "outline",
-            children: "Cancel"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
-};
-var ApprovalDialog_default = ApprovalDialog;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  AgentDropdown,
   AgentSelect,
   AppSidebar,
-  ApprovalDialog,
   Badge,
   Button,
   Card,
@@ -4345,7 +4129,6 @@ var ApprovalDialog_default = ApprovalDialog;
   CardTitle,
   Chat,
   ChatContainer,
-  ChatInput,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -4403,7 +4186,6 @@ var ApprovalDialog_default = ApprovalDialog;
   TooltipProvider,
   TooltipTrigger,
   cn,
-  createBuiltinTools,
   useAgent,
   useAgents,
   useChat,
