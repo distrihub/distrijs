@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from './ui/sidebar';
 import { AgentSelect } from './AgentSelect';
 import { useAgent } from '@/useAgent';
 import { useTheme } from './ThemeProvider';
+import { uuidv4 } from '../../../core/src/distri-client';
 
 
 export interface FullChatProps {
@@ -55,7 +56,7 @@ export const FullChat: React.FC<FullChatProps> = ({
   availableAgents,
   onAgentSelect,
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = useState<string>('default');
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(uuidv4());
   const { threads, refetch: refetchThreads } = useThreads();
   const [currentPage, setCurrentPage] = useState<PageType>('chat');
   const [defaultOpen, setDefaultOpen] = useState(true);
@@ -127,7 +128,8 @@ export const FullChat: React.FC<FullChatProps> = ({
           {/* Header with agent selector only */}
           <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
             <div className="flex items-center gap-2 flex-1">
-              <SidebarTrigger className="-ml-1" />              {availableAgents && availableAgents.length > 0 && (
+              <SidebarTrigger className="-ml-1" />
+              {availableAgents && availableAgents.length > 0 && (
                 <div className="w-64">
                   <AgentSelect
                     agents={availableAgents}
@@ -144,7 +146,6 @@ export const FullChat: React.FC<FullChatProps> = ({
           <main className="flex-1 overflow-hidden">
             {currentPage === 'chat' && agent && (
               <EmbeddableChat
-                agentId={agentId}
                 threadId={selectedThreadId}
                 showAgentSelector={false}
                 agent={agent}

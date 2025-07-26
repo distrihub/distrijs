@@ -119,10 +119,15 @@ type CodeObservationPart = {
     thought: string;
     code: string;
 };
-type ImagePart = {
-    type: 'image';
-    image: FileType;
+type ImageUrlPart = {
+    type: 'image_url';
+    image: FileUrl;
 };
+type ImageBytesPart = {
+    type: 'image_bytes';
+    image: FileBytes;
+};
+type ImagePart = ImageUrlPart | ImageBytesPart;
 type DataPart = {
     type: 'data';
     data: any;
@@ -143,10 +148,15 @@ type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCa
 /**
  * File type for images
  */
-interface FileType {
+interface FileBytes {
     mime_type: string;
     data: string;
-    filename?: string;
+    name?: string;
+}
+interface FileUrl {
+    mime_type: string;
+    url: string;
+    name?: string;
 }
 /**
  * Tool definition interface following AG-UI pattern
@@ -155,7 +165,7 @@ interface DistriTool {
     name: string;
     description: string;
     parameters: any;
-    handler: ToolHandler$3;
+    handler: ToolHandler;
 }
 /**
  * Tool call from agent
@@ -178,7 +188,7 @@ type ToolResponse = ToolResult;
 /**
  * Tool handler function
  */
-interface ToolHandler$3 {
+interface ToolHandler {
     (input: any): Promise<any> | any;
 }
 /**
@@ -377,7 +387,7 @@ declare class Agent$1 {
     /**
      * Get all registered tools
      */
-    getTools(): string[];
+    getTools(): DistriTool[];
     /**
      * Check if a tool is registered
      */
@@ -386,10 +396,6 @@ declare class Agent$1 {
      * Execute a tool call
      */
     executeTool(toolCall: ToolCall): Promise<ToolResult>;
-    /**
-     * Get tool definitions for context metadata
-     */
-    getToolDefinitions(): Record<string, any>;
     /**
      * Get agent information
      */
@@ -448,9 +454,6 @@ interface UseAgentsResult {
 }
 declare function useAgents(): UseAgentsResult;
 
-interface ToolHandler$2 {
-    (input: any): Promise<any> | any;
-}
 interface UseChatOptions {
     threadId: string;
     agent?: Agent$1;
@@ -458,7 +461,7 @@ interface UseChatOptions {
     onError?: (error: Error) => void;
     metadata?: any;
     onMessagesUpdate?: () => void;
-    tools?: Record<string, ToolHandler$2>;
+    tools?: DistriTool[];
 }
 interface UseChatReturn {
     messages: DistriStreamEvent[];
@@ -489,57 +492,98 @@ interface UseThreadsResult {
 }
 declare function useThreads(): UseThreadsResult;
 
-interface ToolCallState$1 {
-    toolCall: ToolCall;
-    status: 'pending' | 'running' | 'completed' | 'error';
-    result?: any;
-    error?: string;
-}
-interface ToolHandler$1 {
-    (input: any): Promise<any> | any;
-}
 interface UseToolsOptions {
-    tools?: Record<string, ToolHandler$1>;
-    onToolComplete?: (toolCallId: string, result: ToolResult) => void;
-    onAllToolsComplete?: (results: ToolResult[]) => void;
+    agent?: Agent$1;
+    tools?: DistriTool[];
 }
-interface UseToolsReturn {
-    toolCalls: ToolCallState$1[];
-    executeTool: (toolCall: ToolCall) => Promise<void>;
-    executeAllTools: (toolCalls: ToolCall[]) => Promise<ToolResult[]>;
-    clearToolCalls: () => void;
-    isExecuting: boolean;
-}
-declare function useTools(options?: UseToolsOptions): UseToolsReturn;
-
-interface ToolCallState {
-    toolCall: ToolCall;
-    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-    result?: any;
-    error?: string;
-    startedAt?: Date;
-    completedAt?: Date;
-}
-interface ToolHandler {
-    (input: any): Promise<any> | any;
-}
-interface UseToolManagerOptions {
-    tools?: Record<string, ToolHandler>;
-    autoExecute?: boolean;
-    onToolComplete?: (toolCallId: string, result: ToolResult) => void;
-    onAllToolsComplete?: (results: ToolResult[]) => void;
-}
-interface UseToolManagerReturn {
-    toolCalls: ToolCallState[];
-    executeTool: (toolCall: ToolCall) => Promise<void>;
-    completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
-    executeAllTools: (toolCalls: ToolCall[]) => Promise<ToolResult[]>;
-    clearToolCalls: () => void;
-    isExecuting: boolean;
-    addToolCalls: (toolCalls: ToolCall[]) => void;
-    getToolCallStatus: (toolCallId: string) => ToolCallState | undefined;
-}
-declare function useToolManager(options?: UseToolManagerOptions): UseToolManagerReturn;
+declare function useTools({ agent, tools }: UseToolsOptions): void;
+/**
+ * Built-in tool definitions
+ */
+declare const createBuiltinTools: () => {
+    /**
+     * Confirmation tool for user approval
+     */
+    confirm: {
+        name: string;
+        description: string;
+        parameters: {
+            type: string;
+            properties: {
+                message: {
+                    type: string;
+                    description: string;
+                };
+                defaultValue: {
+                    type: string;
+                    description: string;
+                };
+            };
+            required: string[];
+        };
+        handler: (input: {
+            message: string;
+            defaultValue?: boolean;
+        }) => Promise<{
+            confirmed: boolean;
+        }>;
+    };
+    /**
+     * Input request tool
+     */
+    input: {
+        name: string;
+        description: string;
+        parameters: {
+            type: string;
+            properties: {
+                prompt: {
+                    type: string;
+                    description: string;
+                };
+                placeholder: {
+                    type: string;
+                    description: string;
+                };
+            };
+            required: string[];
+        };
+        handler: (input: {
+            prompt: string;
+            placeholder?: string;
+        }) => Promise<{
+            input: string | null;
+        }>;
+    };
+    /**
+     * Notification tool
+     */
+    notify: {
+        name: string;
+        description: string;
+        parameters: {
+            type: string;
+            properties: {
+                message: {
+                    type: string;
+                    description: string;
+                };
+                type: {
+                    type: string;
+                    enum: string[];
+                    description: string;
+                };
+            };
+            required: string[];
+        };
+        handler: (input: {
+            message: string;
+            type?: string;
+        }) => Promise<{
+            notified: boolean;
+        }>;
+    };
+};
 
 interface DistriProviderProps {
     config: DistriClientConfig;
@@ -549,13 +593,13 @@ interface DistriProviderProps {
 declare function DistriProvider({ config, children, defaultTheme }: DistriProviderProps): react_jsx_runtime.JSX.Element;
 
 interface EmbeddableChatProps {
-    agent?: Agent$1;
-    agentId: string;
+    agent: Agent$1;
     threadId?: string;
     height?: string;
     className?: string;
     style?: React__default.CSSProperties;
     metadata?: any;
+    tools?: DistriTool[];
     availableAgents?: Array<{
         id: string;
         name: string;
@@ -803,4 +847,4 @@ declare const SelectSeparator: React$1.ForwardRefExoticComponent<Omit<SelectPrim
 
 declare function cn(...inputs: ClassValue[]): string;
 
-export { AgentSelect, AppSidebar, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, Textarea, ThemeProvider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, cn, useAgent, useAgents, useChat, useSidebar, useTheme, useThreads, useToolManager, useTools };
+export { AgentSelect, AppSidebar, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, MessageRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, Textarea, ThemeProvider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, cn, createBuiltinTools, useAgent, useAgents, useChat, useSidebar, useTheme, useThreads, useTools };

@@ -1,26 +1,40 @@
-import { useMemo, useEffect, useRef } from 'react';
-import { DistriProvider, EmbeddableChat, useAgent, useTools } from '@distri/react';
-import { MapPin, Navigation, AlertCircle } from 'lucide-react';
+import { useMemo, useRef, useState, useCallback } from 'react';
+import { DistriProvider, EmbeddableChat, useAgent } from '@distri/react';
+import { AlertCircle } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import GoogleMapsManager, { GoogleMapsManagerRef } from './components/GoogleMapsManager';
 import { getTools } from './Tools';
+import { DistriTool } from '@distri/core';
+import { uuidv4 } from '../../../packages/core/src/distri-client';
 
 // Environment variables validation
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const DISTRI_API_URL = import.meta.env.VITE_DISTRI_API_URL || 'http://localhost:8080/api/v1';
 
-function MapsChat() {
-  const { agent, loading } = useAgent({ agentId: 'maps-navigator' });
-  const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
-  const { addTools } = useTools({ agent });
+function getThreadId() {
+  const threadId = localStorage.getItem('MapsDemo:threadId');
+  if (!threadId) {
+    const newThreadId = uuidv4();
+    localStorage.setItem('MapsDemo:threadId', newThreadId);
+    return newThreadId;
+  }
+  return threadId;
+}
 
-  // Register Google Maps tools when agent and map manager are ready
-  useEffect(() => {
-    if (agent && mapManagerRef.current) {
-      const mapTools = getTools(mapManagerRef);
-      addTools(mapTools);
-    }
-  }, [agent, addTools]);
+function MapsChat() {
+  const { agent, loading } = useAgent({ agentId: 'maps-navigator', autoCreateAgent: true });
+  const [selectedThreadId] = useState<string>(getThreadId());
+  const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
+  const [tools, setTools] = useState<DistriTool[]>([]);
+
+  // Get tools when map manager is ready
+  const handleMapReady = useCallback((mapRef: GoogleMapsManagerRef) => {
+    console.log('Map manager is ready, getting tools...');
+    const mapTools = getTools(mapRef);
+    const toolsArray = Object.values(mapTools) as DistriTool[];
+    console.log('Created tools array:', toolsArray.map(t => t.name));
+    setTools(toolsArray);
+  }, []);
 
   if (loading) {
     return (
@@ -33,28 +47,38 @@ function MapsChat() {
     );
   }
 
+  if (!agent) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+          <span className="text-gray-600">Loading Agent...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Google Maps Panel */}
-
-      <GoogleMapsManager
-        ref={mapManagerRef}
-        defaultCenter={{ lat: 37.7749, lng: -122.4194 }} // San Francisco
-        defaultZoom={13}
-      />
-
+      <div className="flex-1">
+        <GoogleMapsManager
+          ref={mapManagerRef}
+          defaultCenter={{ lat: 37.7749, lng: -122.4194 }} // San Francisco
+          defaultZoom={13}
+          onReady={handleMapReady}
+        />
+      </div>
 
       {/* Chat Panel */}
       <div className="w-96">
         <div className="h-full">
-          {agent && (
+          {!loading && agent && tools.length > 0 && (
             <EmbeddableChat
-              agentId="maps-navigator"
               agent={agent}
-              height="100%"
-              threadId="maps-session-2"
-              placeholder="Ask about locations, directions, or nearby places..."
+              tools={tools}
               theme="dark"
+              threadId={selectedThreadId}
               showDebug={true}
             />
           )}
