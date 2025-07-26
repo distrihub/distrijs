@@ -72,42 +72,8 @@ export function useChat({
     metadata
   }), [threadId, metadata]);
 
-  // Auto-send tool results when all tools are completed
-  const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
-    if (agent && toolResults.length > 0) {
-      console.log('Auto-sending tool results:', toolResults);
-      
-      const toolResultParts: DistriPart[] = toolResults.map(result => ({
-        type: 'tool_result',
-        tool_result: result
-      }));
-
-      const toolResultMessage = DistriClient.initDistriMessage('tool', toolResultParts);
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
-
-      try {
-        setIsLoading(true);
-        await agent.invoke({
-          message: a2aMessage,
-          metadata: context.metadata
-        });
-        
-        // Clear tool results after sending
-        toolCallState.clearToolResults();
-      } catch (err) {
-        console.error('Failed to send tool results:', err);
-        setError(err instanceof Error ? err : new Error('Failed to send tool results'));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [agent, createInvokeContext]);
-
-  // Tool state management with auto-send when all completed
-  const toolCallState = useToolCallState({
-    onAllToolsCompleted: sendToolResultsToAgent
-  });
+  // Tool state management with auto-send when all completed  
+  const toolCallState = useToolCallState();
 
   // Register tools with agent
   useTools({ agent, tools });
@@ -221,6 +187,61 @@ export function useChat({
 
     onMessage?.(event);
   }, [onMessage, agent]);
+
+  // Auto-send tool results when all tools are completed (streaming)
+  const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
+    if (agent && toolResults.length > 0) {
+      console.log('Auto-sending tool results via streaming:', toolResults);
+      
+      setIsLoading(true);
+      setIsStreaming(true);
+      setError(null);
+
+      // Cancel any existing stream
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      try {
+        const toolResultParts: DistriPart[] = toolResults.map(result => ({
+          type: 'tool_result',
+          tool_result: result
+        }));
+
+        const toolResultMessage = DistriClient.initDistriMessage('tool', toolResultParts);
+        const context = createInvokeContext();
+        const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+
+        // Start streaming tool results
+        const stream = await agent.invokeStream({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+
+        for await (const event of stream) {
+          if (abortControllerRef.current?.signal.aborted) {
+            break;
+          }
+          handleStreamEvent(event);
+        }
+        
+        // Clear tool results after successful streaming
+        toolCallState.clearToolResults();
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          // Stream was cancelled, don't show error
+          return;
+        }
+        console.error('Failed to send tool results:', err);
+        setError(err instanceof Error ? err : new Error('Failed to send tool results'));
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+        abortControllerRef.current = null;
+      }
+    }
+  }, [agent, createInvokeContext, handleStreamEvent]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
