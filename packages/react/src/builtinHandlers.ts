@@ -11,12 +11,12 @@ export const createBuiltinTools = () => [
     parameters: {
       type: 'object',
       properties: {
-        reason: { 
-          type: 'string', 
-          description: 'Reason for the approval request' 
+        reason: {
+          type: 'string',
+          description: 'Reason for the approval request'
         },
-        tool_calls: { 
-          type: 'array', 
+        tool_calls: {
+          type: 'array',
           description: 'Tool calls that need approval',
           items: { type: 'object' }
         }
@@ -32,12 +32,12 @@ export const createBuiltinTools = () => [
     parameters: {
       type: 'object',
       properties: {
-        message: { 
-          type: 'string', 
-          description: 'Message to display in the toast' 
+        message: {
+          type: 'string',
+          description: 'Message to display in the toast'
         },
-        type: { 
-          type: 'string', 
+        type: {
+          type: 'string',
           enum: ['success', 'error', 'warning', 'info'],
           description: 'Type of toast notification',
           default: 'info'
@@ -55,8 +55,3 @@ export const createBuiltinTools = () => [
  */
 export const createApprovalTool = () => createBuiltinTools()[0];
 export const createToastTool = () => createBuiltinTools()[1];
-
-// Legacy exports for backwards compatibility
-export const createBuiltinToolHandlers = () => ({});
-export const initializeBuiltinHandlers = () => {};
-export const initializeSimpleBuiltinHandlers = () => {}; 

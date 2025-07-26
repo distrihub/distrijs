@@ -34,6 +34,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 var index_exports = {};
 __export(index_exports, {
   AgentSelect: () => AgentSelect,
+  ApprovalToolCall: () => ApprovalToolCall,
   AssistantMessage: () => AssistantMessage,
   AssistantWithToolCalls: () => AssistantWithToolCalls,
   Badge: () => Badge,
@@ -99,6 +100,7 @@ __export(index_exports, {
   Textarea: () => Textarea,
   ThemeProvider: () => ThemeProvider,
   ThemeToggle: () => ThemeToggle,
+  ToastToolCall: () => ToastToolCall,
   Tooltip: () => Tooltip,
   TooltipContent: () => TooltipContent,
   TooltipProvider: () => TooltipProvider,
@@ -106,11 +108,9 @@ __export(index_exports, {
   UserMessage: () => UserMessage,
   cn: () => cn,
   createApprovalTool: () => createApprovalTool,
-  createBuiltinToolHandlers: () => createBuiltinToolHandlers,
   createBuiltinTools: () => createBuiltinTools,
   createToastTool: () => createToastTool,
   extractTextFromMessage: () => extractTextFromMessage,
-  initializeBuiltinHandlers: () => initializeBuiltinHandlers,
   shouldDisplayMessage: () => shouldDisplayMessage,
   useAgent: () => useAgent,
   useAgents: () => useAgents,
@@ -1280,15 +1280,12 @@ function useAgents() {
   const [error, setError] = (0, import_react4.useState)(null);
   const fetchAgents = (0, import_react4.useCallback)(async () => {
     if (!client) {
-      console.log("[useAgents] Client not available, skipping fetch");
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      console.log("[useAgents] Fetching agents...");
       const fetchedAgents = await client.getAgents();
-      console.log("[useAgents] Fetched agents:", fetchedAgents);
       setAgents(fetchedAgents);
     } catch (err) {
       console.error("[useAgents] Failed to fetch agents:", err);
@@ -1313,7 +1310,6 @@ function useAgents() {
   }, [client]);
   (0, import_react4.useEffect)(() => {
     if (clientLoading) {
-      console.log("[useAgents] Client is loading, waiting...");
       setLoading(true);
       return;
     }
@@ -1324,7 +1320,6 @@ function useAgents() {
       return;
     }
     if (client) {
-      console.log("[useAgents] Client ready, fetching agents");
       fetchAgents();
     } else {
       console.log("[useAgents] No client available");
@@ -1355,7 +1350,6 @@ function useTools({ agent, tools }) {
     if (lastAgentIdRef.current === agent.id) {
       return;
     }
-    console.log(`Registering ${tools.length} tools for agent: ${agent.id}`);
     tools.forEach((tool) => {
       if (!registeredToolsRef.current.has(tool.name)) {
         agent.registerTool(tool);
@@ -1387,6 +1381,13 @@ function useChat({
   const [toolCalls, setToolCalls] = (0, import_react6.useState)([]);
   const [toolCallStatuses, setToolCallStatuses] = (0, import_react6.useState)(/* @__PURE__ */ new Map());
   useTools({ agent, tools });
+  (0, import_react6.useEffect)(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
   const agentIdRef = (0, import_react6.useRef)(void 0);
   (0, import_react6.useEffect)(() => {
     if (agent?.id !== agentIdRef.current) {
@@ -1426,11 +1427,9 @@ function useChat({
       if (isDistriMessage(event)) {
         const distriMessage = event;
         const existingMessageIndex = prev.findIndex((msg) => isDistriMessage(msg) && msg.id && msg.id === distriMessage.id);
-        console.log("distriMessage", distriMessage);
         if (existingMessageIndex >= 0) {
           const updatedMessages = [...prev];
           const existingMessage = updatedMessages[existingMessageIndex];
-          console.log("existingMessage", existingMessageIndex, existingMessage);
           const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
           updatedMessages[existingMessageIndex] = {
             ...existingMessage,
@@ -1445,7 +1444,6 @@ function useChat({
       }
     });
     if (isDistriMessage(event)) {
-      console.log("event", event);
       const distriMessage = event;
       const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
       if (toolCallParts.length > 0) {
@@ -1487,7 +1485,6 @@ function useChat({
   }, [onMessage, agent]);
   const sendMessage = (0, import_react6.useCallback)(async (content) => {
     if (!agent) return;
-    console.log(agent);
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
@@ -1650,6 +1647,11 @@ function useChat({
       }
     }
   }, [agent, toolResults, createInvokeContext]);
+  const stopStreaming = (0, import_react6.useCallback)(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
   return {
     messages,
     isStreaming,
@@ -1664,7 +1666,8 @@ function useChat({
     sendToolResults,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    stopStreaming
   };
 }
 
@@ -1677,15 +1680,12 @@ function useThreads() {
   const [error, setError] = (0, import_react7.useState)(null);
   const fetchThreads = (0, import_react7.useCallback)(async () => {
     if (!client) {
-      console.log("[useThreads] Client not available, skipping fetch");
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      console.log("[useThreads] Fetching threads...");
       const fetchedThreads = await client.getThreads();
-      console.log("[useThreads] Fetched threads:", fetchedThreads);
       setThreads(fetchedThreads);
     } catch (err) {
       console.error("[useThreads] Failed to fetch threads:", err);
@@ -1749,28 +1749,23 @@ function useThreads() {
   }, [client]);
   (0, import_react7.useEffect)(() => {
     if (clientLoading) {
-      console.log("[useThreads] Client is loading, waiting...");
       setLoading(true);
       return;
     }
     if (clientError) {
-      console.error("[useThreads] Client error:", clientError);
       setError(clientError);
       setLoading(false);
       return;
     }
     if (client) {
-      console.log("[useThreads] Client ready, fetching threads");
       fetchThreads();
     } else {
-      console.log("[useThreads] No client available");
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchThreads]);
   (0, import_react7.useEffect)(() => {
     if (!client) return;
     const interval = setInterval(() => {
-      console.log("[useThreads] Periodic refresh of threads");
       fetchThreads();
     }, 3e4);
     return () => clearInterval(interval);
@@ -2281,12 +2276,14 @@ var ApprovalToolCall = ({
   status
 }) => {
   const [isProcessing, setIsProcessing] = (0, import_react10.useState)(false);
+  console.log("approval tool call", toolCall, status);
   const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
   const reason = input.reason || "Approval required";
   const toolCallsToApprove = input.tool_calls || [];
   const handleResponse = async (approved) => {
     if (isProcessing || status === "completed") return;
     setIsProcessing(true);
+    console.log("approval tool call", toolCall, approved);
     const result = {
       approved,
       reason: approved ? "Approved by user" : "Denied by user",
@@ -3143,7 +3140,8 @@ var EmbeddableChat = ({
     executeTool,
     completeTool,
     getToolCallStatus,
-    toolResults
+    toolResults,
+    stopStreaming
   } = useChat({
     threadId,
     agent: agent || void 0,
@@ -3151,7 +3149,6 @@ var EmbeddableChat = ({
     metadata,
     onMessagesUpdate
   });
-  console.log("tools", tools);
   (0, import_react14.useEffect)(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -3308,9 +3305,7 @@ var EmbeddableChat = ({
               value: input,
               onChange: setInput,
               onSend: sendMessage,
-              onStop: () => {
-                console.log("Stop streaming");
-              },
+              onStop: stopStreaming,
               placeholder,
               disabled: isLoading,
               isStreaming,
@@ -3330,7 +3325,6 @@ var import_lucide_react10 = require("lucide-react");
 var import_jsx_runtime15 = require("react/jsx-runtime");
 var AgentList = ({ agents, onRefresh, onStartChat }) => {
   const [refreshing, setRefreshing] = import_react15.default.useState(false);
-  console.log("agents", agents);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -3402,7 +3396,6 @@ var AgentsPage = ({ onStartChat }) => {
     await refetch();
   };
   const handleStartChat = (agent) => {
-    console.log("Starting chat with agent:", agent.name);
     onStartChat?.(agent);
   };
   if (loading) {
@@ -4881,12 +4874,10 @@ var createBuiltinTools = () => [
 ];
 var createApprovalTool = () => createBuiltinTools()[0];
 var createToastTool = () => createBuiltinTools()[1];
-var createBuiltinToolHandlers = () => ({});
-var initializeBuiltinHandlers = () => {
-};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AgentSelect,
+  ApprovalToolCall,
   AssistantMessage,
   AssistantWithToolCalls,
   Badge,
@@ -4952,6 +4943,7 @@ var initializeBuiltinHandlers = () => {
   Textarea,
   ThemeProvider,
   ThemeToggle,
+  ToastToolCall,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -4959,11 +4951,9 @@ var initializeBuiltinHandlers = () => {
   UserMessage,
   cn,
   createApprovalTool,
-  createBuiltinToolHandlers,
   createBuiltinTools,
   createToastTool,
   extractTextFromMessage,
-  initializeBuiltinHandlers,
   shouldDisplayMessage,
   useAgent,
   useAgents,

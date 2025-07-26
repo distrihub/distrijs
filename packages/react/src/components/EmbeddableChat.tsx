@@ -71,7 +71,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     executeTool,
     completeTool,
     getToolCallStatus,
-    toolResults
+    toolResults,
+    stopStreaming
   } = useChat({
     threadId,
     agent: agent || undefined,
@@ -79,8 +80,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     metadata,
     onMessagesUpdate
   });
-
-  console.log('tools', tools);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -298,10 +297,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                 value={input}
                 onChange={setInput}
                 onSend={sendMessage}
-                onStop={() => {
-                  // Stop streaming - this would need to be implemented in the useChat hook
-                  console.log('Stop streaming');
-                }}
+                onStop={stopStreaming}
                 placeholder={placeholder}
                 disabled={isLoading}
                 isStreaming={isStreaming}

@@ -38,6 +38,7 @@ export interface UseChatReturn {
   executeTool: (toolCall: ToolCall) => Promise<void>;
   completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
   getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
+  stopStreaming: () => void;
 }
 
 interface ToolCallStatus {
@@ -71,6 +72,15 @@ export function useChat({
 
   // Register tools with agent
   useTools({ agent, tools });
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Reset state when agent changes
   const agentIdRef = useRef<string | undefined>(undefined);
@@ -122,13 +132,11 @@ export function useChat({
         const distriMessage = event as DistriMessage;
         const existingMessageIndex = prev
           .findIndex(msg => isDistriMessage(msg) && msg.id && msg.id === distriMessage.id);
-        console.log('distriMessage', distriMessage);
 
         if (existingMessageIndex >= 0) {
           // Update existing message by merging parts
           const updatedMessages = [...prev];
           const existingMessage = updatedMessages[existingMessageIndex] as DistriMessage;
-          console.log('existingMessage', existingMessageIndex, existingMessage);
           // Merge parts from the new message into the existing one
           const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
 
@@ -149,7 +157,6 @@ export function useChat({
 
     // Handle tool calls and results automatically
     if (isDistriMessage(event)) {
-      console.log('event', event);
       const distriMessage = event as DistriMessage;
 
       // Process tool calls
@@ -201,8 +208,6 @@ export function useChat({
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
-
-    console.log(agent);
 
     setIsLoading(true);
     setIsStreaming(true);
@@ -416,6 +421,12 @@ export function useChat({
     }
   }, [agent, toolResults, createInvokeContext]);
 
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
   return {
     messages,
     isStreaming,
@@ -430,6 +441,7 @@ export function useChat({
     sendToolResults,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    stopStreaming
   };
 } 

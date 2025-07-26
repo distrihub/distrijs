@@ -24,7 +24,7 @@ export {
 } from './components/MessageComponents';
 
 // Built-in tools
-export { 
+export {
   createBuiltinTools,
   createApprovalTool,
   createToastTool
@@ -36,11 +36,6 @@ export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
 // Utilities
 export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
 
-// Legacy exports
-export { 
-  createBuiltinToolHandlers,
-  initializeBuiltinHandlers 
-} from './builtinHandlers';
 
 // UI Components - shadcn
 export * from './components/ui';

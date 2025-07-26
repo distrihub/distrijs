@@ -15,22 +15,24 @@ export const ApprovalToolCall: React.FC<ApprovalToolCallProps> = ({
   status
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
+  console.log('approval tool call', toolCall, status);
   const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
   const reason = input.reason || 'Approval required';
   const toolCallsToApprove = input.tool_calls || [];
 
   const handleResponse = async (approved: boolean) => {
     if (isProcessing || status === 'completed') return;
-    
+
     setIsProcessing(true);
-    
+
+    console.log('approval tool call', toolCall, approved);
     const result = {
       approved,
       reason: approved ? 'Approved by user' : 'Denied by user',
       tool_calls: toolCallsToApprove
     };
-    
+
     onComplete(result, true);
   };
 
@@ -59,9 +61,9 @@ export const ApprovalToolCall: React.FC<ApprovalToolCallProps> = ({
         <AlertTriangle className="h-4 w-4 text-amber-500" />
         <span className="font-medium">Approval Required</span>
       </div>
-      
+
       <p className="text-sm mb-4">{reason}</p>
-      
+
       {toolCallsToApprove.length > 0 && (
         <div className="mb-4">
           <p className="text-xs text-muted-foreground mb-2">Tool calls requiring approval:</p>
@@ -74,7 +76,7 @@ export const ApprovalToolCall: React.FC<ApprovalToolCallProps> = ({
           </div>
         </div>
       )}
-      
+
       <div className="flex gap-2">
         <Button
           size="sm"

@@ -1160,15 +1160,12 @@ function useAgents() {
   const [error, setError] = useState4(null);
   const fetchAgents = useCallback2(async () => {
     if (!client) {
-      console.log("[useAgents] Client not available, skipping fetch");
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      console.log("[useAgents] Fetching agents...");
       const fetchedAgents = await client.getAgents();
-      console.log("[useAgents] Fetched agents:", fetchedAgents);
       setAgents(fetchedAgents);
     } catch (err) {
       console.error("[useAgents] Failed to fetch agents:", err);
@@ -1193,7 +1190,6 @@ function useAgents() {
   }, [client]);
   useEffect3(() => {
     if (clientLoading) {
-      console.log("[useAgents] Client is loading, waiting...");
       setLoading(true);
       return;
     }
@@ -1204,7 +1200,6 @@ function useAgents() {
       return;
     }
     if (client) {
-      console.log("[useAgents] Client ready, fetching agents");
       fetchAgents();
     } else {
       console.log("[useAgents] No client available");
@@ -1235,7 +1230,6 @@ function useTools({ agent, tools }) {
     if (lastAgentIdRef.current === agent.id) {
       return;
     }
-    console.log(`Registering ${tools.length} tools for agent: ${agent.id}`);
     tools.forEach((tool) => {
       if (!registeredToolsRef.current.has(tool.name)) {
         agent.registerTool(tool);
@@ -1267,6 +1261,13 @@ function useChat({
   const [toolCalls, setToolCalls] = useState5([]);
   const [toolCallStatuses, setToolCallStatuses] = useState5(/* @__PURE__ */ new Map());
   useTools({ agent, tools });
+  useEffect5(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
   const agentIdRef = useRef3(void 0);
   useEffect5(() => {
     if (agent?.id !== agentIdRef.current) {
@@ -1306,11 +1307,9 @@ function useChat({
       if (isDistriMessage(event)) {
         const distriMessage = event;
         const existingMessageIndex = prev.findIndex((msg) => isDistriMessage(msg) && msg.id && msg.id === distriMessage.id);
-        console.log("distriMessage", distriMessage);
         if (existingMessageIndex >= 0) {
           const updatedMessages = [...prev];
           const existingMessage = updatedMessages[existingMessageIndex];
-          console.log("existingMessage", existingMessageIndex, existingMessage);
           const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
           updatedMessages[existingMessageIndex] = {
             ...existingMessage,
@@ -1325,7 +1324,6 @@ function useChat({
       }
     });
     if (isDistriMessage(event)) {
-      console.log("event", event);
       const distriMessage = event;
       const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
       if (toolCallParts.length > 0) {
@@ -1367,7 +1365,6 @@ function useChat({
   }, [onMessage, agent]);
   const sendMessage = useCallback3(async (content) => {
     if (!agent) return;
-    console.log(agent);
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
@@ -1530,6 +1527,11 @@ function useChat({
       }
     }
   }, [agent, toolResults, createInvokeContext]);
+  const stopStreaming = useCallback3(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
   return {
     messages,
     isStreaming,
@@ -1544,7 +1546,8 @@ function useChat({
     sendToolResults,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    stopStreaming
   };
 }
 
@@ -1557,15 +1560,12 @@ function useThreads() {
   const [error, setError] = useState6(null);
   const fetchThreads = useCallback4(async () => {
     if (!client) {
-      console.log("[useThreads] Client not available, skipping fetch");
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      console.log("[useThreads] Fetching threads...");
       const fetchedThreads = await client.getThreads();
-      console.log("[useThreads] Fetched threads:", fetchedThreads);
       setThreads(fetchedThreads);
     } catch (err) {
       console.error("[useThreads] Failed to fetch threads:", err);
@@ -1629,28 +1629,23 @@ function useThreads() {
   }, [client]);
   useEffect6(() => {
     if (clientLoading) {
-      console.log("[useThreads] Client is loading, waiting...");
       setLoading(true);
       return;
     }
     if (clientError) {
-      console.error("[useThreads] Client error:", clientError);
       setError(clientError);
       setLoading(false);
       return;
     }
     if (client) {
-      console.log("[useThreads] Client ready, fetching threads");
       fetchThreads();
     } else {
-      console.log("[useThreads] No client available");
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchThreads]);
   useEffect6(() => {
     if (!client) return;
     const interval = setInterval(() => {
-      console.log("[useThreads] Periodic refresh of threads");
       fetchThreads();
     }, 3e4);
     return () => clearInterval(interval);
@@ -2161,12 +2156,14 @@ var ApprovalToolCall = ({
   status
 }) => {
   const [isProcessing, setIsProcessing] = useState7(false);
+  console.log("approval tool call", toolCall, status);
   const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
   const reason = input.reason || "Approval required";
   const toolCallsToApprove = input.tool_calls || [];
   const handleResponse = async (approved) => {
     if (isProcessing || status === "completed") return;
     setIsProcessing(true);
+    console.log("approval tool call", toolCall, approved);
     const result = {
       approved,
       reason: approved ? "Approved by user" : "Denied by user",
@@ -3023,7 +3020,8 @@ var EmbeddableChat = ({
     executeTool,
     completeTool,
     getToolCallStatus,
-    toolResults
+    toolResults,
+    stopStreaming
   } = useChat({
     threadId,
     agent: agent || void 0,
@@ -3031,7 +3029,6 @@ var EmbeddableChat = ({
     metadata,
     onMessagesUpdate
   });
-  console.log("tools", tools);
   useEffect10(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -3188,9 +3185,7 @@ var EmbeddableChat = ({
               value: input,
               onChange: setInput,
               onSend: sendMessage,
-              onStop: () => {
-                console.log("Stop streaming");
-              },
+              onStop: stopStreaming,
               placeholder,
               disabled: isLoading,
               isStreaming,
@@ -3210,7 +3205,6 @@ import { RefreshCw, Play, Bot as Bot3 } from "lucide-react";
 import { jsx as jsx15, jsxs as jsxs10 } from "react/jsx-runtime";
 var AgentList = ({ agents, onRefresh, onStartChat }) => {
   const [refreshing, setRefreshing] = React14.useState(false);
-  console.log("agents", agents);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -3282,7 +3276,6 @@ var AgentsPage = ({ onStartChat }) => {
     await refetch();
   };
   const handleStartChat = (agent) => {
-    console.log("Starting chat with agent:", agent.name);
     onStartChat?.(agent);
   };
   if (loading) {
@@ -4761,11 +4754,9 @@ var createBuiltinTools = () => [
 ];
 var createApprovalTool = () => createBuiltinTools()[0];
 var createToastTool = () => createBuiltinTools()[1];
-var createBuiltinToolHandlers = () => ({});
-var initializeBuiltinHandlers = () => {
-};
 export {
   AgentSelect,
+  ApprovalToolCall,
   AssistantMessage,
   AssistantWithToolCalls,
   Badge,
@@ -4831,6 +4822,7 @@ export {
   Textarea,
   ThemeProvider,
   ThemeToggle,
+  ToastToolCall,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -4838,11 +4830,9 @@ export {
   UserMessage,
   cn,
   createApprovalTool,
-  createBuiltinToolHandlers,
   createBuiltinTools,
   createToastTool,
   extractTextFromMessage,
-  initializeBuiltinHandlers,
   shouldDisplayMessage,
   useAgent,
   useAgents,
