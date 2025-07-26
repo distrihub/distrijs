@@ -5,6 +5,7 @@ export { useAgents } from './useAgents';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
 export { useTools } from './hooks/useTools';
+export { useToolCallState, type ToolCallState, type ToolCallStatus } from './hooks/useToolCallState';
 
 // Components
 export { default as FullChat } from './components/FullChat';

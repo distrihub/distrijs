@@ -119,6 +119,7 @@ __export(index_exports, {
   useSidebar: () => useSidebar,
   useTheme: () => useTheme,
   useThreads: () => useThreads,
+  useToolCallState: () => useToolCallState,
   useTools: () => useTools
 });
 module.exports = __toCommonJS(index_exports);
@@ -1336,7 +1337,7 @@ function useAgents() {
 }
 
 // src/useChat.ts
-var import_react6 = require("react");
+var import_react7 = require("react");
 
 // src/hooks/useTools.ts
 var import_react5 = require("react");
@@ -1362,6 +1363,109 @@ function useTools({ agent, tools }) {
   }, [agent?.id, tools]);
 }
 
+// src/hooks/useToolCallState.ts
+var import_react6 = require("react");
+function useToolCallState(options = {}) {
+  const [toolCalls, setToolCalls] = (0, import_react6.useState)([]);
+  const [toolResults, setToolResults] = (0, import_react6.useState)([]);
+  const [toolCallStates, setToolCallStates] = (0, import_react6.useState)(/* @__PURE__ */ new Map());
+  const { onAllToolsCompleted } = options;
+  const addToolCall = (0, import_react6.useCallback)((toolCall) => {
+    setToolCalls((prev) => [...prev, toolCall]);
+    setToolCallStates((prev) => {
+      const newStates = new Map(prev);
+      newStates.set(toolCall.tool_call_id, {
+        tool_call_id: toolCall.tool_call_id,
+        status: "pending",
+        startedAt: /* @__PURE__ */ new Date()
+      });
+      return newStates;
+    });
+  }, []);
+  const updateToolCallStatus = (0, import_react6.useCallback)((toolCallId, status, result, error) => {
+    setToolCallStates((prev) => {
+      const newStates = new Map(prev);
+      const currentState = newStates.get(toolCallId);
+      newStates.set(toolCallId, {
+        ...currentState,
+        tool_call_id: toolCallId,
+        status,
+        result,
+        error,
+        completedAt: status === "completed" || status === "error" ? /* @__PURE__ */ new Date() : currentState?.completedAt
+      });
+      return newStates;
+    });
+  }, []);
+  const completeToolCall = (0, import_react6.useCallback)((toolCallId, result, success = true, error) => {
+    const toolResult = {
+      tool_call_id: toolCallId,
+      result,
+      success,
+      error
+    };
+    setToolResults((prev) => {
+      const newResults = [...prev, toolResult];
+      updateToolCallStatus(toolCallId, success ? "completed" : "error", result, error);
+      setTimeout(() => {
+        setToolCallStates((currentStates) => {
+          const pendingCount = Array.from(currentStates.values()).filter((state) => state.status === "pending" || state.status === "running").length;
+          if (pendingCount === 0 && onAllToolsCompleted) {
+            onAllToolsCompleted(newResults);
+          }
+          return currentStates;
+        });
+      }, 0);
+      return newResults;
+    });
+  }, [updateToolCallStatus, onAllToolsCompleted]);
+  const setToolCallRunning = (0, import_react6.useCallback)((toolCallId) => {
+    updateToolCallStatus(toolCallId, "running");
+  }, [updateToolCallStatus]);
+  const setToolCallError = (0, import_react6.useCallback)((toolCallId, error) => {
+    updateToolCallStatus(toolCallId, "error", void 0, error);
+  }, [updateToolCallStatus]);
+  const getToolCallState = (0, import_react6.useCallback)((toolCallId) => {
+    return toolCallStates.get(toolCallId);
+  }, [toolCallStates]);
+  const getToolCallStatus = (0, import_react6.useCallback)((toolCallId) => {
+    return toolCallStates.get(toolCallId)?.status;
+  }, [toolCallStates]);
+  const hasPendingToolCalls = (0, import_react6.useCallback)(() => {
+    return Array.from(toolCallStates.values()).some(
+      (state) => state.status === "pending" || state.status === "running"
+    );
+  }, [toolCallStates]);
+  const getPendingToolCalls = (0, import_react6.useCallback)(() => {
+    const pendingIds = Array.from(toolCallStates.entries()).filter(([_, state]) => state.status === "pending" || state.status === "running").map(([id, _]) => id);
+    return toolCalls.filter((tc) => pendingIds.includes(tc.tool_call_id));
+  }, [toolCalls, toolCallStates]);
+  const clearAll = (0, import_react6.useCallback)(() => {
+    setToolCalls([]);
+    setToolResults([]);
+    setToolCallStates(/* @__PURE__ */ new Map());
+  }, []);
+  const clearToolResults = (0, import_react6.useCallback)(() => {
+    setToolResults([]);
+  }, []);
+  return {
+    toolCalls,
+    toolResults,
+    toolCallStates,
+    addToolCall,
+    updateToolCallStatus,
+    completeToolCall,
+    setToolCallRunning,
+    setToolCallError,
+    getToolCallState,
+    getToolCallStatus,
+    hasPendingToolCalls,
+    getPendingToolCalls,
+    clearAll,
+    clearToolResults
+  };
+}
+
 // src/useChat.ts
 function useChat({
   threadId,
@@ -1372,39 +1476,66 @@ function useChat({
   agent,
   tools
 }) {
-  const [messages, setMessages] = (0, import_react6.useState)([]);
-  const [isLoading, setIsLoading] = (0, import_react6.useState)(false);
-  const [isStreaming, setIsStreaming] = (0, import_react6.useState)(false);
-  const [error, setError] = (0, import_react6.useState)(null);
-  const abortControllerRef = (0, import_react6.useRef)(null);
-  const [toolResults, setToolResults] = (0, import_react6.useState)([]);
-  const [toolCalls, setToolCalls] = (0, import_react6.useState)([]);
-  const [toolCallStatuses, setToolCallStatuses] = (0, import_react6.useState)(/* @__PURE__ */ new Map());
+  const [messages, setMessages] = (0, import_react7.useState)([]);
+  const [isLoading, setIsLoading] = (0, import_react7.useState)(false);
+  const [isStreaming, setIsStreaming] = (0, import_react7.useState)(false);
+  const [error, setError] = (0, import_react7.useState)(null);
+  const abortControllerRef = (0, import_react7.useRef)(null);
+  const createInvokeContext = (0, import_react7.useCallback)(() => ({
+    thread_id: threadId,
+    run_id: void 0,
+    metadata
+  }), [threadId, metadata]);
+  const sendToolResultsToAgent = (0, import_react7.useCallback)(async (toolResults) => {
+    if (agent && toolResults.length > 0) {
+      console.log("Auto-sending tool results:", toolResults);
+      const toolResultParts = toolResults.map((result) => ({
+        type: "tool_result",
+        tool_result: result
+      }));
+      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+      try {
+        setIsLoading(true);
+        await agent.invoke({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+        toolCallState.clearToolResults();
+      } catch (err) {
+        console.error("Failed to send tool results:", err);
+        setError(err instanceof Error ? err : new Error("Failed to send tool results"));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [agent, createInvokeContext]);
+  const toolCallState = useToolCallState({
+    onAllToolsCompleted: sendToolResultsToAgent
+  });
   useTools({ agent, tools });
-  (0, import_react6.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
   }, []);
-  const agentIdRef = (0, import_react6.useRef)(void 0);
-  (0, import_react6.useEffect)(() => {
+  const agentIdRef = (0, import_react7.useRef)(void 0);
+  (0, import_react7.useEffect)(() => {
     if (agent?.id !== agentIdRef.current) {
       setMessages([]);
-      setToolCalls([]);
-      setToolResults([]);
-      setToolCallStatuses(/* @__PURE__ */ new Map());
+      toolCallState.clearAll();
       setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id]);
-  const createInvokeContext = (0, import_react6.useCallback)(() => ({
-    thread_id: threadId,
-    run_id: void 0,
-    metadata
-  }), [threadId, metadata]);
-  const fetchMessages = (0, import_react6.useCallback)(async () => {
+  }, [agent?.id, toolCallState]);
+  const clearMessages = (0, import_react7.useCallback)(() => {
+    setMessages([]);
+    toolCallState.clearAll();
+  }, [toolCallState]);
+  const fetchMessages = (0, import_react7.useCallback)(async () => {
     if (!agent) return;
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
@@ -1417,12 +1548,12 @@ function useChat({
       onError?.(error2);
     }
   }, [threadId, agent?.id, onError, onMessagesUpdate]);
-  (0, import_react6.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (threadId) {
       fetchMessages();
     }
   }, [threadId, agent?.id]);
-  const handleStreamEvent = (0, import_react6.useCallback)((event) => {
+  const handleStreamEvent = (0, import_react7.useCallback)((event) => {
     setMessages((prev) => {
       if (isDistriMessage(event)) {
         const distriMessage = event;
@@ -1448,42 +1579,26 @@ function useChat({
       const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map((part) => part.tool_call);
-        setToolCalls((prev) => [...prev, ...newToolCalls]);
-        setToolCallStatuses((prev) => {
-          const newStatuses = new Map(prev);
-          newToolCalls.forEach((toolCall) => {
-            if (!newStatuses.has(toolCall.tool_call_id)) {
-              newStatuses.set(toolCall.tool_call_id, {
-                tool_call_id: toolCall.tool_call_id,
-                status: "pending"
-              });
-            }
-          });
-          return newStatuses;
+        newToolCalls.forEach((toolCall) => {
+          toolCallState.addToolCall(toolCall);
         });
       }
       const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map((part) => part.tool_result);
-        setToolResults((prev) => [...prev, ...newToolResults]);
-        setToolCallStatuses((prev) => {
-          const newStatuses = new Map(prev);
-          newToolResults.forEach((toolResult) => {
-            newStatuses.set(toolResult.tool_call_id, {
-              tool_call_id: toolResult.tool_call_id,
-              status: toolResult.success ? "completed" : "error",
-              result: toolResult.result,
-              error: toolResult.error,
-              completedAt: /* @__PURE__ */ new Date()
-            });
-          });
-          return newStatuses;
+        newToolResults.forEach((toolResult) => {
+          toolCallState.updateToolCallStatus(
+            toolResult.tool_call_id,
+            toolResult.success ? "completed" : "error",
+            toolResult.result,
+            toolResult.error
+          );
         });
       }
     }
     onMessage?.(event);
   }, [onMessage, agent]);
-  const sendMessage = (0, import_react6.useCallback)(async (content) => {
+  const sendMessage = (0, import_react7.useCallback)(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1521,7 +1636,7 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
-  const sendMessageStream = (0, import_react6.useCallback)(async (content) => {
+  const sendMessageStream = (0, import_react7.useCallback)(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1559,95 +1674,27 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
-  const clearMessages = (0, import_react6.useCallback)(() => {
-    setMessages([]);
-    setToolCalls([]);
-    setToolResults([]);
-    setToolCallStatuses(/* @__PURE__ */ new Map());
-  }, []);
-  const executeTool = (0, import_react6.useCallback)(async (toolCall) => {
+  const executeTool = (0, import_react7.useCallback)(async (toolCall) => {
     if (!agent) return;
-    setToolCallStatuses((prev) => {
-      const newStatuses = new Map(prev);
-      newStatuses.set(toolCall.tool_call_id, {
-        tool_call_id: toolCall.tool_call_id,
-        status: "running",
-        startedAt: /* @__PURE__ */ new Date()
-      });
-      return newStatuses;
-    });
+    toolCallState.setToolCallRunning(toolCall.tool_call_id);
     try {
       const result = await agent.executeTool(toolCall);
-      setToolResults((prev) => [...prev, result]);
-      setToolCallStatuses((prev) => {
-        const newStatuses = new Map(prev);
-        newStatuses.set(toolCall.tool_call_id, {
-          tool_call_id: toolCall.tool_call_id,
-          status: result.success ? "completed" : "error",
-          result: result.result,
-          error: result.error,
-          completedAt: /* @__PURE__ */ new Date()
-        });
-        return newStatuses;
-      });
+      toolCallState.completeToolCall(toolCall.tool_call_id, result.result, result.success, result.error);
     } catch (error2) {
       console.error("Failed to execute tool:", error2);
-      setToolCallStatuses((prev) => {
-        const newStatuses = new Map(prev);
-        newStatuses.set(toolCall.tool_call_id, {
-          tool_call_id: toolCall.tool_call_id,
-          status: "error",
-          error: error2 instanceof Error ? error2.message : "Unknown error",
-          completedAt: /* @__PURE__ */ new Date()
-        });
-        return newStatuses;
-      });
+      toolCallState.setToolCallError(
+        toolCall.tool_call_id,
+        error2 instanceof Error ? error2.message : "Unknown error"
+      );
     }
-  }, [agent]);
-  const completeTool = (0, import_react6.useCallback)((toolCallId, result, success = true, error2) => {
-    const toolResult = {
-      tool_call_id: toolCallId,
-      result,
-      success,
-      error: error2
-    };
-    setToolResults((prev) => [...prev, toolResult]);
-    setToolCallStatuses((prev) => {
-      const newStatuses = new Map(prev);
-      newStatuses.set(toolCallId, {
-        tool_call_id: toolCallId,
-        status: success ? "completed" : "error",
-        result,
-        error: error2,
-        completedAt: /* @__PURE__ */ new Date()
-      });
-      return newStatuses;
-    });
-  }, []);
-  const getToolCallStatus = (0, import_react6.useCallback)((toolCallId) => {
-    return toolCallStatuses.get(toolCallId);
-  }, [toolCallStatuses]);
-  const sendToolResults = (0, import_react6.useCallback)(async () => {
-    if (agent && toolResults.length > 0) {
-      const toolResultParts = toolResults.map((result) => ({
-        type: "tool_result",
-        tool_result: result
-      }));
-      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
-      try {
-        await agent.invoke({
-          message: a2aMessage,
-          metadata: context.metadata
-        });
-        setToolResults([]);
-      } catch (err) {
-        console.error("Failed to send tool results:", err);
-      }
-    }
-  }, [agent, toolResults, createInvokeContext]);
-  const stopStreaming = (0, import_react6.useCallback)(() => {
+  }, [agent, toolCallState]);
+  const completeTool = (0, import_react7.useCallback)((toolCallId, result, success = true, error2) => {
+    toolCallState.completeToolCall(toolCallId, result, success, error2);
+  }, [toolCallState]);
+  const sendToolResults = (0, import_react7.useCallback)(async () => {
+    await sendToolResultsToAgent(toolCallState.toolResults);
+  }, [sendToolResultsToAgent, toolCallState.toolResults]);
+  const stopStreaming = (0, import_react7.useCallback)(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -1661,24 +1708,29 @@ function useChat({
     error,
     clearMessages,
     agent: agent || void 0,
-    pendingToolCalls: toolCalls,
-    toolResults,
-    sendToolResults,
+    // Tool call management with new cleaner interface
+    toolCalls: toolCallState.toolCalls,
+    toolResults: toolCallState.toolResults,
+    toolCallStates: toolCallState.toolCallStates,
+    // Tool operations
     executeTool,
     completeTool,
-    getToolCallStatus,
+    getToolCallStatus: toolCallState.getToolCallStatus,
+    getToolCallState: toolCallState.getToolCallState,
+    hasPendingToolCalls: toolCallState.hasPendingToolCalls,
+    sendToolResults,
     stopStreaming
   };
 }
 
 // src/useThreads.ts
-var import_react7 = require("react");
+var import_react8 = require("react");
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = (0, import_react7.useState)([]);
-  const [loading, setLoading] = (0, import_react7.useState)(true);
-  const [error, setError] = (0, import_react7.useState)(null);
-  const fetchThreads = (0, import_react7.useCallback)(async () => {
+  const [threads, setThreads] = (0, import_react8.useState)([]);
+  const [loading, setLoading] = (0, import_react8.useState)(true);
+  const [error, setError] = (0, import_react8.useState)(null);
+  const fetchThreads = (0, import_react8.useCallback)(async () => {
     if (!client) {
       return;
     }
@@ -1694,7 +1746,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const fetchThread = (0, import_react7.useCallback)(async (threadId) => {
+  const fetchThread = (0, import_react8.useCallback)(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1706,7 +1758,7 @@ function useThreads() {
       throw err;
     }
   }, [client]);
-  const deleteThread = (0, import_react7.useCallback)(async (threadId) => {
+  const deleteThread = (0, import_react8.useCallback)(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1723,7 +1775,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = (0, import_react7.useCallback)(async (threadId, localId) => {
+  const updateThread = (0, import_react8.useCallback)(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -1747,7 +1799,7 @@ function useThreads() {
       console.warn("Failed to update thread:", err);
     }
   }, [client]);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react8.useEffect)(() => {
     if (clientLoading) {
       setLoading(true);
       return;
@@ -1763,7 +1815,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchThreads]);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react8.useEffect)(() => {
     if (!client) return;
     const interval = setInterval(() => {
       fetchThreads();
@@ -1782,25 +1834,25 @@ function useThreads() {
 }
 
 // src/components/FullChat.tsx
-var import_react17 = require("react");
+var import_react18 = require("react");
 
 // src/components/EmbeddableChat.tsx
-var import_react14 = require("react");
+var import_react15 = require("react");
 var import_lucide_react9 = require("lucide-react");
 
 // src/components/MessageComponents.tsx
-var import_react12 = __toESM(require("react"), 1);
+var import_react13 = __toESM(require("react"), 1);
 var import_lucide_react4 = require("lucide-react");
 
 // src/components/MessageRenderer.tsx
-var import_react9 = __toESM(require("react"), 1);
+var import_react10 = __toESM(require("react"), 1);
 var import_react_markdown = __toESM(require("react-markdown"), 1);
 var import_react_syntax_highlighter = require("react-syntax-highlighter");
 var import_prism = require("react-syntax-highlighter/dist/esm/styles/prism");
 var import_lucide_react = require("lucide-react");
 
 // src/components/ChatContext.tsx
-var import_react8 = __toESM(require("react"), 1);
+var import_react9 = __toESM(require("react"), 1);
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var defaultConfig = {
   theme: "auto",
@@ -1810,9 +1862,9 @@ var defaultConfig = {
   enableMarkdown: true,
   enableCodeHighlighting: true
 };
-var ChatContext = (0, import_react8.createContext)(null);
+var ChatContext = (0, import_react9.createContext)(null);
 var useChatConfig = () => {
-  const context = (0, import_react8.useContext)(ChatContext);
+  const context = (0, import_react9.useContext)(ChatContext);
   if (!context) {
     return {
       config: defaultConfig,
@@ -1826,7 +1878,7 @@ var useChatConfig = () => {
 // src/components/MessageRenderer.tsx
 var import_jsx_runtime4 = require("react/jsx-runtime");
 var CodeBlock = ({ language, children, inline = false }) => {
-  const [copied, setCopied] = import_react9.default.useState(false);
+  const [copied, setCopied] = import_react10.default.useState(false);
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(children);
@@ -2072,7 +2124,7 @@ var MessageRenderer = ({
     }) });
   }
   if (!content) return null;
-  const hasMarkdownSyntax = (0, import_react9.useMemo)(() => {
+  const hasMarkdownSyntax = (0, import_react10.useMemo)(() => {
     if (!config.enableMarkdown) return false;
     const markdownPatterns = [
       /^#{1, 6}\s+/m,
@@ -2100,7 +2152,7 @@ var MessageRenderer = ({
     ];
     return markdownPatterns.some((pattern) => pattern.test(content));
   }, [content, config.enableMarkdown]);
-  const looksLikeCode = (0, import_react9.useMemo)(() => {
+  const looksLikeCode = (0, import_react10.useMemo)(() => {
     if (!config.enableCodeHighlighting) return false;
     if (hasMarkdownSyntax) return false;
     const lines = content.split("\n");
@@ -2154,7 +2206,7 @@ var MessageRenderer = ({
     }, 0);
     return structureCount >= 3;
   }, [content, hasMarkdownSyntax, config.enableCodeHighlighting]);
-  const detectLanguage = (0, import_react9.useMemo)(() => {
+  const detectLanguage = (0, import_react10.useMemo)(() => {
     if (/\b(function|const|let|var|=>|console\.log)\b/.test(content)) return "javascript";
     if (/\b(interface|type|as\s+\w+)\b/.test(content)) return "typescript";
     if (/\b(def|import|from|print|if\s+\w+:)\b/.test(content)) return "python";
@@ -2218,7 +2270,7 @@ var MessageRenderer = ({
 var MessageRenderer_default = MessageRenderer;
 
 // src/components/toolcalls/ApprovalToolCall.tsx
-var import_react10 = require("react");
+var import_react11 = require("react");
 
 // src/components/ui/button.tsx
 var React5 = __toESM(require("react"), 1);
@@ -2275,7 +2327,7 @@ var ApprovalToolCall = ({
   onComplete,
   status
 }) => {
-  const [isProcessing, setIsProcessing] = (0, import_react10.useState)(false);
+  const [isProcessing, setIsProcessing] = (0, import_react11.useState)(false);
   console.log("approval tool call", toolCall, status);
   const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
   const reason = input.reason || "Approval required";
@@ -2339,7 +2391,7 @@ var ApprovalToolCall = ({
 };
 
 // src/components/toolcalls/ToastToolCall.tsx
-var import_react11 = require("react");
+var import_react12 = require("react");
 var import_lucide_react3 = require("lucide-react");
 
 // src/hooks/use-toast.ts
@@ -2484,7 +2536,7 @@ var ToastToolCall = ({
     warning: "text-amber-600",
     info: "text-blue-600"
   };
-  (0, import_react11.useEffect)(() => {
+  (0, import_react12.useEffect)(() => {
     if (status === "pending") {
       toast2({
         title: message,
@@ -2596,7 +2648,7 @@ var AssistantWithToolCalls = ({
   onExecuteTool: _onExecuteTool,
   onCompleteTool
 }) => {
-  const [expandedTools, setExpandedTools] = (0, import_react12.useState)(/* @__PURE__ */ new Set());
+  const [expandedTools, setExpandedTools] = (0, import_react13.useState)(/* @__PURE__ */ new Set());
   const toggleToolExpansion = (toolCallId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
@@ -2608,7 +2660,7 @@ var AssistantWithToolCalls = ({
       return newSet;
     });
   };
-  import_react12.default.useEffect(() => {
+  import_react13.default.useEffect(() => {
     const newExpanded = new Set(expandedTools);
     toolCalls.forEach((toolCall) => {
       if (toolCall.status === "running" || toolCall.status === "error" || toolCall.status === "user_action_required") {
@@ -3041,7 +3093,7 @@ function Toaster() {
 }
 
 // src/components/ChatInput.tsx
-var import_react13 = require("react");
+var import_react14 = require("react");
 var import_lucide_react8 = require("lucide-react");
 var import_jsx_runtime13 = require("react/jsx-runtime");
 var ChatInput = ({
@@ -3054,8 +3106,8 @@ var ChatInput = ({
   isStreaming = false,
   className = ""
 }) => {
-  const textareaRef = (0, import_react13.useRef)(null);
-  (0, import_react13.useEffect)(() => {
+  const textareaRef = (0, import_react14.useRef)(null);
+  (0, import_react14.useEffect)(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -3129,8 +3181,8 @@ var EmbeddableChat = ({
   onResponse: _onResponse,
   onMessagesUpdate
 }) => {
-  const [input, setInput] = (0, import_react14.useState)("");
-  const messagesEndRef = (0, import_react14.useRef)(null);
+  const [input, setInput] = (0, import_react15.useState)("");
+  const messagesEndRef = (0, import_react15.useRef)(null);
   const {
     messages,
     isLoading,
@@ -3139,7 +3191,7 @@ var EmbeddableChat = ({
     sendMessage: sendChatMessage,
     executeTool,
     completeTool,
-    getToolCallStatus,
+    toolCallStates,
     toolResults,
     stopStreaming
   } = useChat({
@@ -3149,7 +3201,7 @@ var EmbeddableChat = ({
     metadata,
     onMessagesUpdate
   });
-  (0, import_react14.useEffect)(() => {
+  (0, import_react15.useEffect)(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -3174,7 +3226,7 @@ var EmbeddableChat = ({
     }
     return message.role;
   };
-  const renderedMessages = (0, import_react14.useMemo)(() => {
+  const renderedMessages = (0, import_react15.useMemo)(() => {
     return messages.filter((msg) => shouldDisplayMessage(msg, showDebug)).map((message, index) => {
       const messageContent = extractTextFromMessage(message);
       const key = `message-${index}`;
@@ -3205,15 +3257,15 @@ var EmbeddableChat = ({
           case "assistant_with_tools":
             const toolCalls = (message.parts || []).filter((part) => part.tool_call).map((part) => {
               const toolCall = part.tool_call;
-              const status = getToolCallStatus?.(toolCall.tool_call_id);
+              const toolCallState = toolCallStates.get(toolCall.tool_call_id);
               const toolResult = toolResults.find((tr) => tr.tool_call_id === toolCall.tool_call_id);
               return {
                 toolCall,
-                status: status?.status || "pending",
-                result: toolResult?.result || status?.result,
-                error: toolResult?.error || status?.error,
-                startedAt: status?.startedAt,
-                completedAt: status?.completedAt
+                status: toolCallState?.status || "pending",
+                result: toolResult?.result || toolCallState?.result,
+                error: toolResult?.error || toolCallState?.error,
+                startedAt: toolCallState?.startedAt,
+                completedAt: toolCallState?.completedAt
               };
             });
             return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
@@ -3262,7 +3314,7 @@ var EmbeddableChat = ({
     AssistantWithToolCallsComponent,
     PlanMessageComponent,
     toolResults,
-    getToolCallStatus,
+    toolCallStates,
     isStreaming
   ]);
   return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)(
@@ -3320,11 +3372,11 @@ var EmbeddableChat = ({
 };
 
 // src/components/AgentList.tsx
-var import_react15 = __toESM(require("react"), 1);
+var import_react16 = __toESM(require("react"), 1);
 var import_lucide_react10 = require("lucide-react");
 var import_jsx_runtime15 = require("react/jsx-runtime");
 var AgentList = ({ agents, onRefresh, onStartChat }) => {
-  const [refreshing, setRefreshing] = import_react15.default.useState(false);
+  const [refreshing, setRefreshing] = import_react16.default.useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -3419,7 +3471,7 @@ var AgentsPage = ({ onStartChat }) => {
 var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
-var import_react16 = require("react");
+var import_react17 = require("react");
 var import_lucide_react14 = require("lucide-react");
 
 // src/components/ui/sidebar.tsx
@@ -4481,16 +4533,16 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = (0, import_react16.useState)(false);
-  const [editTitle, setEditTitle] = (0, import_react16.useState)(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = (0, import_react16.useState)(false);
-  const handleRename = (0, import_react16.useCallback)(() => {
+  const [isEditing, setIsEditing] = (0, import_react17.useState)(false);
+  const [editTitle, setEditTitle] = (0, import_react17.useState)(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = (0, import_react17.useState)(false);
+  const handleRename = (0, import_react17.useCallback)(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = (0, import_react16.useCallback)((e) => {
+  const handleKeyPress = (0, import_react17.useCallback)((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -4565,7 +4617,7 @@ function AppSidebar({
   const { threads, loading: threadsLoading, refetch } = useThreads();
   const { theme, setTheme } = useTheme();
   const { open } = useSidebar();
-  const handleRefresh = (0, import_react16.useCallback)(() => {
+  const handleRefresh = (0, import_react17.useCallback)(() => {
     refetch();
   }, [refetch]);
   return /* @__PURE__ */ (0, import_jsx_runtime28.jsxs)(Sidebar, { collapsible: "icon", variant: "floating", children: [
@@ -4690,29 +4742,29 @@ var FullChat = ({
   availableAgents,
   onAgentSelect
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = (0, import_react17.useState)(uuidv4());
+  const [selectedThreadId, setSelectedThreadId] = (0, import_react18.useState)(uuidv4());
   const { threads, refetch: refetchThreads } = useThreads();
-  const [currentPage, setCurrentPage] = (0, import_react17.useState)("chat");
-  const [defaultOpen, setDefaultOpen] = (0, import_react17.useState)(true);
+  const [currentPage, setCurrentPage] = (0, import_react18.useState)("chat");
+  const [defaultOpen, setDefaultOpen] = (0, import_react18.useState)(true);
   const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
   const { theme } = useTheme();
-  (0, import_react17.useEffect)(() => {
+  (0, import_react18.useEffect)(() => {
     const savedState = localStorage.getItem("sidebar:state");
     if (savedState !== null) {
       setDefaultOpen(savedState === "true");
     }
   }, []);
-  const handleNewChat = (0, import_react17.useCallback)(() => {
+  const handleNewChat = (0, import_react18.useCallback)(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = (0, import_react17.useCallback)((threadId) => {
+  const handleThreadSelect = (0, import_react18.useCallback)((threadId) => {
     setCurrentPage("chat");
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = (0, import_react17.useCallback)((threadId) => {
+  const handleThreadDelete = (0, import_react18.useCallback)((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -4724,11 +4776,11 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = (0, import_react17.useCallback)((threadId, newTitle) => {
+  const handleThreadRename = (0, import_react18.useCallback)((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
-  const handleMessagesUpdate = (0, import_react17.useCallback)(() => {
+  const handleMessagesUpdate = (0, import_react18.useCallback)(() => {
     refetchThreads();
   }, [refetchThreads]);
   return /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)(
@@ -4806,12 +4858,12 @@ var FullChat = ({
 var FullChat_default = FullChat;
 
 // src/components/ThemeToggle.tsx
-var import_react18 = __toESM(require("react"), 1);
+var import_react19 = __toESM(require("react"), 1);
 var import_lucide_react15 = require("lucide-react");
 var import_jsx_runtime30 = require("react/jsx-runtime");
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const dropdownRef = import_react18.default.useRef(null);
+  const dropdownRef = import_react19.default.useRef(null);
   return /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("div", { className: "relative", ref: dropdownRef, children: /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)(
     "button",
     {
@@ -4962,5 +5014,6 @@ var createToastTool = () => createBuiltinTools()[1];
   useSidebar,
   useTheme,
   useThreads,
+  useToolCallState,
   useTools
 });

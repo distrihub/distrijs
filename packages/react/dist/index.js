@@ -1216,7 +1216,7 @@ function useAgents() {
 }
 
 // src/useChat.ts
-import { useState as useState5, useCallback as useCallback3, useEffect as useEffect5, useRef as useRef3 } from "react";
+import { useState as useState6, useCallback as useCallback4, useEffect as useEffect5, useRef as useRef3 } from "react";
 
 // src/hooks/useTools.ts
 import { useEffect as useEffect4, useRef as useRef2 } from "react";
@@ -1242,6 +1242,109 @@ function useTools({ agent, tools }) {
   }, [agent?.id, tools]);
 }
 
+// src/hooks/useToolCallState.ts
+import { useState as useState5, useCallback as useCallback3 } from "react";
+function useToolCallState(options = {}) {
+  const [toolCalls, setToolCalls] = useState5([]);
+  const [toolResults, setToolResults] = useState5([]);
+  const [toolCallStates, setToolCallStates] = useState5(/* @__PURE__ */ new Map());
+  const { onAllToolsCompleted } = options;
+  const addToolCall = useCallback3((toolCall) => {
+    setToolCalls((prev) => [...prev, toolCall]);
+    setToolCallStates((prev) => {
+      const newStates = new Map(prev);
+      newStates.set(toolCall.tool_call_id, {
+        tool_call_id: toolCall.tool_call_id,
+        status: "pending",
+        startedAt: /* @__PURE__ */ new Date()
+      });
+      return newStates;
+    });
+  }, []);
+  const updateToolCallStatus = useCallback3((toolCallId, status, result, error) => {
+    setToolCallStates((prev) => {
+      const newStates = new Map(prev);
+      const currentState = newStates.get(toolCallId);
+      newStates.set(toolCallId, {
+        ...currentState,
+        tool_call_id: toolCallId,
+        status,
+        result,
+        error,
+        completedAt: status === "completed" || status === "error" ? /* @__PURE__ */ new Date() : currentState?.completedAt
+      });
+      return newStates;
+    });
+  }, []);
+  const completeToolCall = useCallback3((toolCallId, result, success = true, error) => {
+    const toolResult = {
+      tool_call_id: toolCallId,
+      result,
+      success,
+      error
+    };
+    setToolResults((prev) => {
+      const newResults = [...prev, toolResult];
+      updateToolCallStatus(toolCallId, success ? "completed" : "error", result, error);
+      setTimeout(() => {
+        setToolCallStates((currentStates) => {
+          const pendingCount = Array.from(currentStates.values()).filter((state) => state.status === "pending" || state.status === "running").length;
+          if (pendingCount === 0 && onAllToolsCompleted) {
+            onAllToolsCompleted(newResults);
+          }
+          return currentStates;
+        });
+      }, 0);
+      return newResults;
+    });
+  }, [updateToolCallStatus, onAllToolsCompleted]);
+  const setToolCallRunning = useCallback3((toolCallId) => {
+    updateToolCallStatus(toolCallId, "running");
+  }, [updateToolCallStatus]);
+  const setToolCallError = useCallback3((toolCallId, error) => {
+    updateToolCallStatus(toolCallId, "error", void 0, error);
+  }, [updateToolCallStatus]);
+  const getToolCallState = useCallback3((toolCallId) => {
+    return toolCallStates.get(toolCallId);
+  }, [toolCallStates]);
+  const getToolCallStatus = useCallback3((toolCallId) => {
+    return toolCallStates.get(toolCallId)?.status;
+  }, [toolCallStates]);
+  const hasPendingToolCalls = useCallback3(() => {
+    return Array.from(toolCallStates.values()).some(
+      (state) => state.status === "pending" || state.status === "running"
+    );
+  }, [toolCallStates]);
+  const getPendingToolCalls = useCallback3(() => {
+    const pendingIds = Array.from(toolCallStates.entries()).filter(([_, state]) => state.status === "pending" || state.status === "running").map(([id, _]) => id);
+    return toolCalls.filter((tc) => pendingIds.includes(tc.tool_call_id));
+  }, [toolCalls, toolCallStates]);
+  const clearAll = useCallback3(() => {
+    setToolCalls([]);
+    setToolResults([]);
+    setToolCallStates(/* @__PURE__ */ new Map());
+  }, []);
+  const clearToolResults = useCallback3(() => {
+    setToolResults([]);
+  }, []);
+  return {
+    toolCalls,
+    toolResults,
+    toolCallStates,
+    addToolCall,
+    updateToolCallStatus,
+    completeToolCall,
+    setToolCallRunning,
+    setToolCallError,
+    getToolCallState,
+    getToolCallStatus,
+    hasPendingToolCalls,
+    getPendingToolCalls,
+    clearAll,
+    clearToolResults
+  };
+}
+
 // src/useChat.ts
 function useChat({
   threadId,
@@ -1252,14 +1355,44 @@ function useChat({
   agent,
   tools
 }) {
-  const [messages, setMessages] = useState5([]);
-  const [isLoading, setIsLoading] = useState5(false);
-  const [isStreaming, setIsStreaming] = useState5(false);
-  const [error, setError] = useState5(null);
+  const [messages, setMessages] = useState6([]);
+  const [isLoading, setIsLoading] = useState6(false);
+  const [isStreaming, setIsStreaming] = useState6(false);
+  const [error, setError] = useState6(null);
   const abortControllerRef = useRef3(null);
-  const [toolResults, setToolResults] = useState5([]);
-  const [toolCalls, setToolCalls] = useState5([]);
-  const [toolCallStatuses, setToolCallStatuses] = useState5(/* @__PURE__ */ new Map());
+  const createInvokeContext = useCallback4(() => ({
+    thread_id: threadId,
+    run_id: void 0,
+    metadata
+  }), [threadId, metadata]);
+  const sendToolResultsToAgent = useCallback4(async (toolResults) => {
+    if (agent && toolResults.length > 0) {
+      console.log("Auto-sending tool results:", toolResults);
+      const toolResultParts = toolResults.map((result) => ({
+        type: "tool_result",
+        tool_result: result
+      }));
+      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+      try {
+        setIsLoading(true);
+        await agent.invoke({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+        toolCallState.clearToolResults();
+      } catch (err) {
+        console.error("Failed to send tool results:", err);
+        setError(err instanceof Error ? err : new Error("Failed to send tool results"));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [agent, createInvokeContext]);
+  const toolCallState = useToolCallState({
+    onAllToolsCompleted: sendToolResultsToAgent
+  });
   useTools({ agent, tools });
   useEffect5(() => {
     return () => {
@@ -1272,19 +1405,16 @@ function useChat({
   useEffect5(() => {
     if (agent?.id !== agentIdRef.current) {
       setMessages([]);
-      setToolCalls([]);
-      setToolResults([]);
-      setToolCallStatuses(/* @__PURE__ */ new Map());
+      toolCallState.clearAll();
       setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id]);
-  const createInvokeContext = useCallback3(() => ({
-    thread_id: threadId,
-    run_id: void 0,
-    metadata
-  }), [threadId, metadata]);
-  const fetchMessages = useCallback3(async () => {
+  }, [agent?.id, toolCallState]);
+  const clearMessages = useCallback4(() => {
+    setMessages([]);
+    toolCallState.clearAll();
+  }, [toolCallState]);
+  const fetchMessages = useCallback4(async () => {
     if (!agent) return;
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
@@ -1302,7 +1432,7 @@ function useChat({
       fetchMessages();
     }
   }, [threadId, agent?.id]);
-  const handleStreamEvent = useCallback3((event) => {
+  const handleStreamEvent = useCallback4((event) => {
     setMessages((prev) => {
       if (isDistriMessage(event)) {
         const distriMessage = event;
@@ -1328,42 +1458,26 @@ function useChat({
       const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map((part) => part.tool_call);
-        setToolCalls((prev) => [...prev, ...newToolCalls]);
-        setToolCallStatuses((prev) => {
-          const newStatuses = new Map(prev);
-          newToolCalls.forEach((toolCall) => {
-            if (!newStatuses.has(toolCall.tool_call_id)) {
-              newStatuses.set(toolCall.tool_call_id, {
-                tool_call_id: toolCall.tool_call_id,
-                status: "pending"
-              });
-            }
-          });
-          return newStatuses;
+        newToolCalls.forEach((toolCall) => {
+          toolCallState.addToolCall(toolCall);
         });
       }
       const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map((part) => part.tool_result);
-        setToolResults((prev) => [...prev, ...newToolResults]);
-        setToolCallStatuses((prev) => {
-          const newStatuses = new Map(prev);
-          newToolResults.forEach((toolResult) => {
-            newStatuses.set(toolResult.tool_call_id, {
-              tool_call_id: toolResult.tool_call_id,
-              status: toolResult.success ? "completed" : "error",
-              result: toolResult.result,
-              error: toolResult.error,
-              completedAt: /* @__PURE__ */ new Date()
-            });
-          });
-          return newStatuses;
+        newToolResults.forEach((toolResult) => {
+          toolCallState.updateToolCallStatus(
+            toolResult.tool_call_id,
+            toolResult.success ? "completed" : "error",
+            toolResult.result,
+            toolResult.error
+          );
         });
       }
     }
     onMessage?.(event);
   }, [onMessage, agent]);
-  const sendMessage = useCallback3(async (content) => {
+  const sendMessage = useCallback4(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1401,7 +1515,7 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
-  const sendMessageStream = useCallback3(async (content) => {
+  const sendMessageStream = useCallback4(async (content) => {
     if (!agent) return;
     setIsLoading(true);
     setIsStreaming(true);
@@ -1439,95 +1553,27 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
-  const clearMessages = useCallback3(() => {
-    setMessages([]);
-    setToolCalls([]);
-    setToolResults([]);
-    setToolCallStatuses(/* @__PURE__ */ new Map());
-  }, []);
-  const executeTool = useCallback3(async (toolCall) => {
+  const executeTool = useCallback4(async (toolCall) => {
     if (!agent) return;
-    setToolCallStatuses((prev) => {
-      const newStatuses = new Map(prev);
-      newStatuses.set(toolCall.tool_call_id, {
-        tool_call_id: toolCall.tool_call_id,
-        status: "running",
-        startedAt: /* @__PURE__ */ new Date()
-      });
-      return newStatuses;
-    });
+    toolCallState.setToolCallRunning(toolCall.tool_call_id);
     try {
       const result = await agent.executeTool(toolCall);
-      setToolResults((prev) => [...prev, result]);
-      setToolCallStatuses((prev) => {
-        const newStatuses = new Map(prev);
-        newStatuses.set(toolCall.tool_call_id, {
-          tool_call_id: toolCall.tool_call_id,
-          status: result.success ? "completed" : "error",
-          result: result.result,
-          error: result.error,
-          completedAt: /* @__PURE__ */ new Date()
-        });
-        return newStatuses;
-      });
+      toolCallState.completeToolCall(toolCall.tool_call_id, result.result, result.success, result.error);
     } catch (error2) {
       console.error("Failed to execute tool:", error2);
-      setToolCallStatuses((prev) => {
-        const newStatuses = new Map(prev);
-        newStatuses.set(toolCall.tool_call_id, {
-          tool_call_id: toolCall.tool_call_id,
-          status: "error",
-          error: error2 instanceof Error ? error2.message : "Unknown error",
-          completedAt: /* @__PURE__ */ new Date()
-        });
-        return newStatuses;
-      });
+      toolCallState.setToolCallError(
+        toolCall.tool_call_id,
+        error2 instanceof Error ? error2.message : "Unknown error"
+      );
     }
-  }, [agent]);
-  const completeTool = useCallback3((toolCallId, result, success = true, error2) => {
-    const toolResult = {
-      tool_call_id: toolCallId,
-      result,
-      success,
-      error: error2
-    };
-    setToolResults((prev) => [...prev, toolResult]);
-    setToolCallStatuses((prev) => {
-      const newStatuses = new Map(prev);
-      newStatuses.set(toolCallId, {
-        tool_call_id: toolCallId,
-        status: success ? "completed" : "error",
-        result,
-        error: error2,
-        completedAt: /* @__PURE__ */ new Date()
-      });
-      return newStatuses;
-    });
-  }, []);
-  const getToolCallStatus = useCallback3((toolCallId) => {
-    return toolCallStatuses.get(toolCallId);
-  }, [toolCallStatuses]);
-  const sendToolResults = useCallback3(async () => {
-    if (agent && toolResults.length > 0) {
-      const toolResultParts = toolResults.map((result) => ({
-        type: "tool_result",
-        tool_result: result
-      }));
-      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
-      try {
-        await agent.invoke({
-          message: a2aMessage,
-          metadata: context.metadata
-        });
-        setToolResults([]);
-      } catch (err) {
-        console.error("Failed to send tool results:", err);
-      }
-    }
-  }, [agent, toolResults, createInvokeContext]);
-  const stopStreaming = useCallback3(() => {
+  }, [agent, toolCallState]);
+  const completeTool = useCallback4((toolCallId, result, success = true, error2) => {
+    toolCallState.completeToolCall(toolCallId, result, success, error2);
+  }, [toolCallState]);
+  const sendToolResults = useCallback4(async () => {
+    await sendToolResultsToAgent(toolCallState.toolResults);
+  }, [sendToolResultsToAgent, toolCallState.toolResults]);
+  const stopStreaming = useCallback4(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -1541,24 +1587,29 @@ function useChat({
     error,
     clearMessages,
     agent: agent || void 0,
-    pendingToolCalls: toolCalls,
-    toolResults,
-    sendToolResults,
+    // Tool call management with new cleaner interface
+    toolCalls: toolCallState.toolCalls,
+    toolResults: toolCallState.toolResults,
+    toolCallStates: toolCallState.toolCallStates,
+    // Tool operations
     executeTool,
     completeTool,
-    getToolCallStatus,
+    getToolCallStatus: toolCallState.getToolCallStatus,
+    getToolCallState: toolCallState.getToolCallState,
+    hasPendingToolCalls: toolCallState.hasPendingToolCalls,
+    sendToolResults,
     stopStreaming
   };
 }
 
 // src/useThreads.ts
-import { useState as useState6, useEffect as useEffect6, useCallback as useCallback4 } from "react";
+import { useState as useState7, useEffect as useEffect6, useCallback as useCallback5 } from "react";
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = useState6([]);
-  const [loading, setLoading] = useState6(true);
-  const [error, setError] = useState6(null);
-  const fetchThreads = useCallback4(async () => {
+  const [threads, setThreads] = useState7([]);
+  const [loading, setLoading] = useState7(true);
+  const [error, setError] = useState7(null);
+  const fetchThreads = useCallback5(async () => {
     if (!client) {
       return;
     }
@@ -1574,7 +1625,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const fetchThread = useCallback4(async (threadId) => {
+  const fetchThread = useCallback5(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1586,7 +1637,7 @@ function useThreads() {
       throw err;
     }
   }, [client]);
-  const deleteThread = useCallback4(async (threadId) => {
+  const deleteThread = useCallback5(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1603,7 +1654,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = useCallback4(async (threadId, localId) => {
+  const updateThread = useCallback5(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -1662,14 +1713,14 @@ function useThreads() {
 }
 
 // src/components/FullChat.tsx
-import { useState as useState13, useCallback as useCallback7, useEffect as useEffect12 } from "react";
+import { useState as useState14, useCallback as useCallback8, useEffect as useEffect12 } from "react";
 
 // src/components/EmbeddableChat.tsx
-import { useState as useState10, useRef as useRef5, useEffect as useEffect10, useMemo as useMemo2 } from "react";
+import { useState as useState11, useRef as useRef5, useEffect as useEffect10, useMemo as useMemo2 } from "react";
 import { MessageSquare } from "lucide-react";
 
 // src/components/MessageComponents.tsx
-import React9, { useState as useState9 } from "react";
+import React9, { useState as useState10 } from "react";
 import { User, Bot, Settings, Clock, CheckCircle as CheckCircle3, XCircle as XCircle2, Brain as Brain2, Wrench as Wrench2, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
 // src/components/MessageRenderer.tsx
@@ -2098,7 +2149,7 @@ var MessageRenderer = ({
 var MessageRenderer_default = MessageRenderer;
 
 // src/components/toolcalls/ApprovalToolCall.tsx
-import { useState as useState7 } from "react";
+import { useState as useState8 } from "react";
 
 // src/components/ui/button.tsx
 import * as React5 from "react";
@@ -2155,7 +2206,7 @@ var ApprovalToolCall = ({
   onComplete,
   status
 }) => {
-  const [isProcessing, setIsProcessing] = useState7(false);
+  const [isProcessing, setIsProcessing] = useState8(false);
   console.log("approval tool call", toolCall, status);
   const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
   const reason = input.reason || "Approval required";
@@ -2476,7 +2527,7 @@ var AssistantWithToolCalls = ({
   onExecuteTool: _onExecuteTool,
   onCompleteTool
 }) => {
-  const [expandedTools, setExpandedTools] = useState9(/* @__PURE__ */ new Set());
+  const [expandedTools, setExpandedTools] = useState10(/* @__PURE__ */ new Set());
   const toggleToolExpansion = (toolCallId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
@@ -3009,7 +3060,7 @@ var EmbeddableChat = ({
   onResponse: _onResponse,
   onMessagesUpdate
 }) => {
-  const [input, setInput] = useState10("");
+  const [input, setInput] = useState11("");
   const messagesEndRef = useRef5(null);
   const {
     messages,
@@ -3019,7 +3070,7 @@ var EmbeddableChat = ({
     sendMessage: sendChatMessage,
     executeTool,
     completeTool,
-    getToolCallStatus,
+    toolCallStates,
     toolResults,
     stopStreaming
   } = useChat({
@@ -3085,15 +3136,15 @@ var EmbeddableChat = ({
           case "assistant_with_tools":
             const toolCalls = (message.parts || []).filter((part) => part.tool_call).map((part) => {
               const toolCall = part.tool_call;
-              const status = getToolCallStatus?.(toolCall.tool_call_id);
+              const toolCallState = toolCallStates.get(toolCall.tool_call_id);
               const toolResult = toolResults.find((tr) => tr.tool_call_id === toolCall.tool_call_id);
               return {
                 toolCall,
-                status: status?.status || "pending",
-                result: toolResult?.result || status?.result,
-                error: toolResult?.error || status?.error,
-                startedAt: status?.startedAt,
-                completedAt: status?.completedAt
+                status: toolCallState?.status || "pending",
+                result: toolResult?.result || toolCallState?.result,
+                error: toolResult?.error || toolCallState?.error,
+                startedAt: toolCallState?.startedAt,
+                completedAt: toolCallState?.completedAt
               };
             });
             return /* @__PURE__ */ jsx14(
@@ -3142,7 +3193,7 @@ var EmbeddableChat = ({
     AssistantWithToolCallsComponent,
     PlanMessageComponent,
     toolResults,
-    getToolCallStatus,
+    toolCallStates,
     isStreaming
   ]);
   return /* @__PURE__ */ jsxs9(
@@ -3299,7 +3350,7 @@ var AgentsPage = ({ onStartChat }) => {
 var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
-import { useState as useState12, useCallback as useCallback6 } from "react";
+import { useState as useState13, useCallback as useCallback7 } from "react";
 import { MoreHorizontal, Trash2, Edit3, Bot as Bot4, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader22 } from "lucide-react";
 
 // src/components/ui/sidebar.tsx
@@ -4361,16 +4412,16 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = useState12(false);
-  const [editTitle, setEditTitle] = useState12(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = useState12(false);
-  const handleRename = useCallback6(() => {
+  const [isEditing, setIsEditing] = useState13(false);
+  const [editTitle, setEditTitle] = useState13(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = useState13(false);
+  const handleRename = useCallback7(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
     }
     setIsEditing(false);
   }, [editTitle, thread.title, onRename]);
-  const handleKeyPress = useCallback6((e) => {
+  const handleKeyPress = useCallback7((e) => {
     if (e.key === "Enter") {
       handleRename();
     } else if (e.key === "Escape") {
@@ -4445,7 +4496,7 @@ function AppSidebar({
   const { threads, loading: threadsLoading, refetch } = useThreads();
   const { theme, setTheme } = useTheme();
   const { open } = useSidebar();
-  const handleRefresh = useCallback6(() => {
+  const handleRefresh = useCallback7(() => {
     refetch();
   }, [refetch]);
   return /* @__PURE__ */ jsxs16(Sidebar, { collapsible: "icon", variant: "floating", children: [
@@ -4570,10 +4621,10 @@ var FullChat = ({
   availableAgents,
   onAgentSelect
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = useState13(uuidv4());
+  const [selectedThreadId, setSelectedThreadId] = useState14(uuidv4());
   const { threads, refetch: refetchThreads } = useThreads();
-  const [currentPage, setCurrentPage] = useState13("chat");
-  const [defaultOpen, setDefaultOpen] = useState13(true);
+  const [currentPage, setCurrentPage] = useState14("chat");
+  const [defaultOpen, setDefaultOpen] = useState14(true);
   const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
   const { theme } = useTheme();
   useEffect12(() => {
@@ -4582,17 +4633,17 @@ var FullChat = ({
       setDefaultOpen(savedState === "true");
     }
   }, []);
-  const handleNewChat = useCallback7(() => {
+  const handleNewChat = useCallback8(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
     onThreadCreate?.(newThreadId);
   }, [onThreadCreate]);
-  const handleThreadSelect = useCallback7((threadId) => {
+  const handleThreadSelect = useCallback8((threadId) => {
     setCurrentPage("chat");
     setSelectedThreadId(threadId);
     onThreadSelect?.(threadId);
   }, [onThreadSelect]);
-  const handleThreadDelete = useCallback7((threadId) => {
+  const handleThreadDelete = useCallback8((threadId) => {
     if (threadId === selectedThreadId) {
       const remainingThreads = threads.filter((t) => t.id !== threadId);
       if (remainingThreads.length > 0) {
@@ -4604,11 +4655,11 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = useCallback7((threadId, newTitle) => {
+  const handleThreadRename = useCallback8((threadId, newTitle) => {
     console.log("Rename thread", threadId, "to", newTitle);
     refetchThreads();
   }, [refetchThreads]);
-  const handleMessagesUpdate = useCallback7(() => {
+  const handleMessagesUpdate = useCallback8(() => {
     refetchThreads();
   }, [refetchThreads]);
   return /* @__PURE__ */ jsx29("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ jsxs17(
@@ -4841,5 +4892,6 @@ export {
   useSidebar,
   useTheme,
   useThreads,
+  useToolCallState,
   useTools
 };

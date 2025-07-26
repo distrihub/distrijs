@@ -96,14 +96,41 @@ When called, it shows a toast notification and displays the confirmation in the 
 3. **React component renders** in the chat message showing the tool's UI
 4. **User interacts** with the component (approve/deny, etc.)
 5. **Tool completes** and returns result to the agent
-6. **Conversation continues** with the agent having the tool result
+6. **Tool results are automatically sent** to the agent when all pending tools are complete
+7. **Conversation continues** with the agent having all tool results
 
 ## Tool Call State Management
 
-- Each tool call maintains its state (`pending`, `running`, `completed`, `error`)
-- Tool calls can be **retriggered** or **cancelled** 
-- Custom components receive `onComplete` callback to finish the tool call
-- State is automatically managed by the `useChat` hook
+The new `useToolCallState` hook provides clean, organized tool call management:
+
+```tsx
+import { useToolCallState } from '@distri/react';
+
+const toolState = useToolCallState({
+  onAllToolsCompleted: (toolResults) => {
+    // Automatically triggered when all tools finish
+    console.log('All tools completed:', toolResults);
+  }
+});
+
+// Easy state management methods
+toolState.addToolCall(toolCall);
+toolState.setToolCallRunning(toolCallId);
+toolState.completeToolCall(toolCallId, result, success);
+toolState.setToolCallError(toolCallId, error);
+
+// Query methods
+const status = toolState.getToolCallStatus(toolCallId);
+const hasPending = toolState.hasPendingToolCalls();
+```
+
+### Key Features:
+- **Automatic Tool Result Sending**: When all tool calls are completed, results are automatically sent to the agent
+- **Clean State Updates**: Friendlier methods like `setToolCallRunning()`, `completeToolCall()` 
+- **Centralized State**: All tool call state in one place with `toolCallStates` Map
+- **Status Tracking**: Each tool call maintains `pending`, `running`, `completed`, `error`, `user_action_required` states
+- **Tool Retriggering**: Tool calls can be retriggered or cancelled through the state management
+- **Completion Callbacks**: `onAllToolsCompleted` triggers when no pending tools remain
 
 ## Custom Tools
 

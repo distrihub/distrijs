@@ -12,6 +12,7 @@ import {
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
 import { DistriStreamEvent, isDistriMessage } from '../../core/src/types';
 import { useTools } from './hooks/useTools';
+import { useToolCallState, type ToolCallState, type ToolCallStatus } from './hooks/useToolCallState';
 
 export interface UseChatOptions {
   threadId: string;
@@ -32,22 +33,21 @@ export interface UseChatReturn {
   error: Error | null;
   clearMessages: () => void;
   agent: Agent | undefined;
-  pendingToolCalls: ToolCall[];
+  
+  // Tool call management with new cleaner interface
+  toolCalls: ToolCall[];
   toolResults: ToolResult[];
-  sendToolResults: () => Promise<void>;
+  toolCallStates: Map<string, ToolCallState>;
+  
+  // Tool operations
   executeTool: (toolCall: ToolCall) => Promise<void>;
   completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
   getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
+  getToolCallState: (toolCallId: string) => ToolCallState | undefined;
+  hasPendingToolCalls: () => boolean;
+  sendToolResults: () => Promise<void>;
+  
   stopStreaming: () => void;
-}
-
-interface ToolCallStatus {
-  tool_call_id: string;
-  status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-  result?: any;
-  error?: string;
-  startedAt?: Date;
-  completedAt?: Date;
 }
 
 export function useChat({
@@ -65,10 +65,49 @@ export function useChat({
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Tool handling - register tools with agent
-  const [toolResults, setToolResults] = useState<ToolResult[]>([]);
-  const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
-  const [toolCallStatuses, setToolCallStatuses] = useState<Map<string, ToolCallStatus>>(new Map());
+  // Create InvokeContext for message construction
+  const createInvokeContext = useCallback((): InvokeContext => ({
+    thread_id: threadId,
+    run_id: undefined,
+    metadata
+  }), [threadId, metadata]);
+
+  // Auto-send tool results when all tools are completed
+  const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
+    if (agent && toolResults.length > 0) {
+      console.log('Auto-sending tool results:', toolResults);
+      
+      const toolResultParts: DistriPart[] = toolResults.map(result => ({
+        type: 'tool_result',
+        tool_result: result
+      }));
+
+      const toolResultMessage = DistriClient.initDistriMessage('tool', toolResultParts);
+      const context = createInvokeContext();
+      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
+
+      try {
+        setIsLoading(true);
+        await agent.invoke({
+          message: a2aMessage,
+          metadata: context.metadata
+        });
+        
+        // Clear tool results after sending
+        toolCallState.clearToolResults();
+      } catch (err) {
+        console.error('Failed to send tool results:', err);
+        setError(err instanceof Error ? err : new Error('Failed to send tool results'));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [agent, createInvokeContext]);
+
+  // Tool state management with auto-send when all completed
+  const toolCallState = useToolCallState({
+    onAllToolsCompleted: sendToolResultsToAgent
+  });
 
   // Register tools with agent
   useTools({ agent, tools });
@@ -88,20 +127,17 @@ export function useChat({
     if (agent?.id !== agentIdRef.current) {
       // Agent changed, reset all state
       setMessages([]);
-      setToolCalls([]);
-      setToolResults([]);
-      setToolCallStatuses(new Map());
+      toolCallState.clearAll();
       setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id]);
+  }, [agent?.id, toolCallState]);
 
-  // Create InvokeContext for message construction
-  const createInvokeContext = useCallback((): InvokeContext => ({
-    thread_id: threadId,
-    run_id: undefined,
-    metadata
-  }), [threadId, metadata]);
+  // Clear messages helper
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    toolCallState.clearAll();
+  }, [toolCallState]);
 
   const fetchMessages = useCallback(async () => {
     if (!agent) return;
@@ -163,20 +199,8 @@ export function useChat({
       const toolCallParts = distriMessage.parts.filter(part => part.type === 'tool_call');
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
-        setToolCalls(prev => [...prev, ...newToolCalls]);
-
-        // Initialize status for new tool calls
-        setToolCallStatuses(prev => {
-          const newStatuses = new Map(prev);
-          newToolCalls.forEach(toolCall => {
-            if (!newStatuses.has(toolCall.tool_call_id)) {
-              newStatuses.set(toolCall.tool_call_id, {
-                tool_call_id: toolCall.tool_call_id,
-                status: 'pending'
-              });
-            }
-          });
-          return newStatuses;
+        newToolCalls.forEach(toolCall => {
+          toolCallState.addToolCall(toolCall);
         });
       }
 
@@ -184,21 +208,13 @@ export function useChat({
       const toolResultParts = distriMessage.parts.filter(part => part.type === 'tool_result');
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map(part => (part as any).tool_result);
-        setToolResults(prev => [...prev, ...newToolResults]);
-
-        // Update status for completed tool calls
-        setToolCallStatuses(prev => {
-          const newStatuses = new Map(prev);
-          newToolResults.forEach(toolResult => {
-            newStatuses.set(toolResult.tool_call_id, {
-              tool_call_id: toolResult.tool_call_id,
-              status: toolResult.success ? 'completed' : 'error',
-              result: toolResult.result,
-              error: toolResult.error,
-              completedAt: new Date()
-            });
-          });
-          return newStatuses;
+        newToolResults.forEach(toolResult => {
+          toolCallState.updateToolCallStatus(
+            toolResult.tool_call_id,
+            toolResult.success ? 'completed' : 'error',
+            toolResult.result,
+            toolResult.error
+          );
         });
       }
     }
@@ -312,114 +328,36 @@ export function useChat({
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
 
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-    setToolCalls([]);
-    setToolResults([]);
-    setToolCallStatuses(new Map());
-  }, []);
-
   // Execute a tool call
   const executeTool = useCallback(async (toolCall: ToolCall) => {
     if (!agent) return;
 
     // Update status to running
-    setToolCallStatuses(prev => {
-      const newStatuses = new Map(prev);
-      newStatuses.set(toolCall.tool_call_id, {
-        tool_call_id: toolCall.tool_call_id,
-        status: 'running',
-        startedAt: new Date()
-      });
-      return newStatuses;
-    });
+    toolCallState.setToolCallRunning(toolCall.tool_call_id);
 
     try {
       const result = await agent.executeTool(toolCall);
-      setToolResults(prev => [...prev, result]);
-
-      // Update status based on result
-      setToolCallStatuses(prev => {
-        const newStatuses = new Map(prev);
-        newStatuses.set(toolCall.tool_call_id, {
-          tool_call_id: toolCall.tool_call_id,
-          status: result.success ? 'completed' : 'error',
-          result: result.result,
-          error: result.error,
-          completedAt: new Date()
-        });
-        return newStatuses;
-      });
+      // Complete the tool call with the result
+      toolCallState.completeToolCall(toolCall.tool_call_id, result.result, result.success, result.error);
     } catch (error) {
       console.error('Failed to execute tool:', error);
-
-      // Update status to error
-      setToolCallStatuses(prev => {
-        const newStatuses = new Map(prev);
-        newStatuses.set(toolCall.tool_call_id, {
-          tool_call_id: toolCall.tool_call_id,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
-          completedAt: new Date()
-        });
-        return newStatuses;
-      });
+      // Set error status
+      toolCallState.setToolCallError(
+        toolCall.tool_call_id, 
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
-  }, [agent]);
+  }, [agent, toolCallState]);
 
   // Complete a tool call manually
   const completeTool = useCallback((toolCallId: string, result: any, success: boolean = true, error?: string) => {
-    const toolResult: ToolResult = {
-      tool_call_id: toolCallId,
-      result,
-      success,
-      error
-    };
-    setToolResults(prev => [...prev, toolResult]);
+    toolCallState.completeToolCall(toolCallId, result, success, error);
+  }, [toolCallState]);
 
-    // Update status
-    setToolCallStatuses(prev => {
-      const newStatuses = new Map(prev);
-      newStatuses.set(toolCallId, {
-        tool_call_id: toolCallId,
-        status: success ? 'completed' : 'error',
-        result,
-        error,
-        completedAt: new Date()
-      });
-      return newStatuses;
-    });
-  }, []);
-
-  // Get tool call status
-  const getToolCallStatus = useCallback((toolCallId: string) => {
-    return toolCallStatuses.get(toolCallId);
-  }, [toolCallStatuses]);
-
-  // Send all collected tool results
+  // Manual send tool results (for backwards compatibility)
   const sendToolResults = useCallback(async () => {
-    if (agent && toolResults.length > 0) {
-      const toolResultParts: DistriPart[] = toolResults.map(result => ({
-        type: 'tool_result',
-        tool_result: result
-      }));
-
-      const toolResultMessage = DistriClient.initDistriMessage('tool', toolResultParts);
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
-
-      try {
-        await agent.invoke({
-          message: a2aMessage,
-          metadata: context.metadata
-        });
-        // Clear tool results after sending
-        setToolResults([]);
-      } catch (err) {
-        console.error('Failed to send tool results:', err);
-      }
-    }
-  }, [agent, toolResults, createInvokeContext]);
+    await sendToolResultsToAgent(toolCallState.toolResults);
+  }, [sendToolResultsToAgent, toolCallState.toolResults]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
@@ -436,12 +374,20 @@ export function useChat({
     error,
     clearMessages,
     agent: agent || undefined,
-    pendingToolCalls: toolCalls,
-    toolResults,
-    sendToolResults,
+    
+    // Tool call management with new cleaner interface
+    toolCalls: toolCallState.toolCalls,
+    toolResults: toolCallState.toolResults,
+    toolCallStates: toolCallState.toolCallStates,
+    
+    // Tool operations
     executeTool,
     completeTool,
-    getToolCallStatus,
+    getToolCallStatus: toolCallState.getToolCallStatus,
+    getToolCallState: toolCallState.getToolCallState,
+    hasPendingToolCalls: toolCallState.hasPendingToolCalls,
+    sendToolResults,
+    
     stopStreaming
   };
 } 

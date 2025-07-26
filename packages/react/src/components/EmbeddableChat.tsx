@@ -70,7 +70,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     sendMessage: sendChatMessage,
     executeTool,
     completeTool,
-    getToolCallStatus,
+    toolCallStates,
     toolResults,
     stopStreaming
   } = useChat({
@@ -152,23 +152,23 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
               );
 
             case 'assistant_with_tools':
-              // Extract tool calls from message parts and get their status from the tool manager
+              // Extract tool calls from message parts and get their status from the tool call state
               const toolCalls = (message.parts || [])
                 .filter((part: any) => part.tool_call)
                 .map((part: any) => {
                   const toolCall = part.tool_call;
-                  const status = getToolCallStatus?.(toolCall.tool_call_id);
+                  const toolCallState = toolCallStates.get(toolCall.tool_call_id);
 
                   // Find corresponding tool result if available
                   const toolResult = toolResults.find(tr => tr.tool_call_id === toolCall.tool_call_id);
 
                   return {
                     toolCall,
-                    status: status?.status || 'pending',
-                    result: toolResult?.result || status?.result,
-                    error: toolResult?.error || status?.error,
-                    startedAt: status?.startedAt,
-                    completedAt: status?.completedAt,
+                    status: toolCallState?.status || 'pending',
+                    result: toolResult?.result || toolCallState?.result,
+                    error: toolResult?.error || toolCallState?.error,
+                    startedAt: toolCallState?.startedAt,
+                    completedAt: toolCallState?.completedAt,
                   };
                 });
 
@@ -219,7 +219,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     AssistantWithToolCallsComponent,
     PlanMessageComponent,
     toolResults,
-    getToolCallStatus,
+    toolCallStates,
     isStreaming
   ]);
 
