@@ -1,13 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool, ToolCall } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
-import ApprovalDialog from './ApprovalDialog';
-import Toast from './Toast';
-import { initializeSimpleBuiltinHandlers, createBuiltinToolHandlers } from '../builtinHandlers';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
@@ -64,17 +61,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Simple toast state
-  const [toastMessage, setToastMessage] = useState<string>('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('info');
-  const [showToastState, setShowToastState] = useState(false);
-
-  // Simple approval dialog state
-  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
-  const [currentApprovalMessage, setCurrentApprovalMessage] = useState<string>('');
-  const [currentApprovalToolCalls, setCurrentApprovalToolCalls] = useState<ToolCall[]>([]);
-  const [currentApprovalResolve, setCurrentApprovalResolve] = useState<((approved: boolean) => void) | null>(null);
-
   const {
     messages,
     isLoading,
@@ -92,35 +78,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     metadata,
     onMessagesUpdate
   });
-
-  // Initialize simple builtin handlers
-  useEffect(() => {
-    const showSimpleToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-      setToastMessage(message);
-      setToastType(type);
-      setShowToastState(true);
-    };
-
-    const showSimpleApprovalDialog = (message: string, toolCalls: ToolCall[]): Promise<boolean> => {
-      return new Promise((resolve) => {
-        setCurrentApprovalMessage(message);
-        setCurrentApprovalToolCalls(toolCalls);
-        setApprovalDialogOpen(true);
-        setCurrentApprovalResolve(() => resolve);
-      });
-    };
-
-    initializeSimpleBuiltinHandlers({
-      showApprovalDialog: showSimpleApprovalDialog,
-      showToast: showSimpleToast
-    });
-
-    // Register builtin tool handlers with agent if needed
-    if (agent) {
-      const builtinHandlers = createBuiltinToolHandlers();
-      console.log(`Initialized ${Object.keys(builtinHandlers).length} builtin tools`);
-    }
-  }, [agent]);
 
   console.log('tools', tools);
 
@@ -143,17 +100,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
       console.error('Failed to send message:', err);
       setInput(messageText); // Restore input on error
     }
-  };
-
-  const handleApprovalResponse = (approved: boolean) => {
-    setApprovalDialogOpen(false);
-    if (currentApprovalResolve) {
-      currentApprovalResolve(approved);
-      setCurrentApprovalResolve(null);
-    }
-    // Clean up state
-    setCurrentApprovalMessage('');
-    setCurrentApprovalToolCalls([]);
   };
 
   const getMessageType = (message: DistriMessage): MessageComponentType => {
@@ -364,26 +310,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Simple Toast */}
-      {showToastState && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setShowToastState(false)}
-        />
-      )}
-
-      {/* Simple Approval Dialog */}
-      {approvalDialogOpen && (
-        <ApprovalDialog
-          toolCalls={currentApprovalToolCalls}
-          reason={currentApprovalMessage}
-          onApprove={() => handleApprovalResponse(true)}
-          onDeny={() => handleApprovalResponse(false)}
-          onCancel={() => handleApprovalResponse(false)}
-        />
-      )}
     </div>
   );
 };
