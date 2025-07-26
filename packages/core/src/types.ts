@@ -36,7 +36,10 @@ export interface InvokeContext {
 
 export type TextPart = { type: 'text'; text: string }
 export type CodeObservationPart = { type: 'code_observation'; thought: string; code: string }
-export type ImagePart = { type: 'image'; image: FileType }
+
+export type ImageUrlPart = { type: 'image_url'; image: FileUrl }
+export type ImageBytesPart = { type: 'image_bytes'; image: FileBytes }
+export type ImagePart = ImageUrlPart | ImageBytesPart
 export type DataPart = { type: 'data'; data: any }
 export type ToolCallPart = { type: 'tool_call'; tool_call: ToolCall }
 export type ToolResultPart = { type: 'tool_result'; tool_result: ToolResponse }
@@ -48,11 +51,18 @@ export type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart |
 /**
  * File type for images
  */
-export interface FileType {
+export interface FileBytes {
   mime_type: string;
   data: string; // Base64 encoded data
-  filename?: string;
+  name?: string;
 }
+
+export interface FileUrl {
+  mime_type: string;
+  url: string; // Base64 encoded data
+  name?: string;
+}
+export type FileType = FileBytes | FileUrl;
 
 
 

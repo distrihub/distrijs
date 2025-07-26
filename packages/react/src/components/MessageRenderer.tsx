@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Brain, Wrench, FileText } from 'lucide-react';
 import { useChatConfig } from './ChatContext';
 import { DistriPart, ToolCall, ToolResponse, DistriStreamEvent, isDistriMessage } from '@distri/core';
@@ -18,8 +18,7 @@ const CodeBlock: React.FC<{
   language: string;
   children: string;
   inline?: boolean;
-  isDark?: boolean;
-}> = ({ language, children, inline = false, isDark = false }) => {
+}> = ({ language, children, inline = false }) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = async () => {
@@ -78,10 +77,7 @@ const CodeBlock: React.FC<{
 
   if (inline) {
     return (
-      <code className={`px-1.5 py-0.5 rounded text-sm font-mono ${isDark
-        ? 'bg-gray-700 text-gray-200'
-        : 'bg-gray-100 text-gray-800'
-        }`}>
+      <code className="px-1.5 py-0.5 rounded text-sm font-mono bg-muted text-foreground">
         {children}
       </code>
     );
@@ -95,7 +91,7 @@ const CodeBlock: React.FC<{
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={handleCopy}
-          className={`p-2 rounded-md ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+          className="p-2 rounded-md bg-muted hover:bg-muted/80"
           title="Copy code"
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -104,7 +100,7 @@ const CodeBlock: React.FC<{
 
       <div className="relative">
         <SyntaxHighlighter
-          style={isDark ? vscDarkPlus : oneLight}
+          style={oneLight}
           language={normalizedLanguage}
           PreTag="div"
           showLineNumbers={shouldShowLineNumbers}
@@ -120,7 +116,7 @@ const CodeBlock: React.FC<{
           customStyle={{
             margin: 0,
             padding: '0.75rem',
-            background: isDark ? '#1e1e1e' : '#fafafa',
+            background: 'hsl(var(--muted))',
             fontSize: '0.875rem',
             lineHeight: '1.5',
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
@@ -145,25 +141,24 @@ const CodeBlock: React.FC<{
 const CodeObservationComponent: React.FC<{
   thought: string;
   code: string;
-  isDark?: boolean;
-}> = ({ thought, code, isDark = false }) => {
+}> = ({ thought, code }) => {
   return (
-    <div className={`border rounded-lg p-4 my-4 ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+    <div className="border rounded-lg p-4 my-4 border-border bg-muted/50">
       <div className="flex items-center gap-2 mb-3">
         <Brain className="h-4 w-4 text-blue-500" />
         <span className="text-sm font-medium text-blue-600">Code Observation</span>
       </div>
 
       <div className="mb-3">
-        <div className="text-sm text-gray-600 mb-2">Thought:</div>
-        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="text-sm text-muted-foreground mb-2">Thought:</div>
+        <div className="text-sm text-foreground">
           {thought}
         </div>
       </div>
 
       <div>
-        <div className="text-sm text-gray-600 mb-2">Code:</div>
-        <CodeBlock language="javascript" isDark={isDark}>
+        <div className="text-sm text-muted-foreground mb-2">Code:</div>
+        <CodeBlock language="javascript">
           {code}
         </CodeBlock>
       </div>
@@ -174,10 +169,9 @@ const CodeObservationComponent: React.FC<{
 // Tool Call Component
 const ToolCallComponent: React.FC<{
   toolCall: ToolCall;
-  isDark?: boolean;
-}> = ({ toolCall, isDark = false }) => {
+}> = ({ toolCall }) => {
   return (
-    <div className={`border rounded-lg p-4 my-4 ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+    <div className="border rounded-lg p-4 my-4 border-border bg-muted/50">
       <div className="flex items-center gap-2 mb-3">
         <Wrench className="h-4 w-4 text-green-500" />
         <span className="text-sm font-medium text-green-600">Tool Call</span>
@@ -185,16 +179,16 @@ const ToolCallComponent: React.FC<{
 
       <div className="space-y-2">
         <div>
-          <span className="text-sm text-gray-600">Tool:</span>
-          <span className={`ml-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          <span className="text-sm text-muted-foreground">Tool:</span>
+          <span className="ml-2 text-sm font-mono text-foreground">
             {toolCall.tool_name}
           </span>
         </div>
 
         <div>
-          <span className="text-sm text-gray-600">Input:</span>
+          <span className="text-sm text-muted-foreground">Input:</span>
           <div className="mt-1">
-            <CodeBlock language="json" isDark={isDark}>
+            <CodeBlock language="json">
               {JSON.stringify(toolCall.input, null, 2)}
             </CodeBlock>
           </div>
@@ -207,10 +201,9 @@ const ToolCallComponent: React.FC<{
 // Tool Result Component
 const ToolResultComponent: React.FC<{
   toolResult: ToolResponse;
-  isDark?: boolean;
-}> = ({ toolResult, isDark = false }) => {
+}> = ({ toolResult }) => {
   return (
-    <div className={`border rounded-lg p-4 my-4 ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+    <div className="border rounded-lg p-4 my-4 border-border bg-muted/50">
       <div className="flex items-center gap-2 mb-3">
         <FileText className="h-4 w-4 text-purple-500" />
         <span className="text-sm font-medium text-purple-600">Tool Result</span>
@@ -224,17 +217,17 @@ const ToolResultComponent: React.FC<{
       <div className="space-y-2">
         {toolResult.error && (
           <div>
-            <span className="text-sm text-red-600">Error:</span>
-            <div className={`mt-1 text-sm ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+            <span className="text-sm text-destructive">Error:</span>
+            <div className="mt-1 text-sm text-destructive">
               {toolResult.error}
             </div>
           </div>
         )}
 
         <div>
-          <span className="text-sm text-gray-600">Result:</span>
+          <span className="text-sm text-muted-foreground">Result:</span>
           <div className="mt-1">
-            <CodeBlock language="json" isDark={isDark}>
+            <CodeBlock language="json">
               {JSON.stringify(toolResult.result, null, 2)}
             </CodeBlock>
           </div>
@@ -247,16 +240,15 @@ const ToolResultComponent: React.FC<{
 // Plan Component
 const PlanComponent: React.FC<{
   plan: string;
-  isDark?: boolean;
-}> = ({ plan, isDark = false }) => {
+}> = ({ plan }) => {
   return (
-    <div className={`border rounded-lg p-4 my-4 ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+    <div className="border rounded-lg p-4 my-4 border-border bg-muted/50">
       <div className="flex items-center gap-2 mb-3">
         <Brain className="h-4 w-4 text-orange-500" />
         <span className="text-sm font-medium text-orange-600">Plan</span>
       </div>
 
-      <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+      <div className="text-sm text-foreground">
         {plan}
       </div>
     </div>
@@ -266,34 +258,45 @@ const PlanComponent: React.FC<{
 // Part Renderer Component
 const PartRenderer: React.FC<{
   part: DistriPart;
-  isDark?: boolean;
-}> = ({ part, isDark = false }) => {
+}> = ({ part }) => {
   switch (part.type) {
     case 'text':
       return (
-        <div className={`whitespace-pre-wrap break-words ${isDark ? 'text-white' : 'text-gray-700'}`}>
+        <div className="whitespace-pre-wrap break-words text-foreground">
           {part.text}
         </div>
       );
 
     case 'code_observation':
-      return <CodeObservationComponent thought={part.thought} code={part.code} isDark={isDark} />;
+      return <CodeObservationComponent thought={part.thought} code={part.code} />;
 
     case 'tool_call':
-      return <ToolCallComponent toolCall={part.tool_call} isDark={isDark} />;
+      console.log('tool_call', part);
+      return <ToolCallComponent toolCall={part.tool_call} />;
 
     case 'tool_result':
-      return <ToolResultComponent toolResult={part.tool_result} isDark={isDark} />;
+      return <ToolResultComponent toolResult={part.tool_result} />;
 
     case 'plan':
-      return <PlanComponent plan={part.plan} isDark={isDark} />;
+      return <PlanComponent plan={part.plan} />;
 
-    case 'image':
+    case 'image_url':
+      return (
+        <div className="my-4">
+          <img
+            src={part.image.url}
+            alt={part.image.name || 'Image'}
+            className="max-w-full rounded-lg"
+          />
+        </div>
+      );
+
+    case 'image_bytes':
       return (
         <div className="my-4">
           <img
             src={`data:${part.image.mime_type};base64,${part.image.data}`}
-            alt={part.image.filename || 'Image'}
+            alt={part.image.name || 'Image'}
             className="max-w-full rounded-lg"
           />
         </div>
@@ -302,7 +305,7 @@ const PartRenderer: React.FC<{
     case 'data':
       return (
         <div className="my-4">
-          <CodeBlock language="json" isDark={isDark}>
+          <CodeBlock language="json">
             {JSON.stringify(part.data, null, 2)}
           </CodeBlock>
         </div>
@@ -334,14 +337,14 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
   }
 
   // Detect if we're in a dark theme context (e.g., user message with white text)
-  const isDark = className.includes('text-white');
+  // const isDark = className.includes('text-white') || className.includes('text-foreground');
 
   // If we have a DistriMessage, render its parts
   if (message && isDistriMessage(message)) {
     // Group consecutive text parts for concatenation
     const groupedParts: DistriPart[][] = [];
     let currentTextGroup: DistriPart[] = [];
-    
+
     for (const part of message.parts) {
       if (part.type === 'text') {
         currentTextGroup.push(part);
@@ -353,7 +356,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
         groupedParts.push([part]);
       }
     }
-    
+
     // Don't forget the last text group
     if (currentTextGroup.length > 0) {
       groupedParts.push(currentTextGroup);
@@ -366,13 +369,13 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
             // Concatenate consecutive text parts
             const concatenatedText = group.map(part => part.type === 'text' ? part.text : '').join('');
             return (
-              <div key={groupIndex} className={`whitespace-pre-wrap break-words ${isDark ? 'text-white' : 'text-gray-700'}`}>
+              <div key={groupIndex} className="whitespace-pre-wrap break-words text-foreground">
                 {concatenatedText}
               </div>
             );
           } else {
             // Render single part normally
-            return <PartRenderer key={groupIndex} part={group[0]} isDark={isDark} />;
+            return <PartRenderer key={groupIndex} part={group[0]} />;
           }
         })}
       </div>
@@ -387,9 +390,9 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     if (!config.enableMarkdown) return false;
 
     const markdownPatterns = [
-      /^#{1,6}\s+/m, // Headers
+      /^#{1, 6}\s+/m, // Headers
       /\*\*.*?\*\*/g, // Bold
-      /\*.*?\*/g, // Italic  
+      /\*.*?\*/g, // Italic
       /`.*?`/g, // Inline code
       /```[\s\S]*?```/g, // Code blocks
       /^\s*[-*+]\s+/m, // Lists
@@ -425,7 +428,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       /^\s*(def|class)\s+\w+/, // Python def/class
       /^\s*(public|private|protected)\s+(class|interface|static)/, // Java/C# declarations
       /^\s*<\?php/, // PHP opening tag
-      /^\s*<html|<head|<body|<div/, // HTML tags
+      /^\s*<html|<head|<body|<div /, // HTML tags
       /^\s*\{[\s]*"[\w"]+"\s*:/, // JSON objects (key-value pairs)
       /^\s*SELECT\s+.*\s+FROM\s+/i, // SQL SELECT statements
       /^\s*\/\*[\s\S]*\*\//, // Block comments
@@ -440,7 +443,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
 
     // Additional verification: check for programming structure
     const structuralPatterns = [
-      /[{}[\]()]/g, // Brackets and braces
+      /[{ }[\]()]/g, // Brackets and braces
       /^\s{2,}/m, // Indentation
       /=>/g, // Arrow functions
       /[;:]/g, // Semicolons or colons
@@ -476,7 +479,6 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
     return (
       <CodeBlock
         language={detectLanguage}
-        isDark={isDark}
       >
         {content}
       </CodeBlock>
@@ -485,7 +487,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
 
   if (!hasMarkdownSyntax) {
     return (
-      <div className={`whitespace-pre-wrap break-words ${className}`}>
+      <div className={`whitespace-pre-wrap break-words text-foreground ${className}`}>
         {content}
       </div>
     );
@@ -493,7 +495,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
 
   // Enhanced markdown rendering with better overflow handling
   return (
-    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''} ${className} break-words`}>
+    <div className={`prose prose-sm max-w-none prose-foreground ${className} break-words`}>
       <ReactMarkdown
         components={{
           code({ className, children }) {
@@ -504,7 +506,6 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
               <CodeBlock
                 language={language}
                 inline={true}
-                isDark={isDark}
               >
                 {String(children).replace(/\n$/, '')}
               </CodeBlock>
@@ -513,7 +514,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
           // Enhanced blockquote styling
           blockquote({ children }) {
             return (
-              <blockquote className={`border-l-4 pl-4 py-2 italic my-4 rounded-r ${isDark ? 'border-blue-400 text-blue-200 bg-blue-900/20' : 'border-blue-500 text-blue-700 bg-blue-50'}`}>
+              <blockquote className="border-l-4 pl-4 py-2 italic my-4 rounded-r border-primary text-primary bg-primary/10">
                 {children}
               </blockquote>
             );
@@ -522,8 +523,7 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
           table({ children }) {
             return (
               <div className="overflow-x-auto my-4">
-                <table className={`min-w-full border-collapse rounded-lg overflow-hidden ${isDark ? 'border-gray-600' : 'border-gray-300'
-                  }`}>
+                <table className="min-w-full border-collapse rounded-lg overflow-hidden border-border">
                   {children}
                 </table>
               </div>
@@ -531,15 +531,14 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
           },
           th({ children }) {
             return (
-              <th className={`border px-4 py-2 font-semibold text-left ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-100'}`}>
+              <th className="border px-4 py-2 font-semibold text-left border-border bg-muted">
                 {children}
               </th>
             );
           },
           td({ children }) {
             return (
-              <td className={`border px-4 py-2 ${isDark ? 'border-gray-600' : 'border-gray-300'
-                }`}>
+              <td className="border px-4 py-2 border-border">
                 {children}
               </td>
             );

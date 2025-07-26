@@ -104,8 +104,8 @@ export class Agent {
   /**
    * Get all registered tools
    */
-  getTools(): string[] {
-    return Array.from(this.tools.keys());
+  getTools(): DistriTool[] {
+    return Array.from(this.tools.values());
   }
 
   /**
@@ -145,20 +145,6 @@ export class Agent {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
-  }
-
-  /**
-   * Get tool definitions for context metadata
-   */
-  getToolDefinitions(): Record<string, any> {
-    const definitions: Record<string, any> = {};
-
-    // Note: We only send tool names to the backend since handlers are frontend-only
-    this.tools.forEach((_handler, name) => {
-      definitions[name] = { name };
-    });
-
-    return definitions;
   }
 
   /**
@@ -227,13 +213,13 @@ export class Agent {
    * Enhance message params with tool definitions
    */
   private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
-    const toolDefinitions = this.getToolDefinitions();
+    const tools = this.getTools();
 
     return {
       ...params,
       metadata: {
         ...params.metadata,
-        tools: Object.keys(toolDefinitions).length > 0 ? toolDefinitions : undefined
+        tools
       }
     };
   }

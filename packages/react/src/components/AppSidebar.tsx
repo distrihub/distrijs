@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2, RefreshCw, Github } from 'lucide-react';
+import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2, RefreshCw, Github, Loader2 } from 'lucide-react';
 import { useThreads } from '../useThreads';
 import { useTheme } from './ThemeProvider';
 import {
@@ -17,6 +17,9 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "./ui/sidebar"
+import { Input } from './ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useSidebar } from './ui/sidebar';
 
 interface ThreadItemProps {
   thread: any;
@@ -55,11 +58,11 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
 
   return (
     <SidebarMenuItem className="mb-3">
-      <SidebarMenuButton asChild isActive={isActive} className="group py-3 px-3 rounded-lg">
-        <div onClick={onClick} className="flex items-center space-x-3 flex-1 min-w-0">
-          <MessageSquare className="h-4 w-4 flex-shrink-0" />
+      <SidebarMenuButton asChild isActive={isActive}>
+        <div onClick={onClick}>
+
           {isEditing ? (
-            <input
+            <Input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               onBlur={handleRename}
@@ -69,7 +72,7 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <div className="flex-1 min-w-0">
+            <div className="flex-1">
               <p className="text-sm font-medium truncate leading-tight">
                 {thread.title || 'New Chat'}
               </p>
@@ -82,48 +85,43 @@ const ThreadItem: React.FC<ThreadItemProps> = ({
       </SidebarMenuButton>
 
       {!isEditing && (
-        <SidebarMenuAction showOnHover>
-          <div className="relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              className="p-1.5 rounded-md hover:bg-sidebar-accent transition-opacity"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuAction onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}>
+              <MoreHorizontal />
+            </SidebarMenuAction>
 
-            {showMenu && (
-              <div className="absolute right-0 top-6 w-32 bg-card border rounded-lg shadow-lg z-10">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditing(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent text-card-foreground flex items-center space-x-2 rounded-t-lg"
-                >
-                  <Edit3 className="h-3 w-3" />
-                  <span>Rename</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                    setShowMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent text-destructive flex items-center space-x-2 rounded-b-lg"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  <span>Delete</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </SidebarMenuAction>
-      )}
-    </SidebarMenuItem>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+              setShowMenu(false);
+            }}
+
+            >
+              <Edit3 className="h-3 w-3" />
+              <span>Rename</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+              setShowMenu(false);
+            }}
+
+            >
+              <Trash2 className="h-3 w-3" />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+      )
+      }
+    </SidebarMenuItem >
   );
 };
 
@@ -151,88 +149,86 @@ export function AppSidebar({
   const { threads, loading: threadsLoading, refetch } = useThreads();
   const { theme, setTheme } = useTheme();
 
+  const { open } = useSidebar();
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <button
-          onClick={onLogoClick}
-          className="flex items-center space-x-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg p-2 transition-colors"
-        >
-          <Bot className="h-4 w-4" />
-          <span className="font-semibold">Distri</span>
-        </button>
+    <Sidebar collapsible="icon" variant="floating">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={onLogoClick}
+            >
+              <Bot />
+              Distri
+            </SidebarMenuButton>
+            <SidebarMenuAction onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              title="Toggle theme"
+              className="absolute right-0 top-0"
+            >
+
+              <svg className="h-4 w-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+              <svg className="absolute h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </SidebarMenuAction>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarSeparator />
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3 py-2">Actions</SidebarGroupLabel>
-          <SidebarGroupContent className="px-2">
+          <SidebarGroupLabel>Actions</SidebarGroupLabel>
+          <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem className="mb-1">
                 <SidebarMenuButton
-                  asChild
                   isActive={currentPage === 'chat'}
                   onClick={() => {
                     onPageChange('chat');
                     onNewChat();
                   }}
-                  className="py-3 px-3 rounded-lg"
                 >
-                  <button className="flex items-center space-x-3 w-full">
-                    <Edit2 className="h-4 w-4" />
-                    <span>New Chat</span>
-                  </button>
+                  <Edit2 className="h-4 w-4" />
+                  New Chat
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem className="mb-1">
                 <SidebarMenuButton
-                  asChild
                   isActive={currentPage === 'agents'}
                   onClick={() => onPageChange('agents')}
-                  className="py-3 px-3 rounded-lg"
                 >
-                  <button className="flex items-center space-x-3 w-full">
-                    <Users className="h-4 w-4" />
-                    <span>Agents</span>
-                  </button>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Action buttons as regular menu items */}
-              <SidebarMenuItem className="mb-1">
-                <SidebarMenuButton
-                  onClick={handleRefresh}
-                  disabled={threadsLoading}
-                  className="py-3 px-3 rounded-lg"
-                  title="Refresh threads"
-                >
-                  <RefreshCw className={`h-4 w-4 ${threadsLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
+                  <Users className="h-4 w-4" />
+                  Agents
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 py-2">Conversations</SidebarGroupLabel>
-          <SidebarGroupContent className="px-2">
+        {open && <SidebarGroup>
+          <SidebarGroupLabel>Conversations</SidebarGroupLabel>
+          <SidebarGroupContent>
             <SidebarMenu>
               {threadsLoading ? (
-                <div className="text-center py-8">
-                  <div className="text-sm text-muted-foreground">Loading threads...</div>
-                </div>
+                <SidebarMenuItem>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading threads...</span>
+                </SidebarMenuItem>
+
               ) : threads.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <div className="text-sm text-muted-foreground">No conversations yet</div>
-                </div>
+                <SidebarMenuItem>
+                  <MessageSquare className="h-4 w-4" />
+                  <span>No conversations yet</span>
+                </SidebarMenuItem>
               ) : (
                 threads.map((thread: any) => (
                   <ThreadItem
@@ -254,45 +250,30 @@ export function AppSidebar({
             disabled={threadsLoading}
             title="Refresh conversations"
           >
-            <RefreshCw className={`h-4 w-4 ${threadsLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`${threadsLoading ? 'animate-spin' : ''}`} />
             <span className="sr-only">Refresh conversations</span>
           </SidebarGroupAction>
         </SidebarGroup>
+        }
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center justify-between">
+      <SidebarFooter>
+        <SidebarMenu><SidebarMenuItem>
           {/* Distri logo and GitHub link */}
-          <div className="flex items-center space-x-2">
-            <Bot className="h-4 w-4" />
-            <span className="text-sm font-medium">Distri</span>
-            <button
-              onClick={() => window.open('https://github.com/your-repo/distri', '_blank')}
-              className="p-1 rounded-md hover:bg-sidebar-accent transition-colors"
-              title="GitHub"
-            >
-              <Github className="h-3 w-3" />
-            </button>
-          </div>
 
-          {/* Theme toggle */}
-          <button
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="p-1 rounded-md hover:bg-sidebar-accent transition-colors"
-            title="Toggle theme"
+          <SidebarMenuButton
+            onClick={() => window.open('https://github.com/your-repo/distri', '_blank')}
+            title="GitHub"
           >
-            <div className="flex items-center justify-center w-4 h-4 relative">
-              <svg className="h-4 w-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <circle cx="12" cy="12" r="5" />
-                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-              </svg>
-              <svg className="absolute h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            </div>
-          </button>
-        </div>
+            <Github />
+            Distri
+          </SidebarMenuButton>
+
+
+        </SidebarMenuItem>
+
+        </SidebarMenu>
       </SidebarFooter>
-    </Sidebar>
+    </Sidebar >
   );
 }

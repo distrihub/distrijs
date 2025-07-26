@@ -1,6 +1,7 @@
-import { Message } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, A2AStreamEventData } from './types';
+import { Message, Part } from '@a2a-js/sdk/client';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, A2AStreamEventData, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart } from './types';
 import { DistriEvent } from './events';
+import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
  * Converts an A2A Message to a DistriMessage
@@ -33,22 +34,32 @@ export function decodeA2AStreamEvent(event: A2AStreamEventData): DistriEvent | D
 /**
  * Converts an A2A Part to a DistriPart
  */
-export function convertA2APartToDistri(a2aPart: any): DistriPart {
+export function convertA2APartToDistri(a2aPart: Part): DistriPart {
+  console.log('a2aPart', a2aPart);
   switch (a2aPart.kind) {
     case 'text':
       return { type: 'text', text: a2aPart.text };
     case 'file':
-      return { type: 'image', image: a2aPart.file };
-    case 'tool_call':
-      return { type: 'tool_call', tool_call: a2aPart.tool_call };
-    case 'tool_result':
-      return { type: 'tool_result', tool_result: a2aPart.tool_result };
-    case 'code_observation':
-      return { type: 'code_observation', thought: a2aPart.thought, code: a2aPart.code };
-    case 'plan':
-      return { type: 'plan', plan: a2aPart.plan };
+      if ('uri' in a2aPart.file) {
+        return { type: 'image_url', image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } as FileUrl } as ImageUrlPart;
+      }
+      else {
+        return { type: 'image_bytes', image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } as FileBytes } as ImageBytesPart;
+      }
     case 'data':
-      return { type: 'data', data: a2aPart.data };
+      console.log('a2aPart.data', a2aPart.data);
+      switch (a2aPart.data.part_type) {
+        case 'tool_call':
+          return { type: 'tool_call', tool_call: a2aPart.data as unknown as ToolCall } as ToolCallPart;
+        case 'tool_result':
+          return { type: 'tool_result', tool_result: a2aPart.data as unknown as ToolResult } as ToolResultPart;
+        case 'code_observation':
+          return { type: 'code_observation', thought: a2aPart.data.thought, code: a2aPart.data.code } as CodeObservationPart;
+        case 'plan':
+          return { type: 'plan', plan: a2aPart.data.plan } as PlanPart;
+        default:
+          return { type: 'data', data: a2aPart.data } as DataPart;
+      }
     default:
       // For unknown parts, convert to text by stringifying
       return { type: 'text', text: JSON.stringify(a2aPart) };
@@ -90,20 +101,22 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
 /**
  * Converts a DistriPart to an A2A Part
  */
-export function convertDistriPartToA2A(distriPart: DistriPart): any {
+export function convertDistriPartToA2A(distriPart: DistriPart): Part {
   switch (distriPart.type) {
     case 'text':
       return { kind: 'text', text: distriPart.text };
-    case 'image':
-      return { kind: 'file', file: distriPart.image };
+    case 'image_url':
+      return { kind: 'file', file: { mimeType: distriPart.image.mime_type, uri: distriPart.image.url } as FileWithUri };
+    case 'image_bytes':
+      return { kind: 'file', file: { mimeType: distriPart.image.mime_type, bytes: distriPart.image.data } as FileWithBytes };
     case 'tool_call':
-      return { kind: 'tool_call', tool_call: distriPart.tool_call };
+      return { kind: 'data', data: { part_type: 'tool_call', tool_call: distriPart.tool_call } };
     case 'tool_result':
-      return { kind: 'tool_result', tool_result: distriPart.tool_result };
+      return { kind: 'data', data: { part_type: 'tool_result', tool_result: distriPart.tool_result } };
     case 'code_observation':
-      return { kind: 'code_observation', thought: distriPart.thought, code: distriPart.code };
+      return { kind: 'data', data: { part_type: 'code_observation', thought: distriPart.thought, code: distriPart.code } };
     case 'plan':
-      return { kind: 'plan', plan: distriPart.plan };
+      return { kind: 'data', data: { part_type: 'plan', plan: distriPart.plan } };
     case 'data':
       return { kind: 'data', data: distriPart.data };
   }
