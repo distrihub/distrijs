@@ -72,6 +72,20 @@ export function useChat({
   // Register tools with agent
   useTools({ agent, tools });
 
+  // Reset state when agent changes
+  const agentIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (agent?.id !== agentIdRef.current) {
+      // Agent changed, reset all state
+      setMessages([]);
+      setToolCalls([]);
+      setToolResults([]);
+      setToolCallStatuses(new Map());
+      setError(null);
+      agentIdRef.current = agent?.id;
+    }
+  }, [agent?.id]);
+
   // Create InvokeContext for message construction
   const createInvokeContext = useCallback((): InvokeContext => ({
     thread_id: threadId,

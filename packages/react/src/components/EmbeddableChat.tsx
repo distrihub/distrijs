@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool, ToolCall } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
+import ApprovalDialog from './ApprovalDialog';
+import Toast from './Toast';
+import { initializeBuiltinHandlers, createBuiltinToolHandlers } from '../builtinHandlers';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
-import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar';
 
 export interface EmbeddableChatProps {
   agent: Agent;
@@ -62,6 +64,17 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string>('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('info');
+  const [showToastState, setShowToastState] = useState(false);
+
+  // Approval dialog state
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalToolCalls, setApprovalToolCalls] = useState<ToolCall[]>([]);
+  const [approvalReason, setApprovalReason] = useState<string>('');
+  const [approvalResolve, setApprovalResolve] = useState<((approved: boolean) => void) | null>(null);
+
   const {
     messages,
     isLoading,
@@ -79,6 +92,46 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     metadata,
     onMessagesUpdate
   });
+
+  // Initialize builtin handlers
+  useEffect(() => {
+    const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+      setToastMessage(message);
+      setToastType(type);
+      setShowToastState(true);
+    };
+
+    const showApprovalDialog = (toolCalls: ToolCall[], reason?: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        setApprovalToolCalls(toolCalls);
+        setApprovalReason(reason || '');
+        setApprovalDialogOpen(true);
+        setApprovalResolve(() => resolve);
+      });
+    };
+
+    initializeBuiltinHandlers({
+      onToolComplete: (results) => {
+        // Handle tool completion if needed
+        console.log('Tool completed:', results);
+      },
+      onCancel: () => {
+        // Handle cancellation if needed
+        console.log('Tool cancelled');
+      },
+      showToast,
+      showApprovalDialog
+    });
+
+    // Register builtin tool handlers with agent
+    if (agent) {
+      const builtinHandlers = createBuiltinToolHandlers();
+      Object.entries(builtinHandlers).forEach(([toolName, _handler]) => {
+        // Register as legacy tool handlers if needed
+        console.log(`Registering builtin tool: ${toolName}`);
+      });
+    }
+  }, [agent]);
 
   console.log('tools', tools);
 
@@ -103,6 +156,13 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     }
   };
 
+  const handleApprovalResponse = (approved: boolean) => {
+    setApprovalDialogOpen(false);
+    if (approvalResolve) {
+      approvalResolve(approved);
+      setApprovalResolve(null);
+    }
+  };
 
   const getMessageType = (message: DistriMessage): MessageComponentType => {
     if (message.parts.some((part: DistriPart) => part.type === 'tool_call')) {
@@ -140,12 +200,13 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                 <AssistantMessageComponent
                   key={key}
                   name={agent?.name}
-                  avatar={agent?.iconUrl ? <Avatar>
-                    <AvatarImage src={agent.iconUrl} />
-                    <AvatarFallback>
-                      {agent.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar> : undefined}
+                  avatar={agent?.iconUrl ? (
+                    <img src={agent.iconUrl} alt={agent.name} className="w-6 h-6 rounded-full" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">
+                      {agent?.name?.charAt(0).toUpperCase() || 'A'}
+                    </div>
+                  )}
                   message={message}
                   timestamp={timestamp}
                   isStreaming={isStreaming && index === messages.length - 1}
@@ -311,6 +372,26 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {showToastState && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToastState(false)}
+        />
+      )}
+
+      {/* Approval Dialog */}
+      {approvalDialogOpen && (
+        <ApprovalDialog
+          toolCalls={approvalToolCalls}
+          reason={approvalReason}
+          onApprove={() => handleApprovalResponse(true)}
+          onDeny={() => handleApprovalResponse(false)}
+          onCancel={() => handleApprovalResponse(false)}
+        />
+      )}
     </div>
   );
 };

@@ -32,16 +32,30 @@ export function useAgent({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const agentRef = useRef<Agent | null>(null);
+  const currentAgentIdRef = useRef<string | null>(null);
 
   // Initialize agent
   const initializeAgent = useCallback(async () => {
-    if (!client || !agentId || agentRef.current) return;
+    if (!client || !agentId) return;
+
+    // Check if we need to create a new agent
+    if (currentAgentIdRef.current === agentId && agentRef.current) {
+      return; // Same agent, no need to recreate
+    }
 
     try {
       setLoading(true);
       setError(null);
+      
+      // Clear previous agent if switching to a different one
+      if (currentAgentIdRef.current !== agentId) {
+        agentRef.current = null;
+        setAgent(null);
+      }
+      
       const newAgent = await Agent.create(agentId, client);
       agentRef.current = newAgent;
+      currentAgentIdRef.current = agentId;
       setAgent(newAgent);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to create agent'));
@@ -50,13 +64,21 @@ export function useAgent({
     }
   }, [client, agentId]);
 
-  // Auto-initialize agent when client is ready
+  // Auto-initialize agent when client is ready or agentId changes
   React.useEffect(() => {
     if (!clientLoading && !clientError && autoCreateAgent && client) {
       initializeAgent();
     }
-  }, [clientLoading, clientError, autoCreateAgent, client, initializeAgent]);
+  }, [clientLoading, clientError, autoCreateAgent, client, agentId, initializeAgent]);
 
+  // Reset agent when agentId changes
+  React.useEffect(() => {
+    if (currentAgentIdRef.current !== agentId) {
+      agentRef.current = null;
+      setAgent(null);
+      currentAgentIdRef.current = null;
+    }
+  }, [agentId]);
 
   return {
     // Agent information
