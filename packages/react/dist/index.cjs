@@ -1486,33 +1486,9 @@ function useChat({
     run_id: void 0,
     metadata
   }), [threadId, metadata]);
-  const sendToolResultsToAgent = (0, import_react7.useCallback)(async (toolResults) => {
-    if (agent && toolResults.length > 0) {
-      console.log("Auto-sending tool results:", toolResults);
-      const toolResultParts = toolResults.map((result) => ({
-        type: "tool_result",
-        tool_result: result
-      }));
-      const toolResultMessage = DistriClient.initDistriMessage("tool", toolResultParts);
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
-      try {
-        setIsLoading(true);
-        await agent.invoke({
-          message: a2aMessage,
-          metadata: context.metadata
-        });
-        toolCallState.clearToolResults();
-      } catch (err) {
-        console.error("Failed to send tool results:", err);
-        setError(err instanceof Error ? err : new Error("Failed to send tool results"));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [agent, createInvokeContext]);
+  const onAllToolsCompletedRef = (0, import_react7.useRef)();
   const toolCallState = useToolCallState({
-    onAllToolsCompleted: sendToolResultsToAgent
+    onAllToolsCompleted: (toolResults) => onAllToolsCompletedRef.current?.(toolResults)
   });
   useTools({ agent, tools });
   (0, import_react7.useEffect)(() => {
@@ -1674,6 +1650,23 @@ function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
+  const sendToolResultsToAgent = (0, import_react7.useCallback)(async (toolResults) => {
+    if (agent && toolResults.length > 0) {
+      console.log("Auto-sending tool results via streaming:", toolResults);
+      try {
+        const toolResultParts = toolResults.map((result) => ({
+          type: "tool_result",
+          tool_result: result
+        }));
+        await sendMessageStream(toolResultParts);
+        toolCallState.clearToolResults();
+      } catch (err) {
+        console.error("Failed to send tool results:", err);
+        setError(err instanceof Error ? err : new Error("Failed to send tool results"));
+      }
+    }
+  }, [sendMessageStream, toolCallState]);
+  onAllToolsCompletedRef.current = sendToolResultsToAgent;
   const executeTool = (0, import_react7.useCallback)(async (toolCall) => {
     if (!agent) return;
     toolCallState.setToolCallRunning(toolCall.tool_call_id);

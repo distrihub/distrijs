@@ -96,7 +96,7 @@ When called, it shows a toast notification and displays the confirmation in the 
 3. **React component renders** in the chat message showing the tool's UI
 4. **User interacts** with the component (approve/deny, etc.)
 5. **Tool completes** and returns result to the agent
-6. **Tool results are automatically sent** to the agent when all pending tools are complete
+6. **Tool results are automatically sent via streaming** to the agent when all pending tools are complete
 7. **Conversation continues** with the agent having all tool results
 
 ## Tool Call State Management
@@ -125,7 +125,8 @@ const hasPending = toolState.hasPendingToolCalls();
 ```
 
 ### Key Features:
-- **Automatic Tool Result Sending**: When all tool calls are completed, results are automatically sent to the agent
+- **Automatic Tool Result Sending**: When all tool calls are completed, results are automatically sent via streaming to the agent
+- **Streaming Integration**: Reuses the same streaming logic as regular messages for consistency
 - **Clean State Updates**: Friendlier methods like `setToolCallRunning()`, `completeToolCall()` 
 - **Centralized State**: All tool call state in one place with `toolCallStates` Map
 - **Status Tracking**: Each tool call maintains `pending`, `running`, `completed`, `error`, `user_action_required` states

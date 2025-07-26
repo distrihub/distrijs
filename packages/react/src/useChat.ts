@@ -72,8 +72,13 @@ export function useChat({
     metadata
   }), [threadId, metadata]);
 
+  // Callback ref for auto-sending tool results
+  const onAllToolsCompletedRef = useRef<((toolResults: ToolResult[]) => void) | undefined>();
+
   // Tool state management with auto-send when all completed  
-  const toolCallState = useToolCallState();
+  const toolCallState = useToolCallState({
+    onAllToolsCompleted: (toolResults) => onAllToolsCompletedRef.current?.(toolResults)
+  });
 
   // Register tools with agent
   useTools({ agent, tools });
@@ -188,61 +193,6 @@ export function useChat({
     onMessage?.(event);
   }, [onMessage, agent]);
 
-  // Auto-send tool results when all tools are completed (streaming)
-  const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
-    if (agent && toolResults.length > 0) {
-      console.log('Auto-sending tool results via streaming:', toolResults);
-      
-      setIsLoading(true);
-      setIsStreaming(true);
-      setError(null);
-
-      // Cancel any existing stream
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-
-      try {
-        const toolResultParts: DistriPart[] = toolResults.map(result => ({
-          type: 'tool_result',
-          tool_result: result
-        }));
-
-        const toolResultMessage = DistriClient.initDistriMessage('tool', toolResultParts);
-        const context = createInvokeContext();
-        const a2aMessage = convertDistriMessageToA2A(toolResultMessage, context);
-
-        // Start streaming tool results
-        const stream = await agent.invokeStream({
-          message: a2aMessage,
-          metadata: context.metadata
-        });
-
-        for await (const event of stream) {
-          if (abortControllerRef.current?.signal.aborted) {
-            break;
-          }
-          handleStreamEvent(event);
-        }
-        
-        // Clear tool results after successful streaming
-        toolCallState.clearToolResults();
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          // Stream was cancelled, don't show error
-          return;
-        }
-        console.error('Failed to send tool results:', err);
-        setError(err instanceof Error ? err : new Error('Failed to send tool results'));
-      } finally {
-        setIsLoading(false);
-        setIsStreaming(false);
-        abortControllerRef.current = null;
-      }
-    }
-  }, [agent, createInvokeContext, handleStreamEvent]);
-
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
 
@@ -348,6 +298,34 @@ export function useChat({
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
+
+  // Auto-send tool results when all tools are completed (streaming)
+  // This reuses the existing sendMessageStream logic for consistency
+  const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
+    if (agent && toolResults.length > 0) {
+      console.log('Auto-sending tool results via streaming:', toolResults);
+      
+      try {
+        // Construct tool result parts
+        const toolResultParts: DistriPart[] = toolResults.map(result => ({
+          type: 'tool_result',
+          tool_result: result
+        }));
+
+        // Reuse existing streaming logic for consistency with regular messages
+        await sendMessageStream(toolResultParts);
+        
+        // Clear tool results after successful streaming
+        toolCallState.clearToolResults();
+      } catch (err) {
+        console.error('Failed to send tool results:', err);
+        setError(err instanceof Error ? err : new Error('Failed to send tool results'));
+      }
+    }
+  }, [sendMessageStream, toolCallState]);
+
+  // Set the callback ref to point to our function
+  onAllToolsCompletedRef.current = sendToolResultsToAgent;
 
   // Execute a tool call
   const executeTool = useCallback(async (toolCall: ToolCall) => {
