@@ -109,10 +109,15 @@ type CodeObservationPart = {
     thought: string;
     code: string;
 };
-type ImagePart = {
-    type: 'image';
-    image: FileType;
+type ImageUrlPart = {
+    type: 'image_url';
+    image: FileUrl;
 };
+type ImageBytesPart = {
+    type: 'image_bytes';
+    image: FileBytes;
+};
+type ImagePart = ImageUrlPart | ImageBytesPart;
 type DataPart = {
     type: 'data';
     data: any;
@@ -133,11 +138,17 @@ type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCa
 /**
  * File type for images
  */
-interface FileType {
+interface FileBytes {
     mime_type: string;
     data: string;
-    filename?: string;
+    name?: string;
 }
+interface FileUrl {
+    mime_type: string;
+    url: string;
+    name?: string;
+}
+type FileType = FileBytes | FileUrl;
 /**
  * Tool definition interface following AG-UI pattern
  */
@@ -420,7 +431,7 @@ declare class Agent {
     /**
      * Get all registered tools
      */
-    getTools(): string[];
+    getTools(): DistriTool[];
     /**
      * Check if a tool is registered
      */
@@ -429,10 +440,6 @@ declare class Agent {
      * Execute a tool call
      */
     executeTool(toolCall: ToolCall): Promise<ToolResult>;
-    /**
-     * Get tool definitions for context metadata
-     */
-    getToolDefinitions(): Record<string, any>;
     /**
      * Get agent information
      */
@@ -473,7 +480,7 @@ declare function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage;
 /**
  * Converts an A2A Part to a DistriPart
  */
-declare function convertA2APartToDistri(a2aPart: any): DistriPart;
+declare function convertA2APartToDistri(a2aPart: Part): DistriPart;
 /**
  * Converts a DistriMessage to an A2A Message using the provided context
  */
@@ -481,7 +488,7 @@ declare function convertDistriMessageToA2A(distriMessage: DistriMessage, context
 /**
  * Converts a DistriPart to an A2A Part
  */
-declare function convertDistriPartToA2A(distriPart: DistriPart): any;
+declare function convertDistriPartToA2A(distriPart: DistriPart): Part;
 /**
  * Extract text content from DistriMessage
  */

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
@@ -8,16 +8,16 @@ import { AgentSelect } from './AgentSelect';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
-import { useAgent } from '@/useAgent';
+import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar';
 
 export interface EmbeddableChatProps {
-  agent?: Agent;
-  agentId: string;
+  agent: Agent;
   threadId?: string;
   height?: string;
   className?: string;
   style?: React.CSSProperties;
   metadata?: any;
+  tools?: DistriTool[];
   // Available agents for selection
   availableAgents?: Array<{ id: string; name: string; description?: string }>;
   // Customization props
@@ -41,12 +41,11 @@ export type MessageComponentType = MessageRole | 'assistant_with_tools' | 'plan'
 
 export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   threadId = uuidv4(),
-  agent: defaultAgent,
-  agentId,
-  height = '600px',
+  agent,
   className = '',
   style = {},
   metadata,
+  tools,
   availableAgents = [],
   UserMessageComponent = UserMessage,
   AssistantMessageComponent = AssistantMessage,
@@ -62,7 +61,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { agent } = useAgent({ agentId, agent: defaultAgent });
 
   const {
     messages,
@@ -76,9 +74,12 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   } = useChat({
     threadId,
     agent: agent || undefined,
+    tools,
     metadata,
     onMessagesUpdate
   });
+
+  console.log('tools', tools);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -138,7 +139,12 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                 <AssistantMessageComponent
                   key={key}
                   name={agent?.name}
-                  avatar={agent?.iconUrl || undefined}
+                  avatar={agent?.iconUrl ? <Avatar>
+                    <AvatarImage src={agent.iconUrl} />
+                    <AvatarFallback>
+                      {agent.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar> : undefined}
                   message={message}
                   timestamp={timestamp}
                   isStreaming={isStreaming && index === messages.length - 1}
@@ -214,7 +220,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     <div
       className={`distri-chat ${className} ${theme === 'dark' ? 'dark' : 'light'} w-full bg-background text-foreground flex flex-col relative`}
       style={{
-        height,
         ...style
       }}
     >
@@ -236,7 +241,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
       <div className="flex-1 relative min-h-0">
         <div className="absolute inset-0 flex flex-col">
           {/* Messages Area - Full height scrollable */}
-          <div className="flex-1 overflow-y-auto distri-scroll bg-background px-6">
+          <div className="flex-1 overflow-y-auto distri-scroll bg-background">
             <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center min-h-[400px]">
@@ -279,7 +284,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
 
           {/* Input Area - Absolutely positioned at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 bg-background px-6 py-4">
+          <div className="absolute bottom-0 left-0 right-0 bg-background py-4">
             <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
               <ChatInput
                 value={input}

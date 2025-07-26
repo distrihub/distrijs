@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriClient } from '@distri/core';
+import { Agent, DistriClient, DistriTool } from '@distri/core';
 import {
   DistriMessage,
   DistriPart,
@@ -11,11 +11,7 @@ import {
 } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
 import { DistriStreamEvent, isDistriMessage } from '../../core/src/types';
-import { useToolManager } from './hooks/useToolManager';
-
-interface ToolHandler {
-  (input: any): Promise<any> | any;
-}
+import { useTools } from './hooks/useTools';
 
 export interface UseChatOptions {
   threadId: string;
@@ -24,7 +20,7 @@ export interface UseChatOptions {
   onError?: (error: Error) => void;
   metadata?: any;
   onMessagesUpdate?: () => void;
-  tools?: Record<string, ToolHandler>;
+  tools?: DistriTool[];
 }
 
 export interface UseChatReturn {
@@ -51,7 +47,7 @@ export function useChat({
   metadata,
   onMessagesUpdate,
   agent,
-  tools = {},
+  tools,
 }: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,23 +55,12 @@ export function useChat({
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Tool handling with the new manager
+  // Tool handling - register tools with agent
   const [toolResults, setToolResults] = useState<ToolResult[]>([]);
+  const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 
-  const {
-    toolCalls,
-    addToolCalls,
-    executeTool,
-    completeTool,
-    getToolCallStatus
-  } = useToolManager({
-    tools,
-    autoExecute: false, // Don't auto-execute, let user control
-    onToolComplete: (_toolCallId, result) => {
-      setToolResults(prev => [...prev, result]);
-    }
-  });
-
+  // Register tools with agent
+  useTools({ agent, tools });
 
   // Create InvokeContext for message construction
   const createInvokeContext = useCallback((): InvokeContext => ({
@@ -90,7 +75,6 @@ export function useChat({
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
-      console.log('distriMessages', distriMessages);
       setMessages(distriMessages);
       onMessagesUpdate?.();
     } catch (err) {
@@ -98,14 +82,14 @@ export function useChat({
       setError(error);
       onError?.(error);
     }
-  }, [threadId, agent, onError, onMessagesUpdate]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate]);
 
   // Fetch messages on mount and when threadId changes
   useEffect(() => {
     if (threadId) {
       fetchMessages();
     }
-  }, [fetchMessages, threadId]);
+  }, [threadId, agent?.id]); // Only depend on threadId and agent.id, not the entire fetchMessages function
 
   const handleStreamEvent = useCallback((event: DistriStreamEvent) => {
     // Handle DistriMessage (converted from A2A Message)
@@ -113,13 +97,14 @@ export function useChat({
       if (isDistriMessage(event)) {
         const distriMessage = event as DistriMessage;
         const existingMessageIndex = prev
-          .filter(msg => isDistriMessage(msg))
-          .findIndex(msg => msg.id === distriMessage.id);
+          .findIndex(msg => isDistriMessage(msg) && msg.id && msg.id === distriMessage.id);
+        console.log('distriMessage', distriMessage);
 
         if (existingMessageIndex >= 0) {
           // Update existing message by merging parts
           const updatedMessages = [...prev];
           const existingMessage = updatedMessages[existingMessageIndex] as DistriMessage;
+          console.log('existingMessage', existingMessageIndex, existingMessage);
           // Merge parts from the new message into the existing one
           const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
 
@@ -140,22 +125,24 @@ export function useChat({
 
     // Handle tool calls automatically
     if (isDistriMessage(event)) {
+      console.log('event', event);
       const distriMessage = event as DistriMessage;
       const toolCallParts = distriMessage.parts.filter(part => part.type === 'tool_call');
 
+      console.log('toolCallParts', toolCallParts);
       if (toolCallParts.length > 0) {
-        const toolCalls = toolCallParts.map(part => (part as any).tool_call);
-        addToolCalls(toolCalls);
+        const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
+        setToolCalls(prev => [...prev, ...newToolCalls]);
       }
     }
 
     onMessage?.(event);
-  }, [onMessage, tools]);
-
-
+  }, [onMessage, agent]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
+
+    console.log(agent);
 
     setIsLoading(true);
     setIsStreaming(true);
@@ -264,6 +251,34 @@ export function useChat({
     setMessages([]);
   }, []);
 
+  // Execute a tool call
+  const executeTool = useCallback(async (toolCall: ToolCall) => {
+    if (!agent) return;
+
+    try {
+      const result = await agent.executeTool(toolCall);
+      setToolResults(prev => [...prev, result]);
+    } catch (error) {
+      console.error('Failed to execute tool:', error);
+    }
+  }, [agent]);
+
+  // Complete a tool call manually
+  const completeTool = useCallback((toolCallId: string, result: any, success: boolean = true, error?: string) => {
+    const toolResult: ToolResult = {
+      tool_call_id: toolCallId,
+      result,
+      success,
+      error
+    };
+    setToolResults(prev => [...prev, toolResult]);
+  }, []);
+
+  // Get tool call status
+  const getToolCallStatus = useCallback((toolCallId: string) => {
+    return toolCalls.find(tc => tc.tool_call_id === toolCallId);
+  }, [toolCalls]);
+
   // Send all collected tool results
   const sendToolResults = useCallback(async () => {
     if (agent && toolResults.length > 0) {
@@ -298,7 +313,7 @@ export function useChat({
     error,
     clearMessages,
     agent: agent || undefined,
-    pendingToolCalls: toolCalls.map(tc => tc.toolCall),
+    pendingToolCalls: toolCalls,
     toolResults,
     sendToolResults,
     executeTool,

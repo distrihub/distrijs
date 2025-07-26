@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench } from 'lucide-react';
-import { ToolCallState, ToolCall, DistriMessage } from '@distri/core';
+import { ToolCall, DistriMessage } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
 
 export interface BaseMessageProps {
@@ -86,7 +86,7 @@ export const MessageContainer: React.FC<{
 
   return (
     <div className={`flex ${justifyClass} w-full ${bgClass} ${className}`}>
-      <div className="w-full max-w-4xl mx-auto px-6">
+      <div className="w-full max-w-4xl mx-auto">
         {children}
       </div>
     </div>
@@ -103,7 +103,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#343541">
-      <div className="flex items-start gap-4 py-6 px-4">
+      <div className="flex items-start gap-4 py-3 px-2">
         <div className="distri-avatar distri-avatar-user">
           {avatar || <User className="h-4 w-4" />}
         </div>
@@ -140,7 +140,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
-      <div className="flex items-start gap-4 py-6 px-4">
+      <div className="flex items-start gap-4 py-3 px-2">
         <div className="distri-avatar distri-avatar-assistant">
           {avatar || <Bot className="h-4 w-4" />}
         </div>
@@ -186,7 +186,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
-      <div className="flex items-start gap-4 py-6 px-4">
+      <div className="flex items-start gap-4 py-3 px-2">
         <div className="distri-avatar distri-avatar-assistant">
           {avatar || <Bot className="h-4 w-4" />}
         </div>
@@ -292,7 +292,7 @@ export const PlanMessage: React.FC<PlanMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#40414f">
-      <div className="flex items-start gap-4 py-6 px-4">
+      <div className="flex items-start gap-4 py-3 px-2">
         <div className="distri-avatar distri-avatar-plan">
           {avatar || <Brain className="h-4 w-4" />}
         </div>
@@ -323,7 +323,7 @@ export const DebugMessage: React.FC<DebugMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#343541">
-      <div className="flex items-start gap-4 py-6 px-4">
+      <div className="flex items-start gap-4 py-3 px-2">
         <div className="prose prose-sm max-w-none text-foreground">
           <MessageRenderer
             content={JSON.stringify(message)}
@@ -348,7 +348,7 @@ export const SystemMessage: React.FC<SystemMessageProps> = ({
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#343541">
-      <div className="flex items-start gap-4 py-6 px-4">
+      <div className="flex items-start gap-4 py-3 px-2">
         <div className="distri-avatar distri-avatar-system">
           {avatar || <Settings className="h-4 w-4" />}
         </div>

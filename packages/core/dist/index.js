@@ -448,21 +448,30 @@ function convertA2AMessageToDistri(a2aMessage) {
   };
 }
 function convertA2APartToDistri(a2aPart) {
+  console.log("a2aPart", a2aPart);
   switch (a2aPart.kind) {
     case "text":
       return { type: "text", text: a2aPart.text };
     case "file":
-      return { type: "image", image: a2aPart.file };
-    case "tool_call":
-      return { type: "tool_call", tool_call: a2aPart.tool_call };
-    case "tool_result":
-      return { type: "tool_result", tool_result: a2aPart.tool_result };
-    case "code_observation":
-      return { type: "code_observation", thought: a2aPart.thought, code: a2aPart.code };
-    case "plan":
-      return { type: "plan", plan: a2aPart.plan };
+      if ("uri" in a2aPart.file) {
+        return { type: "image_url", image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+      } else {
+        return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+      }
     case "data":
-      return { type: "data", data: a2aPart.data };
+      console.log("a2aPart.data", a2aPart.data);
+      switch (a2aPart.data.part_type) {
+        case "tool_call":
+          return { type: "tool_call", tool_call: a2aPart.data };
+        case "tool_result":
+          return { type: "tool_result", tool_result: a2aPart.data };
+        case "code_observation":
+          return { type: "code_observation", thought: a2aPart.data.thought, code: a2aPart.data.code };
+        case "plan":
+          return { type: "plan", plan: a2aPart.data.plan };
+        default:
+          return { type: "data", data: a2aPart.data };
+      }
     default:
       return { type: "text", text: JSON.stringify(a2aPart) };
   }
@@ -496,16 +505,18 @@ function convertDistriPartToA2A(distriPart) {
   switch (distriPart.type) {
     case "text":
       return { kind: "text", text: distriPart.text };
-    case "image":
-      return { kind: "file", file: distriPart.image };
+    case "image_url":
+      return { kind: "file", file: { mimeType: distriPart.image.mime_type, uri: distriPart.image.url } };
+    case "image_bytes":
+      return { kind: "file", file: { mimeType: distriPart.image.mime_type, bytes: distriPart.image.data } };
     case "tool_call":
-      return { kind: "tool_call", tool_call: distriPart.tool_call };
+      return { kind: "data", data: { part_type: "tool_call", tool_call: distriPart.tool_call } };
     case "tool_result":
-      return { kind: "tool_result", tool_result: distriPart.tool_result };
+      return { kind: "data", data: { part_type: "tool_result", tool_result: distriPart.tool_result } };
     case "code_observation":
-      return { kind: "code_observation", thought: distriPart.thought, code: distriPart.code };
+      return { kind: "data", data: { part_type: "code_observation", thought: distriPart.thought, code: distriPart.code } };
     case "plan":
-      return { kind: "plan", plan: distriPart.plan };
+      return { kind: "data", data: { part_type: "plan", plan: distriPart.plan } };
     case "data":
       return { kind: "data", data: distriPart.data };
   }
@@ -900,7 +911,7 @@ var Agent = class _Agent {
    * Get all registered tools
    */
   getTools() {
-    return Array.from(this.tools.keys());
+    return Array.from(this.tools.values());
   }
   /**
    * Check if a tool is registered
@@ -936,16 +947,6 @@ var Agent = class _Agent {
         error: error instanceof Error ? error.message : "Unknown error"
       };
     }
-  }
-  /**
-   * Get tool definitions for context metadata
-   */
-  getToolDefinitions() {
-    const definitions = {};
-    this.tools.forEach((_handler, name) => {
-      definitions[name] = { name };
-    });
-    return definitions;
   }
   /**
    * Get agent information
@@ -999,12 +1000,12 @@ var Agent = class _Agent {
    * Enhance message params with tool definitions
    */
   enhanceParamsWithTools(params) {
-    const toolDefinitions = this.getToolDefinitions();
+    const tools = this.getTools();
     return {
       ...params,
       metadata: {
         ...params.metadata,
-        tools: Object.keys(toolDefinitions).length > 0 ? toolDefinitions : void 0
+        tools
       }
     };
   }

@@ -1,168 +1,103 @@
-import { useState, useCallback, useRef } from 'react';
-import { ToolCall, ToolResult } from '@distri/core';
-
-export interface ToolCallState {
-  toolCall: ToolCall;
-  status: 'pending' | 'running' | 'completed' | 'error';
-  result?: any;
-  error?: string;
-}
-
-export interface ToolHandler {
-  (input: any): Promise<any> | any;
-}
+import { useEffect, useRef } from 'react';
+import { DistriTool, Agent } from '@distri/core';
 
 export interface UseToolsOptions {
-  tools?: Record<string, ToolHandler>;
-  onToolComplete?: (toolCallId: string, result: ToolResult) => void;
-  onAllToolsComplete?: (results: ToolResult[]) => void;
+  agent?: Agent;
+  tools?: DistriTool[];
 }
 
-export interface UseToolsReturn {
-  toolCalls: ToolCallState[];
-  executeTool: (toolCall: ToolCall) => Promise<void>;
-  executeAllTools: (toolCalls: ToolCall[]) => Promise<ToolResult[]>;
-  clearToolCalls: () => void;
-  isExecuting: boolean;
-}
+export function useTools({ agent, tools }: UseToolsOptions) {
+  const lastAgentIdRef = useRef<string | null>(null);
+  const registeredToolsRef = useRef<Set<string>>(new Set());
 
-export function useTools(options: UseToolsOptions = {}): UseToolsReturn {
-  const [toolCalls, setToolCalls] = useState<ToolCallState[]>([]);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const toolsRef = useRef(options.tools || {});
-  const onToolCompleteRef = useRef(options.onToolComplete);
-  const onAllToolsCompleteRef = useRef(options.onAllToolsComplete);
-
-  // Update refs when options change
-  if (options.tools !== toolsRef.current) {
-    toolsRef.current = options.tools || {};
-  }
-  if (options.onToolComplete !== onToolCompleteRef.current) {
-    onToolCompleteRef.current = options.onToolComplete;
-  }
-  if (options.onAllToolsComplete !== onAllToolsCompleteRef.current) {
-    onAllToolsCompleteRef.current = options.onAllToolsComplete;
-  }
-
-  const executeTool = useCallback(async (toolCall: ToolCall) => {
-    const toolHandler = toolsRef.current[toolCall.tool_name];
-
-    if (!toolHandler) {
-      // Tool not found, silently ignore
-      const errorResult: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: `Tool '${toolCall.tool_name}' not found`
-      };
-
-      setToolCalls(prev => [...prev, {
-        toolCall,
-        status: 'error',
-        error: errorResult.error
-      }]);
-
-      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+  useEffect(() => {
+    if (!agent || !tools || tools.length === 0) {
       return;
     }
 
-    // Add tool call to state
-    setToolCalls(prev => [...prev, {
-      toolCall,
-      status: 'pending'
-    }]);
-
-    try {
-      // Update status to running
-      setToolCalls(prev => prev.map(tc =>
-        tc.toolCall.tool_call_id === toolCall.tool_call_id
-          ? { ...tc, status: 'running' }
-          : tc
-      ));
-
-      // Execute the tool
-      const result = await toolHandler(toolCall.input);
-
-      const successResult: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result,
-        success: true
-      };
-
-      // Update status to completed
-      setToolCalls(prev => prev.map(tc =>
-        tc.toolCall.tool_call_id === toolCall.tool_call_id
-          ? { ...tc, status: 'completed', result }
-          : tc
-      ));
-
-      onToolCompleteRef.current?.(toolCall.tool_call_id, successResult);
-    } catch (error) {
-      const errorResult: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-
-      // Update status to error
-      setToolCalls(prev => prev.map(tc =>
-        tc.toolCall.tool_call_id === toolCall.tool_call_id
-          ? { ...tc, status: 'error', error: errorResult.error }
-          : tc
-      ));
-
-      onToolCompleteRef.current?.(toolCall.tool_call_id, errorResult);
+    // Only register if agent ID changed
+    if (lastAgentIdRef.current === agent.id) {
+      return;
     }
-  }, []);
 
-  const executeAllTools = useCallback(async (toolCallsToExecute: ToolCall[]): Promise<ToolResult[]> => {
-    setIsExecuting(true);
+    console.log(`Registering ${tools.length} tools for agent: ${agent.id}`);
 
-    try {
-      // Execute all tools in parallel
-      const promises = toolCallsToExecute.map(toolCall => executeTool(toolCall));
-      await Promise.all(promises);
+    // Register each tool
+    tools.forEach(tool => {
+      if (!registeredToolsRef.current.has(tool.name)) {
+        agent.registerTool(tool);
+        registeredToolsRef.current.add(tool.name);
+        console.log(`✓ Registered tool: ${tool.name}`);
+      }
+    });
 
-      // Wait a bit for state updates to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+    lastAgentIdRef.current = agent.id;
+    console.log(`Successfully registered ${tools.length} tools with agent`);
+  }, [agent?.id, tools]);
+}
 
-      // Get results from state
-      const results: ToolResult[] = toolCallsToExecute.map(toolCall => {
-        const state = toolCalls.find(tc => tc.toolCall.tool_call_id === toolCall.tool_call_id);
-        if (!state) {
-          return {
-            tool_call_id: toolCall.tool_call_id,
-            result: null,
-            success: false,
-            error: 'Tool call not found in state'
-          };
-        }
-
-        return {
-          tool_call_id: toolCall.tool_call_id,
-          result: state.result,
-          success: state.status === 'completed',
-          error: state.error
-        };
-      });
-
-      onAllToolsCompleteRef.current?.(results);
-      return results;
-    } finally {
-      setIsExecuting(false);
+/**
+ * Built-in tool definitions
+ */
+export const createBuiltinTools = () => ({
+  /**
+   * Confirmation tool for user approval
+   */
+  confirm: {
+    name: 'confirm',
+    description: 'Ask user for confirmation',
+    parameters: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'Message to show to user' },
+        defaultValue: { type: 'boolean', description: 'Default value if user doesnt respond' }
+      },
+      required: ['message']
+    },
+    handler: async (input: { message: string; defaultValue?: boolean }) => {
+      const result = confirm(input.message);
+      return { confirmed: result };
     }
-  }, [executeTool]);
+  },
 
-  const clearToolCalls = useCallback(() => {
-    setToolCalls([]);
-  }, []);
+  /**
+   * Input request tool
+   */
+  input: {
+    name: 'input',
+    description: 'Request text input from user',
+    parameters: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Prompt to show to user' },
+        placeholder: { type: 'string', description: 'Placeholder text' }
+      },
+      required: ['prompt']
+    },
+    handler: async (input: { prompt: string; placeholder?: string }) => {
+      const result = prompt(input.prompt, input.placeholder);
+      return { input: result };
+    }
+  },
 
-  return {
-    toolCalls,
-    executeTool,
-    executeAllTools,
-    clearToolCalls,
-    isExecuting
-  };
-} 
+  /**
+   * Notification tool
+   */
+  notify: {
+    name: 'notify',
+    description: 'Show notification to user',
+    parameters: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'Notification message' },
+        type: { type: 'string', enum: ['info', 'success', 'warning', 'error'], description: 'Notification type' }
+      },
+      required: ['message']
+    },
+    handler: async (input: { message: string; type?: string }) => {
+      // In a real app, this would show a toast notification
+      console.log(`[${input.type || 'info'}] ${input.message}`);
+      return { notified: true };
+    }
+  }
+});

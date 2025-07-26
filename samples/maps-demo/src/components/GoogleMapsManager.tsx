@@ -1,8 +1,8 @@
-import React, { useImperativeHandle, forwardRef, useState, useCallback, useRef } from 'react';
-import { 
-  Map, 
-  MapProps, 
-  Marker, 
+import React, { useImperativeHandle, forwardRef, useState, useCallback, useRef, useEffect } from 'react';
+import {
+  Map,
+  MapProps,
+  Marker,
   InfoWindow,
   useMap,
   useMapsLibrary,
@@ -46,25 +46,25 @@ const MapController: React.FC<MapControllerProps> = ({
   center: _center, // Used for map center state
   setCenter,
   zoom,
-  setZoom
+  setZoom,
 }) => {
   const map = useMap();
   const placesLibrary = useMapsLibrary('places');
   const directionsLibrary = useMapsLibrary('routes');
-  
+
   const setMapCenter = useCallback(async (params: { latitude: number; longitude: number; zoom?: number }) => {
     try {
       const newCenter = { lat: params.latitude, lng: params.longitude };
       const newZoom = params.zoom ?? zoom;
-      
+
       setCenter(newCenter);
       setZoom(newZoom);
-      
+
       if (map) {
         map.setCenter(newCenter);
         map.setZoom(newZoom);
       }
-      
+
       return {
         success: true,
         message: `Map centered at ${params.latitude}, ${params.longitude} with zoom ${newZoom}`
@@ -87,9 +87,9 @@ const MapController: React.FC<MapControllerProps> = ({
         title: params.title,
         description: params.description
       };
-      
+
       setMarkers(prev => [...prev, newMarker]);
-      
+
       return {
         success: true,
         message: `Added marker "${params.title}" at ${params.latitude}, ${params.longitude}`,
@@ -230,12 +230,12 @@ const MapController: React.FC<MapControllerProps> = ({
   const clearMap = useCallback(async () => {
     try {
       setMarkers([]);
-      
+
       if (directionsRenderer) {
         directionsRenderer.setMap(null);
         setDirectionsRenderer(null);
       }
-      
+
       return {
         success: true,
         message: 'Map cleared successfully'
@@ -249,9 +249,10 @@ const MapController: React.FC<MapControllerProps> = ({
     }
   }, [setMarkers, directionsRenderer, setDirectionsRenderer]);
 
-  // Expose methods via ref
-  React.useEffect(() => {
-    if (mapRef.current) {
+  // Expose methods via ref and notify when ready
+  useEffect(() => {
+    if (map) {
+      console.log('Map is available, setting up ref');
       mapRef.current = {
         setMapCenter,
         addMarker,
@@ -259,8 +260,9 @@ const MapController: React.FC<MapControllerProps> = ({
         searchPlaces,
         clearMap
       };
+      console.log('mapRef.current set:', mapRef.current);
     }
-  }, [setMapCenter, addMarker, getDirections, searchPlaces, clearMap]);
+  }, [map]); // Only depend on map availability
 
   return null; // This component doesn't render anything
 };
@@ -269,10 +271,11 @@ export interface GoogleMapsManagerProps {
   className?: string;
   defaultCenter?: google.maps.LatLngLiteral;
   defaultZoom?: number;
+  onReady?: (mapRef: GoogleMapsManagerRef) => void;
 }
 
 const GoogleMapsManager = forwardRef<GoogleMapsManagerRef, GoogleMapsManagerProps>(
-  ({ className = '', defaultCenter = { lat: 37.7749, lng: -122.4194 }, defaultZoom = 13 }, ref) => {
+  ({ className = '', defaultCenter = { lat: 37.7749, lng: -122.4194 }, defaultZoom = 13, onReady }, ref) => {
     const [markers, setMarkers] = useState<MapMarker[]>([]);
     const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
     const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
@@ -281,7 +284,22 @@ const GoogleMapsManager = forwardRef<GoogleMapsManagerRef, GoogleMapsManagerProp
     const mapRef = useRef<GoogleMapsManagerRef | null>(null);
     const apiIsLoaded = useApiIsLoaded();
 
-    useImperativeHandle(ref, () => mapRef.current!);
+    // Expose the ref to parent
+    useImperativeHandle(ref, () => {
+      if (!mapRef.current) {
+        console.warn('Map ref not ready yet');
+        return {} as GoogleMapsManagerRef;
+      }
+      return mapRef.current;
+    });
+
+    // Call onReady when mapRef is available
+    useEffect(() => {
+      if (mapRef.current && onReady) {
+        console.log('Map manager ready, calling onReady');
+        onReady(mapRef.current);
+      }
+    }, [mapRef.current, onReady]);
 
     if (!apiIsLoaded) {
       return (
@@ -317,7 +335,7 @@ const GoogleMapsManager = forwardRef<GoogleMapsManagerRef, GoogleMapsManagerProp
           zoom={zoom}
           setZoom={setZoom}
         />
-        
+
         {/* Render markers */}
         {markers.map((marker) => (
           <Marker

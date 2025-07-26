@@ -1,7 +1,9 @@
+import { DistriTool } from "@distri/core";
 import { GoogleMapsManagerRef } from "./components/GoogleMapsManager";
 
-export const getTools = (mapManagerRef: React.RefObject<GoogleMapsManagerRef>) => {
-  return [
+export const getTools = (mapManagerRef: GoogleMapsManagerRef): Record<string, DistriTool> => {
+  const tools: Record<string, DistriTool> = {};
+  [
     {
       name: 'set_map_center',
       description: 'Set the center location of the Google Maps view',
@@ -15,7 +17,7 @@ export const getTools = (mapManagerRef: React.RefObject<GoogleMapsManagerRef>) =
         required: ['latitude', 'longitude']
       },
       handler: async (input: { latitude: number; longitude: number; zoom?: number }) => {
-        return await mapManagerRef.current?.setMapCenter(input);
+        return await mapManagerRef.setMapCenter(input);
       }
     },
 
@@ -33,7 +35,7 @@ export const getTools = (mapManagerRef: React.RefObject<GoogleMapsManagerRef>) =
         required: ['latitude', 'longitude', 'title']
       },
       handler: async (input: { latitude: number; longitude: number; title: string; description?: string }) => {
-        return await mapManagerRef.current?.addMarker(input);
+        return await mapManagerRef.addMarker(input);
       }
     },
 
@@ -55,7 +57,7 @@ export const getTools = (mapManagerRef: React.RefObject<GoogleMapsManagerRef>) =
         required: ['origin', 'destination']
       },
       handler: async (input: { origin: string; destination: string; travel_mode?: string }) => {
-        return await mapManagerRef.current?.getDirections(input);
+        return await mapManagerRef.getDirections(input);
       }
     },
 
@@ -73,7 +75,7 @@ export const getTools = (mapManagerRef: React.RefObject<GoogleMapsManagerRef>) =
         required: ['query', 'latitude', 'longitude']
       },
       handler: async (input: { query: string; latitude: number; longitude: number; radius?: number }) => {
-        return await mapManagerRef.current?.searchPlaces(input);
+        return await mapManagerRef.searchPlaces(input);
       }
     },
 
@@ -85,8 +87,12 @@ export const getTools = (mapManagerRef: React.RefObject<GoogleMapsManagerRef>) =
         properties: {}
       },
       handler: async () => {
-        return await mapManagerRef.current?.clearMap();
+        return await mapManagerRef.clearMap();
       }
     }
-  ];
+  ].forEach(tool => {
+    tools[tool.name] = tool;
+  });
+
+  return tools;
 }
