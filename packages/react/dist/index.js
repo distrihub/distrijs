@@ -2931,7 +2931,7 @@ var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
 import { useState as useState10, useCallback as useCallback6 } from "react";
-import { MessageSquare as MessageSquare2, MoreHorizontal, Trash2, Edit3, Bot as Bot4, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader22 } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Bot as Bot4, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader22 } from "lucide-react";
 
 // src/components/ui/sidebar.tsx
 import * as React14 from "react";
@@ -4182,10 +4182,7 @@ function AppSidebar({
         /* @__PURE__ */ jsx24(SidebarGroupContent, { children: /* @__PURE__ */ jsx24(SidebarMenu, { children: threadsLoading ? /* @__PURE__ */ jsxs13(SidebarMenuItem, { children: [
           /* @__PURE__ */ jsx24(Loader22, { className: "h-4 w-4 animate-spin" }),
           /* @__PURE__ */ jsx24("span", { children: "Loading threads..." })
-        ] }) : threads.length === 0 ? /* @__PURE__ */ jsxs13(SidebarMenuItem, { children: [
-          /* @__PURE__ */ jsx24(MessageSquare2, { className: "h-4 w-4" }),
-          /* @__PURE__ */ jsx24("span", { children: "No conversations yet" })
-        ] }) : threads.map((thread) => /* @__PURE__ */ jsx24(
+        ] }) : threads.length === 0 ? /* @__PURE__ */ jsx24(SidebarMenuItem, { children: "No conversations yet" }) : threads.map((thread) => /* @__PURE__ */ jsx24(
           ThreadItem,
           {
             thread,

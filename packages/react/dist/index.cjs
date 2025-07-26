@@ -4290,10 +4290,7 @@ function AppSidebar({
         /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(SidebarGroupContent, { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(SidebarMenu, { children: threadsLoading ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(SidebarMenuItem, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(import_lucide_react11.Loader2, { className: "h-4 w-4 animate-spin" }),
           /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: "Loading threads..." })
-        ] }) : threads.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(SidebarMenuItem, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(import_lucide_react11.MessageSquare, { className: "h-4 w-4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { children: "No conversations yet" })
-        ] }) : threads.map((thread) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
+        ] }) : threads.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(SidebarMenuItem, { children: "No conversations yet" }) : threads.map((thread) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
           ThreadItem,
           {
             thread,
