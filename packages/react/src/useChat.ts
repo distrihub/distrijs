@@ -37,7 +37,16 @@ export interface UseChatReturn {
   sendToolResults: () => Promise<void>;
   executeTool: (toolCall: ToolCall) => Promise<void>;
   completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
-  getToolCallStatus: (toolCallId: string) => any;
+  getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
+}
+
+interface ToolCallStatus {
+  tool_call_id: string;
+  status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
+  result?: any;
+  error?: string;
+  startedAt?: Date;
+  completedAt?: Date;
 }
 
 export function useChat({
@@ -58,6 +67,7 @@ export function useChat({
   // Tool handling - register tools with agent
   const [toolResults, setToolResults] = useState<ToolResult[]>([]);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
+  const [toolCallStatuses, setToolCallStatuses] = useState<Map<string, ToolCallStatus>>(new Map());
 
   // Register tools with agent
   useTools({ agent, tools });
@@ -89,7 +99,7 @@ export function useChat({
     if (threadId) {
       fetchMessages();
     }
-  }, [threadId, agent?.id]); // Only depend on threadId and agent.id, not the entire fetchMessages function
+  }, [threadId, agent?.id]);
 
   const handleStreamEvent = useCallback((event: DistriStreamEvent) => {
     // Handle DistriMessage (converted from A2A Message)
@@ -123,16 +133,52 @@ export function useChat({
       }
     });
 
-    // Handle tool calls automatically
+    // Handle tool calls and results automatically
     if (isDistriMessage(event)) {
       console.log('event', event);
       const distriMessage = event as DistriMessage;
-      const toolCallParts = distriMessage.parts.filter(part => part.type === 'tool_call');
 
-      console.log('toolCallParts', toolCallParts);
+      // Process tool calls
+      const toolCallParts = distriMessage.parts.filter(part => part.type === 'tool_call');
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
         setToolCalls(prev => [...prev, ...newToolCalls]);
+
+        // Initialize status for new tool calls
+        setToolCallStatuses(prev => {
+          const newStatuses = new Map(prev);
+          newToolCalls.forEach(toolCall => {
+            if (!newStatuses.has(toolCall.tool_call_id)) {
+              newStatuses.set(toolCall.tool_call_id, {
+                tool_call_id: toolCall.tool_call_id,
+                status: 'pending'
+              });
+            }
+          });
+          return newStatuses;
+        });
+      }
+
+      // Process tool results
+      const toolResultParts = distriMessage.parts.filter(part => part.type === 'tool_result');
+      if (toolResultParts.length > 0) {
+        const newToolResults = toolResultParts.map(part => (part as any).tool_result);
+        setToolResults(prev => [...prev, ...newToolResults]);
+
+        // Update status for completed tool calls
+        setToolCallStatuses(prev => {
+          const newStatuses = new Map(prev);
+          newToolResults.forEach(toolResult => {
+            newStatuses.set(toolResult.tool_call_id, {
+              tool_call_id: toolResult.tool_call_id,
+              status: toolResult.success ? 'completed' : 'error',
+              result: toolResult.result,
+              error: toolResult.error,
+              completedAt: new Date()
+            });
+          });
+          return newStatuses;
+        });
       }
     }
 
@@ -249,17 +295,56 @@ export function useChat({
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setToolCalls([]);
+    setToolResults([]);
+    setToolCallStatuses(new Map());
   }, []);
 
   // Execute a tool call
   const executeTool = useCallback(async (toolCall: ToolCall) => {
     if (!agent) return;
 
+    // Update status to running
+    setToolCallStatuses(prev => {
+      const newStatuses = new Map(prev);
+      newStatuses.set(toolCall.tool_call_id, {
+        tool_call_id: toolCall.tool_call_id,
+        status: 'running',
+        startedAt: new Date()
+      });
+      return newStatuses;
+    });
+
     try {
       const result = await agent.executeTool(toolCall);
       setToolResults(prev => [...prev, result]);
+
+      // Update status based on result
+      setToolCallStatuses(prev => {
+        const newStatuses = new Map(prev);
+        newStatuses.set(toolCall.tool_call_id, {
+          tool_call_id: toolCall.tool_call_id,
+          status: result.success ? 'completed' : 'error',
+          result: result.result,
+          error: result.error,
+          completedAt: new Date()
+        });
+        return newStatuses;
+      });
     } catch (error) {
       console.error('Failed to execute tool:', error);
+
+      // Update status to error
+      setToolCallStatuses(prev => {
+        const newStatuses = new Map(prev);
+        newStatuses.set(toolCall.tool_call_id, {
+          tool_call_id: toolCall.tool_call_id,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          completedAt: new Date()
+        });
+        return newStatuses;
+      });
     }
   }, [agent]);
 
@@ -272,12 +357,25 @@ export function useChat({
       error
     };
     setToolResults(prev => [...prev, toolResult]);
+
+    // Update status
+    setToolCallStatuses(prev => {
+      const newStatuses = new Map(prev);
+      newStatuses.set(toolCallId, {
+        tool_call_id: toolCallId,
+        status: success ? 'completed' : 'error',
+        result,
+        error,
+        completedAt: new Date()
+      });
+      return newStatuses;
+    });
   }, []);
 
   // Get tool call status
   const getToolCallStatus = useCallback((toolCallId: string) => {
-    return toolCalls.find(tc => tc.tool_call_id === toolCallId);
-  }, [toolCalls]);
+    return toolCallStatuses.get(toolCallId);
+  }, [toolCallStatuses]);
 
   // Send all collected tool results
   const sendToolResults = useCallback(async () => {

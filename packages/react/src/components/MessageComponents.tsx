@@ -1,5 +1,5 @@
-import React from 'react';
-import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { ToolCall, DistriMessage } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
 
@@ -184,6 +184,32 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   avatar,
   name = "Assistant"
 }) => {
+  // State for collapsible tool results
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+
+  const toggleToolExpansion = (toolCallId: string) => {
+    setExpandedTools(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(toolCallId)) {
+        newSet.delete(toolCallId);
+      } else {
+        newSet.add(toolCallId);
+      }
+      return newSet;
+    });
+  };
+
+  // Auto-expand tools that are running or have errors
+  React.useEffect(() => {
+    const newExpanded = new Set(expandedTools);
+    toolCalls.forEach(toolCall => {
+      if (toolCall.status === 'running' || toolCall.status === 'error' || toolCall.status === 'user_action_required') {
+        newExpanded.add(toolCall.toolCall.tool_call_id);
+      }
+    });
+    setExpandedTools(newExpanded);
+  }, [toolCalls]);
+
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
       <div className="flex items-start gap-4 py-3 px-2">
@@ -214,60 +240,106 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           {toolCalls.length > 0 && (
             <div className="mt-4 space-y-3">
               <div className="text-sm font-medium text-foreground">Tool Calls</div>
-              {toolCalls.map((toolCall, index) => (
-                <div key={index} className="border rounded-lg p-3 bg-background">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-green-500" />
-                      <span className="text-sm font-medium text-foreground">
-                        {toolCall.toolCall.tool_name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {toolCall.status === 'pending' && (
-                        <div className="flex items-center gap-1 text-xs text-yellow-600">
-                          <Clock className="h-3 w-3" />
-                          Pending
-                        </div>
-                      )}
-                      {toolCall.status === 'running' && (
-                        <div className="flex items-center gap-1 text-xs text-blue-600">
-                          <Settings className="h-3 w-3 animate-spin" />
-                          Running
-                        </div>
-                      )}
-                      {toolCall.status === 'completed' && (
-                        <div className="flex items-center gap-1 text-xs text-green-600">
-                          <CheckCircle className="h-3 w-3" />
-                          Completed
-                        </div>
-                      )}
-                      {toolCall.status === 'error' && (
-                        <div className="flex items-center gap-1 text-xs text-red-600">
-                          <XCircle className="h-3 w-3" />
-                          Failed
-                        </div>
-                      )}
-                      {toolCall.status === 'user_action_required' && (
-                        <div className="flex items-center gap-1 text-xs text-orange-600">
-                          <Wrench className="h-3 w-3" />
-                          User Action Required
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {toolCalls.map((toolCall, index) => {
+                const isExpanded = expandedTools.has(toolCall.toolCall.tool_call_id);
+                const hasResult = toolCall.result !== undefined;
+                const hasError = toolCall.error !== undefined;
+                const canCollapse = hasResult || hasError || toolCall.status === 'completed' || toolCall.status === 'error';
 
-                  <div className="text-xs text-muted-foreground mb-2">
-                    Input: {JSON.stringify(toolCall.toolCall.input)}
-                  </div>
+                return (
+                  <div key={index} className="border rounded-lg bg-background overflow-hidden">
+                    {/* Tool Call Header */}
+                    <div className="p-3 border-b border-border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleToolExpansion(toolCall.toolCall.tool_call_id)}
+                            className="p-1 hover:bg-muted rounded transition-colors"
+                            disabled={!canCollapse}
+                          >
+                            {canCollapse ? (
+                              isExpanded ? (
+                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                              )
+                            ) : (
+                              <div className="h-3 w-3" />
+                            )}
+                          </button>
+                          <Wrench className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium text-foreground">
+                            {toolCall.toolCall.tool_name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {toolCall.status === 'pending' && (
+                            <div className="flex items-center gap-1 text-xs text-yellow-600">
+                              <Clock className="h-3 w-3" />
+                              Pending
+                            </div>
+                          )}
+                          {toolCall.status === 'running' && (
+                            <div className="flex items-center gap-1 text-xs text-blue-600">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Running
+                            </div>
+                          )}
+                          {toolCall.status === 'completed' && (
+                            <div className="flex items-center gap-1 text-xs text-green-600">
+                              <CheckCircle className="h-3 w-3" />
+                              Completed
+                            </div>
+                          )}
+                          {toolCall.status === 'error' && (
+                            <div className="flex items-center gap-1 text-xs text-red-600">
+                              <XCircle className="h-3 w-3" />
+                              Failed
+                            </div>
+                          )}
+                          {toolCall.status === 'user_action_required' && (
+                            <div className="flex items-center gap-1 text-xs text-orange-600">
+                              <Wrench className="h-3 w-3" />
+                              User Action Required
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  {toolCall.result && (
-                    <div className="text-xs text-muted-foreground">
-                      Result: {JSON.stringify(toolCall.result)}
+                      {/* Always show input */}
+                      <div className="mt-2">
+                        <div className="text-xs text-muted-foreground mb-1">Input:</div>
+                        <div className="text-xs font-mono bg-muted p-2 rounded border">
+                          {JSON.stringify(toolCall.toolCall.input, null, 2)}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* Collapsible Result Section */}
+                    {canCollapse && isExpanded && (
+                      <div className="p-3 bg-muted/30">
+                        {hasError && (
+                          <div className="mb-3">
+                            <div className="text-xs text-red-600 font-medium mb-1">Error:</div>
+                            <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                              {toolCall.error}
+                            </div>
+                          </div>
+                        )}
+
+                        {hasResult && (
+                          <div>
+                            <div className="text-xs text-muted-foreground font-medium mb-1">Result:</div>
+                            <div className="text-xs font-mono bg-background p-2 rounded border">
+                              {JSON.stringify(toolCall.result, null, 2)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
