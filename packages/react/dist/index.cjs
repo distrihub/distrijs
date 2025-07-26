@@ -28,11 +28,14 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
 
 // src/index.ts
-var index_exports = {};
-__export(index_exports, {
+var src_exports = {};
+__export(src_exports, {
   AgentSelect: () => AgentSelect,
   AppSidebar: () => AppSidebar,
   Badge: () => Badge,
@@ -109,7 +112,7 @@ __export(index_exports, {
   useToolManager: () => useToolManager,
   useTools: () => useTools
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(src_exports);
 
 // src/useAgent.ts
 var import_react3 = __toESM(require("react"), 1);
@@ -231,7 +234,8 @@ var A2AClient = class {
           throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
         }
       } catch (e) {
-        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for")) throw e;
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
+          throw e;
         throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
       }
     }
@@ -293,7 +297,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
@@ -384,7 +389,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
@@ -632,7 +638,8 @@ var DistriClient = class {
       });
       return agents;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
     }
   }
@@ -658,7 +665,8 @@ var DistriClient = class {
       }
       return agent;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
     }
   }
@@ -692,7 +700,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
     }
   }
@@ -724,7 +733,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
@@ -751,7 +761,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
     }
   }
@@ -763,7 +774,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -781,7 +793,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -1217,7 +1230,8 @@ function useAgent({
   const [error, setError] = (0, import_react3.useState)(null);
   const agentRef = (0, import_react3.useRef)(null);
   const initializeAgent = (0, import_react3.useCallback)(async () => {
-    if (!client || !agentId || agentRef.current) return;
+    if (!client || !agentId || agentRef.current)
+      return;
     try {
       setLoading(true);
       setError(null);
@@ -1354,7 +1368,7 @@ function useToolManager(options = {}) {
   const executeTool = (0, import_react5.useCallback)(async (toolCall) => {
     const toolHandler = toolsRef.current[toolCall.tool_name];
     setToolCalls((prev) => prev.map(
-      (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "running", startedAt: /* @__PURE__ */ new Date() } : tc
+      (tc) => tc.toolCall.tool_call_id === toolCall.tool_call_id ? { ...tc, status: "running", startedAt: /* @__PURE__ */ new Date(), error: void 0, result: void 0 } : tc
     ));
     if (!toolHandler) {
       setToolCalls((prev) => prev.map(
@@ -1452,6 +1466,39 @@ function useToolManager(options = {}) {
   };
 }
 
+// src/utils/toolCallUtils.ts
+var extractToolCallsWithResults = (messages) => {
+  const toolCallsMap = /* @__PURE__ */ new Map();
+  messages.forEach((message) => {
+    if (!isDistriMessage(message))
+      return;
+    const distriMessage = message;
+    distriMessage.parts.forEach((part) => {
+      if (part.type === "tool_call" && part.tool_call) {
+        const toolCall = part.tool_call;
+        if (!toolCallsMap.has(toolCall.tool_call_id)) {
+          toolCallsMap.set(toolCall.tool_call_id, {
+            toolCall,
+            status: "pending",
+            startedAt: new Date(distriMessage.created_at || Date.now())
+          });
+        }
+      }
+      if (part.type === "tool_result" && part.tool_result) {
+        const toolResult = part.tool_result;
+        const existingToolCall = toolCallsMap.get(toolResult.tool_call_id);
+        if (existingToolCall) {
+          existingToolCall.status = toolResult.success ? "completed" : "error";
+          existingToolCall.result = toolResult.result;
+          existingToolCall.error = toolResult.error;
+          existingToolCall.completedAt = new Date(distriMessage.created_at || Date.now());
+        }
+      }
+    });
+  });
+  return Array.from(toolCallsMap.values());
+};
+
 // src/useChat.ts
 function useChat({
   threadId,
@@ -1488,19 +1535,31 @@ function useChat({
     metadata
   }), [threadId, metadata]);
   const fetchMessages = (0, import_react6.useCallback)(async () => {
-    if (!agent) return;
+    if (!agent)
+      return;
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent);
       console.log("distriMessages", distriMessages);
       setMessages(distriMessages);
+      const historicalToolCalls = extractToolCallsWithResults(distriMessages);
+      if (historicalToolCalls.length > 0) {
+        addToolCalls(historicalToolCalls.map((tc) => tc.toolCall));
+        historicalToolCalls.forEach((tc) => {
+          if (tc.status === "completed") {
+            completeTool(tc.toolCall.tool_call_id, tc.result, true);
+          } else if (tc.status === "error") {
+            completeTool(tc.toolCall.tool_call_id, tc.result, false, tc.error);
+          }
+        });
+      }
       onMessagesUpdate?.();
     } catch (err) {
       const error2 = err instanceof Error ? err : new Error("Failed to fetch messages");
       setError(error2);
       onError?.(error2);
     }
-  }, [threadId, agent, onError, onMessagesUpdate]);
+  }, [threadId, agent, onError, onMessagesUpdate, addToolCalls, completeTool]);
   (0, import_react6.useEffect)(() => {
     if (threadId) {
       fetchMessages();
@@ -1538,7 +1597,8 @@ function useChat({
     onMessage?.(event);
   }, [onMessage, tools]);
   const sendMessage = (0, import_react6.useCallback)(async (content) => {
-    if (!agent) return;
+    if (!agent)
+      return;
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
@@ -1576,7 +1636,8 @@ function useChat({
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
   const sendMessageStream = (0, import_react6.useCallback)(async (content) => {
-    if (!agent) return;
+    if (!agent)
+      return;
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
@@ -1636,6 +1697,14 @@ function useChat({
       }
     }
   }, [agent, toolResults, createInvokeContext]);
+  const rerunTool = (0, import_react6.useCallback)(async (toolCallId) => {
+    const toolCallState = getToolCallStatus(toolCallId);
+    if (!toolCallState) {
+      console.error("Tool call not found:", toolCallId);
+      return;
+    }
+    await executeTool(toolCallState.toolCall);
+  }, [getToolCallStatus, executeTool]);
   return {
     messages,
     isStreaming,
@@ -1650,7 +1719,8 @@ function useChat({
     sendToolResults,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    rerunTool
   };
 }
 
@@ -1754,7 +1824,8 @@ function useThreads() {
     }
   }, [clientLoading, clientError, client, fetchThreads]);
   (0, import_react7.useEffect)(() => {
-    if (!client) return;
+    if (!client)
+      return;
     const interval = setInterval(() => {
       console.log("[useThreads] Periodic refresh of threads");
       fetchThreads();
@@ -1930,7 +2001,8 @@ var CodeBlock = ({ language, children, inline = false, isDark = false }) => {
     }
   };
   const normalizeLanguage = (lang) => {
-    if (!lang) return "text";
+    if (!lang)
+      return "text";
     const langMap = {
       "js": "javascript",
       "ts": "typescript",
@@ -2130,9 +2202,11 @@ var MessageRenderer = ({
   if (message && isDistriMessage(message)) {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: `space-y-2 ${className}`, children: message.parts.map((part, index) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(PartRenderer, { part, isDark }, index)) });
   }
-  if (!content) return null;
+  if (!content)
+    return null;
   const hasMarkdownSyntax = (0, import_react10.useMemo)(() => {
-    if (!config.enableMarkdown) return false;
+    if (!config.enableMarkdown)
+      return false;
     const markdownPatterns = [
       /^#{1,6}\s+/m,
       // Headers
@@ -2160,8 +2234,10 @@ var MessageRenderer = ({
     return markdownPatterns.some((pattern) => pattern.test(content));
   }, [content, config.enableMarkdown]);
   const looksLikeCode = (0, import_react10.useMemo)(() => {
-    if (!config.enableCodeHighlighting) return false;
-    if (hasMarkdownSyntax) return false;
+    if (!config.enableCodeHighlighting)
+      return false;
+    if (hasMarkdownSyntax)
+      return false;
     const lines = content.split("\n");
     const totalLines = lines.length;
     if (totalLines === 1 && content.length < 50) {
@@ -2196,7 +2272,8 @@ var MessageRenderer = ({
       // Lines ending with semicolons
     ];
     const hasExplicitCode = explicitCodePatterns.some((pattern) => pattern.test(content));
-    if (!hasExplicitCode) return false;
+    if (!hasExplicitCode)
+      return false;
     const structuralPatterns = [
       /[{}[\]()]/g,
       // Brackets and braces
@@ -2214,17 +2291,28 @@ var MessageRenderer = ({
     return structureCount >= 3;
   }, [content, hasMarkdownSyntax, config.enableCodeHighlighting]);
   const detectLanguage = (0, import_react10.useMemo)(() => {
-    if (/\b(function|const|let|var|=>|console\.log)\b/.test(content)) return "javascript";
-    if (/\b(interface|type|as\s+\w+)\b/.test(content)) return "typescript";
-    if (/\b(def|import|from|print|if\s+\w+:)\b/.test(content)) return "python";
-    if (/\b(public\s+class|static\s+void|System\.out)\b/.test(content)) return "java";
-    if (/\b(fn|let\s+mut|impl|match)\b/.test(content)) return "rust";
-    if (/\b(func|package|import|fmt\.)\b/.test(content)) return "go";
-    if (/SELECT.*FROM|INSERT.*INTO|UPDATE.*SET/i.test(content)) return "sql";
-    if (/<[^>]+>.*<\/[^>]+>/.test(content)) return "html";
-    if (/\{[^}]*:[^}]*\}/.test(content)) return "json";
-    if (/^#!\/bin\/(bash|sh)/.test(content)) return "bash";
-    if (/\$\w+|echo\s+/.test(content)) return "bash";
+    if (/\b(function|const|let|var|=>|console\.log)\b/.test(content))
+      return "javascript";
+    if (/\b(interface|type|as\s+\w+)\b/.test(content))
+      return "typescript";
+    if (/\b(def|import|from|print|if\s+\w+:)\b/.test(content))
+      return "python";
+    if (/\b(public\s+class|static\s+void|System\.out)\b/.test(content))
+      return "java";
+    if (/\b(fn|let\s+mut|impl|match)\b/.test(content))
+      return "rust";
+    if (/\b(func|package|import|fmt\.)\b/.test(content))
+      return "go";
+    if (/SELECT.*FROM|INSERT.*INTO|UPDATE.*SET/i.test(content))
+      return "sql";
+    if (/<[^>]+>.*<\/[^>]+>/.test(content))
+      return "html";
+    if (/\{[^}]*:[^}]*\}/.test(content))
+      return "json";
+    if (/^#!\/bin\/(bash|sh)/.test(content))
+      return "bash";
+    if (/\$\w+|echo\s+/.test(content))
+      return "bash";
     return "text";
   }, [content]);
   if (looksLikeCode) {
@@ -2361,7 +2449,8 @@ var AssistantWithToolCalls = ({
   isStreaming = false,
   className = "",
   avatar,
-  name = "Assistant"
+  name = "Assistant",
+  onRerunTool
 }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-start gap-4 py-6 px-4", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.Bot, { className: "h-4 w-4" }) }),
@@ -2399,13 +2488,41 @@ var AssistantWithToolCalls = ({
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.Settings, { className: "h-3 w-3 animate-spin" }),
                 "Running"
               ] }),
-              toolCall.status === "completed" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.CheckCircle, { className: "h-3 w-3" }),
-                "Completed"
+              toolCall.status === "completed" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.CheckCircle, { className: "h-3 w-3" }),
+                  "Completed"
+                ] }),
+                onRerunTool && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+                  "button",
+                  {
+                    onClick: () => onRerunTool(toolCall.toolCall.tool_call_id),
+                    className: "flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors",
+                    title: "Rerun tool call",
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.RotateCcw, { className: "h-3 w-3" }),
+                      "Rerun"
+                    ]
+                  }
+                )
               ] }),
-              toolCall.status === "error" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.XCircle, { className: "h-3 w-3" }),
-                "Failed"
+              toolCall.status === "error" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.XCircle, { className: "h-3 w-3" }),
+                  "Failed"
+                ] }),
+                onRerunTool && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+                  "button",
+                  {
+                    onClick: () => onRerunTool(toolCall.toolCall.tool_call_id),
+                    className: "flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors",
+                    title: "Rerun tool call",
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.RotateCcw, { className: "h-3 w-3" }),
+                      "Rerun"
+                    ]
+                  }
+                )
               ] }),
               toolCall.status === "user_action_required" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-1 text-xs text-orange-600", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react2.Wrench, { className: "h-3 w-3" }),
@@ -2480,14 +2597,16 @@ var extractTextFromMessage = (message) => {
   }
 };
 var shouldDisplayMessage = (message, showDebugMessages = false) => {
-  if (!message) return false;
+  if (!message)
+    return false;
   if (isDistriMessage(message)) {
     if (message.role === "user") {
       const textContent2 = extractTextFromMessage(message);
       return textContent2.trim().length > 0;
     }
     const textContent = extractTextFromMessage(message);
-    if (textContent.trim()) return true;
+    if (textContent.trim())
+      return true;
   }
   return showDebugMessages;
 };
@@ -2743,7 +2862,8 @@ var EmbeddableChat = ({
     sendMessage: sendChatMessage,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    rerunTool
   } = useChat({
     threadId,
     agent: agent || void 0,
@@ -2756,7 +2876,8 @@ var EmbeddableChat = ({
     }
   }, [messages]);
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading)
+      return;
     const messageText = input.trim();
     setInput("");
     try {
@@ -2824,7 +2945,8 @@ var EmbeddableChat = ({
                 timestamp,
                 isStreaming: isStreaming && index === messages.length - 1,
                 onExecuteTool: executeTool,
-                onCompleteTool: completeTool
+                onCompleteTool: completeTool,
+                onRerunTool: rerunTool
               },
               key
             );
@@ -4260,7 +4382,8 @@ var DialogTrigger = React18.forwardRef(({ className, children, ...props }, ref) 
 DialogTrigger.displayName = "DialogTrigger";
 var DialogContent = React18.forwardRef(({ className, children, ...props }, ref) => {
   const context = React18.useContext(Dialog);
-  if (!context.open) return null;
+  if (!context.open)
+    return null;
   return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
     "div",
     {

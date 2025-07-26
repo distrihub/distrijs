@@ -77,10 +77,10 @@ export function useToolManager(options: UseToolManagerOptions = {}): UseToolMana
   const executeTool = useCallback(async (toolCall: ToolCall) => {
     const toolHandler = toolsRef.current[toolCall.tool_name];
 
-    // Update status to running
+    // Update status to running (this handles both new executions and reruns)
     setToolCalls(prev => prev.map(tc =>
       tc.toolCall.tool_call_id === toolCall.tool_call_id
-        ? { ...tc, status: 'running' as const, startedAt: new Date() }
+        ? { ...tc, status: 'running' as const, startedAt: new Date(), error: undefined, result: undefined }
         : tc
     ));
 

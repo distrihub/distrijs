@@ -72,7 +72,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     sendMessage: sendChatMessage,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    rerunTool
   } = useChat({
     threadId,
     agent: agent || undefined,
@@ -171,6 +172,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                   isStreaming={isStreaming && index === messages.length - 1}
                   onExecuteTool={executeTool}
                   onCompleteTool={completeTool}
+                  onRerunTool={rerunTool}
                 />
               );
 

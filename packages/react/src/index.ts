@@ -21,3 +21,4 @@ export * from './components/ui';
 
 // Utilities
 export { cn } from './lib/utils';
+export { extractToolCallsWithResults, extractExternalToolCalls } from './utils/toolCallUtils';
