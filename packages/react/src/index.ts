@@ -30,6 +30,9 @@ export {
   createToastTool
 } from './builtinHandlers';
 
+// Tool call components
+export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
+
 // Utilities
 export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
 

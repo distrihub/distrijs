@@ -5,6 +5,7 @@ import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
+import { Toaster } from './ui/toaster';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
@@ -310,6 +311,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 };

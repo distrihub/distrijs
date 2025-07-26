@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { ToolCall, DistriMessage } from '@distri/core';
+import { ToolCall, DistriMessage, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
+import { ApprovalToolCall, ToastToolCall } from './toolcalls';
 
 export interface BaseMessageProps {
   content?: string;
@@ -182,7 +183,9 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   isStreaming = false,
   className = '',
   avatar,
-  name = "Assistant"
+  name = "Assistant",
+  onExecuteTool: _onExecuteTool,
+  onCompleteTool
 }) => {
   // State for collapsible tool results
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -312,6 +315,28 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                         <div className="text-xs font-mono bg-muted p-2 rounded border">
                           {JSON.stringify(toolCall.toolCall.input, null, 2)}
                         </div>
+                      </div>
+
+                      {/* Custom tool call renderers */}
+                      <div className="mt-3">
+                        {toolCall.toolCall.tool_name === APPROVAL_REQUEST_TOOL_NAME && (
+                          <ApprovalToolCall
+                            toolCall={toolCall.toolCall}
+                            onComplete={(result, success, error) => {
+                              onCompleteTool?.(toolCall.toolCall.tool_call_id, result, success, error);
+                            }}
+                            status={toolCall.status}
+                          />
+                        )}
+                        {toolCall.toolCall.tool_name === 'toast' && (
+                          <ToastToolCall
+                            toolCall={toolCall.toolCall}
+                            onComplete={(result, success, error) => {
+                              onCompleteTool?.(toolCall.toolCall.tool_call_id, result, success, error);
+                            }}
+                            status={toolCall.status}
+                          />
+                        )}
                       </div>
                     </div>
 
