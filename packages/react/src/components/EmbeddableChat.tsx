@@ -7,7 +7,7 @@ import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUt
 import { AgentSelect } from './AgentSelect';
 import ApprovalDialog from './ApprovalDialog';
 import Toast from './Toast';
-import { initializeBuiltinHandlers, createBuiltinToolHandlers } from '../builtinHandlers';
+import { initializeSimpleBuiltinHandlers, createBuiltinToolHandlers } from '../builtinHandlers';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
@@ -64,16 +64,16 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Toast state
+  // Simple toast state
   const [toastMessage, setToastMessage] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('info');
   const [showToastState, setShowToastState] = useState(false);
 
-  // Approval dialog state
+  // Simple approval dialog state
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
-  const [approvalToolCalls, setApprovalToolCalls] = useState<ToolCall[]>([]);
-  const [approvalReason, setApprovalReason] = useState<string>('');
-  const [approvalResolve, setApprovalResolve] = useState<((approved: boolean) => void) | null>(null);
+  const [currentApprovalMessage, setCurrentApprovalMessage] = useState<string>('');
+  const [currentApprovalToolCalls, setCurrentApprovalToolCalls] = useState<ToolCall[]>([]);
+  const [currentApprovalResolve, setCurrentApprovalResolve] = useState<((approved: boolean) => void) | null>(null);
 
   const {
     messages,
@@ -93,43 +93,32 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     onMessagesUpdate
   });
 
-  // Initialize builtin handlers
+  // Initialize simple builtin handlers
   useEffect(() => {
-    const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    const showSimpleToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
       setToastMessage(message);
       setToastType(type);
       setShowToastState(true);
     };
 
-    const showApprovalDialog = (toolCalls: ToolCall[], reason?: string): Promise<boolean> => {
+    const showSimpleApprovalDialog = (message: string, toolCalls: ToolCall[]): Promise<boolean> => {
       return new Promise((resolve) => {
-        setApprovalToolCalls(toolCalls);
-        setApprovalReason(reason || '');
+        setCurrentApprovalMessage(message);
+        setCurrentApprovalToolCalls(toolCalls);
         setApprovalDialogOpen(true);
-        setApprovalResolve(() => resolve);
+        setCurrentApprovalResolve(() => resolve);
       });
     };
 
-    initializeBuiltinHandlers({
-      onToolComplete: (results) => {
-        // Handle tool completion if needed
-        console.log('Tool completed:', results);
-      },
-      onCancel: () => {
-        // Handle cancellation if needed
-        console.log('Tool cancelled');
-      },
-      showToast,
-      showApprovalDialog
+    initializeSimpleBuiltinHandlers({
+      showApprovalDialog: showSimpleApprovalDialog,
+      showToast: showSimpleToast
     });
 
-    // Register builtin tool handlers with agent
+    // Register builtin tool handlers with agent if needed
     if (agent) {
       const builtinHandlers = createBuiltinToolHandlers();
-      Object.entries(builtinHandlers).forEach(([toolName, _handler]) => {
-        // Register as legacy tool handlers if needed
-        console.log(`Registering builtin tool: ${toolName}`);
-      });
+      console.log(`Initialized ${Object.keys(builtinHandlers).length} builtin tools`);
     }
   }, [agent]);
 
@@ -158,10 +147,13 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
   const handleApprovalResponse = (approved: boolean) => {
     setApprovalDialogOpen(false);
-    if (approvalResolve) {
-      approvalResolve(approved);
-      setApprovalResolve(null);
+    if (currentApprovalResolve) {
+      currentApprovalResolve(approved);
+      setCurrentApprovalResolve(null);
     }
+    // Clean up state
+    setCurrentApprovalMessage('');
+    setCurrentApprovalToolCalls([]);
   };
 
   const getMessageType = (message: DistriMessage): MessageComponentType => {
@@ -373,7 +365,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
         </div>
       </div>
 
-      {/* Toast */}
+      {/* Simple Toast */}
       {showToastState && (
         <Toast
           message={toastMessage}
@@ -382,11 +374,11 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
         />
       )}
 
-      {/* Approval Dialog */}
+      {/* Simple Approval Dialog */}
       {approvalDialogOpen && (
         <ApprovalDialog
-          toolCalls={approvalToolCalls}
-          reason={approvalReason}
+          toolCalls={currentApprovalToolCalls}
+          reason={currentApprovalMessage}
           onApprove={() => handleApprovalResponse(true)}
           onDeny={() => handleApprovalResponse(false)}
           onCancel={() => handleApprovalResponse(false)}

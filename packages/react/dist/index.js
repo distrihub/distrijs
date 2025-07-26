@@ -2867,27 +2867,38 @@ var Toast = ({ message, type, onClose }) => {
 var Toast_default = Toast;
 
 // src/builtinHandlers.ts
-var showToast = null;
-var showApprovalDialog = null;
-var initializeBuiltinHandlers = (callbacks) => {
-  showToast = callbacks.showToast;
-  showApprovalDialog = callbacks.showApprovalDialog;
+var showSimpleApprovalDialog = null;
+var showSimpleToast = null;
+var initializeSimpleBuiltinHandlers = (callbacks) => {
+  showSimpleApprovalDialog = callbacks.showApprovalDialog;
+  showSimpleToast = callbacks.showToast;
 };
 var createBuiltinToolHandlers = () => ({
-  // Approval request handler - opens a dialog
+  // Approval request handler - shows a dialog and returns result directly
   [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall, onToolComplete) => {
     try {
       const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
       const toolCallsToApprove = input.tool_calls || [];
-      const reason = input.reason;
-      if (!showApprovalDialog) {
+      const reason = input.reason || "Approval required";
+      if (!showSimpleApprovalDialog) {
         console.warn("Approval dialog not initialized");
+        const result2 = {
+          tool_call_id: toolCall.tool_call_id,
+          result: { approved: false, reason: "Approval dialog not available" },
+          success: false,
+          error: "Approval dialog not initialized"
+        };
+        await onToolComplete(toolCall.tool_call_id, result2);
         return null;
       }
-      const approved = await showApprovalDialog(toolCallsToApprove, reason);
+      const approved = await showSimpleApprovalDialog(reason, toolCallsToApprove);
       const result = {
         tool_call_id: toolCall.tool_call_id,
-        result: { approved, reason: approved ? "Approved by user" : "Denied by user" },
+        result: {
+          approved,
+          reason: approved ? "Approved by user" : "Denied by user",
+          tool_calls: toolCallsToApprove
+        },
         success: true
       };
       await onToolComplete(toolCall.tool_call_id, result);
@@ -2914,11 +2925,18 @@ var createBuiltinToolHandlers = () => ({
       const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
       const message = input.message || "Toast message";
       const type = input.type || "info";
-      if (!showToast) {
+      if (!showSimpleToast) {
         console.warn("Toast not initialized");
+        const result2 = {
+          tool_call_id: toolCall.tool_call_id,
+          result: null,
+          success: false,
+          error: "Toast not initialized"
+        };
+        await onToolComplete(toolCall.tool_call_id, result2);
         return null;
       }
-      showToast(message, type);
+      showSimpleToast(message, type);
       const result = {
         tool_call_id: toolCall.tool_call_id,
         result: { success: true, message: "Toast displayed successfully" },
@@ -2941,7 +2959,7 @@ var createBuiltinToolHandlers = () => ({
       return null;
     }
   },
-  // Input request handler - shows prompt
+  // Input request handler - shows prompt and returns input
   input_request: async (toolCall, onToolComplete) => {
     try {
       const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
@@ -3076,9 +3094,9 @@ var EmbeddableChat = ({
   const [toastType, setToastType] = useState9("info");
   const [showToastState, setShowToastState] = useState9(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState9(false);
-  const [approvalToolCalls, setApprovalToolCalls] = useState9([]);
-  const [approvalReason, setApprovalReason] = useState9("");
-  const [approvalResolve, setApprovalResolve] = useState9(null);
+  const [currentApprovalMessage, setCurrentApprovalMessage] = useState9("");
+  const [currentApprovalToolCalls, setCurrentApprovalToolCalls] = useState9([]);
+  const [currentApprovalResolve, setCurrentApprovalResolve] = useState9(null);
   const {
     messages,
     isLoading,
@@ -3097,34 +3115,26 @@ var EmbeddableChat = ({
     onMessagesUpdate
   });
   useEffect9(() => {
-    const showToast2 = (message, type = "info") => {
+    const showSimpleToast2 = (message, type = "info") => {
       setToastMessage(message);
       setToastType(type);
       setShowToastState(true);
     };
-    const showApprovalDialog2 = (toolCalls, reason) => {
+    const showSimpleApprovalDialog2 = (message, toolCalls) => {
       return new Promise((resolve) => {
-        setApprovalToolCalls(toolCalls);
-        setApprovalReason(reason || "");
+        setCurrentApprovalMessage(message);
+        setCurrentApprovalToolCalls(toolCalls);
         setApprovalDialogOpen(true);
-        setApprovalResolve(() => resolve);
+        setCurrentApprovalResolve(() => resolve);
       });
     };
-    initializeBuiltinHandlers({
-      onToolComplete: (results) => {
-        console.log("Tool completed:", results);
-      },
-      onCancel: () => {
-        console.log("Tool cancelled");
-      },
-      showToast: showToast2,
-      showApprovalDialog: showApprovalDialog2
+    initializeSimpleBuiltinHandlers({
+      showApprovalDialog: showSimpleApprovalDialog2,
+      showToast: showSimpleToast2
     });
     if (agent) {
       const builtinHandlers = createBuiltinToolHandlers();
-      Object.entries(builtinHandlers).forEach(([toolName, _handler]) => {
-        console.log(`Registering builtin tool: ${toolName}`);
-      });
+      console.log(`Initialized ${Object.keys(builtinHandlers).length} builtin tools`);
     }
   }, [agent]);
   console.log("tools", tools);
@@ -3147,10 +3157,12 @@ var EmbeddableChat = ({
   };
   const handleApprovalResponse = (approved) => {
     setApprovalDialogOpen(false);
-    if (approvalResolve) {
-      approvalResolve(approved);
-      setApprovalResolve(null);
+    if (currentApprovalResolve) {
+      currentApprovalResolve(approved);
+      setCurrentApprovalResolve(null);
     }
+    setCurrentApprovalMessage("");
+    setCurrentApprovalToolCalls([]);
   };
   const getMessageType = (message) => {
     if (message.parts.some((part) => part.type === "tool_call")) {
@@ -3313,8 +3325,8 @@ var EmbeddableChat = ({
         approvalDialogOpen && /* @__PURE__ */ jsx13(
           ApprovalDialog_default,
           {
-            toolCalls: approvalToolCalls,
-            reason: approvalReason,
+            toolCalls: currentApprovalToolCalls,
+            reason: currentApprovalMessage,
             onApprove: () => handleApprovalResponse(true),
             onDeny: () => handleApprovalResponse(false),
             onCancel: () => handleApprovalResponse(false)

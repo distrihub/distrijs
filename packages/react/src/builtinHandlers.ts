@@ -1,62 +1,56 @@
 import { ToolCall, ToolResult, APPROVAL_REQUEST_TOOL_NAME } from '@distri/core';
 
-// Legacy ToolHandler interface for backwards compatibility
-export interface LegacyToolHandler {
-  (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null>;
-}
+export type LegacyToolHandler = (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>) => Promise<{} | null>;
 
-// Global state for managing tool execution
-let pendingToolCalls: Map<string, { toolCall: ToolCall; resolve: (result: ToolResult) => void }> = new Map();
-
-// Toast management
-let showToast: ((message: string, type?: 'success' | 'error' | 'warning' | 'info') => void) | null = null;
-
-// Approval dialog management
-let showApprovalDialog: ((toolCalls: ToolCall[], reason?: string) => Promise<boolean>) | null = null;
+// Simple approval dialog function
+let showSimpleApprovalDialog: ((message: string, toolCalls: ToolCall[]) => Promise<boolean>) | null = null;
+let showSimpleToast: ((message: string, type?: 'success' | 'error' | 'warning' | 'info') => void) | null = null;
 
 /**
- * Initialize the builtin handlers with callbacks
+ * Initialize simple builtin handlers
  */
-export const initializeBuiltinHandlers = (callbacks: {
-  onToolComplete: (results: ToolResult[]) => void;
-  onCancel: () => void;
+export const initializeSimpleBuiltinHandlers = (callbacks: {
+  showApprovalDialog: (message: string, toolCalls: ToolCall[]) => Promise<boolean>;
   showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
-  showApprovalDialog: (toolCalls: ToolCall[], reason?: string) => Promise<boolean>;
 }) => {
-  showToast = callbacks.showToast;
-  showApprovalDialog = callbacks.showApprovalDialog;
+  showSimpleApprovalDialog = callbacks.showApprovalDialog;
+  showSimpleToast = callbacks.showToast;
 };
 
 /**
- * Clear pending tool calls
- */
-export const clearPendingToolCalls = () => {
-  pendingToolCalls.clear();
-};
-
-/**
- * Legacy builtin tool handlers using the old ToolHandler interface
- * These are kept for backwards compatibility but work alongside the new system
+ * Simple builtin tool handlers
  */
 export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> => ({
-  // Approval request handler - opens a dialog
+  // Approval request handler - shows a dialog and returns result directly
   [APPROVAL_REQUEST_TOOL_NAME]: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
       const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
       const toolCallsToApprove: ToolCall[] = input.tool_calls || [];
-      const reason: string = input.reason;
+      const reason: string = input.reason || 'Approval required';
 
-      if (!showApprovalDialog) {
+      if (!showSimpleApprovalDialog) {
         console.warn('Approval dialog not initialized');
+        const result: ToolResult = {
+          tool_call_id: toolCall.tool_call_id,
+          result: { approved: false, reason: 'Approval dialog not available' },
+          success: false,
+          error: 'Approval dialog not initialized'
+        };
+        await onToolComplete(toolCall.tool_call_id, result);
         return null;
       }
 
-      const approved = await showApprovalDialog(toolCallsToApprove, reason);
+      // Show approval dialog and wait for user response
+      const approved = await showSimpleApprovalDialog(reason, toolCallsToApprove);
 
-      // Report completion
+      // Send the tool result
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
-        result: { approved, reason: approved ? 'Approved by user' : 'Denied by user' },
+        result: { 
+          approved, 
+          reason: approved ? 'Approved by user' : 'Denied by user',
+          tool_calls: toolCallsToApprove 
+        },
         success: true
       };
       await onToolComplete(toolCall.tool_call_id, result);
@@ -68,8 +62,6 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
       };
     } catch (error) {
       console.error('Error in approval request handler:', error);
-
-      // Report error
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -77,7 +69,6 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
         error: error instanceof Error ? error.message : 'Unknown error'
       };
       await onToolComplete(toolCall.tool_call_id, result);
-
       return null;
     }
   },
@@ -89,14 +80,21 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
       const message: string = input.message || 'Toast message';
       const type: 'success' | 'error' | 'warning' | 'info' = input.type || 'info';
 
-      if (!showToast) {
+      if (!showSimpleToast) {
         console.warn('Toast not initialized');
+        const result: ToolResult = {
+          tool_call_id: toolCall.tool_call_id,
+          result: null,
+          success: false,
+          error: 'Toast not initialized'
+        };
+        await onToolComplete(toolCall.tool_call_id, result);
         return null;
       }
 
-      showToast(message, type);
+      showSimpleToast(message, type);
 
-      // Report completion
+      // Send the tool result immediately
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
         result: { success: true, message: 'Toast displayed successfully' },
@@ -110,8 +108,6 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
       };
     } catch (error) {
       console.error('Error in toast handler:', error);
-
-      // Report error
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -119,12 +115,11 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
         error: error instanceof Error ? error.message : 'Unknown error'
       };
       await onToolComplete(toolCall.tool_call_id, result);
-
       return null;
     }
   },
 
-  // Input request handler - shows prompt
+  // Input request handler - shows prompt and returns input
   input_request: async (toolCall: ToolCall, onToolComplete: (toolCallId: string, result: ToolResult) => Promise<void>): Promise<{} | null> => {
     try {
       const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
@@ -134,7 +129,7 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
       const userInput = window.prompt(prompt, defaultValue);
 
       if (userInput === null) {
-        // Report cancellation
+        // User cancelled
         const result: ToolResult = {
           tool_call_id: toolCall.tool_call_id,
           result: null,
@@ -142,10 +137,10 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
           error: 'User cancelled input'
         };
         await onToolComplete(toolCall.tool_call_id, result);
-        return null; // User cancelled
+        return null;
       }
 
-      // Report completion
+      // Send the tool result
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
         result: { input: userInput },
@@ -158,8 +153,6 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
       };
     } catch (error) {
       console.error('Error in input request handler:', error);
-
-      // Report error
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
         result: null,
@@ -167,60 +160,10 @@ export const createBuiltinToolHandlers = (): Record<string, LegacyToolHandler> =
         error: error instanceof Error ? error.message : 'Unknown error'
       };
       await onToolComplete(toolCall.tool_call_id, result);
-
       return null;
     }
   }
 });
 
-/**
- * Process external tool calls with handlers
- * This is kept for backwards compatibility
- */
-export const processExternalToolCalls = async (
-  toolCalls: ToolCall[],
-  handlers: Record<string, LegacyToolHandler>,
-  onToolComplete: (results: ToolResult[]) => Promise<void>
-): Promise<void> => {
-  const results: ToolResult[] = [];
-
-  for (const toolCall of toolCalls) {
-    const handler = handlers[toolCall.tool_name];
-
-    if (!handler) {
-      // No handler found - report as error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: `No handler found for tool: ${toolCall.tool_name}`
-      };
-      results.push(result);
-      continue;
-    }
-
-    try {
-      // Create a wrapper onToolComplete that collects results
-      const singleToolComplete = async (_toolCallId: string, result: ToolResult) => {
-        results.push(result);
-        // Also call the main onToolComplete with all results so far
-        await onToolComplete([...results]);
-      };
-
-      // Execute handler with single tool complete callback
-      await handler(toolCall, singleToolComplete);
-    } catch (error) {
-      console.error(`Error executing tool ${toolCall.tool_name}:`, error);
-
-      // Report error
-      const result: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-      results.push(result);
-      await onToolComplete([...results]);
-    }
-  }
-}; 
+// Legacy exports for backwards compatibility
+export const initializeBuiltinHandlers = initializeSimpleBuiltinHandlers; 
