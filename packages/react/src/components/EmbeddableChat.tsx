@@ -70,7 +70,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     sendMessage: sendChatMessage,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    toolResults
   } = useChat({
     threadId,
     agent: agent || undefined,
@@ -158,11 +159,15 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                 .map((part: any) => {
                   const toolCall = part.tool_call;
                   const status = getToolCallStatus?.(toolCall.tool_call_id);
+
+                  // Find corresponding tool result if available
+                  const toolResult = toolResults.find(tr => tr.tool_call_id === toolCall.tool_call_id);
+
                   return {
                     toolCall,
                     status: status?.status || 'pending',
-                    result: status?.result,
-                    error: status?.error,
+                    result: toolResult?.result || status?.result,
+                    error: toolResult?.error || status?.error,
                     startedAt: status?.startedAt,
                     completedAt: status?.completedAt,
                   };
@@ -214,6 +219,9 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     AssistantMessageComponent,
     AssistantWithToolCallsComponent,
     PlanMessageComponent,
+    toolResults,
+    getToolCallStatus,
+    isStreaming
   ]);
 
   return (

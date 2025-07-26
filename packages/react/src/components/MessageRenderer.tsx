@@ -335,17 +335,19 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
       theme: 'chatgpt' as const
     };
   }
-
-  // Detect if we're in a dark theme context (e.g., user message with white text)
-  // const isDark = className.includes('text-white') || className.includes('text-foreground');
-
   // If we have a DistriMessage, render its parts
   if (message && isDistriMessage(message)) {
+    // Filter out tool_result parts if this message has tool_calls (they'll be handled by AssistantWithToolCalls)
+    const hasToolCalls = message.parts.some(part => part.type === 'tool_call');
+    const filteredParts = hasToolCalls
+      ? message.parts.filter(part => part.type !== 'tool_result')
+      : message.parts;
+
     // Group consecutive text parts for concatenation
     const groupedParts: DistriPart[][] = [];
     let currentTextGroup: DistriPart[] = [];
 
-    for (const part of message.parts) {
+    for (const part of filteredParts) {
       if (part.type === 'text') {
         currentTextGroup.push(part);
       } else {

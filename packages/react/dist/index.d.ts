@@ -477,7 +477,15 @@ interface UseChatReturn {
     sendToolResults: () => Promise<void>;
     executeTool: (toolCall: ToolCall) => Promise<void>;
     completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
-    getToolCallStatus: (toolCallId: string) => any;
+    getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
+}
+interface ToolCallStatus {
+    tool_call_id: string;
+    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
+    result?: any;
+    error?: string;
+    startedAt?: Date;
+    completedAt?: Date;
 }
 declare function useChat({ threadId, onMessage, onError, metadata, onMessagesUpdate, agent, tools, }: UseChatOptions): UseChatReturn;
 

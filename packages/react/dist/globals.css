@@ -1142,6 +1142,9 @@ body {
 .bg-muted-foreground {
   background-color: hsl(var(--muted-foreground));
 }
+.bg-muted\/30 {
+  background-color: hsl(var(--muted) / 0.3);
+}
 .bg-muted\/50 {
   background-color: hsl(var(--muted) / 0.5);
 }
@@ -1442,10 +1445,6 @@ body {
 }
 .text-secondary-foreground {
   color: hsl(var(--secondary-foreground));
-}
-.text-white {
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
 .text-yellow-500 {
   --tw-text-opacity: 1;
