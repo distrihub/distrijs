@@ -12,6 +12,7 @@ import {
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
 import { DistriStreamEvent, isDistriMessage } from '../../core/src/types';
 import { useToolManager } from './hooks/useToolManager';
+import { extractToolCallsWithResults } from './utils/toolCallUtils';
 
 interface ToolHandler {
   (input: any): Promise<any> | any;
@@ -28,20 +29,21 @@ export interface UseChatOptions {
 }
 
 export interface UseChatReturn {
-  messages: DistriStreamEvent[];
+  messages: (DistriMessage | DistriEvent)[];
   isStreaming: boolean;
-  sendMessage: (content: string | DistriPart[]) => Promise<void>;
-  sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
+  sendMessageStream: (content: string) => Promise<void>;
   isLoading: boolean;
   error: Error | null;
   clearMessages: () => void;
-  agent: Agent | undefined;
+  agent?: Agent;
   pendingToolCalls: ToolCall[];
   toolResults: ToolResult[];
   sendToolResults: () => Promise<void>;
   executeTool: (toolCall: ToolCall) => Promise<void>;
   completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
   getToolCallStatus: (toolCallId: string) => any;
+  rerunTool: (toolCallId: string) => Promise<void>;
 }
 
 export function useChat({
@@ -92,13 +94,30 @@ export function useChat({
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
       console.log('distriMessages', distriMessages);
       setMessages(distriMessages);
+      
+      // Extract and restore tool call states from message history
+      const historicalToolCalls = extractToolCallsWithResults(distriMessages);
+      if (historicalToolCalls.length > 0) {
+        // Clear existing tool calls and restore from history
+        addToolCalls(historicalToolCalls.map(tc => tc.toolCall));
+        
+        // Update tool call states with their historical status
+        historicalToolCalls.forEach(tc => {
+          if (tc.status === 'completed') {
+            completeTool(tc.toolCall.tool_call_id, tc.result, true);
+          } else if (tc.status === 'error') {
+            completeTool(tc.toolCall.tool_call_id, tc.result, false, tc.error);
+          }
+        });
+      }
+      
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch messages');
       setError(error);
       onError?.(error);
     }
-  }, [threadId, agent, onError, onMessagesUpdate]);
+  }, [threadId, agent, onError, onMessagesUpdate, addToolCalls, completeTool]);
 
   // Fetch messages on mount and when threadId changes
   useEffect(() => {
@@ -289,6 +308,19 @@ export function useChat({
     }
   }, [agent, toolResults, createInvokeContext]);
 
+  // Rerun a specific tool call by ID
+  const rerunTool = useCallback(async (toolCallId: string) => {
+    // Find the tool call in the current tool manager state
+    const toolCallState = getToolCallStatus(toolCallId);
+    if (!toolCallState) {
+      console.error('Tool call not found:', toolCallId);
+      return;
+    }
+
+    // Re-execute the tool call
+    await executeTool(toolCallState.toolCall);
+  }, [getToolCallStatus, executeTool]);
+
   return {
     messages,
     isStreaming,
@@ -303,6 +335,7 @@ export function useChat({
     sendToolResults,
     executeTool,
     completeTool,
-    getToolCallStatus
+    getToolCallStatus,
+    rerunTool
   };
 } 

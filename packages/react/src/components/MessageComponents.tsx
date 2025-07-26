@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench } from 'lucide-react';
+import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench, RotateCcw } from 'lucide-react';
 import { ToolCallState, ToolCall, DistriMessage } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
 
@@ -39,6 +39,7 @@ export interface AssistantWithToolCallsProps extends BaseMessageProps {
   isStreaming?: boolean;
   onExecuteTool?: (toolCall: ToolCall) => void;
   onCompleteTool?: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
+  onRerunTool?: (toolCallId: string) => void;
 }
 
 export interface PlanMessageProps extends BaseMessageProps {
@@ -182,7 +183,8 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   isStreaming = false,
   className = '',
   avatar,
-  name = "Assistant"
+  name = "Assistant",
+  onRerunTool
 }) => {
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
@@ -237,15 +239,39 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                         </div>
                       )}
                       {toolCall.status === 'completed' && (
-                        <div className="flex items-center gap-1 text-xs text-green-600">
-                          <CheckCircle className="h-3 w-3" />
-                          Completed
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-xs text-green-600">
+                            <CheckCircle className="h-3 w-3" />
+                            Completed
+                          </div>
+                          {onRerunTool && (
+                            <button
+                              onClick={() => onRerunTool(toolCall.toolCall.tool_call_id)}
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                              title="Rerun tool call"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Rerun
+                            </button>
+                          )}
                         </div>
                       )}
                       {toolCall.status === 'error' && (
-                        <div className="flex items-center gap-1 text-xs text-red-600">
-                          <XCircle className="h-3 w-3" />
-                          Failed
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-xs text-red-600">
+                            <XCircle className="h-3 w-3" />
+                            Failed
+                          </div>
+                          {onRerunTool && (
+                            <button
+                              onClick={() => onRerunTool(toolCall.toolCall.tool_call_id)}
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                              title="Rerun tool call"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Rerun
+                            </button>
+                          )}
                         </div>
                       )}
                       {toolCall.status === 'user_action_required' && (
