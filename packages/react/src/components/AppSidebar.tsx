@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2, RefreshCw, Github, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit3, Bot, Users, Edit2, RefreshCw, Github, Loader2 } from 'lucide-react';
 import { useThreads } from '../useThreads';
 import { useTheme } from './ThemeProvider';
 import {
@@ -219,15 +219,14 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {threadsLoading ? (
-                <SidebarMenuItem>
+                <SidebarMenuItem >
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Loading threads...</span>
                 </SidebarMenuItem>
 
               ) : threads.length === 0 ? (
                 <SidebarMenuItem>
-                  <MessageSquare className="h-4 w-4" />
-                  <span>No conversations yet</span>
+                  No conversations yet
                 </SidebarMenuItem>
               ) : (
                 threads.map((thread: any) => (
