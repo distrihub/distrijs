@@ -588,6 +588,7 @@ interface EmbeddableChatProps {
     showDebug?: boolean;
     showAgentSelector?: boolean;
     placeholder?: string;
+    disableAgentSelection?: boolean;
     onAgentSelect?: (agentId: string) => void;
     onResponse?: (message: any) => void;
     onMessagesUpdate?: () => void;
@@ -605,6 +606,7 @@ interface AgentSelectProps {
     onAgentSelect: (agentId: string) => void;
     className?: string;
     placeholder?: string;
+    disabled?: boolean;
 }
 declare const AgentSelect: React__default.FC<AgentSelectProps>;
 

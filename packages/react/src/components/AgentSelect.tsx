@@ -20,6 +20,7 @@ interface AgentSelectProps {
   onAgentSelect: (agentId: string) => void;
   className?: string;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export const AgentSelect: React.FC<AgentSelectProps> = ({
@@ -28,12 +29,13 @@ export const AgentSelect: React.FC<AgentSelectProps> = ({
   onAgentSelect,
   className = '',
   placeholder = 'Select an agent...',
+  disabled = false,
 }) => {
   const selectedAgent = agents.find(agent => agent.id === selectedAgentId);
 
   return (
-    <Select value={selectedAgentId} onValueChange={onAgentSelect}>
-      <SelectTrigger className={`w-full ${className}`}>
+    <Select value={selectedAgentId} onValueChange={onAgentSelect} disabled={disabled}>
+      <SelectTrigger className={`w-full ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
         <div className="flex items-center space-x-2">
           <Bot className="h-4 w-4" />
           <SelectValue placeholder={placeholder}>

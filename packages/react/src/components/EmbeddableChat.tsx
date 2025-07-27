@@ -32,6 +32,7 @@ export interface EmbeddableChatProps {
   showDebug?: boolean;
   showAgentSelector?: boolean;
   placeholder?: string;
+  disableAgentSelection?: boolean;
   // Callbacks
   onAgentSelect?: (agentId: string) => void;
   onResponse?: (message: any) => void;
@@ -56,6 +57,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   showDebug = false,
   showAgentSelector = true,
   placeholder = "Type your message...",
+  disableAgentSelection = false,
   onAgentSelect,
   onResponse: _onResponse,
   onMessagesUpdate,
@@ -222,7 +224,13 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
               selectedAgentId={agent?.id}
               onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
               className="w-full"
+              disabled={disableAgentSelection || messages.length > 0}
             />
+            {(disableAgentSelection || messages.length > 0) && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Agent locked for this conversation
+              </div>
+            )}
           </div>
         )}
       </div>
