@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Agent } from '@distri/core';
 import { useThreads } from '../useThreads';
+import { useChat } from '../useChat';
 import { EmbeddableChat } from './EmbeddableChat';
 import AgentsPage from './AgentsPage';
 import { AppSidebar } from './AppSidebar';
@@ -36,12 +37,10 @@ export interface FullChatProps {
   onLogoClick?: () => void;
 }
 
-
-
 type PageType = 'chat' | 'agents';
 
 export const FullChat: React.FC<FullChatProps> = ({
-  agentId,
+  agentId: initialAgentId,
   metadata,
   className = '',
   UserMessageComponent,
@@ -57,11 +56,24 @@ export const FullChat: React.FC<FullChatProps> = ({
   onAgentSelect,
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<string>(uuidv4());
+  const [currentAgentId, setCurrentAgentId] = useState<string>(initialAgentId);
   const { threads, refetch: refetchThreads } = useThreads();
   const [currentPage, setCurrentPage] = useState<PageType>('chat');
   const [defaultOpen, setDefaultOpen] = useState(true);
-  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
+  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId: currentAgentId });
   const { theme } = useTheme();
+
+  // Get the current thread
+  const currentThread = threads.find(t => t.id === selectedThreadId);
+  
+  // Use chat hook to get messages for the selected thread
+  const { messages } = useChat({
+    threadId: selectedThreadId,
+    agent: agent || undefined
+  });
+
+  // Check if thread has started (has messages)
+  const threadHasStarted = messages.length > 0;
 
   // Load sidebar state from localStorage
   useEffect(() => {
@@ -70,6 +82,14 @@ export const FullChat: React.FC<FullChatProps> = ({
       setDefaultOpen(savedState === 'true');
     }
   }, []);
+
+  // Auto-populate agent ID from thread when thread is selected
+  useEffect(() => {
+    if (currentThread?.agent_id && currentThread.agent_id !== currentAgentId) {
+      setCurrentAgentId(currentThread.agent_id);
+      onAgentSelect?.(currentThread.agent_id);
+    }
+  }, [currentThread?.agent_id, currentAgentId, onAgentSelect]);
 
   const handleNewChat = useCallback(() => {
     const newThreadId = `thread-${Date.now()}`;
@@ -97,30 +117,68 @@ export const FullChat: React.FC<FullChatProps> = ({
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
 
-  const handleThreadRename = useCallback((threadId: string, newTitle: string) => {
-    // In a real implementation, this would call an API to rename the thread
-    console.log('Rename thread', threadId, 'to', newTitle);
+  const handleAgentSelect = useCallback((newAgentId: string) => {
+    // Only allow agent selection if thread hasn't started
+    if (!threadHasStarted) {
+      setCurrentAgentId(newAgentId);
+      onAgentSelect?.(newAgentId);
+    }
+  }, [threadHasStarted, onAgentSelect]);
+
+  const handleMessagesUpdate = useCallback(() => {
     refetchThreads();
   }, [refetchThreads]);
 
-  const handleMessagesUpdate = useCallback(() => {
-    // Refresh threads when messages are updated
-    refetchThreads();
-  }, [refetchThreads]);
+  const renderMainContent = () => {
+    if (currentPage === 'agents') {
+      return <AgentsPage onStartChat={(agent) => {
+        setCurrentPage('chat');
+        handleAgentSelect(agent.id);
+      }} />;
+    }
+
+    if (!agent) {
+      if (agentLoading) return <div>Loading agent...</div>;
+      if (agentError) return <div>Error loading agent: {agentError.message}</div>;
+      return <div>No agent selected</div>;
+    }
+
+    return (
+      <EmbeddableChat
+        threadId={selectedThreadId}
+        showAgentSelector={false}
+        agent={agent}
+        metadata={metadata}
+        height="calc(100vh - 4rem)"
+        availableAgents={availableAgents}
+        UserMessageComponent={UserMessageComponent}
+        AssistantMessageComponent={AssistantMessageComponent}
+        AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
+        PlanMessageComponent={PlanMessageComponent}
+        theme={theme as 'light' | 'dark' | 'auto'}
+        showDebug={showDebug}
+        placeholder="Type your message..."
+        disableAgentSelection={threadHasStarted}
+        onAgentSelect={handleAgentSelect}
+        onMessagesUpdate={handleMessagesUpdate}
+      />
+    );
+  };
+
   return (
-    <div className={`distri-chat ${className} h-full`}>
-      <SidebarProvider defaultOpen={defaultOpen}
-        style={{
-          "--sidebar-width": "20rem",
-          "--sidebar-width-mobile": "18rem",
-        } as React.CSSProperties}>
+    <SidebarProvider defaultOpen={defaultOpen}>
+      <div className={`distri-chat ${className} h-full`}>
         <AppSidebar
           selectedThreadId={selectedThreadId}
           currentPage={currentPage}
           onNewChat={handleNewChat}
           onThreadSelect={handleThreadSelect}
           onThreadDelete={handleThreadDelete}
-          onThreadRename={handleThreadRename}
+          onThreadRename={(threadId: string, newTitle: string) => {
+            // Placeholder for thread rename functionality
+            console.log('Rename thread', threadId, 'to', newTitle);
+            refetchThreads();
+          }}
           onLogoClick={onLogoClick}
           onPageChange={setCurrentPage}
         />
@@ -133,10 +191,16 @@ export const FullChat: React.FC<FullChatProps> = ({
                 <div className="w-64">
                   <AgentSelect
                     agents={availableAgents}
-                    selectedAgentId={agentId}
-                    onAgentSelect={(agentId) => onAgentSelect?.(agentId)}
+                    selectedAgentId={currentAgentId}
+                    onAgentSelect={handleAgentSelect}
                     placeholder="Select an agent..."
+                    disabled={threadHasStarted}
                   />
+                  {threadHasStarted && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Agent locked for this conversation
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -144,41 +208,11 @@ export const FullChat: React.FC<FullChatProps> = ({
 
           {/* Main content area */}
           <main className="flex-1 overflow-hidden">
-            {currentPage === 'chat' && agent && (
-              <EmbeddableChat
-                threadId={selectedThreadId}
-                showAgentSelector={false}
-                agent={agent}
-                metadata={metadata}
-                height="calc(100vh - 4rem)"
-                availableAgents={availableAgents}
-                UserMessageComponent={UserMessageComponent}
-                AssistantMessageComponent={AssistantMessageComponent}
-                AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
-                PlanMessageComponent={PlanMessageComponent}
-                theme={theme as 'light' | 'dark' | 'auto'}
-                showDebug={showDebug}
-                placeholder="Type your message..."
-                onAgentSelect={onAgentSelect}
-                onMessagesUpdate={handleMessagesUpdate}
-              />
-            )}
-
-            {agentLoading && <div>Loading agent...</div>}
-            {agentError && <div>Error loading agent: {agentError.message}</div>}
-            {!agent && !agentLoading && <div>No agent selected</div>}
-            {currentPage === 'agents' && (
-              <div className="h-full overflow-auto">
-                <AgentsPage onStartChat={(agent) => {
-                  setCurrentPage('chat');
-                  onAgentSelect?.(agent.id);
-                }} />
-              </div>
-            )}
+            {renderMainContent()}
           </main>
         </SidebarInset>
-      </SidebarProvider>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
