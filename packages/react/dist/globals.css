@@ -601,12 +601,6 @@ body {
 .ml-auto {
   margin-left: auto;
 }
-.mr-2 {
-  margin-right: 0.5rem;
-}
-.mr-3 {
-  margin-right: 0.75rem;
-}
 .mt-0\.5 {
   margin-top: 0.125rem;
 }
@@ -1389,10 +1383,6 @@ body {
   --tw-text-opacity: 1;
   color: rgb(245 158 11 / var(--tw-text-opacity, 1));
 }
-.text-amber-600 {
-  --tw-text-opacity: 1;
-  color: rgb(217 119 6 / var(--tw-text-opacity, 1));
-}
 .text-blue-500 {
   --tw-text-opacity: 1;
   color: rgb(59 130 246 / var(--tw-text-opacity, 1));
@@ -1904,9 +1894,38 @@ body {
 .group.destructive .group-\[\.destructive\]\:border-muted\/40 {
   border-color: hsl(var(--muted) / 0.4);
 }
+.group.toaster .group-\[\.toaster\]\:border-border {
+  border-color: hsl(var(--border));
+}
+.group.toast .group-\[\.toast\]\:bg-muted {
+  background-color: hsl(var(--muted));
+}
+.group.toast .group-\[\.toast\]\:bg-primary {
+  background-color: hsl(var(--primary));
+}
+.group.toaster .group-\[\.toaster\]\:bg-background {
+  background-color: hsl(var(--background));
+}
 .group.destructive .group-\[\.destructive\]\:text-red-300 {
   --tw-text-opacity: 1;
   color: rgb(252 165 165 / var(--tw-text-opacity, 1));
+}
+.group.toast .group-\[\.toast\]\:text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+.group.toast .group-\[\.toast\]\:text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+.group.toaster .group-\[\.toaster\]\:text-foreground {
+  color: hsl(var(--foreground));
+}
+.group.toaster .group-\[\.toaster\]\:shadow-lg {
+  --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow);
 }
 .group.destructive .group-\[\.destructive\]\:hover\:border-destructive\/30:hover {
   border-color: hsl(var(--destructive) / 0.3);

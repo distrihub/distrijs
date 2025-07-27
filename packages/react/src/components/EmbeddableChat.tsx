@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
 import { useChat } from '../useChat';
-import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
+import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './Components';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
-import { Toaster } from './ui/toaster';
+import { Toaster } from './ui/sonner';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
+import { DistriAnyTool, ToolCallState } from '@/types';
 
 export interface EmbeddableChatProps {
   agent: Agent;
@@ -17,7 +18,7 @@ export interface EmbeddableChatProps {
   className?: string;
   style?: React.CSSProperties;
   metadata?: any;
-  tools?: DistriTool[];
+  tools?: DistriAnyTool[];
   // Available agents for selection
   availableAgents?: Array<{ id: string; name: string; description?: string }>;
   // Customization props
@@ -68,11 +69,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     isStreaming,
     error,
     sendMessage: sendChatMessage,
-    executeTool,
-    completeTool,
     toolCallStates,
-    toolResults,
-    stopStreaming
+    stopStreaming,
   } = useChat({
     threadId,
     agent: agent || undefined,
@@ -153,34 +151,20 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
             case 'assistant_with_tools':
               // Extract tool calls from message parts and get their status from the tool call state
-              const toolCalls = (message.parts || [])
+              const states = (message.parts || [])
                 .filter((part: any) => part.tool_call)
                 .map((part: any) => {
-                  const toolCall = part.tool_call;
-                  const toolCallState = toolCallStates.get(toolCall.tool_call_id);
-
-                  // Find corresponding tool result if available
-                  const toolResult = toolResults.find(tr => tr.tool_call_id === toolCall.tool_call_id);
-
-                  return {
-                    toolCall,
-                    status: toolCallState?.status || 'pending',
-                    result: toolResult?.result || toolCallState?.result,
-                    error: toolResult?.error || toolCallState?.error,
-                    startedAt: toolCallState?.startedAt,
-                    completedAt: toolCallState?.completedAt,
-                  };
-                });
+                  const toolCallState = toolCallStates.get(part.tool_call.tool_call_id);
+                  return toolCallState;
+                }).filter(Boolean) as ToolCallState[];
 
               return (
                 <AssistantWithToolCallsComponent
                   key={key}
                   message={message}
-                  toolCalls={toolCalls}
+                  toolCallStates={states}
                   timestamp={timestamp}
                   isStreaming={isStreaming && index === messages.length - 1}
-                  onExecuteTool={executeTool}
-                  onCompleteTool={completeTool}
                 />
               );
 
@@ -218,7 +202,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     AssistantMessageComponent,
     AssistantWithToolCallsComponent,
     PlanMessageComponent,
-    toolResults,
     toolCallStates,
     isStreaming
   ]);
@@ -243,6 +226,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
         )}
       </div>
+      <Toaster />
 
       {/* Main Chat Area - Full height scrollable container */}
       <div className="flex-1 relative min-h-0">

@@ -1,18 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriClient, DistriTool } from '@distri/core';
+import { Agent, DistriClient } from '@distri/core';
 import {
   DistriMessage,
   DistriPart,
   InvokeContext,
   DistriEvent,
   convertDistriMessageToA2A,
-  ToolCall,
   ToolResult
 } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
-import { DistriStreamEvent, isDistriMessage } from '../../core/src/types';
-import { useTools } from './hooks/useTools';
-import { useToolCallState, type ToolCallState, type ToolCallStatus } from './hooks/useToolCallState';
+import { DistriStreamEvent, isDistriMessage, ToolResultPart } from '../../core/src/types';
+import { registerTools } from './hooks/registerTools';
+import { useToolCallState } from './hooks/useToolCallState';
+import { DistriAnyTool, ToolCallState } from './types';
 
 export interface UseChatOptions {
   threadId: string;
@@ -21,7 +21,7 @@ export interface UseChatOptions {
   onError?: (error: Error) => void;
   metadata?: any;
   onMessagesUpdate?: () => void;
-  tools?: DistriTool[];
+  tools?: DistriAnyTool[];
 }
 
 export interface UseChatReturn {
@@ -33,20 +33,8 @@ export interface UseChatReturn {
   error: Error | null;
   clearMessages: () => void;
   agent: Agent | undefined;
-  
-  // Tool call management with new cleaner interface
-  toolCalls: ToolCall[];
-  toolResults: ToolResult[];
   toolCallStates: Map<string, ToolCallState>;
-  
-  // Tool operations
-  executeTool: (toolCall: ToolCall) => Promise<void>;
-  completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
-  getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
-  getToolCallState: (toolCallId: string) => ToolCallState | undefined;
   hasPendingToolCalls: () => boolean;
-  sendToolResults: () => Promise<void>;
-  
   stopStreaming: () => void;
 }
 
@@ -72,16 +60,18 @@ export function useChat({
     metadata
   }), [threadId, metadata]);
 
-  // Callback ref for auto-sending tool results
-  const onAllToolsCompletedRef = useRef<((toolResults: ToolResult[]) => void) | undefined>();
+  // Register tools with agent
+  registerTools({ agent, tools });
 
   // Tool state management with auto-send when all completed  
-  const toolCallState = useToolCallState({
-    onAllToolsCompleted: (toolResults) => onAllToolsCompletedRef.current?.(toolResults)
+  const toolStateHandler = useToolCallState({
+    agent,
+    onAllToolsCompleted: (toolResults: ToolResult[]) => {
+      sendToolResultsToAgent(toolResults);
+    }
   });
 
-  // Register tools with agent
-  useTools({ agent, tools });
+
 
   // Cleanup abort controller on unmount
   useEffect(() => {
@@ -98,17 +88,17 @@ export function useChat({
     if (agent?.id !== agentIdRef.current) {
       // Agent changed, reset all state
       setMessages([]);
-      toolCallState.clearAll();
+      toolStateHandler.clearAll();
       setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, toolCallState]);
+  }, [agent?.id, toolStateHandler]);
 
   // Clear messages helper
   const clearMessages = useCallback(() => {
     setMessages([]);
-    toolCallState.clearAll();
-  }, [toolCallState]);
+    toolStateHandler.clearAll();
+  }, [toolStateHandler]);
 
   const fetchMessages = useCallback(async () => {
     if (!agent) return;
@@ -171,7 +161,7 @@ export function useChat({
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
         newToolCalls.forEach(toolCall => {
-          toolCallState.addToolCall(toolCall);
+          toolStateHandler.initToolCall(toolCall);
         });
       }
 
@@ -180,11 +170,14 @@ export function useChat({
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map(part => (part as any).tool_result);
         newToolResults.forEach(toolResult => {
-          toolCallState.updateToolCallStatus(
+          toolStateHandler.updateToolCallStatus(
             toolResult.tool_call_id,
-            toolResult.success ? 'completed' : 'error',
-            toolResult.result,
-            toolResult.error
+            {
+              status: toolResult.success ? 'completed' : 'error',
+              result: toolResult.result,
+              error: toolResult.error,
+              completedAt: new Date()
+            }
           );
         });
       }
@@ -246,7 +239,7 @@ export function useChat({
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
 
-  const sendMessageStream = useCallback(async (content: string | DistriPart[]) => {
+  const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
     if (!agent) return;
 
     setIsLoading(true);
@@ -265,7 +258,7 @@ export function useChat({
         ? [{ type: 'text', text: content }]
         : content;
 
-      const distriMessage = DistriClient.initDistriMessage('user', parts);
+      const distriMessage = DistriClient.initDistriMessage(role, parts);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
@@ -303,60 +296,26 @@ export function useChat({
   // This reuses the existing sendMessageStream logic for consistency
   const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
     if (agent && toolResults.length > 0) {
-      console.log('Auto-sending tool results via streaming:', toolResults);
-      
+      console.log('Sending tool results via streaming:', toolResults);
+
       try {
         // Construct tool result parts
         const toolResultParts: DistriPart[] = toolResults.map(result => ({
           type: 'tool_result',
           tool_result: result
-        }));
+        } as ToolResultPart));
 
         // Reuse existing streaming logic for consistency with regular messages
-        await sendMessageStream(toolResultParts);
-        
+        await sendMessageStream(toolResultParts, 'tool');
+
         // Clear tool results after successful streaming
-        toolCallState.clearToolResults();
+        toolStateHandler.clearToolResults();
       } catch (err) {
         console.error('Failed to send tool results:', err);
         setError(err instanceof Error ? err : new Error('Failed to send tool results'));
       }
     }
-  }, [sendMessageStream, toolCallState]);
-
-  // Set the callback ref to point to our function
-  onAllToolsCompletedRef.current = sendToolResultsToAgent;
-
-  // Execute a tool call
-  const executeTool = useCallback(async (toolCall: ToolCall) => {
-    if (!agent) return;
-
-    // Update status to running
-    toolCallState.setToolCallRunning(toolCall.tool_call_id);
-
-    try {
-      const result = await agent.executeTool(toolCall);
-      // Complete the tool call with the result
-      toolCallState.completeToolCall(toolCall.tool_call_id, result.result, result.success, result.error);
-    } catch (error) {
-      console.error('Failed to execute tool:', error);
-      // Set error status
-      toolCallState.setToolCallError(
-        toolCall.tool_call_id, 
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-    }
-  }, [agent, toolCallState]);
-
-  // Complete a tool call manually
-  const completeTool = useCallback((toolCallId: string, result: any, success: boolean = true, error?: string) => {
-    toolCallState.completeToolCall(toolCallId, result, success, error);
-  }, [toolCallState]);
-
-  // Manual send tool results (for backwards compatibility)
-  const sendToolResults = useCallback(async () => {
-    await sendToolResultsToAgent(toolCallState.toolResults);
-  }, [sendToolResultsToAgent, toolCallState.toolResults]);
+  }, [sendMessageStream, toolStateHandler]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
@@ -373,20 +332,8 @@ export function useChat({
     error,
     clearMessages,
     agent: agent || undefined,
-    
-    // Tool call management with new cleaner interface
-    toolCalls: toolCallState.toolCalls,
-    toolResults: toolCallState.toolResults,
-    toolCallStates: toolCallState.toolCallStates,
-    
-    // Tool operations
-    executeTool,
-    completeTool,
-    getToolCallStatus: toolCallState.getToolCallStatus,
-    getToolCallState: toolCallState.getToolCallState,
-    hasPendingToolCalls: toolCallState.hasPendingToolCalls,
-    sendToolResults,
-    
-    stopStreaming
+    toolCallStates: toolStateHandler.toolCallStates,
+    hasPendingToolCalls: toolStateHandler.hasPendingToolCalls,
+    stopStreaming,
   };
 } 

@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { ToolCall } from '@distri/core';
+import { UiToolProps } from '@/types';
+import { ToolResult } from '@distri/core';
 
-interface ApprovalToolCallProps {
-  toolCall: ToolCall;
-  onComplete: (result: any, success: boolean, error?: string) => void;
-  status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-}
-
-export const ApprovalToolCall: React.FC<ApprovalToolCallProps> = ({
+export const ApprovalToolCall: React.FC<UiToolProps> = ({
   toolCall,
-  onComplete,
-  status
+  completeTool
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
-
-  console.log('approval tool call', toolCall, status);
   const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
   const reason = input.reason || 'Approval required';
   const toolCallsToApprove = input.tool_calls || [];
@@ -25,15 +17,14 @@ export const ApprovalToolCall: React.FC<ApprovalToolCallProps> = ({
     if (isProcessing || status === 'completed') return;
 
     setIsProcessing(true);
-
-    console.log('approval tool call', toolCall, approved);
-    const result = {
-      approved,
-      reason: approved ? 'Approved by user' : 'Denied by user',
-      tool_calls: toolCallsToApprove
+    const result: ToolResult = {
+      tool_call_id: toolCall.tool_call_id,
+      result: `${toolCall.tool_name} ${approved ? 'approved' : 'denied'} by user`,
+      success: true,
+      error: undefined
     };
 
-    onComplete(result, true);
+    completeTool(result);
   };
 
   if (status === 'completed') {

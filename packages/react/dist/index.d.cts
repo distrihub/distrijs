@@ -138,7 +138,7 @@ type ToolCallPart = {
 };
 type ToolResultPart = {
     type: 'tool_result';
-    tool_result: ToolResponse;
+    tool_result: ToolResult;
 };
 type PlanPart = {
     type: 'plan';
@@ -161,11 +161,22 @@ interface FileUrl {
 /**
  * Tool definition interface following AG-UI pattern
  */
-interface DistriTool {
+interface DistriBaseTool {
     name: string;
+    type: 'function' | 'ui';
     description: string;
-    parameters: any;
+    input_schema: object;
+}
+interface DistriFnTool extends DistriBaseTool {
+    type: 'function';
     handler: ToolHandler;
+    onToolComplete?: (toolCallId: string, toolResult: ToolResult) => void;
+}
+/**
+ * Tool handler function
+ */
+interface ToolHandler {
+    (input: any): Promise<string | number | boolean | null | object>;
 }
 /**
  * Tool call from agent
@@ -180,16 +191,9 @@ interface ToolCall {
  */
 interface ToolResult {
     tool_call_id: string;
-    result: any;
+    result: string | number | boolean | null;
     success: boolean;
     error?: string;
-}
-type ToolResponse = ToolResult;
-/**
- * Tool handler function
- */
-interface ToolHandler {
-    (input: any): Promise<any> | any;
 }
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
@@ -369,17 +373,13 @@ declare class Agent$1 {
     private tools;
     constructor(agentDefinition: DistriAgent, client: DistriClient);
     /**
-     * Initialize built-in tools
-     */
-    private initializeBuiltinTools;
-    /**
      * Add a tool to the agent (AG-UI style)
      */
-    registerTool(tool: DistriTool): void;
+    registerTool(tool: DistriBaseTool): void;
     /**
      * Add multiple tools at once
      */
-    registerTools(tools: DistriTool[]): void;
+    registerTools(tools: DistriBaseTool[]): void;
     /**
      * Remove a tool
      */
@@ -387,15 +387,11 @@ declare class Agent$1 {
     /**
      * Get all registered tools
      */
-    getTools(): DistriTool[];
+    getTools(): DistriBaseTool[];
     /**
      * Check if a tool is registered
      */
     hasTool(toolName: string): boolean;
-    /**
-     * Execute a tool call
-     */
-    executeTool(toolCall: ToolCall): Promise<ToolResult>;
     /**
      * Get agent information
      */
@@ -471,31 +467,24 @@ type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_acti
 interface ToolCallState {
     tool_call_id: string;
     status: ToolCallStatus;
+    tool_name: string;
+    input: any;
     result?: any;
     error?: string;
     startedAt?: Date;
     completedAt?: Date;
+    component?: React.ReactNode;
 }
-interface UseToolCallStateOptions {
-    onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
+type DistriAnyTool = DistriFnTool | DistriUiTool;
+interface DistriUiTool extends DistriBaseTool {
+    type: 'ui';
+    component: (props: UiToolProps) => React.ReactNode;
 }
-interface UseToolCallStateReturn {
-    toolCalls: ToolCall[];
-    toolResults: ToolResult[];
-    toolCallStates: Map<string, ToolCallState>;
-    addToolCall: (toolCall: ToolCall) => void;
-    updateToolCallStatus: (toolCallId: string, status: ToolCallStatus, result?: any, error?: string) => void;
-    completeToolCall: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
-    setToolCallRunning: (toolCallId: string) => void;
-    setToolCallError: (toolCallId: string, error: string) => void;
-    getToolCallState: (toolCallId: string) => ToolCallState | undefined;
-    getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
-    hasPendingToolCalls: () => boolean;
-    getPendingToolCalls: () => ToolCall[];
-    clearAll: () => void;
-    clearToolResults: () => void;
-}
-declare function useToolCallState(options?: UseToolCallStateOptions): UseToolCallStateReturn;
+type UiToolProps = {
+    toolCall: ToolCall;
+    toolCallState?: ToolCallState;
+    completeTool: (result: ToolResult) => void;
+};
 
 interface UseChatOptions {
     threadId: string;
@@ -504,7 +493,7 @@ interface UseChatOptions {
     onError?: (error: Error) => void;
     metadata?: any;
     onMessagesUpdate?: () => void;
-    tools?: DistriTool[];
+    tools?: DistriAnyTool[];
 }
 interface UseChatReturn {
     messages: DistriStreamEvent[];
@@ -515,15 +504,8 @@ interface UseChatReturn {
     error: Error | null;
     clearMessages: () => void;
     agent: Agent$1 | undefined;
-    toolCalls: ToolCall[];
-    toolResults: ToolResult[];
     toolCallStates: Map<string, ToolCallState>;
-    executeTool: (toolCall: ToolCall) => Promise<void>;
-    completeTool: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
-    getToolCallStatus: (toolCallId: string) => ToolCallStatus | undefined;
-    getToolCallState: (toolCallId: string) => ToolCallState | undefined;
     hasPendingToolCalls: () => boolean;
-    sendToolResults: () => Promise<void>;
     stopStreaming: () => void;
 }
 declare function useChat({ threadId, onMessage, onError, metadata, onMessagesUpdate, agent, tools, }: UseChatOptions): UseChatReturn;
@@ -541,9 +523,25 @@ declare function useThreads(): UseThreadsResult;
 
 interface UseToolsOptions {
     agent?: Agent$1;
-    tools?: DistriTool[];
+    tools?: DistriAnyTool[];
 }
-declare function useTools({ agent, tools }: UseToolsOptions): void;
+declare function registerTools({ agent, tools }: UseToolsOptions): void;
+
+interface UseToolCallStateOptions {
+    onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
+    agent?: Agent$1;
+}
+interface UseToolCallStateReturn {
+    toolCallStates: Map<string, ToolCallState>;
+    initToolCall: (toolCall: ToolCall) => void;
+    updateToolCallStatus: (toolCallId: string, updates: Partial<ToolCallState>) => void;
+    getToolCallState: (toolCallId: string) => ToolCallState | undefined;
+    hasPendingToolCalls: () => boolean;
+    getPendingToolCalls: () => ToolCallState[];
+    clearAll: () => void;
+    clearToolResults: () => void;
+}
+declare function useToolCallState(options: UseToolCallStateOptions): UseToolCallStateReturn;
 
 interface FullChatProps {
     agentId: string;
@@ -576,7 +574,7 @@ interface EmbeddableChatProps {
     className?: string;
     style?: React__default.CSSProperties;
     metadata?: any;
-    tools?: DistriTool[];
+    tools?: DistriAnyTool[];
     availableAgents?: Array<{
         id: string;
         name: string;
@@ -658,18 +656,9 @@ interface AssistantMessageProps extends BaseMessageProps {
 interface AssistantWithToolCallsProps extends BaseMessageProps {
     content?: string;
     message?: DistriMessage;
-    toolCalls: Array<{
-        toolCall: ToolCall;
-        status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-        result?: any;
-        error?: string;
-        startedAt?: Date;
-        completedAt?: Date;
-    }>;
+    toolCallStates: ToolCallState[];
     timestamp?: Date;
     isStreaming?: boolean;
-    onExecuteTool?: (toolCall: ToolCall) => void;
-    onCompleteTool?: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
 }
 interface PlanMessageProps extends BaseMessageProps {
     message?: DistriMessage;
@@ -685,177 +674,9 @@ declare const AssistantWithToolCalls: React__default.FC<AssistantWithToolCallsPr
 declare const PlanMessage: React__default.FC<PlanMessageProps>;
 declare const DebugMessage: React__default.FC<DebugMessageProps>;
 
-/**
- * Create builtin tools as DistriTool objects
- * These tools are handled by React components in the message renderer
- */
-declare const createBuiltinTools: () => ({
-    name: string;
-    description: string;
-    parameters: {
-        type: string;
-        properties: {
-            reason: {
-                type: string;
-                description: string;
-            };
-            tool_calls: {
-                type: string;
-                description: string;
-                items: {
-                    type: string;
-                };
-            };
-            message?: undefined;
-            type?: undefined;
-        };
-        required: string[];
-    };
-    handler: () => Promise<{
-        pending: boolean;
-    }>;
-} | {
-    name: string;
-    description: string;
-    parameters: {
-        type: string;
-        properties: {
-            message: {
-                type: string;
-                description: string;
-            };
-            type: {
-                type: string;
-                enum: string[];
-                description: string;
-                default: string;
-            };
-            reason?: undefined;
-            tool_calls?: undefined;
-        };
-        required: string[];
-    };
-    handler: () => Promise<{
-        pending: boolean;
-    }>;
-})[];
-/**
- * Create individual builtin tools
- */
-declare const createApprovalTool: () => {
-    name: string;
-    description: string;
-    parameters: {
-        type: string;
-        properties: {
-            reason: {
-                type: string;
-                description: string;
-            };
-            tool_calls: {
-                type: string;
-                description: string;
-                items: {
-                    type: string;
-                };
-            };
-            message?: undefined;
-            type?: undefined;
-        };
-        required: string[];
-    };
-    handler: () => Promise<{
-        pending: boolean;
-    }>;
-} | {
-    name: string;
-    description: string;
-    parameters: {
-        type: string;
-        properties: {
-            message: {
-                type: string;
-                description: string;
-            };
-            type: {
-                type: string;
-                enum: string[];
-                description: string;
-                default: string;
-            };
-            reason?: undefined;
-            tool_calls?: undefined;
-        };
-        required: string[];
-    };
-    handler: () => Promise<{
-        pending: boolean;
-    }>;
-};
-declare const createToastTool: () => {
-    name: string;
-    description: string;
-    parameters: {
-        type: string;
-        properties: {
-            reason: {
-                type: string;
-                description: string;
-            };
-            tool_calls: {
-                type: string;
-                description: string;
-                items: {
-                    type: string;
-                };
-            };
-            message?: undefined;
-            type?: undefined;
-        };
-        required: string[];
-    };
-    handler: () => Promise<{
-        pending: boolean;
-    }>;
-} | {
-    name: string;
-    description: string;
-    parameters: {
-        type: string;
-        properties: {
-            message: {
-                type: string;
-                description: string;
-            };
-            type: {
-                type: string;
-                enum: string[];
-                description: string;
-                default: string;
-            };
-            reason?: undefined;
-            tool_calls?: undefined;
-        };
-        required: string[];
-    };
-    handler: () => Promise<{
-        pending: boolean;
-    }>;
-};
+declare const ApprovalToolCall: React__default.FC<UiToolProps>;
 
-interface ApprovalToolCallProps {
-    toolCall: ToolCall;
-    onComplete: (result: any, success: boolean, error?: string) => void;
-    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-}
-declare const ApprovalToolCall: React__default.FC<ApprovalToolCallProps>;
-
-interface ToastToolCallProps {
-    toolCall: ToolCall;
-    onComplete: (result: any, success: boolean, error?: string) => void;
-    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-}
-declare const ToastToolCall: React__default.FC<ToastToolCallProps>;
+declare const ToastToolCall: React__default.FC<UiToolProps>;
 
 /**
  * Utility function to extract text content from message parts
@@ -1024,4 +845,4 @@ declare const SelectSeparator: React$1.ForwardRefExoticComponent<Omit<SelectPrim
 
 declare function cn(...inputs: ClassValue[]): string;
 
-export { AgentSelect, ApprovalToolCall, AssistantMessage, AssistantWithToolCalls, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ChatInput, DebugMessage, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DistriProvider, EmbeddableChat, FullChat, Input, PlanMessage, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, Textarea, ThemeProvider, ThemeToggle, ToastToolCall, type ToolCallState, type ToolCallStatus, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, UserMessage, cn, createApprovalTool, createBuiltinTools, createToastTool, extractTextFromMessage, shouldDisplayMessage, useAgent, useAgents, useChat, useDistri, useSidebar, useTheme, useThreads, useToolCallState, useTools };
+export { AgentSelect, ApprovalToolCall, AssistantMessage, AssistantWithToolCalls, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ChatInput, DebugMessage, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, EmbeddableChat, FullChat, Input, PlanMessage, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, Textarea, ThemeProvider, ThemeToggle, ToastToolCall, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, UserMessage, cn, extractTextFromMessage, registerTools, shouldDisplayMessage, useAgent, useAgents, useChat, useDistri, useSidebar, useTheme, useThreads, useToolCallState };

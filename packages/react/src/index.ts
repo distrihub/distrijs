@@ -4,8 +4,8 @@ export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
-export { useTools } from './hooks/useTools';
-export { useToolCallState, type ToolCallState, type ToolCallStatus } from './hooks/useToolCallState';
+export { registerTools } from './hooks/registerTools';
+export { useToolCallState } from './hooks/useToolCallState';
 
 // Components
 export { default as FullChat } from './components/FullChat';
@@ -22,14 +22,7 @@ export {
   AssistantWithToolCalls,
   PlanMessage,
   DebugMessage
-} from './components/MessageComponents';
-
-// Built-in tools
-export {
-  createBuiltinTools,
-  createApprovalTool,
-  createToastTool
-} from './builtinHandlers';
+} from './components/Components';
 
 // Tool call components
 export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
@@ -43,3 +36,5 @@ export * from './components/ui';
 
 // Utilities
 export { cn } from './lib/utils';
+
+export type { DistriAnyTool } from './types';

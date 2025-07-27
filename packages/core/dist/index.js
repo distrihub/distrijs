@@ -17,15 +17,11 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => {
-  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-  return value;
-};
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/index.ts
-var src_exports = {};
-__export(src_exports, {
-  APPROVAL_REQUEST_TOOL_NAME: () => APPROVAL_REQUEST_TOOL_NAME,
+var index_exports = {};
+__export(index_exports, {
   Agent: () => Agent,
   DistriClient: () => DistriClient,
   convertA2AMessageToDistri: () => convertA2AMessageToDistri,
@@ -36,9 +32,10 @@ __export(src_exports, {
   extractToolCallsFromDistriMessage: () => extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage: () => extractToolResultsFromDistriMessage,
   isDistriEvent: () => isDistriEvent,
-  isDistriMessage: () => isDistriMessage
+  isDistriMessage: () => isDistriMessage,
+  uuidv4: () => uuidv4
 });
-module.exports = __toCommonJS(src_exports);
+module.exports = __toCommonJS(index_exports);
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
@@ -157,8 +154,7 @@ var A2AClient = class {
           throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
         }
       } catch (e) {
-        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
-          throw e;
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for")) throw e;
         throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
       }
     }
@@ -220,8 +216,7 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream"))
-          throw e;
+        if (e.message.startsWith("HTTP error establishing stream")) throw e;
         throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
@@ -312,8 +307,7 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream"))
-          throw e;
+        if (e.message.startsWith("HTTP error establishing stream")) throw e;
         throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
@@ -414,7 +408,6 @@ var A2AClient = class {
 };
 
 // src/types.ts
-var APPROVAL_REQUEST_TOOL_NAME = "approval_request";
 var DistriError = class extends Error {
   constructor(message, code, details) {
     super(message);
@@ -454,7 +447,6 @@ function convertA2AMessageToDistri(a2aMessage) {
   };
 }
 function convertA2APartToDistri(a2aPart) {
-  console.log("a2aPart", a2aPart);
   switch (a2aPart.kind) {
     case "text":
       return { type: "text", text: a2aPart.text };
@@ -465,7 +457,6 @@ function convertA2APartToDistri(a2aPart) {
         return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
       }
     case "data":
-      console.log("a2aPart.data", a2aPart.data);
       switch (a2aPart.data.part_type) {
         case "tool_call":
           return { type: "tool_call", tool_call: a2aPart.data };
@@ -518,13 +509,22 @@ function convertDistriPartToA2A(distriPart) {
     case "tool_call":
       return { kind: "data", data: { part_type: "tool_call", tool_call: distriPart.tool_call } };
     case "tool_result":
-      return { kind: "data", data: { part_type: "tool_result", tool_result: distriPart.tool_result } };
+      let val = {
+        kind: "data",
+        data: {
+          tool_call_id: distriPart.tool_result.tool_call_id,
+          result: distriPart.tool_result.result,
+          part_type: "tool_result"
+        }
+      };
+      console.log("<> val", val);
+      return val;
     case "code_observation":
-      return { kind: "data", data: { part_type: "code_observation", thought: distriPart.thought, code: distriPart.code } };
+      return { kind: "data", data: { ...distriPart, part_type: "code_observation" } };
     case "plan":
-      return { kind: "data", data: { part_type: "plan", plan: distriPart.plan } };
+      return { kind: "data", data: { ...distriPart, part_type: "plan" } };
     case "data":
-      return { kind: "data", data: distriPart.data };
+      return { kind: "data", ...distriPart.data };
   }
 }
 function extractTextFromDistriMessage(message) {
@@ -574,8 +574,7 @@ var DistriClient = class {
       });
       return agents;
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
     }
   }
@@ -601,8 +600,7 @@ var DistriClient = class {
       }
       return agent;
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
     }
   }
@@ -636,8 +634,7 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError)
-        throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
     }
   }
@@ -669,8 +666,7 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError)
-        throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
@@ -697,8 +693,7 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
     }
   }
@@ -710,8 +705,7 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -729,8 +723,7 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError)
-        throw error;
+      if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -879,28 +872,6 @@ var Agent = class _Agent {
     this.tools = /* @__PURE__ */ new Map();
     this.agentDefinition = agentDefinition;
     this.client = client;
-    this.initializeBuiltinTools();
-  }
-  /**
-   * Initialize built-in tools
-   */
-  initializeBuiltinTools() {
-    this.registerTool({
-      name: APPROVAL_REQUEST_TOOL_NAME,
-      description: "Request user approval for actions",
-      parameters: {
-        type: "object",
-        properties: {
-          prompt: { type: "string", description: "Approval prompt to show user" },
-          action: { type: "string", description: "Action requiring approval" }
-        },
-        required: ["prompt"]
-      },
-      handler: async (input) => {
-        const userInput = prompt(input.prompt || "Please provide input:");
-        return { approved: !!userInput, input: userInput };
-      }
-    });
   }
   /**
    * Add a tool to the agent (AG-UI style)
@@ -933,35 +904,6 @@ var Agent = class _Agent {
     return this.tools.has(toolName);
   }
   /**
-   * Execute a tool call
-   */
-  async executeTool(toolCall) {
-    const tool = this.tools.get(toolCall.tool_name);
-    if (!tool) {
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: `Tool '${toolCall.tool_name}' not found`
-      };
-    }
-    try {
-      const result = await tool.handler(toolCall.input);
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result,
-        success: true
-      };
-    } catch (error) {
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-    }
-  }
-  /**
    * Get agent information
    */
   get id() {
@@ -987,6 +929,7 @@ var Agent = class _Agent {
    */
   async invoke(params) {
     const enhancedParams = this.enhanceParamsWithTools(params);
+    console.log("enhancedParams", enhancedParams);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams);
   }
   /**
@@ -994,6 +937,7 @@ var Agent = class _Agent {
    */
   async invokeStream(params) {
     const enhancedParams = this.enhanceParamsWithTools(params);
+    console.log("enhancedParams", enhancedParams);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
     return async function* () {
       for await (const event of a2aStream) {
@@ -1018,7 +962,11 @@ var Agent = class _Agent {
       ...params,
       metadata: {
         ...params.metadata,
-        tools
+        tools: tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.input_schema
+        }))
       }
     };
   }
@@ -1039,7 +987,6 @@ var Agent = class _Agent {
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  APPROVAL_REQUEST_TOOL_NAME,
   Agent,
   DistriClient,
   convertA2AMessageToDistri,
@@ -1050,6 +997,7 @@ var Agent = class _Agent {
   extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage,
   isDistriEvent,
-  isDistriMessage
+  isDistriMessage,
+  uuidv4
 });
 //# sourceMappingURL=index.js.map

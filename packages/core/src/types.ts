@@ -42,7 +42,7 @@ export type ImageBytesPart = { type: 'image_bytes'; image: FileBytes }
 export type ImagePart = ImageUrlPart | ImageBytesPart
 export type DataPart = { type: 'data'; data: any }
 export type ToolCallPart = { type: 'tool_call'; tool_call: ToolCall }
-export type ToolResultPart = { type: 'tool_result'; tool_result: ToolResponse }
+export type ToolResultPart = { type: 'tool_result'; tool_result: ToolResult }
 export type PlanPart = { type: 'plan'; plan: string }
 export type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCallPart | ToolResultPart | PlanPart;
 
@@ -69,12 +69,26 @@ export type FileType = FileBytes | FileUrl;
 /**
  * Tool definition interface following AG-UI pattern
  */
-export interface DistriTool {
+export interface DistriBaseTool {
   name: string;
+  type: 'function' | 'ui';
   description: string;
-  parameters: any; // JSON Schema
-  handler: ToolHandler;
+  input_schema: object; // JSON Schema
 }
+
+export interface DistriFnTool extends DistriBaseTool {
+  type: 'function';
+  handler: ToolHandler;
+  onToolComplete?: (toolCallId: string, toolResult: ToolResult) => void;
+}
+
+/**
+ * Tool handler function
+ */
+export interface ToolHandler {
+  (input: any): Promise<string | number | boolean | null | object>;
+}
+
 
 /**
  * Tool call from agent
@@ -90,20 +104,11 @@ export interface ToolCall {
  */
 export interface ToolResult {
   tool_call_id: string;
-  result: any;
+  result: string | number | boolean | null;
   success: boolean;
   error?: string;
 }
 
-// Alias for ToolResponse to maintain backward compatibility
-export type ToolResponse = ToolResult;
-
-/**
- * Tool handler function
- */
-export interface ToolHandler {
-  (input: any): Promise<any> | any;
-}
 
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
@@ -157,12 +162,6 @@ export interface McpDefinition {
   /** The type of the MCP server (Tool or Agent). */
   type?: McpServerType; // Use 'type' here instead of 'r#type'
 }
-
-
-/**
- * Approval request tool name constant
- */
-export const APPROVAL_REQUEST_TOOL_NAME = 'approval_request';
 
 export interface ModelSettings {
   model: string;
