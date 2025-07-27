@@ -52,6 +52,23 @@ const MapController: React.FC<MapControllerProps> = ({
   const placesLibrary = useMapsLibrary('places');
   const directionsLibrary = useMapsLibrary('routes');
 
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+
+  useEffect(() => {
+    if (!placesLibrary || !map) return;
+
+    // when placesLibrary is loaded, the library can be accessed via the
+    // placesLibrary API object
+    setPlacesService(new placesLibrary.PlacesService(map));
+  }, [placesLibrary, map]);
+
+  useEffect(() => {
+    if (!directionsLibrary || !map) return;
+
+    setDirectionsService(new directionsLibrary.DirectionsService());
+  }, [directionsLibrary, map]);
+
   const setMapCenter = useCallback(async (params: { latitude: number; longitude: number; zoom?: number }) => {
     try {
       const newCenter = { lat: params.latitude, lng: params.longitude };
@@ -107,14 +124,13 @@ const MapController: React.FC<MapControllerProps> = ({
 
   const getDirections = useCallback(async (params: { origin: string; destination: string; travel_mode?: string }) => {
     try {
-      if (!directionsLibrary || !map) {
+      if (!directionsService) {
         return {
           success: false,
           message: 'Directions service not available'
         };
       }
 
-      const directionsService = new directionsLibrary.DirectionsService();
       const travelMode = (params.travel_mode as google.maps.TravelMode) || google.maps.TravelMode.DRIVING;
 
       const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
@@ -169,14 +185,12 @@ const MapController: React.FC<MapControllerProps> = ({
 
   const searchPlaces = useCallback(async (params: { query: string; latitude: number; longitude: number; radius?: number }) => {
     try {
-      if (!placesLibrary || !map) {
+      if (!placesService) {
         return {
           success: false,
           message: 'Places service not available'
         };
       }
-
-      const service = new placesLibrary.PlacesService(map);
       const request = {
         location: { lat: params.latitude, lng: params.longitude },
         radius: params.radius || 5000,
@@ -184,7 +198,7 @@ const MapController: React.FC<MapControllerProps> = ({
       };
 
       const results = await new Promise<google.maps.places.PlaceResult[]>((resolve, reject) => {
-        service.nearbySearch(request, (results, status) => {
+        placesService.nearbySearch(request, (results, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && results) {
             resolve(results);
           } else {
