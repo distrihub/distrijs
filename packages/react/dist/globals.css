@@ -616,12 +616,6 @@ body {
 .mt-4 {
   margin-top: 1rem;
 }
-.mr-2 {
-  margin-right: 0.5rem;
-}
-.mr-3 {
-  margin-right: 0.75rem;
-}
 .line-clamp-3 {
   overflow: hidden;
   display: -webkit-box;
@@ -914,6 +908,9 @@ body {
 }
 .cursor-default {
   cursor: default;
+}
+.cursor-not-allowed {
+  cursor: not-allowed;
 }
 .select-none {
   -webkit-user-select: none;
