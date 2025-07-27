@@ -99,7 +99,7 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
           return "Invalid input";
         }
         const result = await mapManagerRef.searchPlaces({ query, latitude, longitude, radius });
-        return result.places;
+        return JSON.stringify(result);
       }
     } as DistriFnTool,
 
