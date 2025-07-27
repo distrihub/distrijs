@@ -1,11 +1,10 @@
 import { useMemo, useRef, useState, useCallback } from 'react';
-import { DistriProvider, EmbeddableChat, useAgent } from '@distri/react';
+import { DistriProvider, EmbeddableChat, useAgent, DistriAnyTool } from '@distri/react';
 import { AlertCircle } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import GoogleMapsManager, { GoogleMapsManagerRef } from './components/GoogleMapsManager';
 import { getTools } from './Tools';
-import { DistriTool } from '@distri/core';
-import { uuidv4 } from '../../../packages/core/src/distri-client';
+import { uuidv4 } from '@distri/core';
 
 // Environment variables validation
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -25,15 +24,14 @@ function MapsChat() {
   const { agent, loading } = useAgent({ agentId: 'maps-navigator', autoCreateAgent: true });
   const [selectedThreadId] = useState<string>(getThreadId());
   const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
-  const [tools, setTools] = useState<DistriTool[]>([]);
+  const [tools, setTools] = useState<DistriAnyTool[]>([]);
 
   // Get tools when map manager is ready
   const handleMapReady = useCallback((mapRef: GoogleMapsManagerRef) => {
     console.log('Map manager is ready, getting tools...');
     const mapTools = getTools(mapRef);
-    const toolsArray = Object.values(mapTools) as DistriTool[];
-    console.log('Created tools array:', toolsArray.map(t => t.name));
-    setTools(toolsArray);
+    console.log('Created tools array:', mapTools.map(t => t.name));
+    setTools(mapTools);
   }, []);
 
   if (loading) {

@@ -128,7 +128,7 @@ type ToolCallPart = {
 };
 type ToolResultPart = {
     type: 'tool_result';
-    tool_result: ToolResponse;
+    tool_result: ToolResult;
 };
 type PlanPart = {
     type: 'plan';
@@ -152,11 +152,22 @@ type FileType = FileBytes | FileUrl;
 /**
  * Tool definition interface following AG-UI pattern
  */
-interface DistriTool {
+interface DistriBaseTool {
     name: string;
+    type: 'function' | 'ui';
     description: string;
-    parameters: any;
+    input_schema: object;
+}
+interface DistriFnTool extends DistriBaseTool {
+    type: 'function';
     handler: ToolHandler;
+    onToolComplete?: (toolCallId: string, toolResult: ToolResult) => void;
+}
+/**
+ * Tool handler function
+ */
+interface ToolHandler {
+    (input: any): Promise<string | number | boolean | null | object>;
 }
 /**
  * Tool call from agent
@@ -171,16 +182,9 @@ interface ToolCall {
  */
 interface ToolResult {
     tool_call_id: string;
-    result: any;
+    result: string | number | boolean | null;
     success: boolean;
     error?: string;
-}
-type ToolResponse = ToolResult;
-/**
- * Tool handler function
- */
-interface ToolHandler {
-    (input: any): Promise<any> | any;
 }
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
@@ -218,10 +222,6 @@ interface McpDefinition {
     /** The type of the MCP server (Tool or Agent). */
     type?: McpServerType;
 }
-/**
- * Approval request tool name constant
- */
-declare const APPROVAL_REQUEST_TOOL_NAME = "approval_request";
 interface ModelSettings {
     model: string;
     temperature: number;
@@ -374,6 +374,7 @@ declare class DistriClient {
      */
     static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams;
 }
+declare function uuidv4(): string;
 
 /**
  * Configuration for Agent invoke method
@@ -385,13 +386,6 @@ interface InvokeConfig {
     contextId?: string;
     /** Metadata for the requests */
     metadata?: any;
-}
-interface ToolCallState {
-    tool_call_id: string;
-    tool_name?: string;
-    args: string;
-    result?: string;
-    running: boolean;
 }
 /**
  * Result from agent invoke
@@ -413,17 +407,13 @@ declare class Agent {
     private tools;
     constructor(agentDefinition: DistriAgent, client: DistriClient);
     /**
-     * Initialize built-in tools
-     */
-    private initializeBuiltinTools;
-    /**
      * Add a tool to the agent (AG-UI style)
      */
-    registerTool(tool: DistriTool): void;
+    registerTool(tool: DistriBaseTool): void;
     /**
      * Add multiple tools at once
      */
-    registerTools(tools: DistriTool[]): void;
+    registerTools(tools: DistriBaseTool[]): void;
     /**
      * Remove a tool
      */
@@ -431,15 +421,11 @@ declare class Agent {
     /**
      * Get all registered tools
      */
-    getTools(): DistriTool[];
+    getTools(): DistriBaseTool[];
     /**
      * Check if a tool is registered
      */
     hasTool(toolName: string): boolean;
-    /**
-     * Execute a tool call
-     */
-    executeTool(toolCall: ToolCall): Promise<ToolResult>;
     /**
      * Get agent information
      */
@@ -502,4 +488,4 @@ declare function extractToolCallsFromDistriMessage(message: DistriMessage): any[
  */
 declare function extractToolResultsFromDistriMessage(message: DistriMessage): any[];
 
-export { APPROVAL_REQUEST_TOOL_NAME, Agent, type AgentHandoverEvent, type ChatProps, type CodeObservationPart, type ConnectionStatus, type DataPart, type DistriAgent, DistriClient, type DistriClientConfig, type DistriEvent, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type DistriTool, type FileType, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanPart, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolCallState, type ToolHandler, type ToolResponse, type ToolResult, type ToolResultPart, convertA2AMessageToDistri, convertA2APartToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage };
+export { Agent, type AgentHandoverEvent, type ChatProps, type CodeObservationPart, type ConnectionStatus, type DataPart, type DistriAgent, type DistriBaseTool, DistriClient, type DistriClientConfig, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type FileType, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanPart, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolResult, type ToolResultPart, convertA2AMessageToDistri, convertA2APartToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, uuidv4 };

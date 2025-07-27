@@ -1,13 +1,14 @@
-import { DistriTool } from "@distri/core";
+import { DistriFnTool } from "@distri/core";
 import { GoogleMapsManagerRef } from "./components/GoogleMapsManager";
 
-export const getTools = (mapManagerRef: GoogleMapsManagerRef): Record<string, DistriTool> => {
-  const tools: Record<string, DistriTool> = {};
-  [
+export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] => {
+
+  return [
     {
       name: 'set_map_center',
       description: 'Set the center location of the Google Maps view',
-      parameters: {
+      type: 'function',
+      input_schema: {
         type: 'object',
         properties: {
           latitude: { type: 'number', description: 'Latitude coordinate for the map center' },
@@ -16,15 +17,21 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): Record<string, Di
         },
         required: ['latitude', 'longitude']
       },
-      handler: async (input: { latitude: number; longitude: number; zoom?: number }) => {
-        return await mapManagerRef.setMapCenter(input);
+      handler: async (input: string) => {
+        const { latitude, longitude, zoom } = JSON.parse(input);
+        if (!latitude || !longitude) {
+          return "Invalid input";
+        }
+        await mapManagerRef.setMapCenter({ latitude, longitude, zoom });
+        return "Map center set to " + latitude + ", " + longitude;
       }
-    },
+    } as DistriFnTool,
 
     {
       name: 'add_marker',
       description: 'Add a marker to the Google Maps at a specific location',
-      parameters: {
+      type: 'function',
+      input_schema: {
         type: 'object',
         properties: {
           latitude: { type: 'number', description: 'Latitude coordinate for the marker' },
@@ -34,15 +41,21 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): Record<string, Di
         },
         required: ['latitude', 'longitude', 'title']
       },
-      handler: async (input: { latitude: number; longitude: number; title: string; description?: string }) => {
-        return await mapManagerRef.addMarker(input);
+      handler: async (input: string) => {
+        const { latitude, longitude, title, description } = JSON.parse(input);
+        if (!latitude || !longitude || !title) {
+          return "Invalid input";
+        }
+        await mapManagerRef.addMarker({ latitude, longitude, title, description });
+        return "Marker added";
       }
-    },
+    } as DistriFnTool,
 
     {
       name: 'get_directions',
       description: 'Get directions between two locations on Google Maps',
-      parameters: {
+      type: 'function',
+      input_schema: {
         type: 'object',
         properties: {
           origin: { type: 'string', description: 'Starting location (address or place name)' },
@@ -56,15 +69,21 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): Record<string, Di
         },
         required: ['origin', 'destination']
       },
-      handler: async (input: { origin: string; destination: string; travel_mode?: string }) => {
-        return await mapManagerRef.getDirections(input);
+      handler: async (input: string) => {
+        const { origin, destination, travel_mode } = JSON.parse(input);
+        if (!origin || !destination) {
+          return "Invalid input";
+        }
+        const result = await mapManagerRef.getDirections({ origin, destination, travel_mode });
+        return result.directions;
       }
-    },
+    } as DistriFnTool,
 
     {
       name: 'search_places',
       description: 'Search for places near a location',
-      parameters: {
+      type: 'function',
+      input_schema: {
         type: 'object',
         properties: {
           query: { type: 'string', description: 'Search query (e.g., "restaurants", "gas stations")' },
@@ -74,25 +93,28 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): Record<string, Di
         },
         required: ['query', 'latitude', 'longitude']
       },
-      handler: async (input: { query: string; latitude: number; longitude: number; radius?: number }) => {
-        return await mapManagerRef.searchPlaces(input);
+      handler: async (input: string) => {
+        const { query, latitude, longitude, radius } = JSON.parse(input);
+        if (!query || !latitude || !longitude) {
+          return "Invalid input";
+        }
+        const result = await mapManagerRef.searchPlaces({ query, latitude, longitude, radius });
+        return result.places;
       }
-    },
+    } as DistriFnTool,
 
     {
       name: 'clear_map',
       description: 'Clear all markers and directions from the map',
-      parameters: {
+      type: 'function',
+      input_schema: {
         type: 'object',
         properties: {}
       },
       handler: async () => {
-        return await mapManagerRef.clearMap();
+        await mapManagerRef.clearMap();
+        return "Map cleared";
       }
-    }
-  ].forEach(tool => {
-    tools[tool.name] = tool;
-  });
-
-  return tools;
+    } as DistriFnTool
+  ];
 }

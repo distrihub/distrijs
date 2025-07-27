@@ -1,10 +1,7 @@
 import { DistriClient } from './distri-client';
 import {
   DistriAgent,
-  DistriTool,
-  ToolCall,
-  ToolResult,
-  APPROVAL_REQUEST_TOOL_NAME,
+  DistriBaseTool,
   DistriMessage
 } from './types';
 import { convertA2AMessageToDistri } from './encoder';
@@ -21,14 +18,6 @@ export interface InvokeConfig {
   contextId?: string;
   /** Metadata for the requests */
   metadata?: any;
-}
-
-export interface ToolCallState {
-  tool_call_id: string;
-  tool_name?: string;
-  args: string;
-  result?: string;
-  running: boolean;
 }
 
 /**
@@ -49,48 +38,25 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: DistriAgent;
-  private tools: Map<string, DistriTool> = new Map();
+  private tools: Map<string, DistriBaseTool> = new Map();
 
   constructor(agentDefinition: DistriAgent, client: DistriClient) {
     this.agentDefinition = agentDefinition;
     this.client = client;
-    // Initialize with built-in tools
-    this.initializeBuiltinTools();
   }
 
-  /**
-   * Initialize built-in tools
-   */
-  private initializeBuiltinTools() {
-    this.registerTool({
-      name: APPROVAL_REQUEST_TOOL_NAME,
-      description: 'Request user approval for actions',
-      parameters: {
-        type: 'object',
-        properties: {
-          prompt: { type: 'string', description: 'Approval prompt to show user' },
-          action: { type: 'string', description: 'Action requiring approval' }
-        },
-        required: ['prompt']
-      },
-      handler: async (input: any) => {
-        const userInput = prompt(input.prompt || 'Please provide input:');
-        return { approved: !!userInput, input: userInput };
-      }
-    });
-  }
 
   /**
    * Add a tool to the agent (AG-UI style)
    */
-  registerTool(tool: DistriTool): void {
+  registerTool(tool: DistriBaseTool): void {
     this.tools.set(tool.name, tool);
   }
 
   /**
    * Add multiple tools at once
    */
-  registerTools(tools: DistriTool[]): void {
+  registerTools(tools: DistriBaseTool[]): void {
     tools.forEach(tool => this.registerTool(tool));
   }
 
@@ -104,7 +70,7 @@ export class Agent {
   /**
    * Get all registered tools
    */
-  getTools(): DistriTool[] {
+  getTools(): DistriBaseTool[] {
     return Array.from(this.tools.values());
   }
 
@@ -113,38 +79,6 @@ export class Agent {
    */
   hasTool(toolName: string): boolean {
     return this.tools.has(toolName);
-  }
-
-  /**
-   * Execute a tool call
-   */
-  async executeTool(toolCall: ToolCall): Promise<ToolResult> {
-    const tool = this.tools.get(toolCall.tool_name);
-
-    if (!tool) {
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: `Tool '${toolCall.tool_name}' not found`
-      };
-    }
-
-    try {
-      const result = await tool.handler(toolCall.input);
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result,
-        success: true
-      };
-    } catch (error) {
-      return {
-        tool_call_id: toolCall.tool_call_id,
-        result: null,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
   }
 
   /**
@@ -179,6 +113,7 @@ export class Agent {
   public async invoke(params: MessageSendParams): Promise<Message> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
+    console.log('enhancedParams', enhancedParams);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams) as Message;
   }
 
@@ -188,6 +123,7 @@ export class Agent {
   public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriEvent | DistriMessage>> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
+    console.log('enhancedParams', enhancedParams);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
 
     return (async function* () {
@@ -219,7 +155,11 @@ export class Agent {
       ...params,
       metadata: {
         ...params.metadata,
-        tools
+        tools: tools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.input_schema
+        } as DistriBaseTool))
       }
     };
   }

@@ -1,23 +1,40 @@
 // Core hooks
+export { useDistri, DistriProvider } from './DistriProvider';
 export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
-export { useTools } from './hooks/useTools';
+export { registerTools } from './hooks/registerTools';
+export { useToolCallState } from './hooks/useToolCallState';
 
-// Core components
-export { DistriProvider } from './DistriProvider';
+// Components
+export { default as FullChat } from './components/FullChat';
 export { EmbeddableChat } from './components/EmbeddableChat';
-export { FullChat } from './components/FullChat';
-export { AppSidebar } from './components/AppSidebar';
-export { ThemeProvider, useTheme } from './components/ThemeProvider';
 export { AgentSelect } from './components/AgentSelect';
-export { createBuiltinTools } from './hooks/useTools';
+export { ChatInput } from './components/ChatInput';
+export { ThemeProvider, useTheme } from './components/ThemeProvider';
+export { ThemeToggle } from './components/ThemeToggle';
 
-export { default as MessageRenderer } from './components/MessageRenderer';
+// Message components
+export {
+  UserMessage,
+  AssistantMessage,
+  AssistantWithToolCalls,
+  PlanMessage,
+  DebugMessage
+} from './components/Components';
+
+// Tool call components
+export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
+
+// Utilities
+export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
+
 
 // UI Components - shadcn
 export * from './components/ui';
 
 // Utilities
 export { cn } from './lib/utils';
+
+export type { DistriAnyTool } from './types';

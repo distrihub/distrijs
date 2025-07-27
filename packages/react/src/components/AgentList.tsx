@@ -10,8 +10,6 @@ interface AgentListProps {
 
 const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat }) => {
   const [refreshing, setRefreshing] = React.useState(false);
-
-  console.log('agents', agents);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { ToolCall, DistriMessage } from '@distri/core';
+import { DistriMessage } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
+import { ToolCallState } from '@/types';
 
 export interface BaseMessageProps {
   content?: string;
@@ -27,18 +28,9 @@ export interface AssistantMessageProps extends BaseMessageProps {
 export interface AssistantWithToolCallsProps extends BaseMessageProps {
   content?: string;
   message?: DistriMessage;
-  toolCalls: Array<{
-    toolCall: ToolCall;
-    status: 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-    result?: any;
-    error?: string;
-    startedAt?: Date;
-    completedAt?: Date;
-  }>;
+  toolCallStates: ToolCallState[];
   timestamp?: Date;
   isStreaming?: boolean;
-  onExecuteTool?: (toolCall: ToolCall) => void;
-  onCompleteTool?: (toolCallId: string, result: any, success?: boolean, error?: string) => void;
 }
 
 export interface PlanMessageProps extends BaseMessageProps {
@@ -177,12 +169,12 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
 export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   content,
   message,
-  toolCalls,
+  toolCallStates,
   timestamp,
   isStreaming = false,
   className = '',
   avatar,
-  name = "Assistant"
+  name = "Assistant",
 }) => {
   // State for collapsible tool results
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -199,16 +191,17 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
     });
   };
 
+
   // Auto-expand tools that are running or have errors
   React.useEffect(() => {
     const newExpanded = new Set(expandedTools);
-    toolCalls.forEach(toolCall => {
-      if (toolCall.status === 'running' || toolCall.status === 'error' || toolCall.status === 'user_action_required') {
-        newExpanded.add(toolCall.toolCall.tool_call_id);
+    toolCallStates.forEach(toolCallState => {
+      if (toolCallState.status === 'running' || toolCallState.status === 'error' || toolCallState.status === 'user_action_required') {
+        newExpanded.add(toolCallState.tool_call_id);
       }
     });
     setExpandedTools(newExpanded);
-  }, [toolCalls]);
+  }, [toolCallStates]);
 
   return (
     <MessageContainer align="center" className={className} backgroundColor="#444654">
@@ -237,14 +230,14 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
           </div>
 
           {/* Tool Calls Section */}
-          {toolCalls.length > 0 && (
+          {toolCallStates.length > 0 && (
             <div className="mt-4 space-y-3">
               <div className="text-sm font-medium text-foreground">Tool Calls</div>
-              {toolCalls.map((toolCall, index) => {
-                const isExpanded = expandedTools.has(toolCall.toolCall.tool_call_id);
-                const hasResult = toolCall.result !== undefined;
-                const hasError = toolCall.error !== undefined;
-                const canCollapse = hasResult || hasError || toolCall.status === 'completed' || toolCall.status === 'error';
+              {toolCallStates.map((toolCallState, index) => {
+                const isExpanded = expandedTools.has(toolCallState.tool_call_id);
+                const hasResult = toolCallState?.result !== undefined;
+                const hasError = toolCallState?.error !== undefined;
+                const canCollapse = hasResult || hasError || toolCallState?.status === 'completed' || toolCallState?.status === 'error';
 
                 return (
                   <div key={index} className="border rounded-lg bg-background overflow-hidden">
@@ -253,7 +246,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => toggleToolExpansion(toolCall.toolCall.tool_call_id)}
+                            onClick={() => toggleToolExpansion(toolCallState.tool_call_id)}
                             className="p-1 hover:bg-muted rounded transition-colors"
                             disabled={!canCollapse}
                           >
@@ -269,35 +262,35 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                           </button>
                           <Wrench className="h-4 w-4 text-green-500" />
                           <span className="text-sm font-medium text-foreground">
-                            {toolCall.toolCall.tool_name}
+                            {toolCallState?.tool_name}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {toolCall.status === 'pending' && (
+                          {toolCallState?.status === 'pending' && (
                             <div className="flex items-center gap-1 text-xs text-yellow-600">
                               <Clock className="h-3 w-3" />
                               Pending
                             </div>
                           )}
-                          {toolCall.status === 'running' && (
+                          {toolCallState?.status === 'running' && (
                             <div className="flex items-center gap-1 text-xs text-blue-600">
                               <Loader2 className="h-3 w-3 animate-spin" />
                               Running
                             </div>
                           )}
-                          {toolCall.status === 'completed' && (
+                          {toolCallState?.status === 'completed' && (
                             <div className="flex items-center gap-1 text-xs text-green-600">
                               <CheckCircle className="h-3 w-3" />
                               Completed
                             </div>
                           )}
-                          {toolCall.status === 'error' && (
+                          {toolCallState?.status === 'error' && (
                             <div className="flex items-center gap-1 text-xs text-red-600">
                               <XCircle className="h-3 w-3" />
                               Failed
                             </div>
                           )}
-                          {toolCall.status === 'user_action_required' && (
+                          {toolCallState?.status === 'user_action_required' && (
                             <div className="flex items-center gap-1 text-xs text-orange-600">
                               <Wrench className="h-3 w-3" />
                               User Action Required
@@ -310,8 +303,13 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                       <div className="mt-2">
                         <div className="text-xs text-muted-foreground mb-1">Input:</div>
                         <div className="text-xs font-mono bg-muted p-2 rounded border">
-                          {JSON.stringify(toolCall.toolCall.input, null, 2)}
+                          {JSON.stringify(toolCallState?.input, null, 2)}
                         </div>
+                      </div>
+
+                      {/* Custom tool call renderers */}
+                      <div className="mt-3">
+                        {!!toolCallState?.component && toolCallState.component}
                       </div>
                     </div>
 
@@ -322,7 +320,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                           <div className="mb-3">
                             <div className="text-xs text-red-600 font-medium mb-1">Error:</div>
                             <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
-                              {toolCall.error}
+                              {toolCallState?.error}
                             </div>
                           </div>
                         )}
@@ -331,7 +329,7 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                           <div>
                             <div className="text-xs text-muted-foreground font-medium mb-1">Result:</div>
                             <div className="text-xs font-mono bg-background p-2 rounded border">
-                              {JSON.stringify(toolCall.result, null, 2)}
+                              {JSON.stringify(toolCallState?.result, null, 2)}
                             </div>
                           </div>
                         )}

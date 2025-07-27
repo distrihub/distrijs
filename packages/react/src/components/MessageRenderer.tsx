@@ -271,7 +271,6 @@ const PartRenderer: React.FC<{
       return <CodeObservationComponent thought={part.thought} code={part.code} />;
 
     case 'tool_call':
-      console.log('tool_call', part);
       return <ToolCallComponent toolCall={part.tool_call} />;
 
     case 'tool_result':

@@ -30,6 +30,5 @@
   },
   "include": [
     "src",
-    "../../packages/react/src/components/AgentsPage.tsx"
   ]
 }

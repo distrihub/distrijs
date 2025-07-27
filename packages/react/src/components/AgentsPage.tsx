@@ -14,7 +14,6 @@ const AgentsPage: React.FC<{
 
   const handleStartChat = (agent: DistriAgent) => {
     // This would typically navigate to chat or update the selected agent
-    console.log('Starting chat with agent:', agent.name);
     onStartChat?.(agent);
   };
 
