@@ -2675,11 +2675,12 @@ var AgentSelect = ({
   selectedAgentId,
   onAgentSelect,
   className = "",
-  placeholder = "Select an agent..."
+  placeholder = "Select an agent...",
+  disabled = false
 }) => {
   const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
-  return /* @__PURE__ */ jsxs5(Select, { value: selectedAgentId, onValueChange: onAgentSelect, children: [
-    /* @__PURE__ */ jsx11(SelectTrigger, { className: `w-full ${className}`, children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-2", children: [
+  return /* @__PURE__ */ jsxs5(Select, { value: selectedAgentId, onValueChange: onAgentSelect, disabled, children: [
+    /* @__PURE__ */ jsx11(SelectTrigger, { className: `w-full ${className} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`, children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-2", children: [
       /* @__PURE__ */ jsx11(Bot2, { className: "h-4 w-4" }),
       /* @__PURE__ */ jsx11(SelectValue, { placeholder, children: selectedAgent?.name || placeholder })
     ] }) }),
@@ -2802,6 +2803,7 @@ var EmbeddableChat = ({
   showDebug = false,
   showAgentSelector = true,
   placeholder = "Type your message...",
+  disableAgentSelection = false,
   onAgentSelect,
   onResponse: _onResponse,
   onMessagesUpdate
@@ -2941,7 +2943,8 @@ var EmbeddableChat = ({
             agents: availableAgents,
             selectedAgentId: agent?.id,
             onAgentSelect: (agentId) => onAgentSelect?.(agentId),
-            className: "w-full"
+            className: "w-full",
+            disabled: disableAgentSelection || messages.length > 0
           }
         ) }) }),
         /* @__PURE__ */ jsx14(Toaster, {}),
@@ -4338,7 +4341,7 @@ function AppSidebar({
 // src/components/FullChat.tsx
 import { jsx as jsx29, jsxs as jsxs15 } from "react/jsx-runtime";
 var FullChat = ({
-  agentId,
+  agentId: initialAgentId,
   metadata,
   className = "",
   UserMessageComponent,
@@ -4354,17 +4357,30 @@ var FullChat = ({
   onAgentSelect
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState13(uuidv4());
+  const [currentAgentId, setCurrentAgentId] = useState13(initialAgentId);
   const { threads, refetch: refetchThreads } = useThreads();
   const [currentPage, setCurrentPage] = useState13("chat");
   const [defaultOpen, setDefaultOpen] = useState13(true);
-  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId });
+  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId: currentAgentId });
   const { theme } = useTheme();
+  const currentThread = threads.find((t) => t.id === selectedThreadId);
+  const { messages } = useChat({
+    threadId: selectedThreadId,
+    agent: agent || void 0
+  });
+  const threadHasStarted = messages.length > 0;
   useEffect11(() => {
     const savedState = localStorage.getItem("sidebar:state");
     if (savedState !== null) {
       setDefaultOpen(savedState === "true");
     }
   }, []);
+  useEffect11(() => {
+    if (currentThread?.agent_id && currentThread.agent_id !== currentAgentId) {
+      setCurrentAgentId(currentThread.agent_id);
+      onAgentSelect?.(currentThread.agent_id);
+    }
+  }, [currentThread?.agent_id, currentAgentId, onAgentSelect]);
   const handleNewChat = useCallback8(() => {
     const newThreadId = `thread-${Date.now()}`;
     setSelectedThreadId(newThreadId);
@@ -4387,13 +4403,52 @@ var FullChat = ({
     onThreadDelete?.(threadId);
     refetchThreads();
   }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-  const handleThreadRename = useCallback8((threadId, newTitle) => {
-    console.log("Rename thread", threadId, "to", newTitle);
-    refetchThreads();
-  }, [refetchThreads]);
+  const handleAgentSelect = useCallback8((newAgentId) => {
+    if (!threadHasStarted) {
+      setCurrentAgentId(newAgentId);
+      onAgentSelect?.(newAgentId);
+    }
+  }, [threadHasStarted, onAgentSelect]);
   const handleMessagesUpdate = useCallback8(() => {
     refetchThreads();
   }, [refetchThreads]);
+  const renderMainContent = () => {
+    if (currentPage === "agents") {
+      return /* @__PURE__ */ jsx29(AgentsPage_default, { onStartChat: (agent2) => {
+        setCurrentPage("chat");
+        handleAgentSelect(agent2.id);
+      } });
+    }
+    if (!agent) {
+      if (agentLoading) return /* @__PURE__ */ jsx29("div", { children: "Loading agent..." });
+      if (agentError) return /* @__PURE__ */ jsxs15("div", { children: [
+        "Error loading agent: ",
+        agentError.message
+      ] });
+      return /* @__PURE__ */ jsx29("div", { children: "No agent selected" });
+    }
+    return /* @__PURE__ */ jsx29(
+      EmbeddableChat,
+      {
+        threadId: selectedThreadId,
+        showAgentSelector: false,
+        agent,
+        metadata,
+        height: "calc(100vh - 4rem)",
+        availableAgents,
+        UserMessageComponent,
+        AssistantMessageComponent,
+        AssistantWithToolCallsComponent,
+        PlanMessageComponent,
+        theme,
+        showDebug,
+        placeholder: "Type your message...",
+        disableAgentSelection: threadHasStarted,
+        onAgentSelect: handleAgentSelect,
+        onMessagesUpdate: handleMessagesUpdate
+      }
+    );
+  };
   return /* @__PURE__ */ jsx29("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ jsxs15(
     SidebarProvider,
     {
@@ -4411,7 +4466,10 @@ var FullChat = ({
             onNewChat: handleNewChat,
             onThreadSelect: handleThreadSelect,
             onThreadDelete: handleThreadDelete,
-            onThreadRename: handleThreadRename,
+            onThreadRename: (threadId, newTitle) => {
+              console.log("Rename thread", threadId, "to", newTitle);
+              refetchThreads();
+            },
             onLogoClick,
             onPageChange: setCurrentPage
           }
@@ -4423,44 +4481,14 @@ var FullChat = ({
               AgentSelect,
               {
                 agents: availableAgents,
-                selectedAgentId: agentId,
-                onAgentSelect: (agentId2) => onAgentSelect?.(agentId2),
-                placeholder: "Select an agent..."
+                selectedAgentId: currentAgentId,
+                onAgentSelect: handleAgentSelect,
+                placeholder: "Select an agent...",
+                disabled: threadHasStarted
               }
             ) })
           ] }) }),
-          /* @__PURE__ */ jsxs15("main", { className: "flex-1 overflow-hidden", children: [
-            currentPage === "chat" && agent && /* @__PURE__ */ jsx29(
-              EmbeddableChat,
-              {
-                threadId: selectedThreadId,
-                showAgentSelector: false,
-                agent,
-                metadata,
-                height: "calc(100vh - 4rem)",
-                availableAgents,
-                UserMessageComponent,
-                AssistantMessageComponent,
-                AssistantWithToolCallsComponent,
-                PlanMessageComponent,
-                theme,
-                showDebug,
-                placeholder: "Type your message...",
-                onAgentSelect,
-                onMessagesUpdate: handleMessagesUpdate
-              }
-            ),
-            agentLoading && /* @__PURE__ */ jsx29("div", { children: "Loading agent..." }),
-            agentError && /* @__PURE__ */ jsxs15("div", { children: [
-              "Error loading agent: ",
-              agentError.message
-            ] }),
-            !agent && !agentLoading && /* @__PURE__ */ jsx29("div", { children: "No agent selected" }),
-            currentPage === "agents" && /* @__PURE__ */ jsx29("div", { className: "h-full overflow-auto", children: /* @__PURE__ */ jsx29(AgentsPage_default, { onStartChat: (agent2) => {
-              setCurrentPage("chat");
-              onAgentSelect?.(agent2.id);
-            } }) })
-          ] })
+          /* @__PURE__ */ jsx29("main", { className: "flex-1 overflow-hidden", children: renderMainContent() })
         ] })
       ]
     }
