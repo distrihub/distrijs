@@ -1,16 +1,16 @@
 // Core client
 export { DistriClient } from './distri-client';
 export { Agent } from './agent';
-export type { ToolCallState, InvokeConfig, InvokeResult } from './agent';
+export type { InvokeConfig, InvokeResult } from './agent';
 
 // All types
 export type {
   // Core types
   DistriAgent,
-  DistriTool,
+  DistriBaseTool,
+  DistriFnTool,
   ToolCall,
   ToolResult,
-  ToolHandler,
   ModelSettings,
   McpDefinition,
   McpServerType,
@@ -33,7 +33,6 @@ export type {
   TextPart,
   PlanPart,
   FileType,
-  ToolResponse,
   InvokeContext,
   DistriStreamEvent,
 } from './types';
@@ -69,5 +68,5 @@ export {
   extractToolResultsFromDistriMessage,
 } from './encoder';
 
-// Constants
-export { APPROVAL_REQUEST_TOOL_NAME } from './types';
+
+export { uuidv4 } from './distri-client';

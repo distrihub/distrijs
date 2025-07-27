@@ -18,16 +18,13 @@ export function useAgents(): UseAgentsResult {
 
   const fetchAgents = useCallback(async () => {
     if (!client) {
-      console.log('[useAgents] Client not available, skipping fetch');
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      console.log('[useAgents] Fetching agents...');
       const fetchedAgents = await client.getAgents();
-      console.log('[useAgents] Fetched agents:', fetchedAgents);
       setAgents(fetchedAgents);
     } catch (err) {
       console.error('[useAgents] Failed to fetch agents:', err);
@@ -44,10 +41,10 @@ export function useAgents(): UseAgentsResult {
 
     try {
       const agent = await client.getAgent(agentId);
-      
+
       // Update the agent in our local state if it exists
       setAgents(prev => prev.map(a => a.id === agentId ? agent : a));
-      
+
       return agent;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to get agent');
@@ -58,7 +55,6 @@ export function useAgents(): UseAgentsResult {
 
   useEffect(() => {
     if (clientLoading) {
-      console.log('[useAgents] Client is loading, waiting...');
       setLoading(true);
       return;
     }
@@ -71,7 +67,6 @@ export function useAgents(): UseAgentsResult {
     }
 
     if (client) {
-      console.log('[useAgents] Client ready, fetching agents');
       fetchAgents();
     } else {
       console.log('[useAgents] No client available');

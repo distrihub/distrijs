@@ -20,16 +20,13 @@ export function useThreads(): UseThreadsResult {
 
   const fetchThreads = useCallback(async () => {
     if (!client) {
-      console.log('[useThreads] Client not available, skipping fetch');
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      console.log('[useThreads] Fetching threads...');
       const fetchedThreads = await client.getThreads();
-      console.log('[useThreads] Fetched threads:', fetchedThreads);
       setThreads(fetchedThreads);
     } catch (err) {
       console.error('[useThreads] Failed to fetch threads:', err);
@@ -105,23 +102,19 @@ export function useThreads(): UseThreadsResult {
 
   useEffect(() => {
     if (clientLoading) {
-      console.log('[useThreads] Client is loading, waiting...');
       setLoading(true);
       return;
     }
 
     if (clientError) {
-      console.error('[useThreads] Client error:', clientError);
       setError(clientError);
       setLoading(false);
       return;
     }
 
     if (client) {
-      console.log('[useThreads] Client ready, fetching threads');
       fetchThreads();
     } else {
-      console.log('[useThreads] No client available');
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchThreads]);
@@ -131,7 +124,6 @@ export function useThreads(): UseThreadsResult {
     if (!client) return;
 
     const interval = setInterval(() => {
-      console.log('[useThreads] Periodic refresh of threads');
       fetchThreads();
     }, 30000); // 30 seconds
 

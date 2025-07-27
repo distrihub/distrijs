@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole, DistriTool } from '@distri/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
 import { useChat } from '../useChat';
-import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './MessageComponents';
+import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './Components';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
+import { Toaster } from './ui/sonner';
 
 import { ChatInput } from './ChatInput';
 import { uuidv4 } from '../../../core/src/distri-client';
-import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar';
+import { DistriAnyTool, ToolCallState } from '@/types';
 
 export interface EmbeddableChatProps {
   agent: Agent;
@@ -17,7 +18,7 @@ export interface EmbeddableChatProps {
   className?: string;
   style?: React.CSSProperties;
   metadata?: any;
-  tools?: DistriTool[];
+  tools?: DistriAnyTool[];
   // Available agents for selection
   availableAgents?: Array<{ id: string; name: string; description?: string }>;
   // Customization props
@@ -68,10 +69,8 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     isStreaming,
     error,
     sendMessage: sendChatMessage,
-    executeTool,
-    completeTool,
-    getToolCallStatus,
-    toolResults
+    toolCallStates,
+    stopStreaming,
   } = useChat({
     threadId,
     agent: agent || undefined,
@@ -79,8 +78,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     metadata,
     onMessagesUpdate
   });
-
-  console.log('tools', tools);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -102,7 +99,6 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
       setInput(messageText); // Restore input on error
     }
   };
-
 
   const getMessageType = (message: DistriMessage): MessageComponentType => {
     if (message.parts.some((part: DistriPart) => part.type === 'tool_call')) {
@@ -140,12 +136,13 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                 <AssistantMessageComponent
                   key={key}
                   name={agent?.name}
-                  avatar={agent?.iconUrl ? <Avatar>
-                    <AvatarImage src={agent.iconUrl} />
-                    <AvatarFallback>
-                      {agent.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar> : undefined}
+                  avatar={agent?.iconUrl ? (
+                    <img src={agent.iconUrl} alt={agent.name} className="w-6 h-6 rounded-full" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">
+                      {agent?.name?.charAt(0).toUpperCase() || 'A'}
+                    </div>
+                  )}
                   message={message}
                   timestamp={timestamp}
                   isStreaming={isStreaming && index === messages.length - 1}
@@ -153,35 +150,21 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
               );
 
             case 'assistant_with_tools':
-              // Extract tool calls from message parts and get their status from the tool manager
-              const toolCalls = (message.parts || [])
+              // Extract tool calls from message parts and get their status from the tool call state
+              const states = (message.parts || [])
                 .filter((part: any) => part.tool_call)
                 .map((part: any) => {
-                  const toolCall = part.tool_call;
-                  const status = getToolCallStatus?.(toolCall.tool_call_id);
-
-                  // Find corresponding tool result if available
-                  const toolResult = toolResults.find(tr => tr.tool_call_id === toolCall.tool_call_id);
-
-                  return {
-                    toolCall,
-                    status: status?.status || 'pending',
-                    result: toolResult?.result || status?.result,
-                    error: toolResult?.error || status?.error,
-                    startedAt: status?.startedAt,
-                    completedAt: status?.completedAt,
-                  };
-                });
+                  const toolCallState = toolCallStates.get(part.tool_call.tool_call_id);
+                  return toolCallState;
+                }).filter(Boolean) as ToolCallState[];
 
               return (
                 <AssistantWithToolCallsComponent
                   key={key}
                   message={message}
-                  toolCalls={toolCalls}
+                  toolCallStates={states}
                   timestamp={timestamp}
                   isStreaming={isStreaming && index === messages.length - 1}
-                  onExecuteTool={executeTool}
-                  onCompleteTool={completeTool}
                 />
               );
 
@@ -219,8 +202,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     AssistantMessageComponent,
     AssistantWithToolCallsComponent,
     PlanMessageComponent,
-    toolResults,
-    getToolCallStatus,
+    toolCallStates,
     isStreaming
   ]);
 
@@ -244,6 +226,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
         )}
       </div>
+      <Toaster />
 
       {/* Main Chat Area - Full height scrollable container */}
       <div className="flex-1 relative min-h-0">
@@ -298,10 +281,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
                 value={input}
                 onChange={setInput}
                 onSend={sendMessage}
-                onStop={() => {
-                  // Stop streaming - this would need to be implemented in the useChat hook
-                  console.log('Stop streaming');
-                }}
+                onStop={stopStreaming}
                 placeholder={placeholder}
                 disabled={isLoading}
                 isStreaming={isStreaming}
@@ -311,6 +291,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
           </div>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 };

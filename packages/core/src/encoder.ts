@@ -35,7 +35,7 @@ export function decodeA2AStreamEvent(event: A2AStreamEventData): DistriEvent | D
  * Converts an A2A Part to a DistriPart
  */
 export function convertA2APartToDistri(a2aPart: Part): DistriPart {
-  console.log('a2aPart', a2aPart);
+
   switch (a2aPart.kind) {
     case 'text':
       return { type: 'text', text: a2aPart.text };
@@ -47,7 +47,6 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
         return { type: 'image_bytes', image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } as FileBytes } as ImageBytesPart;
       }
     case 'data':
-      console.log('a2aPart.data', a2aPart.data);
       switch (a2aPart.data.part_type) {
         case 'tool_call':
           return { type: 'tool_call', tool_call: a2aPart.data as unknown as ToolCall } as ToolCallPart;
@@ -112,13 +111,21 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
     case 'tool_call':
       return { kind: 'data', data: { part_type: 'tool_call', tool_call: distriPart.tool_call } };
     case 'tool_result':
-      return { kind: 'data', data: { part_type: 'tool_result', tool_result: distriPart.tool_result } };
+      let val = {
+        kind: 'data', data: {
+          tool_call_id: distriPart.tool_result.tool_call_id,
+          result: distriPart.tool_result.result,
+          part_type: 'tool_result'
+        }
+      };
+      console.log('<> val', val);
+      return val as Part;
     case 'code_observation':
-      return { kind: 'data', data: { part_type: 'code_observation', thought: distriPart.thought, code: distriPart.code } };
+      return { kind: 'data', data: { ...distriPart, part_type: 'code_observation' } };
     case 'plan':
-      return { kind: 'data', data: { part_type: 'plan', plan: distriPart.plan } };
+      return { kind: 'data', data: { ...distriPart, part_type: 'plan' } };
     case 'data':
-      return { kind: 'data', data: distriPart.data };
+      return { kind: 'data', ...distriPart.data };
   }
 }
 
