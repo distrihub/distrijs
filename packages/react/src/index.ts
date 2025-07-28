@@ -31,10 +31,4 @@ export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
 export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
 
 
-// UI Components - shadcn
-export * from './components/ui';
-
-// Utilities
-export { cn } from './lib/utils';
-
 export type { DistriAnyTool } from './types';

@@ -20,6 +20,9 @@ export function useThreads(): UseThreadsResult {
 
   const fetchThreads = useCallback(async () => {
     if (!client) {
+      console.error('[useThreads] Client not available');
+      setError(new Error('Client not available'));
+      setLoading(false);
       return;
     }
 
@@ -56,7 +59,7 @@ export function useThreads(): UseThreadsResult {
 
     try {
       // Try to delete from server (may not exist yet for local threads)
-      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`, {
+      const response = await fetch(`${client.baseUrl}/threads/${threadId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -78,7 +81,7 @@ export function useThreads(): UseThreadsResult {
     }
 
     try {
-      const response = await fetch(`${client.baseUrl}/api/v1/threads/${threadId}`);
+      const response = await fetch(`${client.baseUrl}/threads/${threadId}`);
       if (response.ok) {
         const updatedThread = await response.json();
         setThreads(prev => {
