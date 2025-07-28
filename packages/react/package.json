@@ -1,6 +1,6 @@
 {
   "name": "@distri/react",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "React hooks and components for Distri Framework",
   "type": "module",
   "main": "dist/index.cjs",
@@ -59,7 +59,7 @@
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "@distri/core": "^0.2.1"
+    "@distri/core": "^0.2.2"
   },
   "publishConfig": {
     "access": "public"
