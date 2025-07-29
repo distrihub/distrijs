@@ -19,7 +19,8 @@ export interface UseChatOptions {
   agent?: Agent;
   onMessage?: (message: DistriStreamEvent) => void;
   onError?: (error: Error) => void;
-  metadata?: any;
+  // Ability to override metadata for the stream
+  getMetadata?: () => Promise<any>;
   onMessagesUpdate?: () => void;
   tools?: DistriAnyTool[];
 }
@@ -42,7 +43,7 @@ export function useChat({
   threadId,
   onMessage,
   onError,
-  metadata,
+  getMetadata,
   onMessagesUpdate,
   agent,
   tools,
@@ -57,8 +58,8 @@ export function useChat({
   const createInvokeContext = useCallback((): InvokeContext => ({
     thread_id: threadId,
     run_id: undefined,
-    metadata
-  }), [threadId, metadata]);
+    getMetadata
+  }), [threadId, getMetadata]);
 
   // Register tools with agent
   registerTools({ agent, tools });
@@ -212,10 +213,11 @@ export function useChat({
       // Add user message to state immediately
       setMessages(prev => [...prev, distriMessage]);
 
+      const contextMetadata = await getMetadata?.() || {};
       // Start streaming
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: context.metadata
+        metadata: contextMetadata
       });
 
       for await (const event of stream) {
@@ -265,10 +267,11 @@ export function useChat({
       // Add user message to state immediately
       setMessages(prev => [...prev, distriMessage]);
 
+      const contextMetadata = await getMetadata?.() || {};
       // Start streaming
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: context.metadata
+        metadata: { ...contextMetadata }
       });
 
       for await (const event of stream) {

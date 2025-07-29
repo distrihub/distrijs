@@ -17,7 +17,7 @@ export interface EmbeddableChatProps {
   height?: string;
   className?: string;
   style?: React.CSSProperties;
-  metadata?: any;
+  getMetadata?: () => Promise<any>;
   tools?: DistriAnyTool[];
   // Available agents for selection
   availableAgents?: Array<{ id: string; name: string; description?: string }>;
@@ -46,7 +46,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
   agent,
   className = '',
   style = {},
-  metadata,
+  getMetadata,
   tools,
   availableAgents = [],
   UserMessageComponent = UserMessage,
@@ -77,7 +77,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
     threadId,
     agent: agent || undefined,
     tools,
-    metadata,
+    getMetadata,
     onMessagesUpdate
   });
 
