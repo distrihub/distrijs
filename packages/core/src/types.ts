@@ -27,7 +27,7 @@ export type DistriStreamEvent = DistriMessage | DistriEvent;
 export interface InvokeContext {
   thread_id: string;
   run_id?: string;
-  metadata?: any; // Additional metadata to attach to MessageSendParams
+  getMetadata?: () => any; // Additional metadata to attach to MessageSendParams
 }
 
 /**

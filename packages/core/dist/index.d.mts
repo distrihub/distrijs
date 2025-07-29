@@ -95,7 +95,7 @@ type DistriStreamEvent = DistriMessage | DistriEvent;
 interface InvokeContext {
     thread_id: string;
     run_id?: string;
-    metadata?: any;
+    getMetadata?: () => any;
 }
 /**
  * Distri message parts - equivalent to Rust enum Part

@@ -142,7 +142,9 @@ export class DistriClient {
       const client = this.getA2AClient(agentId);
       yield* await client.sendMessageStream(params);
     } catch (error) {
+      console.error(error);
       throw new DistriError(`Failed to stream message to agent ${agentId}`, 'STREAM_MESSAGE_ERROR', error);
+
     }
   }
 
@@ -247,9 +249,10 @@ export class DistriClient {
    */
   async sendDistriMessage(threadId: string, message: DistriMessage, context: InvokeContext): Promise<void> {
     const a2aMessage = convertDistriMessageToA2A(message, context);
+    const contextMetadata = context.getMetadata?.() || {};
     const params: MessageSendParams = {
       message: a2aMessage,
-      metadata: context.metadata
+      metadata: contextMetadata
     };
     await this.sendMessage(threadId, params);
   }
@@ -384,9 +387,10 @@ export class DistriClient {
    */
   static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams {
     const a2aMessage = convertDistriMessageToA2A(message, context);
+    const contextMetadata = context.getMetadata?.() || {};
     return {
       message: a2aMessage,
-      metadata: context.metadata
+      metadata: contextMetadata
     };
   }
 }

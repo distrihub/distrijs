@@ -15,7 +15,7 @@ import { uuidv4 } from '../../../core/src/distri-client';
 export interface FullChatProps {
   agentId: string;
   agent?: Agent;
-  metadata?: any;
+  getMetadata?: () => Promise<any>;
   className?: string;
   // Available agents for selection
   availableAgents?: Array<{ id: string; name: string; description?: string }>;
@@ -41,7 +41,7 @@ type PageType = 'chat' | 'agents';
 
 export const FullChat: React.FC<FullChatProps> = ({
   agentId: initialAgentId,
-  metadata,
+  getMetadata,
   className = '',
   UserMessageComponent,
   AssistantMessageComponent,
@@ -69,7 +69,8 @@ export const FullChat: React.FC<FullChatProps> = ({
   // Use chat hook to get messages for the selected thread
   const { messages } = useChat({
     threadId: selectedThreadId,
-    agent: agent || undefined
+    agent: agent || undefined,
+    getMetadata
   });
 
   // Check if thread has started (has messages)
@@ -148,7 +149,7 @@ export const FullChat: React.FC<FullChatProps> = ({
         threadId={selectedThreadId}
         showAgentSelector={false}
         agent={agent}
-        metadata={metadata}
+        getMetadata={getMetadata}
         height="calc(100vh - 4rem)"
         availableAgents={availableAgents}
         UserMessageComponent={UserMessageComponent}
