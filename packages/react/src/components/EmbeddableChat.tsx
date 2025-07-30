@@ -1,15 +1,28 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { Agent, DistriAgent } from '@distrijs/core';
+import {
+  DistriMessage,
+  DistriPart,
+  DistriEvent,
+  TaskMessage,
+  isDistriMessage,
+  isDistriEvent,
+  isTaskMessage,
+  MessageRole,
+} from '@distrijs/core';
 import { useChat } from '../useChat';
-import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './Components';
-import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
-import { AgentSelect } from './AgentSelect';
-import { Toaster } from './ui/sonner';
-
+import { DistriAnyTool, ToolCallState } from '../types';
 import { ChatInput } from './ChatInput';
-import { uuidv4 } from '../../../core/src/distri-client';
-import { DistriAnyTool, ToolCallState } from '@/types';
+import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
+import {
+  UserMessage,
+  AssistantMessage,
+  AssistantWithToolCalls,
+  PlanMessage,
+  DebugMessage,
+} from './Components';
+import { ExecutionTracker } from './ExecutionSteps';
 
 export interface EmbeddableChatProps {
   agent: Agent;
@@ -67,6 +80,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
   const {
     messages,
+    taskMessages,
     isLoading,
     isStreaming,
     error,
@@ -210,91 +224,49 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
   return (
     <div
-      className={`distri-chat ${className} ${theme === 'dark' ? 'dark' : 'light'} w-full bg-background text-foreground flex flex-col relative`}
-      style={{
-        ...style
-      }}
+      className={`distri-chat ${className} flex flex-col h-full border rounded-lg overflow-hidden ${
+        theme === 'dark' ? 'dark' : ''
+      }`}
+      style={style}
     >
-      {/* Top padding and Agent Selector */}
-      <div className="pt-6 px-6 bg-background flex-shrink-0 z-10">
-        {showAgentSelector && availableAgents && availableAgents.length > 0 && (
-          <div className="mb-6">
-            <AgentSelect
-              agents={availableAgents}
-              selectedAgentId={agent?.id}
-              onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
-              className="w-full"
-              disabled={disableAgentSelection || messages.length > 0}
-            />
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {renderedMessages}
+        
+        {/* Execution Tracker */}
+        {taskMessages.length > 0 && (
+          <ExecutionTracker
+            taskMessages={taskMessages}
+            className="mt-4"
+          />
+        )}
+        
+        {error && (
+          <div className="text-red-500 text-sm p-3 bg-red-50 dark:bg-red-950 rounded-md border border-red-200 dark:border-red-800">
+            Error: {error.message}
           </div>
         )}
+        
+        <div ref={messagesEndRef} />
       </div>
-      <Toaster />
 
-      {/* Main Chat Area - Full height scrollable container */}
-      <div className="flex-1 relative min-h-0">
-        <div className="absolute inset-0 flex flex-col">
-          {/* Messages Area - Full height scrollable */}
-          <div className="flex-1 overflow-y-auto distri-scroll bg-background">
-            <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center min-h-[400px]">
-                  <div className="text-center">
-                    <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">
-                      Start a conversation
-                    </h3>
-                    <p className="text-muted-foreground max-w-sm">
-                      {placeholder || "Type your message below to begin chatting."}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-0 pt-4">
-                  {renderedMessages}
-                </div>
-              )}
-
-              {/* Loading state */}
-              {isLoading && (
-                <div className="px-6 py-4 flex items-center space-x-2 bg-muted rounded-lg mt-4">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
-                  <span className="text-muted-foreground text-sm">Thinking...</span>
-                </div>
-              )}
-
-              {/* Error state */}
-              {error && (
-                <div className="px-6 py-4 bg-destructive/20 border border-destructive/20 rounded-lg mt-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="h-4 w-4 rounded-full bg-destructive"></div>
-                    <span className="text-destructive text-sm">{error.message || String(error)}</span>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          {/* Input Area - Absolutely positioned at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 bg-background py-4">
-            <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
-              <ChatInput
-                value={input}
-                onChange={setInput}
-                onSend={sendMessage}
-                onStop={stopStreaming}
-                placeholder={placeholder}
-                disabled={isLoading}
-                isStreaming={isStreaming}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </div>
+      {/* Input Section */}
+      <div className="border-t p-4">
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          sendMessage={sendMessage}
+          isLoading={isLoading}
+          isStreaming={isStreaming}
+          stopStreaming={stopStreaming}
+          placeholder={placeholder}
+          agent={agent}
+          availableAgents={availableAgents}
+          showAgentSelector={showAgentSelector}
+          disableAgentSelection={disableAgentSelection}
+          onAgentSelect={onAgentSelect}
+        />
       </div>
-      <Toaster />
     </div>
   );
 };

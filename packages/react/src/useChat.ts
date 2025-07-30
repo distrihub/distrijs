@@ -13,6 +13,20 @@ import { DistriStreamEvent, isDistriMessage, ToolResultPart } from '../../core/s
 import { registerTools } from './hooks/registerTools';
 import { useToolCallState } from './hooks/useToolCallState';
 import { DistriAnyTool, ToolCallState } from './types';
+import {
+  DistriClient,
+  DistriMessage,
+  DistriPart,
+  DistriEvent,
+  DistriStreamEvent,
+  TaskMessage,
+  isDistriMessage,
+  isDistriEvent,
+  isTaskMessage,
+  convertDistriMessageToA2A,
+  decodeA2AStreamEvent,
+  createInvokeContext,
+} from '@distrijs/core';
 
 export interface UseChatOptions {
   threadId: string;
@@ -26,16 +40,15 @@ export interface UseChatOptions {
 }
 
 export interface UseChatReturn {
-  messages: DistriStreamEvent[];
-  isStreaming: boolean;
-  sendMessage: (content: string | DistriPart[]) => Promise<void>;
-  sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+  messages: (DistriMessage | DistriEvent | TaskMessage)[];
+  taskMessages: TaskMessage[];
   isLoading: boolean;
+  isStreaming: boolean;
   error: Error | null;
-  clearMessages: () => void;
-  agent: Agent | undefined;
+  sendMessage: (content: string | DistriPart[]) => Promise<void>;
+  sendMessageStream: (content: string | DistriPart[], role?: MessageRole) => Promise<void>;
   toolCallStates: Map<string, ToolCallState>;
-  hasPendingToolCalls: () => boolean;
+  clearMessages: () => void;
   stopStreaming: () => void;
 }
 
@@ -48,7 +61,8 @@ export function useChat({
   agent,
   tools,
 }: UseChatOptions): UseChatReturn {
-  const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
+  const [messages, setMessages] = useState<(DistriMessage | DistriEvent | TaskMessage)[]>([]);
+  const [taskMessages, setTaskMessages] = useState<TaskMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -106,8 +120,14 @@ export function useChat({
 
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
-      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
+      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent | TaskMessage)[];
+      
       setMessages(distriMessages);
+      
+      // Extract task messages
+      const tasks = distriMessages.filter(isTaskMessage) as TaskMessage[];
+      setTaskMessages(tasks);
+      
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch messages');
@@ -148,6 +168,20 @@ export function useChat({
           // Add new message
           return [...prev, distriMessage];
         }
+      } else if (isTaskMessage(event)) {
+        // Handle TaskMessage separately
+        const taskMessage = event as TaskMessage;
+        setTaskMessages(prevTasks => {
+          const existingIndex = prevTasks.findIndex(msg => msg.id === taskMessage.id);
+          if (existingIndex >= 0) {
+            const updated = [...prevTasks];
+            updated[existingIndex] = taskMessage;
+            return updated;
+          } else {
+            return [...prevTasks, taskMessage];
+          }
+        });
+        return [...prev, event];
       } else {
         return [...prev, event];
       }
@@ -185,7 +219,7 @@ export function useChat({
     }
 
     onMessage?.(event);
-  }, [onMessage, agent]);
+  }, [toolStateHandler, onMessage]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
@@ -328,15 +362,14 @@ export function useChat({
 
   return {
     messages,
+    taskMessages,
+    isLoading,
     isStreaming,
+    error,
     sendMessage,
     sendMessageStream,
-    isLoading,
-    error,
-    clearMessages,
-    agent: agent || undefined,
     toolCallStates: toolStateHandler.toolCallStates,
-    hasPendingToolCalls: toolStateHandler.hasPendingToolCalls,
+    clearMessages,
     stopStreaming,
   };
 } 

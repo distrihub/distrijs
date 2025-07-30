@@ -17,7 +17,74 @@ export interface DistriMessage {
   created_at?: string;
 }
 
-export type DistriStreamEvent = DistriMessage | DistriEvent;
+/**
+ * Task message types from the feat/strategies branch
+ */
+export interface TaskMessage {
+  id: string;
+  task_id: string;
+  type: 'plan_started' | 'plan_finished' | 'step_started' | 'step_completed' | 'tool_execution_start' | 'tool_execution_end' | 'tool_rejected';
+  data: TaskMessageData;
+  created_at: string;
+}
+
+export type TaskMessageData = PlanStartedData | PlanFinishedData | StepStartedData | StepCompletedData | ToolExecutionStartData | ToolExecutionEndData | ToolRejectedData;
+
+export interface PlanStartedData {
+  plan_id: string;
+  description: string;
+}
+
+export interface PlanFinishedData {
+  plan_id: string;
+  steps: ExecutionStep[];
+}
+
+export interface StepStartedData {
+  step_id: string;
+  step_number: number;
+  description: string;
+  plan_id: string;
+}
+
+export interface StepCompletedData {
+  step_id: string;
+  step_number: number;
+  result: string;
+  success: boolean;
+  plan_id: string;
+}
+
+export interface ToolExecutionStartData {
+  tool_call_id: string;
+  tool_name: string;
+  step_id?: string;
+}
+
+export interface ToolExecutionEndData {
+  tool_call_id: string;
+  result: string;
+  success: boolean;
+  step_id?: string;
+}
+
+export interface ToolRejectedData {
+  tool_call_id: string;
+  reason: string;
+  step_id?: string;
+}
+
+export interface ExecutionStep {
+  id: string;
+  number: number;
+  description: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  result?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+export type DistriStreamEvent = DistriMessage | DistriEvent | TaskMessage;
 
 
 
@@ -278,5 +345,9 @@ export function isDistriMessage(event: DistriStreamEvent): event is DistriMessag
 }
 
 export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
-  return 'type' in event && 'metadata' in event;
+  return 'type' in event && 'data' in event && !('task_id' in event);
+}
+
+export function isTaskMessage(event: DistriStreamEvent): event is TaskMessage {
+  return 'task_id' in event && 'type' in event && 'data' in event;
 }

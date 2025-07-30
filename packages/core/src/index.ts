@@ -35,11 +35,24 @@ export type {
   FileType,
   InvokeContext,
   DistriStreamEvent,
+  
+  // Task message types
+  TaskMessage,
+  TaskMessageData,
+  ExecutionStep,
+  PlanStartedData,
+  PlanFinishedData,
+  StepStartedData,
+  StepCompletedData,
+  ToolExecutionStartData,
+  ToolExecutionEndData,
+  ToolRejectedData,
 } from './types';
 
 export {
   isDistriMessage,
   isDistriEvent,
+  isTaskMessage,
 } from './types';
 
 export type {
