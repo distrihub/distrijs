@@ -3,18 +3,12 @@ export type Role = 'user' | 'system' | 'assistant';
 // Each event is a concrete type
 export interface RunStartedEvent {
   type: 'run_started';
-  data: {
-    run_id: string;
-    agent_id: string;
-  }
+  data: {}
 }
 
 export interface RunFinishedEvent {
   type: 'run_finished';
-  data: {
-    run_id: string;
-    result?: string;
-  }
+  data: {}
 }
 
 export interface RunErrorEvent {
