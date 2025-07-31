@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, TaskMessage, isDistriMessage, MessageRole } from '@distrijs/core';
+import { Agent, DistriMessage, DistriPart, DistriEvent, isDistriMessage, MessageRole } from '@distrijs/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './Components';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
@@ -70,7 +70,7 @@ export const FullChat: React.FC<FullChatProps> = ({
 
   const {
     messages,
-    taskMessages,
+    executionEvents,
     isLoading,
     isStreaming,
     error,
@@ -258,10 +258,10 @@ export const FullChat: React.FC<FullChatProps> = ({
                   {renderedMessages}
                   
                   {/* Execution Tracker */}
-                  {taskMessages.length > 0 && (
+                  {executionEvents.length > 0 && (
                     <div className="px-6 py-4">
                       <ExecutionTracker
-                        taskMessages={taskMessages}
+                        events={executionEvents}
                       />
                     </div>
                   )}

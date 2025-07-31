@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
-import { ExecutionStep, TaskMessage, StepStartedData, StepCompletedData, PlanStartedData, PlanFinishedData, ToolExecutionStartData, ToolExecutionEndData, ToolRejectedData } from '@distrijs/core';
+import { 
+  DistriEvent, 
+  PlanStartedEvent, 
+  PlanFinishedEvent, 
+  StepStartedEvent, 
+  StepCompletedEvent,
+  ToolExecutionStartEvent,
+  ToolExecutionEndEvent,
+  ToolRejectedEvent 
+} from '@distrijs/core';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Play } from 'lucide-react';
+
+export interface ExecutionStep {
+  id: string;
+  index: number;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  started_at?: string;
+  completed_at?: string;
+  success?: boolean;
+}
 
 export interface ExecutionStepsProps {
   steps: ExecutionStep[];
@@ -44,12 +62,8 @@ const StepItem: React.FC<StepItemProps> = ({ step, isActive, isExpanded, onToggl
         <div className="flex items-center gap-2 flex-1">
           <StepStatusIcon status={step.status} />
           <div className="flex items-center gap-1">
-            {step.result && (
-              isExpanded ? 
-                <ChevronDown className="w-3 h-3 text-muted-foreground" /> :
-                <ChevronRight className="w-3 h-3 text-muted-foreground" />
-            )}
-            <span className="text-sm font-medium">Step {step.number}</span>
+            <ChevronRight className="w-3 h-3 text-muted-foreground" />
+            <span className="text-sm font-medium">Step {step.index + 1}</span>
           </div>
         </div>
       </div>
@@ -58,15 +72,8 @@ const StepItem: React.FC<StepItemProps> = ({ step, isActive, isExpanded, onToggl
         <p className={`text-sm transition-all duration-200 ${
           isActive ? 'text-foreground' : 'text-muted-foreground'
         }`}>
-          {step.description}
+          Step {step.id}
         </p>
-        
-        {isExpanded && step.result && (
-          <div className="mt-3 p-3 rounded-md bg-muted/50 border animate-in slide-in-from-top-2 duration-200">
-            <div className="text-xs text-muted-foreground mb-1">Result:</div>
-            <div className="text-sm whitespace-pre-wrap">{step.result}</div>
-          </div>
-        )}
         
         {step.status === 'running' && (
           <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
@@ -132,74 +139,75 @@ export const ExecutionSteps: React.FC<ExecutionStepsProps> = ({
 };
 
 export interface ExecutionTrackerProps {
-  taskMessages: TaskMessage[];
+  events: DistriEvent[];
   className?: string;
 }
 
 export const ExecutionTracker: React.FC<ExecutionTrackerProps> = ({
-  taskMessages,
+  events,
   className = "",
 }) => {
   const [steps, setSteps] = useState<ExecutionStep[]>([]);
   const [isPlanning, setIsPlanning] = useState(false);
-  const [planDescription, setPlanDescription] = useState<string>('');
   const [currentStepId, setCurrentStepId] = useState<string | undefined>();
 
   React.useEffect(() => {
-    // Process task messages to build execution state
+    // Process events to build execution state
     let newSteps: ExecutionStep[] = [...steps];
     let planning = isPlanning;
-    let planDesc = planDescription;
     let currentStep = currentStepId;
 
-    for (const message of taskMessages) {
-      switch (message.type) {
+    for (const event of events) {
+      switch (event.type) {
         case 'plan_started':
-          const planData = message.data as PlanStartedData;
           planning = true;
-          planDesc = planData.description;
           break;
 
         case 'plan_finished':
-          const finishedData = message.data as PlanFinishedData;
           planning = false;
-          newSteps = finishedData.steps.map(step => ({
-            ...step,
-            status: 'pending' as const,
-          }));
           break;
 
         case 'step_started':
-          const startedData = message.data as StepStartedData;
-          currentStep = startedData.step_id;
-          newSteps = newSteps.map(step => 
-            step.id === startedData.step_id 
-              ? { ...step, status: 'running' as const, started_at: message.created_at }
-              : step
-          );
+          const startedEvent = event as StepStartedEvent;
+          currentStep = startedEvent.data.step_id;
+          
+          // Add or update step
+          const existingIndex = newSteps.findIndex(s => s.id === startedEvent.data.step_id);
+          if (existingIndex >= 0) {
+            newSteps[existingIndex] = {
+              ...newSteps[existingIndex],
+              status: 'running',
+              started_at: new Date().toISOString()
+            };
+          } else {
+            newSteps.push({
+              id: startedEvent.data.step_id,
+              index: startedEvent.data.step_index,
+              status: 'running',
+              started_at: new Date().toISOString()
+            });
+          }
           break;
 
         case 'step_completed':
-          const completedData = message.data as StepCompletedData;
-          newSteps = newSteps.map(step => 
-            step.id === completedData.step_id 
-              ? { 
-                  ...step, 
-                  status: completedData.success ? 'completed' as const : 'failed' as const,
-                  result: completedData.result,
-                  completed_at: message.created_at
-                }
-              : step
-          );
+          const completedEvent = event as StepCompletedEvent;
+          const stepIndex = newSteps.findIndex(s => s.id === completedEvent.data.step_id);
+          if (stepIndex >= 0) {
+            newSteps[stepIndex] = {
+              ...newSteps[stepIndex],
+              status: completedEvent.data.success ? 'completed' : 'failed',
+              success: completedEvent.data.success,
+              completed_at: new Date().toISOString()
+            };
+          }
           break;
       }
     }
 
     setSteps(newSteps);
     setIsPlanning(planning);
-    setPlanDescription(planDesc);
     setCurrentStepId(currentStep);
-  }, [taskMessages]);
+  }, [events]);
 
   if (!isPlanning && steps.length === 0) {
     return null;
@@ -214,7 +222,6 @@ export const ExecutionTracker: React.FC<ExecutionTrackerProps> = ({
         steps={steps}
         currentStepId={currentStepId}
         isPlanning={isPlanning}
-        planDescription={planDescription}
       />
     </div>
   );

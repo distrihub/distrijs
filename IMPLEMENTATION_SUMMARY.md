@@ -1,109 +1,127 @@
-# Implementation Summary: Event-Driven UX Mapping
+# Implementation Summary: Event-Driven UX Mapping (CORRECTED)
 
 ## Overview
-Successfully implemented the new event-driven UX mapping for the feat/strategies branch with step-by-step execution flow similar to Cursor's inline interface.
+Successfully implemented the new event-driven UX mapping for the feat/strategies branch with step-by-step execution flow similar to Cursor's inline interface, **corrected to match the actual Rust AgentEventType enum structure**.
+
+## ✅ Key Corrections Made
+
+### 🔧 **Fixed Event Structure**
+- **CORRECTED**: `RunStarted {}` and `RunFinished {}` have empty data (not rich data)
+- **CORRECTED**: Start/End events are just indicators - actual data comes through `Message` and `ExecutionResult` events
+- **CORRECTED**: Removed incorrect `TaskMessage` assumption - events are individual `AgentEventType` events
+- **CORRECTED**: Updated all event data structures to match exact Rust enum
+
+### 📋 **Actual AgentEventType Structure**
+```rust
+// Main run events
+RunStarted {},
+RunFinished {},
+
+// Planning events  
+PlanStarted { initial_plan: bool },
+PlanFinished {},
+PlanPruned { removed_steps: Vec<String> },
+
+// Step execution events
+StepStarted { step_id: String, step_index: usize },
+StepCompleted { step_id: String, success: bool },
+
+// Tool execution events
+ToolExecutionStart { tool_call_id: String, tool_call_name: String },
+ToolExecutionEnd { tool_call_id: String, tool_call_name: String, success: bool },
+ToolRejected { step_id: String, reason: String },
+
+// Rich data events
+Message { message: Message },
+ExecutionResult { result: ExecutionResult },
+```
 
 ## ✅ Completed Features
 
 ### 1. Updated Core Types (`packages/core/src/types.ts`)
-- Added `TaskMessage` interface with support for strategy-based execution
-- Added execution step data types: `PlanStartedData`, `PlanFinishedData`, `StepStartedData`, `StepCompletedData`
-- Added tool execution types: `ToolExecutionStartData`, `ToolExecutionEndData`, `ToolRejectedData`
-- Added `ExecutionStep` interface for step tracking
-- Updated `DistriStreamEvent` union to include `TaskMessage`
-- Added type guards: `isTaskMessage()`, updated `isDistriEvent()`
+- **REMOVED** incorrect `TaskMessage` interface
+- **KEPT** `DistriStreamEvent = DistriMessage | DistriEvent`
+- **CORRECTED** type guards to remove `isTaskMessage()`
+- All parts and message structures remain unchanged
 
-### 2. Enhanced Event System (`packages/core/src/events.ts`)
-- Added new strategy-based events:
-  - `PlanStartedEvent` - When planner begins generating plan
-  - `PlanFinishedEvent` - When planner completes plan with steps
-  - `StepStartedEvent` - When execution step begins  
-  - `StepCompletedEvent` - When execution step finishes
-  - `ToolRejectedEvent` - When tool call is rejected
-- Updated existing events with enhanced data structures
-- Added step tracking to tool events
+### 2. Corrected Event System (`packages/core/src/events.ts`)
+- **MATCHED** exact Rust `AgentEventType` enum structure
+- **CORRECTED** minimal data in start/end events:
+  - `PlanStarted` → `{ initial_plan: boolean }`
+  - `StepStarted` → `{ step_id: string, step_index: number }`
+  - `StepCompleted` → `{ step_id: string, success: boolean }`
+- **ADDED** missing events: `PlanPruned`, `FeedbackReceived`
+- **ADDED** rich data events: `MessageEvent`, `ExecutionResultEvent`
 
-### 3. ExecutionSteps Component (`packages/react/src/components/ExecutionSteps.tsx`)
-- **ExecutionSteps**: Animated step-by-step UI with Cursor-like interface
-- **ExecutionTracker**: Real-time tracking of task messages and execution state
-- **Features**:
-  - ✅ Expandable steps with arrow indicators
-  - ✅ Status icons (pending, running, completed, failed)
-  - ✅ Animated loading states and progress indicators
-  - ✅ Inline step results display
-  - ✅ Planning phase indicator with spinner
-  - ✅ Real-time step status updates
+### 3. Fixed ExecutionSteps Component (`packages/react/src/components/ExecutionSteps.tsx`)
+- **CHANGED** from `TaskMessage[]` to `DistriEvent[]` input
+- **SIMPLIFIED** `ExecutionStep` interface to match minimal event data
+- **UPDATED** event processing to handle individual events correctly
+- **MAINTAINED** Cursor-like UI with animations and expandable steps
 
-### 4. Updated Chat System (`packages/react/src/useChat.ts`)
-- Enhanced `useChat` hook to handle `TaskMessage` types
-- Added `taskMessages` state tracking
-- Updated stream event handling for new event types
-- Added separate task message processing pipeline
-- Updated return interface with `taskMessages` array
+### 4. Corrected Chat System (`packages/react/src/useChat.ts`)
+- **REMOVED** `taskMessages` state and handling
+- **ADDED** `executionEvents` tracking for execution-related events
+- **FILTERED** events to separate execution events from messages
+- **MAINTAINED** all existing message and tool handling
 
-### 5. Integrated UI Components
-- **EmbeddableChat**: Integrated ExecutionTracker component
-- **FullChat**: Added execution tracking to full chat interface
-- Updated message filtering and rendering
-- Added TaskMessage support to all chat components
+### 5. Updated UI Components
+- **EmbeddableChat**: Uses `executionEvents` instead of `taskMessages`
+- **FullChat**: Updated to new event structure
+- **ExecutionTracker**: Processes individual events correctly
 
-## 🎯 UX Mapping Implementation
+## 🎯 Corrected UX Mapping
 
-The implementation follows the exact UX mapping specification:
+The implementation now correctly handles the minimal start/end events:
 
-| Event | When Triggered | UI Feedback | ✅ Status |
+| Event | Data Structure | UI Feedback | ✅ Status |
 |-------|----------------|-------------|-----------|
-| RunStarted | Agent execution begins | Show loading spinner | ✅ Implemented |
-| PlanStarted/Finished | Planner generates plan | "Planning steps..." | ✅ Implemented |
-| StepStarted | Start of execution step | "Thinking on step X" | ✅ Implemented |
-| TextMessage* | LLM streaming | Stream LLM output | ✅ Existing + Enhanced |
-| ToolExecutionStart/End | Tool is run | Show spinner, then result | ✅ Implemented |
-| ToolRejected | Rejection from frontend/A2A | Show rejection prompt | ✅ Implemented |
-| StepCompleted | Step finishes | Tick/checkmark | ✅ Implemented |
-| RunFinished | Agent is done | Final summary | ✅ Implemented |
+| RunStarted | `{}` | Show loading spinner | ✅ |
+| PlanStarted | `{ initial_plan: bool }` | "Planning steps..." | ✅ |
+| PlanFinished | `{}` | Hide planning spinner | ✅ |
+| StepStarted | `{ step_id, step_index }` | "Step X executing..." | ✅ |
+| StepCompleted | `{ step_id, success }` | Tick/X mark | ✅ |
+| ToolExecutionStart | `{ tool_call_id, tool_call_name }` | Tool spinner | ✅ |
+| ToolExecutionEnd | `{ tool_call_id, tool_call_name, success }` | Tool result | ✅ |
+| ToolRejected | `{ step_id, reason }` | Rejection prompt | ✅ |
+| RunFinished | `{}` | Final summary | ✅ |
 
-## 🎨 Visual Features
+**Rich data comes through separate `Message` and `ExecutionResult` events**
+
+## 🎨 Visual Features (Maintained)
 
 ### Step-by-Step Animation
-- Each step appears on a new line when running
+- Each step appears when `StepStarted` event received
+- Status updates on `StepCompleted` event  
 - Smooth animations using Tailwind transitions
-- Expandable content with chevron indicators
-- Color-coded status indicators
+- Real-time execution tracking
 
 ### Cursor-like Interface
-- Clean, minimal design with proper spacing
+- Clean, minimal design matching start/end event philosophy
 - Left border indicating active steps
-- Inline result display on expansion
+- Progressive status indication
 - Consistent with existing design system
 
-### Real-time Updates
-- Live status tracking as events stream in
-- Progressive disclosure of step information
-- Responsive animations and state changes
-
-## 🔧 Technical Architecture
-
-### Type Safety
-- Full TypeScript support for all new types
-- Discriminated unions for task message data
-- Proper type guards for runtime checks
+## 🔧 Corrected Technical Architecture
 
 ### Event Processing
-- Efficient event handling pipeline
-- Separate task message state management
-- Real-time synchronization with step tracking
+- Individual `DistriEvent` processing (not TaskMessage batches)
+- Minimal data extraction from start/end events
+- Rich data handled through separate Message/ExecutionResult events
+- Efficient real-time state tracking
 
-### Component Structure
-- Reusable ExecutionSteps component
-- Centralized ExecutionTracker for state management
-- Clean integration with existing chat components
+### Type Safety
+- Exact TypeScript mappings of Rust `AgentEventType` enum
+- Proper discriminated unions for event data
+- Correct type guards for runtime checks
 
 ## 🚀 Ready for feat/strategies Integration
 
-The implementation is fully prepared for the feat/strategies branch:
-- All TaskMessage types conform to expected structure
-- Event handling supports SSE streaming
-- First-time load compatibility for existing messages
-- Extensible architecture for future enhancements
+The corrected implementation properly handles:
+- ✅ Exact Rust `AgentEventType` enum structure
+- ✅ Minimal start/end event data
+- ✅ Rich data through Message/ExecutionResult events
+- ✅ SSE streaming compatibility
+- ✅ First-time load support
 
-The new UX provides a modern, Cursor-like experience for strategy-based agent execution with clear visual feedback and smooth animations.
+**The system now correctly follows the "start/end events are indicators, rich data comes separately" pattern from the Rust implementation.**

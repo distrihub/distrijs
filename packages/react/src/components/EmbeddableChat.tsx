@@ -5,10 +5,8 @@ import {
   DistriMessage,
   DistriPart,
   DistriEvent,
-  TaskMessage,
   isDistriMessage,
   isDistriEvent,
-  isTaskMessage,
   MessageRole,
 } from '@distrijs/core';
 import { useChat } from '../useChat';
@@ -80,7 +78,7 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
 
   const {
     messages,
-    taskMessages,
+    executionEvents,
     isLoading,
     isStreaming,
     error,
@@ -234,9 +232,9 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
         {renderedMessages}
         
         {/* Execution Tracker */}
-        {taskMessages.length > 0 && (
+        {executionEvents.length > 0 && (
           <ExecutionTracker
-            taskMessages={taskMessages}
+            events={executionEvents}
             className="mt-4"
           />
         )}

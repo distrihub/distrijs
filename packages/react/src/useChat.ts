@@ -19,10 +19,8 @@ import {
   DistriPart,
   DistriEvent,
   DistriStreamEvent,
-  TaskMessage,
   isDistriMessage,
   isDistriEvent,
-  isTaskMessage,
   convertDistriMessageToA2A,
   decodeA2AStreamEvent,
   createInvokeContext,
@@ -40,8 +38,8 @@ export interface UseChatOptions {
 }
 
 export interface UseChatReturn {
-  messages: (DistriMessage | DistriEvent | TaskMessage)[];
-  taskMessages: TaskMessage[];
+  messages: (DistriMessage | DistriEvent)[];
+  executionEvents: DistriEvent[];
   isLoading: boolean;
   isStreaming: boolean;
   error: Error | null;
@@ -61,8 +59,8 @@ export function useChat({
   agent,
   tools,
 }: UseChatOptions): UseChatReturn {
-  const [messages, setMessages] = useState<(DistriMessage | DistriEvent | TaskMessage)[]>([]);
-  const [taskMessages, setTaskMessages] = useState<TaskMessage[]>([]);
+  const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
+  const [executionEvents, setExecutionEvents] = useState<DistriEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -120,13 +118,13 @@ export function useChat({
 
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
-      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent | TaskMessage)[];
+      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
       
       setMessages(distriMessages);
       
-      // Extract task messages
-      const tasks = distriMessages.filter(isTaskMessage) as TaskMessage[];
-      setTaskMessages(tasks);
+      // Extract execution events
+      const execEvents = distriMessages.filter(isDistriEvent).filter(isExecutionEvent) as DistriEvent[];
+      setExecutionEvents(execEvents);
       
       onMessagesUpdate?.();
     } catch (err) {
@@ -168,19 +166,12 @@ export function useChat({
           // Add new message
           return [...prev, distriMessage];
         }
-      } else if (isTaskMessage(event)) {
-        // Handle TaskMessage separately
-        const taskMessage = event as TaskMessage;
-        setTaskMessages(prevTasks => {
-          const existingIndex = prevTasks.findIndex(msg => msg.id === taskMessage.id);
-          if (existingIndex >= 0) {
-            const updated = [...prevTasks];
-            updated[existingIndex] = taskMessage;
-            return updated;
-          } else {
-            return [...prevTasks, taskMessage];
-          }
-        });
+      } else if (isDistriEvent(event)) {
+        // Handle execution events separately for tracking
+        const distriEvent = event as DistriEvent;
+        if (isExecutionEvent(distriEvent)) {
+          setExecutionEvents(prevEvents => [...prevEvents, distriEvent]);
+        }
         return [...prev, event];
       } else {
         return [...prev, event];
@@ -220,6 +211,21 @@ export function useChat({
 
     onMessage?.(event);
   }, [toolStateHandler, onMessage]);
+
+  // Helper function to determine if an event is execution-related
+  const isExecutionEvent = (event: DistriEvent): boolean => {
+    return [
+      'run_started',
+      'run_finished', 
+      'plan_started',
+      'plan_finished',
+      'step_started',
+      'step_completed',
+      'tool_execution_start',
+      'tool_execution_end',
+      'tool_rejected'
+    ].includes(event.type);
+  };
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
@@ -362,7 +368,7 @@ export function useChat({
 
   return {
     messages,
-    taskMessages,
+    executionEvents,
     isLoading,
     isStreaming,
     error,

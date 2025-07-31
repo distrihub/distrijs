@@ -52,7 +52,6 @@ export type {
 export {
   isDistriMessage,
   isDistriEvent,
-  isTaskMessage,
 } from './types';
 
 export type {
@@ -60,14 +59,25 @@ export type {
   RunStartedEvent,
   RunFinishedEvent,
   RunErrorEvent,
+  PlanStartedEvent,
+  PlanFinishedEvent,
+  PlanPrunedEvent,
+  StepStartedEvent,
+  StepCompletedEvent,
+  ToolExecutionStartEvent,
+  ToolExecutionEndEvent,
+  ToolRejectedEvent,
   TextMessageStartEvent,
   TextMessageContentEvent,
   TextMessageEndEvent,
+  MessageEvent,
+  ExecutionResultEvent,
+  AgentHandoverEvent,
+  FeedbackReceivedEvent,
   ToolCallStartEvent,
   ToolCallArgsEvent,
   ToolCallEndEvent,
   ToolCallResultEvent,
-  AgentHandoverEvent,
 } from './events';
 
 // Message converter utilities
