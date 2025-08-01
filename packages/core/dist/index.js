@@ -17,25 +17,70 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
 
 // src/index.ts
-var index_exports = {};
-__export(index_exports, {
+var src_exports = {};
+__export(src_exports, {
+  A2AProtocolError: () => A2AProtocolError,
   Agent: () => Agent,
+  ApiError: () => ApiError,
+  ConnectionError: () => ConnectionError,
   DistriClient: () => DistriClient,
+  DistriError: () => DistriError,
+  convertA2AArtifactToDistri: () => convertA2AArtifactToDistri,
   convertA2AMessageToDistri: () => convertA2AMessageToDistri,
   convertA2APartToDistri: () => convertA2APartToDistri,
   convertDistriMessageToA2A: () => convertDistriMessageToA2A,
   convertDistriPartToA2A: () => convertDistriPartToA2A,
+  decodeA2AStreamEvent: () => decodeA2AStreamEvent,
   extractTextFromDistriMessage: () => extractTextFromDistriMessage,
   extractToolCallsFromDistriMessage: () => extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage: () => extractToolResultsFromDistriMessage,
   isDistriEvent: () => isDistriEvent,
   isDistriMessage: () => isDistriMessage,
+  processA2AMessagesData: () => processA2AMessagesData,
   uuidv4: () => uuidv4
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(src_exports);
+
+// src/types.ts
+var DistriError = class extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "DistriError";
+  }
+};
+var A2AProtocolError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "A2A_PROTOCOL_ERROR", details);
+    this.name = "A2AProtocolError";
+  }
+};
+var ApiError = class extends DistriError {
+  constructor(message, statusCode, details) {
+    super(message, "API_ERROR", details);
+    this.statusCode = statusCode;
+    this.name = "ApiError";
+  }
+};
+var ConnectionError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "CONNECTION_ERROR", details);
+    this.name = "ConnectionError";
+  }
+};
+function isDistriMessage(event) {
+  return "id" in event && "role" in event && "parts" in event;
+}
+function isDistriEvent(event) {
+  return "type" in event && "metadata" in event;
+}
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
@@ -154,7 +199,8 @@ var A2AClient = class {
           throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
         }
       } catch (e) {
-        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for")) throw e;
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
+          throw e;
         throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
       }
     }
@@ -216,7 +262,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
@@ -307,7 +354,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
@@ -407,35 +455,6 @@ var A2AClient = class {
   }
 };
 
-// src/types.ts
-var DistriError = class extends Error {
-  constructor(message, code, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "DistriError";
-  }
-};
-var A2AProtocolError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "A2A_PROTOCOL_ERROR", details);
-    this.name = "A2AProtocolError";
-  }
-};
-var ApiError = class extends DistriError {
-  constructor(message, statusCode, details) {
-    super(message, "API_ERROR", details);
-    this.statusCode = statusCode;
-    this.name = "ApiError";
-  }
-};
-function isDistriMessage(event) {
-  return "id" in event && "role" in event && "parts" in event;
-}
-function isDistriEvent(event) {
-  return "type" in event && "metadata" in event;
-}
-
 // src/encoder.ts
 function convertA2AMessageToDistri(a2aMessage) {
   const role = a2aMessage.role === "agent" ? "assistant" : "user";
@@ -445,6 +464,80 @@ function convertA2AMessageToDistri(a2aMessage) {
     parts: a2aMessage.parts.map(convertA2APartToDistri),
     created_at: a2aMessage.createdAt
   };
+}
+function convertA2AArtifactToDistri(artifact) {
+  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
+    return null;
+  }
+  const part = artifact.parts[0];
+  if (!part || part.kind !== "data" || !part.data) {
+    return null;
+  }
+  const data = part.data;
+  if (data.type === "llm_response") {
+    const message = {
+      id: data.id || artifact.artifactId,
+      role: "assistant",
+      parts: [],
+      created_at: data.created_at ? new Date(data.created_at).toISOString() : void 0
+    };
+    if (data.content && data.content.trim()) {
+      message.parts.push({ type: "text", text: data.content });
+    }
+    if (data.tool_calls && Array.isArray(data.tool_calls)) {
+      data.tool_calls.forEach((toolCall) => {
+        const parsedInput = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
+        message.parts.push({
+          type: "tool_call",
+          tool_call: {
+            tool_call_id: toolCall.tool_call_id,
+            tool_name: toolCall.tool_name,
+            input: parsedInput
+          }
+        });
+      });
+    }
+    return message;
+  }
+  if (data.type === "tool_results") {
+    const message = {
+      id: data.id || artifact.artifactId,
+      role: "assistant",
+      parts: [],
+      created_at: data.created_at ? new Date(data.created_at).toISOString() : void 0
+    };
+    if (data.results && Array.isArray(data.results)) {
+      data.results.forEach((result) => {
+        let parsedResult = result.result;
+        if (typeof parsedResult === "string") {
+          try {
+            parsedResult = JSON.parse(parsedResult);
+          } catch {
+          }
+        }
+        message.parts.push({
+          type: "tool_result",
+          tool_result: {
+            tool_call_id: result.tool_call_id,
+            result: parsedResult,
+            success: data.success !== false
+          }
+        });
+      });
+    }
+    return message;
+  }
+  return null;
+}
+function decodeA2AStreamEvent(event) {
+  if (event.kind === "message") {
+    return convertA2AMessageToDistri(event);
+  } else if (event.kind === "status-update") {
+    return event;
+  } else if (event.kind === "artifact-update") {
+    return event;
+  }
+  return event;
 }
 function convertA2APartToDistri(a2aPart) {
   switch (a2aPart.kind) {
@@ -536,6 +629,21 @@ function extractToolCallsFromDistriMessage(message) {
 function extractToolResultsFromDistriMessage(message) {
   return message.parts.filter((part) => part.type === "tool_result").map((part) => part.tool_result);
 }
+function processA2AMessagesData(data) {
+  const results = [];
+  for (const item of data) {
+    if (item.kind === "message") {
+      const distriMessage = convertA2AMessageToDistri(item);
+      results.push(distriMessage);
+    } else if (item.artifactId && item.parts) {
+      const distriMessage = convertA2AArtifactToDistri(item);
+      if (distriMessage && "role" in distriMessage) {
+        results.push(distriMessage);
+      }
+    }
+  }
+  return results;
+}
 
 // src/distri-client.ts
 var DistriClient = class {
@@ -574,7 +682,8 @@ var DistriClient = class {
       });
       return agents;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
     }
   }
@@ -600,7 +709,8 @@ var DistriClient = class {
       }
       return agent;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
     }
   }
@@ -634,7 +744,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
     }
   }
@@ -667,7 +778,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
@@ -694,7 +806,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
     }
   }
@@ -706,7 +819,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -724,7 +838,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -990,17 +1105,24 @@ var Agent = class _Agent {
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  A2AProtocolError,
   Agent,
+  ApiError,
+  ConnectionError,
   DistriClient,
+  DistriError,
+  convertA2AArtifactToDistri,
   convertA2AMessageToDistri,
   convertA2APartToDistri,
   convertDistriMessageToA2A,
   convertDistriPartToA2A,
+  decodeA2AStreamEvent,
   extractTextFromDistriMessage,
   extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage,
   isDistriEvent,
   isDistriMessage,
+  processA2AMessagesData,
   uuidv4
 });
 //# sourceMappingURL=index.js.map

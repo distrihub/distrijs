@@ -124,7 +124,8 @@ function useAgent({
   const agentRef = useRef(null);
   const currentAgentIdRef = useRef(null);
   const initializeAgent = useCallback(async () => {
-    if (!client || !agentId) return;
+    if (!client || !agentId)
+      return;
     if (currentAgentIdRef.current === agentId && agentRef.current) {
       return;
     }
@@ -355,7 +356,8 @@ var ApprovalToolCall = ({
   const reason = input.reason || "Approval required";
   const toolCallsToApprove = input.tool_calls || [];
   const handleResponse = async (approved) => {
-    if (isProcessing || status === "completed") return;
+    if (isProcessing || status === "completed")
+      return;
     setIsProcessing(true);
     const result = {
       tool_call_id: toolCall.tool_call_id,
@@ -682,7 +684,8 @@ function useChat({
     toolStateHandler.clearAll();
   }, [toolStateHandler]);
   const fetchMessages = useCallback4(async () => {
-    if (!agent) return;
+    if (!agent)
+      return;
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent);
@@ -748,7 +751,8 @@ function useChat({
     onMessage?.(event);
   }, [onMessage, agent]);
   const sendMessage = useCallback4(async (content) => {
-    if (!agent) return;
+    if (!agent)
+      return;
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
@@ -787,7 +791,8 @@ function useChat({
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
   const sendMessageStream = useCallback4(async (content, role = "user") => {
-    if (!agent) return;
+    if (!agent)
+      return;
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
@@ -957,7 +962,8 @@ function useThreads() {
     }
   }, [clientLoading, clientError, client, fetchThreads]);
   useEffect7(() => {
-    if (!client) return;
+    if (!client)
+      return;
     const interval = setInterval(() => {
       fetchThreads();
     }, 3e4);
@@ -978,19 +984,16 @@ function useThreads() {
 import { useState as useState13, useCallback as useCallback8, useEffect as useEffect11 } from "react";
 
 // src/components/EmbeddableChat.tsx
-import { useState as useState10, useRef as useRef5, useEffect as useEffect9, useMemo as useMemo2 } from "react";
+import { useState as useState11, useRef as useRef5, useEffect as useEffect10, useMemo as useMemo3 } from "react";
 import { MessageSquare } from "lucide-react";
 import { isDistriMessage as isDistriMessage4 } from "@distri/core";
 
 // src/components/Components.tsx
-import React8, { useState as useState9 } from "react";
-import { User, Bot, Settings, Clock, CheckCircle as CheckCircle2, XCircle as XCircle2, Brain as Brain2, Wrench as Wrench2, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import React20, { useState as useState10 } from "react";
+import { User, Bot as Bot3, Settings, Clock as Clock2, CheckCircle as CheckCircle3, XCircle as XCircle2, Brain as Brain2, Wrench as Wrench2, ChevronDown as ChevronDown2, ChevronRight, Loader2 } from "lucide-react";
 
 // src/components/MessageRenderer.tsx
-import React7, { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import React9, { useMemo } from "react";
 import { Copy, Check, Brain, Wrench, FileText } from "lucide-react";
 
 // src/components/ChatContext.tsx
@@ -1019,212 +1022,322 @@ var useChatConfig = () => {
 
 // src/components/MessageRenderer.tsx
 import { isDistriMessage as isDistriMessage2 } from "@distri/core";
-import { jsx as jsx8, jsxs as jsxs2 } from "react/jsx-runtime";
-var CodeBlock = ({ language, children, inline = false }) => {
-  const [copied, setCopied] = React7.useState(false);
-  const handleCopy = async () => {
+
+// src/components/ExecutionSteps.tsx
+import React8 from "react";
+
+// src/components/ui/card.tsx
+import * as React7 from "react";
+import { jsx as jsx8 } from "react/jsx-runtime";
+var Card = React7.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx8(
+  "div",
+  {
+    ref,
+    className: cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    ),
+    ...props
+  }
+));
+Card.displayName = "Card";
+var CardHeader = React7.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx8(
+  "div",
+  {
+    ref,
+    className: cn("flex flex-col space-y-1.5 p-6", className),
+    ...props
+  }
+));
+CardHeader.displayName = "CardHeader";
+var CardTitle = React7.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx8(
+  "h3",
+  {
+    ref,
+    className: cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    ),
+    ...props
+  }
+));
+CardTitle.displayName = "CardTitle";
+var CardDescription = React7.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx8(
+  "p",
+  {
+    ref,
+    className: cn("text-sm text-muted-foreground", className),
+    ...props
+  }
+));
+CardDescription.displayName = "CardDescription";
+var CardContent = React7.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx8("div", { ref, className: cn("p-6 pt-0", className), ...props }));
+CardContent.displayName = "CardContent";
+var CardFooter = React7.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx8(
+  "div",
+  {
+    ref,
+    className: cn("flex items-center p-6 pt-0", className),
+    ...props
+  }
+));
+CardFooter.displayName = "CardFooter";
+
+// src/components/ui/badge.tsx
+import { cva } from "class-variance-authority";
+import { jsx as jsx9 } from "react/jsx-runtime";
+var badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+function Badge({ className, variant, ...props }) {
+  return /* @__PURE__ */ jsx9("div", { className: cn(badgeVariants({ variant }), className), ...props });
+}
+
+// src/components/ExecutionSteps.tsx
+import { CheckCircle as CheckCircle2, Clock, AlertCircle, Play } from "lucide-react";
+import { jsx as jsx10, jsxs as jsxs2 } from "react/jsx-runtime";
+var ExecutionSteps = ({ messages, className = "" }) => {
+  const steps = React8.useMemo(() => {
+    const stepsMap = /* @__PURE__ */ new Map();
+    const allSteps = [];
+    messages.forEach((message) => {
+      message.parts.forEach((part) => {
+        if (part.type === "tool_call") {
+          const toolCall = part.tool_call;
+          const step = {
+            id: toolCall.tool_call_id,
+            type: "tool_call",
+            tool_call: toolCall,
+            status: "running",
+            timestamp: message.created_at
+          };
+          stepsMap.set(toolCall.tool_call_id, step);
+          allSteps.push(step);
+        } else if (part.type === "tool_result") {
+          const toolResult = part.tool_result;
+          const existingStep = stepsMap.get(toolResult.tool_call_id);
+          if (existingStep) {
+            existingStep.tool_result = toolResult;
+            existingStep.status = toolResult.success ? "completed" : "error";
+          } else {
+            const step = {
+              id: toolResult.tool_call_id,
+              type: "tool_result",
+              tool_result: toolResult,
+              status: toolResult.success ? "completed" : "error",
+              timestamp: message.created_at
+            };
+            allSteps.push(step);
+          }
+        } else if (part.type === "text" && part.text.trim()) {
+          const step = {
+            id: `response_${message.id}`,
+            type: "response",
+            content: part.text,
+            status: "completed",
+            timestamp: message.created_at
+          };
+          allSteps.push(step);
+        }
+      });
+    });
+    return allSteps;
+  }, [messages]);
+  const getStepIcon = (step) => {
+    switch (step.status) {
+      case "completed":
+        return /* @__PURE__ */ jsx10(CheckCircle2, { className: "w-4 h-4 text-green-600" });
+      case "error":
+        return /* @__PURE__ */ jsx10(AlertCircle, { className: "w-4 h-4 text-red-600" });
+      case "running":
+        return /* @__PURE__ */ jsx10(Clock, { className: "w-4 h-4 text-blue-600 animate-pulse" });
+      default:
+        return /* @__PURE__ */ jsx10(Play, { className: "w-4 h-4 text-gray-400" });
+    }
+  };
+  const getStepBadgeColor = (step) => {
+    switch (step.status) {
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "error":
+        return "bg-red-100 text-red-800";
+      case "running":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+  const formatToolInput = (input) => {
+    if (typeof input === "string")
+      return input;
+    return JSON.stringify(input, null, 2);
+  };
+  const formatToolResult = (result) => {
+    if (typeof result === "string")
+      return result;
+    if (typeof result === "object") {
+      try {
+        const parsed = typeof result === "string" ? JSON.parse(result) : result;
+        if (parsed.answer)
+          return parsed.answer;
+        if (parsed.results && Array.isArray(parsed.results)) {
+          return parsed.results.map((r) => r.title || r.content || JSON.stringify(r)).join("\n");
+        }
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        return JSON.stringify(result, null, 2);
+      }
+    }
+    return String(result);
+  };
+  if (steps.length === 0) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx10("div", { className: `space-y-3 ${className}`, children: steps.map((step) => /* @__PURE__ */ jsxs2(Card, { className: "border-l-4 border-l-blue-200", children: [
+    /* @__PURE__ */ jsx10(CardHeader, { className: "pb-2", children: /* @__PURE__ */ jsxs2("div", { className: "flex items-center justify-between", children: [
+      /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2", children: [
+        getStepIcon(step),
+        /* @__PURE__ */ jsx10(CardTitle, { className: "text-sm font-medium", children: step.type === "tool_call" && step.tool_call ? `${step.tool_call.tool_name}` : step.type === "response" ? "Final Response" : "Tool Result" })
+      ] }),
+      /* @__PURE__ */ jsx10(Badge, { className: getStepBadgeColor(step), children: step.status })
+    ] }) }),
+    /* @__PURE__ */ jsxs2(CardContent, { className: "pt-0", children: [
+      step.type === "tool_call" && step.tool_call && /* @__PURE__ */ jsxs2("div", { className: "space-y-2", children: [
+        /* @__PURE__ */ jsx10("div", { className: "text-xs text-gray-600", children: "Input:" }),
+        /* @__PURE__ */ jsx10("pre", { className: "text-xs bg-gray-50 p-2 rounded overflow-x-auto", children: formatToolInput(step.tool_call.input) })
+      ] }),
+      step.tool_result && /* @__PURE__ */ jsxs2("div", { className: "space-y-2 mt-2", children: [
+        /* @__PURE__ */ jsx10("div", { className: "text-xs text-gray-600", children: "Result:" }),
+        /* @__PURE__ */ jsx10("div", { className: "text-xs bg-gray-50 p-2 rounded overflow-x-auto max-h-32 overflow-y-auto", children: formatToolResult(step.tool_result.result) })
+      ] }),
+      step.type === "response" && step.content && /* @__PURE__ */ jsx10("div", { className: "text-sm", children: step.content })
+    ] })
+  ] }, step.id)) });
+};
+
+// src/components/MessageRenderer.tsx
+import { Fragment as Fragment2, jsx as jsx11, jsxs as jsxs3 } from "react/jsx-runtime";
+var CodeBlock = ({ code, language = "text", theme = "chatgpt", className = "" }) => {
+  const [copied, setCopied] = React9.useState(false);
+  const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(children);
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2e3);
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
   };
-  const normalizeLanguage = (lang) => {
-    if (!lang) return "text";
-    const langMap = {
-      "js": "javascript",
-      "ts": "typescript",
-      "jsx": "javascript",
-      "tsx": "typescript",
-      "py": "python",
-      "rb": "ruby",
-      "sh": "bash",
-      "shell": "bash",
-      "yml": "yaml",
-      "md": "markdown",
-      "json5": "json",
-      "dockerfile": "docker",
-      "rs": "rust",
-      "go": "go",
-      "php": "php",
-      "cpp": "cpp",
-      "cxx": "cpp",
-      "cc": "cpp",
-      "c++": "cpp",
-      "cs": "csharp",
-      "kt": "kotlin",
-      "swift": "swift",
-      "scala": "scala",
-      "clj": "clojure",
-      "cljs": "clojure",
-      "r": "r",
-      "matlab": "matlab",
-      "sql": "sql",
-      "psql": "sql",
-      "mysql": "sql",
-      "sqlite": "sql"
-    };
-    const normalized = lang.toLowerCase();
-    return langMap[normalized] || normalized;
-  };
-  const normalizedLanguage = normalizeLanguage(language);
-  if (inline) {
-    return /* @__PURE__ */ jsx8("code", { className: "px-1.5 py-0.5 rounded text-sm font-mono bg-muted text-foreground", children });
-  }
-  const lineCount = children.split("\n").length;
-  const shouldShowLineNumbers = lineCount > 4;
-  return /* @__PURE__ */ jsxs2("div", { className: "relative group", children: [
-    /* @__PURE__ */ jsx8("div", { className: "absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsx8(
-      "button",
-      {
-        onClick: handleCopy,
-        className: "p-2 rounded-md bg-muted hover:bg-muted/80",
-        title: "Copy code",
-        children: copied ? /* @__PURE__ */ jsx8(Check, { className: "h-4 w-4" }) : /* @__PURE__ */ jsx8(Copy, { className: "h-4 w-4" })
-      }
-    ) }),
-    /* @__PURE__ */ jsx8("div", { className: "relative", children: /* @__PURE__ */ jsx8(
-      SyntaxHighlighter,
-      {
-        style: oneLight,
-        language: normalizedLanguage,
-        PreTag: "div",
-        showLineNumbers: shouldShowLineNumbers,
-        wrapLines: true,
-        wrapLongLines: true,
-        lineNumberStyle: {
-          minWidth: "2.5em",
-          paddingRight: "1em",
-          color: "#9CA3AF",
-          fontSize: "0.75rem",
-          userSelect: "none"
-        },
-        customStyle: {
-          margin: 0,
-          padding: "0.75rem",
-          background: "hsl(var(--muted))",
-          fontSize: "0.875rem",
-          lineHeight: "1.5",
-          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-          overflowX: "auto",
-          maxWidth: "100%"
-        },
-        codeTagProps: {
-          style: {
-            fontSize: "0.875rem",
-            fontFamily: "inherit"
-          }
-        },
-        children: children.replace(/\n$/, "")
-      }
-    ) })
-  ] });
-};
-var CodeObservationComponent = ({ thought, code }) => {
-  return /* @__PURE__ */ jsxs2("div", { className: "border rounded-lg p-4 my-4 border-border bg-muted/50", children: [
-    /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2 mb-3", children: [
-      /* @__PURE__ */ jsx8(Brain, { className: "h-4 w-4 text-blue-500" }),
-      /* @__PURE__ */ jsx8("span", { className: "text-sm font-medium text-blue-600", children: "Code Observation" })
+  return /* @__PURE__ */ jsxs3("div", { className: `relative my-4 ${className}`, children: [
+    /* @__PURE__ */ jsxs3("div", { className: "flex justify-between items-center bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-t-md border-b", children: [
+      /* @__PURE__ */ jsx11("span", { className: "text-sm text-gray-600 dark:text-gray-300 font-mono", children: language || "text" }),
+      /* @__PURE__ */ jsx11(
+        "button",
+        {
+          onClick: copyToClipboard,
+          className: "flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors",
+          children: copied ? /* @__PURE__ */ jsxs3(Fragment2, { children: [
+            /* @__PURE__ */ jsx11(Check, { className: "w-4 h-4" }),
+            "Copied"
+          ] }) : /* @__PURE__ */ jsxs3(Fragment2, { children: [
+            /* @__PURE__ */ jsx11(Copy, { className: "w-4 h-4" }),
+            "Copy"
+          ] })
+        }
+      )
     ] }),
-    /* @__PURE__ */ jsxs2("div", { className: "mb-3", children: [
-      /* @__PURE__ */ jsx8("div", { className: "text-sm text-muted-foreground mb-2", children: "Thought:" }),
-      /* @__PURE__ */ jsx8("div", { className: "text-sm text-foreground", children: thought })
-    ] }),
-    /* @__PURE__ */ jsxs2("div", { children: [
-      /* @__PURE__ */ jsx8("div", { className: "text-sm text-muted-foreground mb-2", children: "Code:" }),
-      /* @__PURE__ */ jsx8(CodeBlock, { language: "javascript", children: code })
-    ] })
-  ] });
-};
-var ToolCallComponent = ({ toolCall }) => {
-  return /* @__PURE__ */ jsxs2("div", { className: "border rounded-lg p-4 my-4 border-border bg-muted/50", children: [
-    /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2 mb-3", children: [
-      /* @__PURE__ */ jsx8(Wrench, { className: "h-4 w-4 text-green-500" }),
-      /* @__PURE__ */ jsx8("span", { className: "text-sm font-medium text-green-600", children: "Tool Call" })
-    ] }),
-    /* @__PURE__ */ jsxs2("div", { className: "space-y-2", children: [
-      /* @__PURE__ */ jsxs2("div", { children: [
-        /* @__PURE__ */ jsx8("span", { className: "text-sm text-muted-foreground", children: "Tool:" }),
-        /* @__PURE__ */ jsx8("span", { className: "ml-2 text-sm font-mono text-foreground", children: toolCall.tool_name })
-      ] }),
-      /* @__PURE__ */ jsxs2("div", { children: [
-        /* @__PURE__ */ jsx8("span", { className: "text-sm text-muted-foreground", children: "Input:" }),
-        /* @__PURE__ */ jsx8("div", { className: "mt-1", children: /* @__PURE__ */ jsx8(CodeBlock, { language: "json", children: JSON.stringify(toolCall.input, null, 2) }) })
-      ] })
-    ] })
-  ] });
-};
-var ToolResultComponent = ({ toolResult }) => {
-  return /* @__PURE__ */ jsxs2("div", { className: "border rounded-lg p-4 my-4 border-border bg-muted/50", children: [
-    /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2 mb-3", children: [
-      /* @__PURE__ */ jsx8(FileText, { className: "h-4 w-4 text-purple-500" }),
-      /* @__PURE__ */ jsx8("span", { className: "text-sm font-medium text-purple-600", children: "Tool Result" }),
-      /* @__PURE__ */ jsx8("span", { className: `text-xs px-2 py-1 rounded ${toolResult.success ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`, children: toolResult.success ? "Success" : "Error" })
-    ] }),
-    /* @__PURE__ */ jsxs2("div", { className: "space-y-2", children: [
-      toolResult.error && /* @__PURE__ */ jsxs2("div", { children: [
-        /* @__PURE__ */ jsx8("span", { className: "text-sm text-destructive", children: "Error:" }),
-        /* @__PURE__ */ jsx8("div", { className: "mt-1 text-sm text-destructive", children: toolResult.error })
-      ] }),
-      /* @__PURE__ */ jsxs2("div", { children: [
-        /* @__PURE__ */ jsx8("span", { className: "text-sm text-muted-foreground", children: "Result:" }),
-        /* @__PURE__ */ jsx8("div", { className: "mt-1", children: /* @__PURE__ */ jsx8(CodeBlock, { language: "json", children: JSON.stringify(toolResult.result, null, 2) }) })
-      ] })
-    ] })
-  ] });
-};
-var PlanComponent = ({ plan }) => {
-  return /* @__PURE__ */ jsxs2("div", { className: "border rounded-lg p-4 my-4 border-border bg-muted/50", children: [
-    /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2 mb-3", children: [
-      /* @__PURE__ */ jsx8(Brain, { className: "h-4 w-4 text-orange-500" }),
-      /* @__PURE__ */ jsx8("span", { className: "text-sm font-medium text-orange-600", children: "Plan" })
-    ] }),
-    /* @__PURE__ */ jsx8("div", { className: "text-sm text-foreground", children: plan })
+    /* @__PURE__ */ jsx11("div", { className: "bg-gray-50 dark:bg-gray-900 rounded-b-md overflow-hidden", children: /* @__PURE__ */ jsx11("pre", { className: "p-4 overflow-x-auto text-sm", children: /* @__PURE__ */ jsx11("code", { className: "font-mono whitespace-pre-wrap break-words", children: code }) }) })
   ] });
 };
 var PartRenderer = ({ part }) => {
   switch (part.type) {
     case "text":
-      return /* @__PURE__ */ jsx8("div", { className: "whitespace-pre-wrap break-words text-foreground", children: part.text });
-    case "code_observation":
-      return /* @__PURE__ */ jsx8(CodeObservationComponent, { thought: part.thought, code: part.code });
+      return /* @__PURE__ */ jsx11("div", { className: "whitespace-pre-wrap break-words text-foreground", children: part.text });
     case "tool_call":
-      return /* @__PURE__ */ jsx8(ToolCallComponent, { toolCall: part.tool_call });
+      return /* @__PURE__ */ jsxs3("div", { className: "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 my-2", children: [
+        /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-2 mb-2", children: [
+          /* @__PURE__ */ jsx11(Wrench, { className: "w-4 h-4 text-blue-600" }),
+          /* @__PURE__ */ jsxs3("span", { className: "font-medium text-blue-800 dark:text-blue-200", children: [
+            "Tool Call: ",
+            part.tool_call.tool_name
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs3("div", { className: "text-sm text-gray-600 dark:text-gray-300", children: [
+          /* @__PURE__ */ jsx11("strong", { children: "Input:" }),
+          /* @__PURE__ */ jsx11("pre", { className: "mt-1 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto", children: JSON.stringify(part.tool_call.input, null, 2) })
+        ] })
+      ] });
     case "tool_result":
-      return /* @__PURE__ */ jsx8(ToolResultComponent, { toolResult: part.tool_result });
+      return /* @__PURE__ */ jsxs3("div", { className: "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 my-2", children: [
+        /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-2 mb-2", children: [
+          /* @__PURE__ */ jsx11(Check, { className: "w-4 h-4 text-green-600" }),
+          /* @__PURE__ */ jsx11("span", { className: "font-medium text-green-800 dark:text-green-200", children: "Tool Result" })
+        ] }),
+        /* @__PURE__ */ jsx11("div", { className: "text-sm text-gray-600 dark:text-gray-300", children: /* @__PURE__ */ jsx11("pre", { className: "bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto", children: typeof part.tool_result.result === "string" ? part.tool_result.result : JSON.stringify(part.tool_result.result, null, 2) }) })
+      ] });
     case "plan":
-      return /* @__PURE__ */ jsx8(PlanComponent, { plan: part.plan });
+      return /* @__PURE__ */ jsxs3("div", { className: "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 my-2", children: [
+        /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-2 mb-2", children: [
+          /* @__PURE__ */ jsx11(Brain, { className: "w-4 h-4 text-purple-600" }),
+          /* @__PURE__ */ jsx11("span", { className: "font-medium text-purple-800 dark:text-purple-200", children: "Plan" })
+        ] }),
+        /* @__PURE__ */ jsx11("div", { className: "text-sm whitespace-pre-wrap", children: part.plan })
+      ] });
+    case "code_observation":
+      return /* @__PURE__ */ jsxs3("div", { className: "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 my-2", children: [
+        /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-2 mb-2", children: [
+          /* @__PURE__ */ jsx11(FileText, { className: "w-4 h-4 text-yellow-600" }),
+          /* @__PURE__ */ jsx11("span", { className: "font-medium text-yellow-800 dark:text-yellow-200", children: "Code Observation" })
+        ] }),
+        part.thought && /* @__PURE__ */ jsxs3("div", { className: "text-sm text-gray-600 dark:text-gray-300 mb-2", children: [
+          /* @__PURE__ */ jsx11("strong", { children: "Thought:" }),
+          " ",
+          part.thought
+        ] }),
+        /* @__PURE__ */ jsx11(CodeBlock, { code: part.code, language: "text" })
+      ] });
     case "image_url":
-      return /* @__PURE__ */ jsx8("div", { className: "my-4", children: /* @__PURE__ */ jsx8(
+      return /* @__PURE__ */ jsx11("div", { className: "my-2", children: /* @__PURE__ */ jsx11(
         "img",
         {
           src: part.image.url,
           alt: part.image.name || "Image",
-          className: "max-w-full rounded-lg"
+          className: "max-w-full h-auto rounded-lg border"
         }
       ) });
     case "image_bytes":
-      return /* @__PURE__ */ jsx8("div", { className: "my-4", children: /* @__PURE__ */ jsx8(
+      return /* @__PURE__ */ jsx11("div", { className: "my-2", children: /* @__PURE__ */ jsx11(
         "img",
         {
           src: `data:${part.image.mime_type};base64,${part.image.data}`,
           alt: part.image.name || "Image",
-          className: "max-w-full rounded-lg"
+          className: "max-w-full h-auto rounded-lg border"
         }
       ) });
-    case "data":
-      return /* @__PURE__ */ jsx8("div", { className: "my-4", children: /* @__PURE__ */ jsx8(CodeBlock, { language: "json", children: JSON.stringify(part.data, null, 2) }) });
     default:
-      return null;
+      return /* @__PURE__ */ jsx11("div", { className: "bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm", children: /* @__PURE__ */ jsx11("pre", { children: JSON.stringify(part, null, 2) }) });
   }
 };
 var MessageRenderer = ({
   content,
   message,
   className = "",
-  metadata: _metadata
+  metadata: _metadata,
+  messages
+  // Add this prop to detect execution sequences
 }) => {
   let config;
   try {
@@ -1236,6 +1349,17 @@ var MessageRenderer = ({
       enableCodeHighlighting: true,
       theme: "chatgpt"
     };
+  }
+  const isExecutionSequence = useMemo(() => {
+    if (!messages || messages.length <= 1)
+      return false;
+    return messages.some(
+      (msg) => isDistriMessage2(msg) && msg.parts.some((part) => part.type === "tool_call" || part.type === "tool_result")
+    );
+  }, [messages]);
+  if (isExecutionSequence && messages) {
+    const distriMessages = messages.filter(isDistriMessage2);
+    return /* @__PURE__ */ jsx11("div", { className: `space-y-4 ${className}`, children: /* @__PURE__ */ jsx11(ExecutionSteps, { messages: distriMessages }) });
   }
   if (message && isDistriMessage2(message)) {
     const hasToolCalls = message.parts.some((part) => part.type === "tool_call");
@@ -1256,163 +1380,1129 @@ var MessageRenderer = ({
     if (currentTextGroup.length > 0) {
       groupedParts.push(currentTextGroup);
     }
-    return /* @__PURE__ */ jsx8("div", { className: `space-y-2 ${className}`, children: groupedParts.map((group, groupIndex) => {
+    return /* @__PURE__ */ jsx11("div", { className: `space-y-2 ${className}`, children: groupedParts.map((group, groupIndex) => {
       if (group.length > 1 && group.every((part) => part.type === "text")) {
         const concatenatedText = group.map((part) => part.type === "text" ? part.text : "").join("");
-        return /* @__PURE__ */ jsx8("div", { className: "whitespace-pre-wrap break-words text-foreground", children: concatenatedText }, groupIndex);
+        return /* @__PURE__ */ jsx11(
+          MessageRenderer,
+          {
+            content: concatenatedText,
+            className
+          },
+          groupIndex
+        );
       } else {
-        return /* @__PURE__ */ jsx8(PartRenderer, { part: group[0] }, groupIndex);
+        const part = group[0];
+        return /* @__PURE__ */ jsx11(PartRenderer, { part }, groupIndex);
       }
     }) });
   }
-  if (!content) return null;
-  const hasMarkdownSyntax = useMemo(() => {
-    if (!config.enableMarkdown) return false;
-    const markdownPatterns = [
-      /^#{1, 6}\s+/m,
-      // Headers
-      /\*\*.*?\*\*/g,
-      // Bold
-      /\*.*?\*/g,
-      // Italic
-      /`.*?`/g,
-      // Inline code
-      /```[\s\S]*?```/g,
-      // Code blocks
-      /^\s*[-*+]\s+/m,
-      // Lists
-      /^\s*\d+\.\s+/m,
-      // Numbered lists
-      /^\s*>\s+/m,
-      // Blockquotes
-      /\[.*?\]\(.*?\)/g,
-      // Links
-      /!\[.*?\]\(.*?\)/g,
-      // Images
-      /^\|.*\|/m
-      // Tables
-    ];
-    return markdownPatterns.some((pattern) => pattern.test(content));
-  }, [content, config.enableMarkdown]);
-  const looksLikeCode = useMemo(() => {
-    if (!config.enableCodeHighlighting) return false;
-    if (hasMarkdownSyntax) return false;
-    const lines = content.split("\n");
-    const totalLines = lines.length;
-    if (totalLines === 1 && content.length < 50) {
-      return false;
-    }
-    const explicitCodePatterns = [
-      /^#!\//,
-      // Shebang
-      /^\s*(function|const|let|var)\s+\w+\s*[=\(]/,
-      // JS/TS function/variable declarations
-      /^\s*(class|interface)\s+\w+/,
-      // Class/interface declarations
-      /^\s*(import|export)\s+/,
-      // Import/export statements
-      /^\s*(def|class)\s+\w+/,
-      // Python def/class
-      /^\s*(public|private|protected)\s+(class|interface|static)/,
-      // Java/C# declarations
-      /^\s*<\?php/,
-      // PHP opening tag
-      /^\s*<html|<head|<body|<div /,
-      // HTML tags
-      /^\s*\{[\s]*"[\w"]+"\s*:/,
-      // JSON objects (key-value pairs)
-      /^\s*SELECT\s+.*\s+FROM\s+/i,
-      // SQL SELECT statements
-      /^\s*\/\*[\s\S]*\*\//,
-      // Block comments
-      /^[ \t]*\/\/\s*\w+/,
-      // Line comments (with actual content)
-      /;\s*$/
-      // Lines ending with semicolons
-    ];
-    const hasExplicitCode = explicitCodePatterns.some((pattern) => pattern.test(content));
-    if (!hasExplicitCode) return false;
-    const structuralPatterns = [
-      /[{ }[\]()]/g,
-      // Brackets and braces
-      /^\s{2,}/m,
-      // Indentation
-      /=>/g,
-      // Arrow functions
-      /[;:]/g
-      // Semicolons or colons
-    ];
-    const structureCount = structuralPatterns.reduce((count, pattern) => {
-      const matches = content.match(pattern);
-      return count + (matches ? matches.length : 0);
-    }, 0);
-    return structureCount >= 3;
-  }, [content, hasMarkdownSyntax, config.enableCodeHighlighting]);
-  const detectLanguage = useMemo(() => {
-    if (/\b(function|const|let|var|=>|console\.log)\b/.test(content)) return "javascript";
-    if (/\b(interface|type|as\s+\w+)\b/.test(content)) return "typescript";
-    if (/\b(def|import|from|print|if\s+\w+:)\b/.test(content)) return "python";
-    if (/\b(public\s+class|static\s+void|System\.out)\b/.test(content)) return "java";
-    if (/\b(fn|let\s+mut|impl|match)\b/.test(content)) return "rust";
-    if (/\b(func|package|import|fmt\.)\b/.test(content)) return "go";
-    if (/SELECT.*FROM|INSERT.*INTO|UPDATE.*SET/i.test(content)) return "sql";
-    if (/<[^>]+>.*<\/[^>]+>/.test(content)) return "html";
-    if (/\{[^}]*:[^}]*\}/.test(content)) return "json";
-    if (/^#!\/bin\/(bash|sh)/.test(content)) return "bash";
-    if (/\$\w+|echo\s+/.test(content)) return "bash";
-    return "text";
-  }, [content]);
-  if (looksLikeCode) {
-    return /* @__PURE__ */ jsx8(
-      CodeBlock,
-      {
-        language: detectLanguage,
-        children: content
-      }
-    );
+  if (!message && content) {
+    return /* @__PURE__ */ jsx11("div", { className: `whitespace-pre-wrap break-words text-foreground ${className}`, children: content });
   }
-  if (!hasMarkdownSyntax) {
-    return /* @__PURE__ */ jsx8("div", { className: `whitespace-pre-wrap break-words text-foreground ${className}`, children: content });
-  }
-  return /* @__PURE__ */ jsx8("div", { className: `prose prose-sm max-w-none prose-foreground ${className} break-words`, children: /* @__PURE__ */ jsx8(
-    ReactMarkdown,
-    {
-      components: {
-        code({ className: className2, children }) {
-          const match = /language-(\w+)/.exec(className2 || "");
-          const language = match ? match[1] : "";
-          return /* @__PURE__ */ jsx8(
-            CodeBlock,
-            {
-              language,
-              inline: true,
-              children: String(children).replace(/\n$/, "")
-            }
-          );
-        },
-        // Enhanced blockquote styling
-        blockquote({ children }) {
-          return /* @__PURE__ */ jsx8("blockquote", { className: "border-l-4 pl-4 py-2 italic my-4 rounded-r border-primary text-primary bg-primary/10", children });
-        },
-        // Enhanced table styling with overflow handling
-        table({ children }) {
-          return /* @__PURE__ */ jsx8("div", { className: "overflow-x-auto my-4", children: /* @__PURE__ */ jsx8("table", { className: "min-w-full border-collapse rounded-lg overflow-hidden border-border", children }) });
-        },
-        th({ children }) {
-          return /* @__PURE__ */ jsx8("th", { className: "border px-4 py-2 font-semibold text-left border-border bg-muted", children });
-        },
-        td({ children }) {
-          return /* @__PURE__ */ jsx8("td", { className: "border px-4 py-2 border-border", children });
-        }
-      },
-      children: content
-    }
-  ) });
+  return null;
 };
 var MessageRenderer_default = MessageRenderer;
 
+// src/components/ThemeToggle.tsx
+import React10 from "react";
+import { Moon, Sun } from "lucide-react";
+import { jsx as jsx12, jsxs as jsxs4 } from "react/jsx-runtime";
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const dropdownRef = React10.useRef(null);
+  return /* @__PURE__ */ jsx12("div", { className: "relative", ref: dropdownRef, children: /* @__PURE__ */ jsxs4(
+    "button",
+    {
+      onClick: () => setTheme(theme === "light" ? "dark" : "light"),
+      className: "flex items-center justify-center w-9 h-9 rounded-md border bg-background hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
+      children: [
+        /* @__PURE__ */ jsx12(Sun, { className: "h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" }),
+        /* @__PURE__ */ jsx12(Moon, { className: "absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" }),
+        /* @__PURE__ */ jsx12("span", { className: "sr-only", children: "Toggle theme" })
+      ]
+    }
+  ) });
+}
+
+// src/components/AgentList.tsx
+import React11 from "react";
+import { RefreshCw, Play as Play2, Bot } from "lucide-react";
+import { jsx as jsx13, jsxs as jsxs5 } from "react/jsx-runtime";
+var AgentList = ({ agents, onRefresh, onStartChat }) => {
+  const [refreshing, setRefreshing] = React11.useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  return /* @__PURE__ */ jsxs5("div", { className: "", children: [
+    /* @__PURE__ */ jsxs5("div", { className: "flex items-center justify-between p-6 border-b border-border", children: [
+      /* @__PURE__ */ jsx13("h2", { className: "text-xl font-semibold text-foreground", children: "Available Agents" }),
+      /* @__PURE__ */ jsxs5(
+        "button",
+        {
+          onClick: handleRefresh,
+          disabled: refreshing,
+          className: "flex items-center space-x-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors",
+          children: [
+            /* @__PURE__ */ jsx13(RefreshCw, { className: `h-4 w-4 ${refreshing ? "animate-spin" : ""}` }),
+            /* @__PURE__ */ jsx13("span", { children: "Refresh" })
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsx13("div", { className: "p-6", children: agents.length === 0 ? /* @__PURE__ */ jsxs5("div", { className: "text-center py-12", children: [
+      /* @__PURE__ */ jsx13(Bot, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
+      /* @__PURE__ */ jsx13("p", { className: "text-muted-foreground text-lg", children: "No agents available" }),
+      /* @__PURE__ */ jsx13("p", { className: "text-sm text-muted-foreground mt-2", children: "Check your server connection" })
+    ] }) : /* @__PURE__ */ jsx13("div", { className: "grid gap-6 md:grid-cols-2 lg:grid-cols-3", children: agents.map((agent) => /* @__PURE__ */ jsxs5(
+      "div",
+      {
+        className: "bg-card border border-border rounded-xl p-6 hover:border-border/80 hover:bg-card/80 transition-all duration-200",
+        children: [
+          /* @__PURE__ */ jsx13("div", { className: "flex items-start justify-between mb-4", children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-3", children: [
+            /* @__PURE__ */ jsx13("div", { className: "w-12 h-12 bg-primary rounded-full flex items-center justify-center", children: /* @__PURE__ */ jsx13(Bot, { className: "h-6 w-6 text-primary-foreground" }) }),
+            /* @__PURE__ */ jsxs5("div", { children: [
+              /* @__PURE__ */ jsx13("h3", { className: "font-semibold text-foreground text-lg", children: agent.name }),
+              /* @__PURE__ */ jsx13("div", { className: "flex items-center space-x-1", children: /* @__PURE__ */ jsx13("span", { className: "text-xs text-muted-foreground capitalize", children: agent.version ? `v${agent.version}` : "Latest" }) })
+            ] })
+          ] }) }),
+          /* @__PURE__ */ jsx13("p", { className: "text-sm text-muted-foreground mb-6 line-clamp-3", children: agent.description || "No description available" }),
+          /* @__PURE__ */ jsxs5("div", { className: "flex items-center justify-between", children: [
+            /* @__PURE__ */ jsx13("div", { className: "text-xs text-muted-foreground", children: agent.version && `Version ${agent.version}` }),
+            /* @__PURE__ */ jsx13("div", { className: "flex items-center space-x-2", children: /* @__PURE__ */ jsxs5(
+              "button",
+              {
+                onClick: () => onStartChat(agent),
+                className: "flex items-center space-x-1 px-3 py-2 text-xs bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors",
+                children: [
+                  /* @__PURE__ */ jsx13(Play2, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ jsx13("span", { children: "Chat" })
+                ]
+              }
+            ) })
+          ] })
+        ]
+      },
+      agent.name
+    )) }) })
+  ] });
+};
+var AgentList_default = AgentList;
+
+// src/components/AgentSelect.tsx
+import { Bot as Bot2 } from "lucide-react";
+
+// src/components/ui/select.tsx
+import * as React12 from "react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { Check as Check2, ChevronDown, ChevronUp } from "lucide-react";
+import { jsx as jsx14, jsxs as jsxs6 } from "react/jsx-runtime";
+var Select = SelectPrimitive.Root;
+var SelectValue = SelectPrimitive.Value;
+var SelectTrigger = React12.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs6(
+  SelectPrimitive.Trigger,
+  {
+    ref,
+    className: cn(
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      className
+    ),
+    ...props,
+    children: [
+      children,
+      /* @__PURE__ */ jsx14(SelectPrimitive.Icon, { asChild: true, children: /* @__PURE__ */ jsx14(ChevronDown, { className: "h-4 w-4 opacity-50" }) })
+    ]
+  }
+));
+SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
+var SelectScrollUpButton = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx14(
+  SelectPrimitive.ScrollUpButton,
+  {
+    ref,
+    className: cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ jsx14(ChevronUp, { className: "h-4 w-4" })
+  }
+));
+SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
+var SelectScrollDownButton = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx14(
+  SelectPrimitive.ScrollDownButton,
+  {
+    ref,
+    className: cn(
+      "flex cursor-default items-center justify-center py-1",
+      className
+    ),
+    ...props,
+    children: /* @__PURE__ */ jsx14(ChevronDown, { className: "h-4 w-4" })
+  }
+));
+SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
+var SelectContent = React12.forwardRef(({ className, children, position = "popper", ...props }, ref) => /* @__PURE__ */ jsx14(SelectPrimitive.Portal, { children: /* @__PURE__ */ jsxs6(
+  SelectPrimitive.Content,
+  {
+    ref,
+    className: cn(
+      "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+      position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+      className
+    ),
+    position,
+    ...props,
+    children: [
+      /* @__PURE__ */ jsx14(SelectScrollUpButton, {}),
+      /* @__PURE__ */ jsx14(
+        SelectPrimitive.Viewport,
+        {
+          className: cn(
+            "p-1",
+            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          ),
+          children
+        }
+      ),
+      /* @__PURE__ */ jsx14(SelectScrollDownButton, {})
+    ]
+  }
+) }));
+SelectContent.displayName = SelectPrimitive.Content.displayName;
+var SelectLabel = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx14(
+  SelectPrimitive.Label,
+  {
+    ref,
+    className: cn("px-2 py-1.5 text-sm font-semibold", className),
+    ...props
+  }
+));
+SelectLabel.displayName = SelectPrimitive.Label.displayName;
+var SelectItem = React12.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs6(
+  SelectPrimitive.Item,
+  {
+    ref,
+    className: cn(
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      className
+    ),
+    ...props,
+    children: [
+      /* @__PURE__ */ jsx14("span", { className: "absolute right-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx14(SelectPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx14(Check2, { className: "h-4 w-4" }) }) }),
+      /* @__PURE__ */ jsx14(SelectPrimitive.ItemText, { children })
+    ]
+  }
+));
+SelectItem.displayName = SelectPrimitive.Item.displayName;
+var SelectSeparator = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx14(
+  SelectPrimitive.Separator,
+  {
+    ref,
+    className: cn("-mx-1 my-1 h-px bg-muted", className),
+    ...props
+  }
+));
+SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
+
+// src/components/AgentSelect.tsx
+import { jsx as jsx15, jsxs as jsxs7 } from "react/jsx-runtime";
+var AgentSelect = ({
+  agents,
+  selectedAgentId,
+  onAgentSelect,
+  className = "",
+  placeholder = "Select an agent...",
+  disabled = false
+}) => {
+  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
+  return /* @__PURE__ */ jsxs7(Select, { value: selectedAgentId, onValueChange: onAgentSelect, disabled, children: [
+    /* @__PURE__ */ jsx15(SelectTrigger, { className: `w-full ${className} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`, children: /* @__PURE__ */ jsxs7("div", { className: "flex items-center space-x-2", children: [
+      /* @__PURE__ */ jsx15(Bot2, { className: "h-4 w-4" }),
+      /* @__PURE__ */ jsx15(SelectValue, { placeholder, children: selectedAgent?.name || placeholder })
+    ] }) }),
+    /* @__PURE__ */ jsx15(SelectContent, { children: agents.map((agent) => /* @__PURE__ */ jsx15(SelectItem, { value: agent.id, children: /* @__PURE__ */ jsxs7("div", { className: "flex items-center space-x-2", children: [
+      /* @__PURE__ */ jsx15(Bot2, { className: "h-4 w-4" }),
+      /* @__PURE__ */ jsxs7("div", { className: "flex flex-col", children: [
+        /* @__PURE__ */ jsx15("span", { className: "font-medium", children: agent.name }),
+        agent.description && /* @__PURE__ */ jsx15("span", { className: "text-xs text-muted-foreground", children: agent.description })
+      ] })
+    ] }) }, agent.id)) })
+  ] });
+};
+
+// src/components/AgentsPage.tsx
+import { jsx as jsx16, jsxs as jsxs8 } from "react/jsx-runtime";
+var AgentsPage = ({ onStartChat }) => {
+  const { agents, loading, refetch } = useAgents();
+  const handleRefresh = async () => {
+    await refetch();
+  };
+  const handleStartChat = (agent) => {
+    onStartChat?.(agent);
+  };
+  if (loading) {
+    return /* @__PURE__ */ jsx16("div", { className: "h-full bg-background flex items-center justify-center", children: /* @__PURE__ */ jsxs8("div", { className: "flex items-center space-x-2", children: [
+      /* @__PURE__ */ jsx16("div", { className: "h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" }),
+      /* @__PURE__ */ jsx16("span", { className: "text-foreground", children: "Loading agents..." })
+    ] }) });
+  }
+  return /* @__PURE__ */ jsx16("div", { className: "h-full bg-background overflow-auto", children: /* @__PURE__ */ jsxs8("div", { className: "container mx-auto p-6", children: [
+    /* @__PURE__ */ jsx16("h1", { className: "text-3xl font-bold text-foreground mb-6", children: "Agents" }),
+    /* @__PURE__ */ jsx16(
+      AgentList_default,
+      {
+        agents,
+        onRefresh: handleRefresh,
+        onStartChat: handleStartChat
+      }
+    )
+  ] }) });
+};
+var AgentsPage_default = AgentsPage;
+
+// src/components/ui/input.tsx
+import * as React13 from "react";
+import { jsx as jsx17 } from "react/jsx-runtime";
+var Input = React13.forwardRef(
+  ({ className, type, ...props }, ref) => {
+    return /* @__PURE__ */ jsx17(
+      "input",
+      {
+        type,
+        className: cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        ),
+        ref,
+        ...props
+      }
+    );
+  }
+);
+Input.displayName = "Input";
+
+// src/components/ui/dialog.tsx
+import * as React14 from "react";
+import { jsx as jsx18, jsxs as jsxs9 } from "react/jsx-runtime";
+var Dialog = React14.createContext({});
+var DialogTrigger = React14.forwardRef(({ className, children, ...props }, ref) => {
+  const context = React14.useContext(Dialog);
+  return /* @__PURE__ */ jsx18(
+    "button",
+    {
+      ref,
+      className: cn(className),
+      onClick: () => context.onOpenChange?.(true),
+      ...props,
+      children
+    }
+  );
+});
+DialogTrigger.displayName = "DialogTrigger";
+var DialogContent = React14.forwardRef(({ className, children, ...props }, ref) => {
+  const context = React14.useContext(Dialog);
+  if (!context.open)
+    return null;
+  return /* @__PURE__ */ jsx18("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", children: /* @__PURE__ */ jsxs9(
+    "div",
+    {
+      ref,
+      className: cn(
+        "relative z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg",
+        className
+      ),
+      ...props,
+      children: [
+        children,
+        /* @__PURE__ */ jsx18(
+          "button",
+          {
+            className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            onClick: () => context.onOpenChange?.(false),
+            children: /* @__PURE__ */ jsxs9(
+              "svg",
+              {
+                width: "24",
+                height: "24",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: "h-4 w-4",
+                children: [
+                  /* @__PURE__ */ jsx18("path", { d: "m18 6-12 12" }),
+                  /* @__PURE__ */ jsx18("path", { d: "m6 6 12 12" })
+                ]
+              }
+            )
+          }
+        )
+      ]
+    }
+  ) });
+});
+DialogContent.displayName = "DialogContent";
+var DialogHeader = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx18(
+  "div",
+  {
+    ref,
+    className: cn(
+      "flex flex-col space-y-1.5 text-center sm:text-left",
+      className
+    ),
+    ...props
+  }
+));
+DialogHeader.displayName = "DialogHeader";
+var DialogTitle = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx18(
+  "h3",
+  {
+    ref,
+    className: cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    ),
+    ...props
+  }
+));
+DialogTitle.displayName = "DialogTitle";
+
+// src/components/ui/textarea.tsx
+import * as React15 from "react";
+import { jsx as jsx19 } from "react/jsx-runtime";
+var Textarea = React15.forwardRef(
+  ({ className, ...props }, ref) => {
+    return /* @__PURE__ */ jsx19(
+      "textarea",
+      {
+        className: cn(
+          "flex min-h-[80px] w-full rounded-md border-none bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 resize-none",
+          className
+        ),
+        ref,
+        ...props
+      }
+    );
+  }
+);
+Textarea.displayName = "Textarea";
+
+// src/components/ui/sidebar.tsx
+import * as React19 from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva as cva3 } from "class-variance-authority";
+import { PanelLeft } from "lucide-react";
+
+// src/components/ui/separator.tsx
+import * as React16 from "react";
+import * as SeparatorPrimitive from "@radix-ui/react-separator";
+import { jsx as jsx20 } from "react/jsx-runtime";
+var Separator2 = React16.forwardRef(
+  ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => /* @__PURE__ */ jsx20(
+    SeparatorPrimitive.Root,
+    {
+      ref,
+      decorative,
+      orientation,
+      className: cn(
+        "shrink-0 bg-border",
+        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+        className
+      ),
+      ...props
+    }
+  )
+);
+Separator2.displayName = SeparatorPrimitive.Root.displayName;
+
+// src/components/ui/sheet.tsx
+import * as React17 from "react";
+import * as SheetPrimitive from "@radix-ui/react-dialog";
+import { cva as cva2 } from "class-variance-authority";
+import { X } from "lucide-react";
+import { jsx as jsx21, jsxs as jsxs10 } from "react/jsx-runtime";
+var Sheet = SheetPrimitive.Root;
+var SheetPortal = SheetPrimitive.Portal;
+var SheetOverlay = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx21(
+  SheetPrimitive.Overlay,
+  {
+    className: cn(
+      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    ),
+    ...props,
+    ref
+  }
+));
+SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
+var sheetVariants = cva2(
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  {
+    variants: {
+      side: {
+        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        bottom: "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+        right: "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm"
+      }
+    },
+    defaultVariants: {
+      side: "right"
+    }
+  }
+);
+var SheetContent = React17.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxs10(SheetPortal, { children: [
+  /* @__PURE__ */ jsx21(SheetOverlay, {}),
+  /* @__PURE__ */ jsxs10(
+    SheetPrimitive.Content,
+    {
+      ref,
+      className: cn(sheetVariants({ side }), className),
+      ...props,
+      children: [
+        children,
+        /* @__PURE__ */ jsxs10(SheetPrimitive.Close, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
+          /* @__PURE__ */ jsx21(X, { className: "h-4 w-4" }),
+          /* @__PURE__ */ jsx21("span", { className: "sr-only", children: "Close" })
+        ] })
+      ]
+    }
+  )
+] }));
+SheetContent.displayName = SheetPrimitive.Content.displayName;
+var SheetHeader = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx21(
+  "div",
+  {
+    className: cn(
+      "flex flex-col space-y-2 text-center sm:text-left",
+      className
+    ),
+    ...props
+  }
+);
+SheetHeader.displayName = "SheetHeader";
+var SheetFooter = ({
+  className,
+  ...props
+}) => /* @__PURE__ */ jsx21(
+  "div",
+  {
+    className: cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    ),
+    ...props
+  }
+);
+SheetFooter.displayName = "SheetFooter";
+var SheetTitle = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx21(
+  SheetPrimitive.Title,
+  {
+    ref,
+    className: cn("text-lg font-semibold text-foreground", className),
+    ...props
+  }
+));
+SheetTitle.displayName = SheetPrimitive.Title.displayName;
+var SheetDescription = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx21(
+  SheetPrimitive.Description,
+  {
+    ref,
+    className: cn("text-sm text-muted-foreground", className),
+    ...props
+  }
+));
+SheetDescription.displayName = SheetPrimitive.Description.displayName;
+
+// src/components/ui/skeleton.tsx
+import { jsx as jsx22 } from "react/jsx-runtime";
+function Skeleton({
+  className,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx22(
+    "div",
+    {
+      className: cn("animate-pulse rounded-md bg-muted", className),
+      ...props
+    }
+  );
+}
+
+// src/components/ui/tooltip.tsx
+import * as React18 from "react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { jsx as jsx23 } from "react/jsx-runtime";
+var TooltipProvider = TooltipPrimitive.Provider;
+var Tooltip = TooltipPrimitive.Root;
+var TooltipTrigger = TooltipPrimitive.Trigger;
+var TooltipContent = React18.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx23(
+  TooltipPrimitive.Content,
+  {
+    ref,
+    sideOffset,
+    className: cn(
+      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    ),
+    ...props
+  }
+));
+TooltipContent.displayName = TooltipPrimitive.Content.displayName;
+
+// src/components/ui/sidebar.tsx
+import { jsx as jsx24, jsxs as jsxs11 } from "react/jsx-runtime";
+var SIDEBAR_COOKIE_NAME = "sidebar:state";
+var SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+var SIDEBAR_WIDTH = "16rem";
+var SIDEBAR_WIDTH_MOBILE = "18rem";
+var SIDEBAR_WIDTH_ICON = "3rem";
+var SIDEBAR_KEYBOARD_SHORTCUT = "b";
+var SidebarContext = React19.createContext(null);
+function useSidebar() {
+  const context = React19.useContext(SidebarContext);
+  if (!context) {
+    throw new Error("useSidebar must be used within a SidebarProvider.");
+  }
+  return context;
+}
+var SidebarProvider = React19.forwardRef(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
+  const [_open, _setOpen] = React19.useState(defaultOpen);
+  const open = openProp ?? _open;
+  const setOpen = React19.useCallback(
+    (value) => {
+      const openState = typeof value === "function" ? value(open) : value;
+      if (setOpenProp) {
+        setOpenProp(openState);
+      } else {
+        _setOpen(openState);
+      }
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+    },
+    [setOpenProp, open]
+  );
+  const [openMobile, setOpenMobile] = React19.useState(false);
+  const [isMobile, setIsMobile] = React19.useState(false);
+  React19.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768 && open) {
+        setOpen(false);
+      }
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, [setOpen, open]);
+  React19.useEffect(() => {
+    const savedState = localStorage.getItem(SIDEBAR_COOKIE_NAME);
+    if (savedState !== null) {
+      setOpen(savedState === "true");
+    }
+  }, [setOpen]);
+  React19.useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setOpen(!open);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, setOpen]);
+  const toggleSidebar = React19.useCallback(() => {
+    return isMobile ? setOpenMobile((open2) => !open2) : setOpen((open2) => !open2);
+  }, [isMobile, setOpen, setOpenMobile]);
+  const state = open ? "expanded" : "collapsed";
+  const contextValue = React19.useMemo(
+    () => ({
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar
+    }),
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+  );
+  return /* @__PURE__ */ jsx24(SidebarContext.Provider, { value: contextValue, children: /* @__PURE__ */ jsx24(TooltipProvider, { delayDuration: 0, children: /* @__PURE__ */ jsx24(
+    "div",
+    {
+      style: {
+        "--sidebar-width": SIDEBAR_WIDTH,
+        "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+        ...style
+      },
+      className: cn(
+        "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+        className
+      ),
+      ref,
+      ...props,
+      children
+    }
+  ) }) });
+});
+SidebarProvider.displayName = "SidebarProvider";
+var Sidebar = React19.forwardRef(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  if (collapsible === "none") {
+    return /* @__PURE__ */ jsx24(
+      "div",
+      {
+        className: cn(
+          "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
+          className
+        ),
+        ref,
+        ...props,
+        children
+      }
+    );
+  }
+  if (isMobile) {
+    return /* @__PURE__ */ jsx24(Sheet, { open: openMobile, onOpenChange: setOpenMobile, ...props, children: /* @__PURE__ */ jsx24(
+      SheetContent,
+      {
+        "data-sidebar": "sidebar",
+        "data-mobile": "true",
+        className: "w-[--sidebar-width-mobile] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
+        style: {
+          "--sidebar-width": SIDEBAR_WIDTH_MOBILE
+        },
+        side,
+        children: /* @__PURE__ */ jsx24("div", { className: "flex h-full w-full flex-col", children })
+      }
+    ) });
+  }
+  return /* @__PURE__ */ jsxs11(
+    "div",
+    {
+      ref,
+      className: "group peer hidden md:block text-sidebar-foreground",
+      "data-state": state,
+      "data-collapsible": state === "collapsed" ? collapsible : "",
+      "data-variant": variant,
+      "data-side": side,
+      children: [
+        /* @__PURE__ */ jsx24(
+          "div",
+          {
+            className: cn(
+              "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
+              "group-data-[collapsible=offcanvas]:w-0",
+              "group-data-[side=right]:rotate-180",
+              variant === "floating" || variant === "inset" ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+            )
+          }
+        ),
+        /* @__PURE__ */ jsx24(
+          "div",
+          {
+            className: cn(
+              "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+              side === "left" ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]" : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
+              // Adjust the padding for floating and inset variants.
+              variant === "floating" || variant === "inset" ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]" : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+              className
+            ),
+            ...props,
+            children: /* @__PURE__ */ jsx24(
+              "div",
+              {
+                "data-sidebar": "sidebar",
+                className: "flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow",
+                children
+              }
+            )
+          }
+        )
+      ]
+    }
+  );
+});
+Sidebar.displayName = "Sidebar";
+var SidebarTrigger = React19.forwardRef(({ className, onClick, ...props }, ref) => {
+  const { toggleSidebar } = useSidebar();
+  return /* @__PURE__ */ jsxs11(
+    Button,
+    {
+      ref,
+      "data-sidebar": "trigger",
+      variant: "ghost",
+      size: "icon",
+      className: cn("h-7 w-7", className),
+      onClick: (event) => {
+        onClick?.(event);
+        toggleSidebar();
+      },
+      ...props,
+      children: [
+        /* @__PURE__ */ jsx24(PanelLeft, {}),
+        /* @__PURE__ */ jsx24("span", { className: "sr-only", children: "Toggle Sidebar" })
+      ]
+    }
+  );
+});
+SidebarTrigger.displayName = "SidebarTrigger";
+var SidebarRail = React19.forwardRef(({ className, ...props }, ref) => {
+  const { toggleSidebar } = useSidebar();
+  return /* @__PURE__ */ jsx24(
+    "button",
+    {
+      ref,
+      "data-sidebar": "rail",
+      "aria-label": "Toggle Sidebar",
+      tabIndex: -1,
+      onClick: toggleSidebar,
+      title: "Toggle Sidebar",
+      className: cn(
+        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] after:-translate-x-1/2 after:bg-sidebar-border hover:after:bg-sidebar-accent-foreground group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
+        "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
+        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
+        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
+        "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
+        "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarRail.displayName = "SidebarRail";
+var SidebarInset = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "main",
+    {
+      ref,
+      className: cn(
+        "relative flex min-h-svh flex-1 flex-col bg-background",
+        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarInset.displayName = "SidebarInset";
+var SidebarHeader = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "div",
+    {
+      ref,
+      "data-sidebar": "header",
+      className: cn("flex flex-col gap-2 p-2", className),
+      ...props
+    }
+  );
+});
+SidebarHeader.displayName = "SidebarHeader";
+var SidebarFooter = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "div",
+    {
+      ref,
+      "data-sidebar": "footer",
+      className: cn("flex flex-col gap-2 p-2", className),
+      ...props
+    }
+  );
+});
+SidebarFooter.displayName = "SidebarFooter";
+var SidebarSeparator = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    Separator2,
+    {
+      ref,
+      "data-sidebar": "separator",
+      className: cn("mx-2 w-auto bg-sidebar-border", className),
+      ...props
+    }
+  );
+});
+SidebarSeparator.displayName = "SidebarSeparator";
+var SidebarContent = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "div",
+    {
+      ref,
+      "data-sidebar": "content",
+      className: cn(
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarContent.displayName = "SidebarContent";
+var SidebarGroup = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "div",
+    {
+      ref,
+      "data-sidebar": "group",
+      className: cn("relative flex w-full min-w-0 flex-col p-2", className),
+      ...props
+    }
+  );
+});
+SidebarGroup.displayName = "SidebarGroup";
+var SidebarGroupLabel = React19.forwardRef(({ className, asChild = false, ...props }, ref) => {
+  const Comp = asChild ? Slot : "div";
+  return /* @__PURE__ */ jsx24(
+    Comp,
+    {
+      ref,
+      "data-sidebar": "group-label",
+      className: cn(
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarGroupLabel.displayName = "SidebarGroupLabel";
+var SidebarGroupAction = React19.forwardRef(({ className, asChild = false, ...props }, ref) => {
+  const Comp = asChild ? Slot : "button";
+  return /* @__PURE__ */ jsx24(
+    Comp,
+    {
+      ref,
+      "data-sidebar": "group-action",
+      className: cn(
+        "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        // Increases the hit area of the button on mobile.
+        "after:absolute after:-inset-2 after:md:hidden",
+        "group-data-[collapsible=icon]:hidden",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarGroupAction.displayName = "SidebarGroupAction";
+var SidebarGroupContent = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "div",
+    {
+      ref,
+      "data-sidebar": "group-content",
+      className: cn("w-full text-sm", className),
+      ...props
+    }
+  );
+});
+SidebarGroupContent.displayName = "SidebarGroupContent";
+var SidebarMenu = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "ul",
+    {
+      ref,
+      "data-sidebar": "menu",
+      className: cn("flex w-full min-w-0 flex-col gap-1", className),
+      ...props
+    }
+  );
+});
+SidebarMenu.displayName = "SidebarMenu";
+var SidebarMenuItem = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "li",
+    {
+      ref,
+      "data-sidebar": "menu-item",
+      className: cn("group/menu-item relative", className),
+      ...props
+    }
+  );
+});
+SidebarMenuItem.displayName = "SidebarMenuItem";
+var sidebarMenuButtonVariants = cva3(
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        outline: "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]"
+      },
+      size: {
+        default: "h-8 text-sm",
+        sm: "h-7 text-xs",
+        lg: "h-12 text-sm group-data-[collapsible=icon]:!size-8"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
+    }
+  }
+);
+var SidebarMenuButton = React19.forwardRef(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
+  const Comp = asChild ? Slot : "button";
+  const { isMobile, state } = useSidebar();
+  const button = /* @__PURE__ */ jsx24(
+    Comp,
+    {
+      ref,
+      "data-sidebar": "menu-button",
+      "data-size": size,
+      "data-active": isActive,
+      className: cn(sidebarMenuButtonVariants({ variant, size }), className),
+      ...props
+    }
+  );
+  if (!tooltip) {
+    return button;
+  }
+  if (typeof tooltip === "string") {
+    tooltip = {
+      children: tooltip
+    };
+  }
+  return /* @__PURE__ */ jsxs11(Tooltip, { children: [
+    /* @__PURE__ */ jsx24(TooltipTrigger, { asChild: true, children: button }),
+    /* @__PURE__ */ jsx24(
+      TooltipContent,
+      {
+        side: "right",
+        align: "center",
+        hidden: state !== "collapsed" || isMobile,
+        ...tooltip
+      }
+    )
+  ] });
+});
+SidebarMenuButton.displayName = "SidebarMenuButton";
+var SidebarMenuAction = React19.forwardRef(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
+  const Comp = asChild ? Slot : "button";
+  return /* @__PURE__ */ jsx24(
+    Comp,
+    {
+      ref,
+      "data-sidebar": "menu-action",
+      className: cn(
+        "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
+        // Increases the hit area of the button on mobile.
+        "after:absolute after:-inset-2 after:md:hidden",
+        "peer-data-[size=sm]/menu-button:top-1",
+        "peer-data-[size=default]/menu-button:top-1.5",
+        "peer-data-[size=lg]/menu-button:top-2.5",
+        "group-data-[collapsible=icon]:hidden",
+        showOnHover && "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarMenuAction.displayName = "SidebarMenuAction";
+var SidebarMenuBadge = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "div",
+    {
+      ref,
+      "data-sidebar": "menu-badge",
+      className: cn(
+        "absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums text-sidebar-foreground select-none pointer-events-none",
+        "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
+        "peer-data-[size=sm]/menu-button:top-1",
+        "peer-data-[size=default]/menu-button:top-1.5",
+        "peer-data-[size=lg]/menu-button:top-2.5",
+        "group-data-[collapsible=icon]:hidden",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarMenuBadge.displayName = "SidebarMenuBadge";
+var SidebarMenuSkeleton = React19.forwardRef(({ className, showIcon = false, ...props }, ref) => {
+  const width = React19.useMemo(() => {
+    return `${Math.floor(Math.random() * 40) + 50}%`;
+  }, []);
+  return /* @__PURE__ */ jsxs11(
+    "div",
+    {
+      ref,
+      "data-sidebar": "menu-skeleton",
+      className: cn("rounded-md h-8 flex gap-2 px-2 items-center", className),
+      ...props,
+      children: [
+        showIcon && /* @__PURE__ */ jsx24(Skeleton, { className: "size-4 rounded-md", "data-sidebar": "menu-skeleton-icon" }),
+        /* @__PURE__ */ jsx24(
+          Skeleton,
+          {
+            className: "h-4 flex-1 max-w-[--skeleton-width]",
+            "data-sidebar": "menu-skeleton-text",
+            style: {
+              "--skeleton-width": width
+            }
+          }
+        )
+      ]
+    }
+  );
+});
+SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton";
+var SidebarMenuSub = React19.forwardRef(({ className, ...props }, ref) => {
+  return /* @__PURE__ */ jsx24(
+    "ul",
+    {
+      ref,
+      "data-sidebar": "menu-sub",
+      className: cn(
+        "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5",
+        "group-data-[collapsible=icon]:hidden",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarMenuSub.displayName = "SidebarMenuSub";
+var SidebarMenuSubItem = React19.forwardRef(({ ...props }, ref) => {
+  return /* @__PURE__ */ jsx24("li", { ref, ...props });
+});
+SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
+var SidebarMenuSubButton = React19.forwardRef(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
+  const Comp = asChild ? Slot : "a";
+  return /* @__PURE__ */ jsx24(
+    Comp,
+    {
+      ref,
+      "data-sidebar": "menu-sub-button",
+      "data-size": size,
+      "data-active": isActive,
+      className: cn(
+        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-foreground/50",
+        "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+        size === "sm" && "text-xs",
+        size === "md" && "text-sm",
+        "group-data-[collapsible=icon]:hidden",
+        className
+      ),
+      ...props
+    }
+  );
+});
+SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
+
 // src/components/Components.tsx
-import { jsx as jsx9, jsxs as jsxs3 } from "react/jsx-runtime";
+import { jsx as jsx25, jsxs as jsxs12 } from "react/jsx-runtime";
 var MessageContainer = ({ children, align = "left", className = "", backgroundColor }) => {
   const justifyClass = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
   const getBgClass = (color) => {
@@ -1428,7 +2518,7 @@ var MessageContainer = ({ children, align = "left", className = "", backgroundCo
     }
   };
   const bgClass = backgroundColor ? getBgClass(backgroundColor) : "";
-  return /* @__PURE__ */ jsx9("div", { className: `flex ${justifyClass} w-full ${bgClass} ${className}`, children: /* @__PURE__ */ jsx9("div", { className: "w-full max-w-4xl mx-auto", children }) });
+  return /* @__PURE__ */ jsx25("div", { className: `flex ${justifyClass} w-full ${bgClass} ${className}`, children: /* @__PURE__ */ jsx25("div", { className: "w-full max-w-4xl mx-auto", children }) });
 };
 var UserMessage = ({
   content,
@@ -1437,11 +2527,11 @@ var UserMessage = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ jsx9(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ jsxs3("div", { className: "flex items-start gap-4 py-3 px-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "distri-avatar distri-avatar-user", children: avatar || /* @__PURE__ */ jsx9(User, { className: "h-4 w-4" }) }),
-    /* @__PURE__ */ jsxs3("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsx9("div", { className: "text-sm font-medium text-foreground mb-2", children: "You" }),
-      /* @__PURE__ */ jsx9("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx9(
+  return /* @__PURE__ */ jsx25(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ jsxs12("div", { className: "flex items-start gap-4 py-3 px-2", children: [
+    /* @__PURE__ */ jsx25("div", { className: "distri-avatar distri-avatar-user", children: avatar || /* @__PURE__ */ jsx25(User, { className: "h-4 w-4" }) }),
+    /* @__PURE__ */ jsxs12("div", { className: "flex-1 min-w-0", children: [
+      /* @__PURE__ */ jsx25("div", { className: "text-sm font-medium text-foreground mb-2", children: "You" }),
+      /* @__PURE__ */ jsx25("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx25(
         MessageRenderer_default,
         {
           content,
@@ -1449,7 +2539,7 @@ var UserMessage = ({
           className: "text-foreground"
         }
       ) }),
-      timestamp && /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1463,18 +2553,18 @@ var AssistantMessage = ({
   avatar,
   name = "Assistant"
 }) => {
-  return /* @__PURE__ */ jsx9(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ jsxs3("div", { className: "flex items-start gap-4 py-3 px-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ jsx9(Bot, { className: "h-4 w-4" }) }),
-    /* @__PURE__ */ jsxs3("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsxs3("div", { className: "text-sm font-medium text-foreground mb-2 flex items-center gap-2", children: [
+  return /* @__PURE__ */ jsx25(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ jsxs12("div", { className: "flex items-start gap-4 py-3 px-2", children: [
+    /* @__PURE__ */ jsx25("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ jsx25(Bot3, { className: "h-4 w-4" }) }),
+    /* @__PURE__ */ jsxs12("div", { className: "flex-1 min-w-0", children: [
+      /* @__PURE__ */ jsxs12("div", { className: "text-sm font-medium text-foreground mb-2 flex items-center gap-2", children: [
         name,
-        isStreaming && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
-          /* @__PURE__ */ jsx9("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
-          /* @__PURE__ */ jsx9("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
-          /* @__PURE__ */ jsx9("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150" })
+        isStreaming && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
+          /* @__PURE__ */ jsx25("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
+          /* @__PURE__ */ jsx25("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
+          /* @__PURE__ */ jsx25("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150" })
         ] })
       ] }),
-      /* @__PURE__ */ jsx9("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx9(
+      /* @__PURE__ */ jsx25("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx25(
         MessageRenderer_default,
         {
           content,
@@ -1482,7 +2572,7 @@ var AssistantMessage = ({
           className: "text-foreground"
         }
       ) }),
-      timestamp && /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1496,7 +2586,7 @@ var AssistantWithToolCalls = ({
   avatar,
   name = "Assistant"
 }) => {
-  const [expandedTools, setExpandedTools] = useState9(/* @__PURE__ */ new Set());
+  const [expandedTools, setExpandedTools] = useState10(/* @__PURE__ */ new Set());
   const toggleToolExpansion = (toolCallId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
@@ -1508,7 +2598,7 @@ var AssistantWithToolCalls = ({
       return newSet;
     });
   };
-  React8.useEffect(() => {
+  React20.useEffect(() => {
     const newExpanded = new Set(expandedTools);
     toolCallStates.forEach((toolCallState) => {
       if (toolCallState.status === "running" || toolCallState.status === "error" || toolCallState.status === "user_action_required") {
@@ -1517,18 +2607,18 @@ var AssistantWithToolCalls = ({
     });
     setExpandedTools(newExpanded);
   }, [toolCallStates]);
-  return /* @__PURE__ */ jsx9(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ jsxs3("div", { className: "flex items-start gap-4 py-3 px-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ jsx9(Bot, { className: "h-4 w-4" }) }),
-    /* @__PURE__ */ jsxs3("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsxs3("div", { className: "text-sm font-medium text-foreground mb-2 flex items-center gap-2", children: [
+  return /* @__PURE__ */ jsx25(MessageContainer, { align: "center", className, backgroundColor: "#444654", children: /* @__PURE__ */ jsxs12("div", { className: "flex items-start gap-4 py-3 px-2", children: [
+    /* @__PURE__ */ jsx25("div", { className: "distri-avatar distri-avatar-assistant", children: avatar || /* @__PURE__ */ jsx25(Bot3, { className: "h-4 w-4" }) }),
+    /* @__PURE__ */ jsxs12("div", { className: "flex-1 min-w-0", children: [
+      /* @__PURE__ */ jsxs12("div", { className: "text-sm font-medium text-foreground mb-2 flex items-center gap-2", children: [
         name,
-        isStreaming && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
-          /* @__PURE__ */ jsx9("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
-          /* @__PURE__ */ jsx9("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
-          /* @__PURE__ */ jsx9("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150" })
+        isStreaming && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
+          /* @__PURE__ */ jsx25("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
+          /* @__PURE__ */ jsx25("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
+          /* @__PURE__ */ jsx25("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150" })
         ] })
       ] }),
-      /* @__PURE__ */ jsx9("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx9(
+      /* @__PURE__ */ jsx25("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx25(
         MessageRenderer_default,
         {
           content,
@@ -1536,72 +2626,72 @@ var AssistantWithToolCalls = ({
           className: "text-foreground"
         }
       ) }),
-      toolCallStates.length > 0 && /* @__PURE__ */ jsxs3("div", { className: "mt-4 space-y-3", children: [
-        /* @__PURE__ */ jsx9("div", { className: "text-sm font-medium text-foreground", children: "Tool Calls" }),
+      toolCallStates.length > 0 && /* @__PURE__ */ jsxs12("div", { className: "mt-4 space-y-3", children: [
+        /* @__PURE__ */ jsx25("div", { className: "text-sm font-medium text-foreground", children: "Tool Calls" }),
         toolCallStates.map((toolCallState, index) => {
           const isExpanded = expandedTools.has(toolCallState.tool_call_id);
           const hasResult = toolCallState?.result !== void 0;
           const hasError = toolCallState?.error !== void 0;
           const canCollapse = hasResult || hasError || toolCallState?.status === "completed" || toolCallState?.status === "error";
-          return /* @__PURE__ */ jsxs3("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
-            /* @__PURE__ */ jsxs3("div", { className: "p-3 border-b border-border", children: [
-              /* @__PURE__ */ jsxs3("div", { className: "flex items-center justify-between", children: [
-                /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-2", children: [
-                  /* @__PURE__ */ jsx9(
+          return /* @__PURE__ */ jsxs12("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
+            /* @__PURE__ */ jsxs12("div", { className: "p-3 border-b border-border", children: [
+              /* @__PURE__ */ jsxs12("div", { className: "flex items-center justify-between", children: [
+                /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-2", children: [
+                  /* @__PURE__ */ jsx25(
                     "button",
                     {
                       onClick: () => toggleToolExpansion(toolCallState.tool_call_id),
                       className: "p-1 hover:bg-muted rounded transition-colors",
                       disabled: !canCollapse,
-                      children: canCollapse ? isExpanded ? /* @__PURE__ */ jsx9(ChevronDown, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ jsx9(ChevronRight, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ jsx9("div", { className: "h-3 w-3" })
+                      children: canCollapse ? isExpanded ? /* @__PURE__ */ jsx25(ChevronDown2, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ jsx25(ChevronRight, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ jsx25("div", { className: "h-3 w-3" })
                     }
                   ),
-                  /* @__PURE__ */ jsx9(Wrench2, { className: "h-4 w-4 text-green-500" }),
-                  /* @__PURE__ */ jsx9("span", { className: "text-sm font-medium text-foreground", children: toolCallState?.tool_name })
+                  /* @__PURE__ */ jsx25(Wrench2, { className: "h-4 w-4 text-green-500" }),
+                  /* @__PURE__ */ jsx25("span", { className: "text-sm font-medium text-foreground", children: toolCallState?.tool_name })
                 ] }),
-                /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-2", children: [
-                  toolCallState?.status === "pending" && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-yellow-600", children: [
-                    /* @__PURE__ */ jsx9(Clock, { className: "h-3 w-3" }),
+                /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-2", children: [
+                  toolCallState?.status === "pending" && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-yellow-600", children: [
+                    /* @__PURE__ */ jsx25(Clock2, { className: "h-3 w-3" }),
                     "Pending"
                   ] }),
-                  toolCallState?.status === "running" && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-blue-600", children: [
-                    /* @__PURE__ */ jsx9(Loader2, { className: "h-3 w-3 animate-spin" }),
+                  toolCallState?.status === "running" && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-blue-600", children: [
+                    /* @__PURE__ */ jsx25(Loader2, { className: "h-3 w-3 animate-spin" }),
                     "Running"
                   ] }),
-                  toolCallState?.status === "completed" && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
-                    /* @__PURE__ */ jsx9(CheckCircle2, { className: "h-3 w-3" }),
+                  toolCallState?.status === "completed" && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-green-600", children: [
+                    /* @__PURE__ */ jsx25(CheckCircle3, { className: "h-3 w-3" }),
                     "Completed"
                   ] }),
-                  toolCallState?.status === "error" && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
-                    /* @__PURE__ */ jsx9(XCircle2, { className: "h-3 w-3" }),
+                  toolCallState?.status === "error" && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-red-600", children: [
+                    /* @__PURE__ */ jsx25(XCircle2, { className: "h-3 w-3" }),
                     "Failed"
                   ] }),
-                  toolCallState?.status === "user_action_required" && /* @__PURE__ */ jsxs3("div", { className: "flex items-center gap-1 text-xs text-orange-600", children: [
-                    /* @__PURE__ */ jsx9(Wrench2, { className: "h-3 w-3" }),
+                  toolCallState?.status === "user_action_required" && /* @__PURE__ */ jsxs12("div", { className: "flex items-center gap-1 text-xs text-orange-600", children: [
+                    /* @__PURE__ */ jsx25(Wrench2, { className: "h-3 w-3" }),
                     "User Action Required"
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ jsxs3("div", { className: "mt-2", children: [
-                /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground mb-1", children: "Input:" }),
-                /* @__PURE__ */ jsx9("div", { className: "text-xs font-mono bg-muted p-2 rounded border", children: JSON.stringify(toolCallState?.input, null, 2) })
+              /* @__PURE__ */ jsxs12("div", { className: "mt-2", children: [
+                /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground mb-1", children: "Input:" }),
+                /* @__PURE__ */ jsx25("div", { className: "text-xs font-mono bg-muted p-2 rounded border", children: JSON.stringify(toolCallState?.input, null, 2) })
               ] }),
-              /* @__PURE__ */ jsx9("div", { className: "mt-3", children: !!toolCallState?.component && toolCallState.component })
+              /* @__PURE__ */ jsx25("div", { className: "mt-3", children: !!toolCallState?.component && toolCallState.component })
             ] }),
-            canCollapse && isExpanded && /* @__PURE__ */ jsxs3("div", { className: "p-3 bg-muted/30", children: [
-              hasError && /* @__PURE__ */ jsxs3("div", { className: "mb-3", children: [
-                /* @__PURE__ */ jsx9("div", { className: "text-xs text-red-600 font-medium mb-1", children: "Error:" }),
-                /* @__PURE__ */ jsx9("div", { className: "text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200", children: toolCallState?.error })
+            canCollapse && isExpanded && /* @__PURE__ */ jsxs12("div", { className: "p-3 bg-muted/30", children: [
+              hasError && /* @__PURE__ */ jsxs12("div", { className: "mb-3", children: [
+                /* @__PURE__ */ jsx25("div", { className: "text-xs text-red-600 font-medium mb-1", children: "Error:" }),
+                /* @__PURE__ */ jsx25("div", { className: "text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200", children: toolCallState?.error })
               ] }),
-              hasResult && /* @__PURE__ */ jsxs3("div", { children: [
-                /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground font-medium mb-1", children: "Result:" }),
-                /* @__PURE__ */ jsx9("div", { className: "text-xs font-mono bg-background p-2 rounded border", children: JSON.stringify(toolCallState?.result, null, 2) })
+              hasResult && /* @__PURE__ */ jsxs12("div", { children: [
+                /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground font-medium mb-1", children: "Result:" }),
+                /* @__PURE__ */ jsx25("div", { className: "text-xs font-mono bg-background p-2 rounded border", children: JSON.stringify(toolCallState?.result, null, 2) })
               ] })
             ] })
           ] }, index);
         })
       ] }),
-      timestamp && /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1612,11 +2702,11 @@ var PlanMessage = ({
   className = "",
   avatar
 }) => {
-  return /* @__PURE__ */ jsx9(MessageContainer, { align: "center", className, backgroundColor: "#40414f", children: /* @__PURE__ */ jsxs3("div", { className: "flex items-start gap-4 py-3 px-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "distri-avatar distri-avatar-plan", children: avatar || /* @__PURE__ */ jsx9(Brain2, { className: "h-4 w-4" }) }),
-    /* @__PURE__ */ jsxs3("div", { className: "flex-1 min-w-0", children: [
-      /* @__PURE__ */ jsx9("div", { className: "text-sm font-medium text-foreground mb-2", children: "Plan" }),
-      /* @__PURE__ */ jsx9("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx9(
+  return /* @__PURE__ */ jsx25(MessageContainer, { align: "center", className, backgroundColor: "#40414f", children: /* @__PURE__ */ jsxs12("div", { className: "flex items-start gap-4 py-3 px-2", children: [
+    /* @__PURE__ */ jsx25("div", { className: "distri-avatar distri-avatar-plan", children: avatar || /* @__PURE__ */ jsx25(Brain2, { className: "h-4 w-4" }) }),
+    /* @__PURE__ */ jsxs12("div", { className: "flex-1 min-w-0", children: [
+      /* @__PURE__ */ jsx25("div", { className: "text-sm font-medium text-foreground mb-2", children: "Plan" }),
+      /* @__PURE__ */ jsx25("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx25(
         MessageRenderer_default,
         {
           content: plan,
@@ -1624,7 +2714,7 @@ var PlanMessage = ({
           className: "text-foreground"
         }
       ) }),
-      timestamp && /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
+      timestamp && /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
     ] })
   ] }) });
 };
@@ -1633,15 +2723,15 @@ var DebugMessage = ({
   className = "",
   timestamp
 }) => {
-  return /* @__PURE__ */ jsx9(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ jsxs3("div", { className: "flex items-start gap-4 py-3 px-2", children: [
-    /* @__PURE__ */ jsx9("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx9(
+  return /* @__PURE__ */ jsx25(MessageContainer, { align: "center", className, backgroundColor: "#343541", children: /* @__PURE__ */ jsxs12("div", { className: "flex items-start gap-4 py-3 px-2", children: [
+    /* @__PURE__ */ jsx25("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx25(
       MessageRenderer_default,
       {
         content: JSON.stringify(message),
         className: "text-foreground"
       }
     ) }),
-    timestamp && /* @__PURE__ */ jsx9("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
+    timestamp && /* @__PURE__ */ jsx25("div", { className: "text-xs text-muted-foreground mt-2", children: timestamp.toLocaleTimeString() })
   ] }) });
 };
 
@@ -1659,166 +2749,27 @@ var extractTextFromMessage = (message) => {
   }
 };
 var shouldDisplayMessage = (message, showDebugMessages = false) => {
-  if (!message) return false;
+  if (!message)
+    return false;
   if (isDistriMessage3(message)) {
     if (message.role === "user") {
       const textContent2 = extractTextFromMessage(message);
       return textContent2.trim().length > 0;
     }
     const textContent = extractTextFromMessage(message);
-    if (textContent.trim()) return true;
+    if (textContent.trim())
+      return true;
   }
   return showDebugMessages;
-};
-
-// src/components/AgentSelect.tsx
-import { Bot as Bot2 } from "lucide-react";
-
-// src/components/ui/select.tsx
-import * as React9 from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check as Check2, ChevronDown as ChevronDown2, ChevronUp } from "lucide-react";
-import { jsx as jsx10, jsxs as jsxs4 } from "react/jsx-runtime";
-var Select = SelectPrimitive.Root;
-var SelectValue = SelectPrimitive.Value;
-var SelectTrigger = React9.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs4(
-  SelectPrimitive.Trigger,
-  {
-    ref,
-    className: cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-      className
-    ),
-    ...props,
-    children: [
-      children,
-      /* @__PURE__ */ jsx10(SelectPrimitive.Icon, { asChild: true, children: /* @__PURE__ */ jsx10(ChevronDown2, { className: "h-4 w-4 opacity-50" }) })
-    ]
-  }
-));
-SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
-var SelectScrollUpButton = React9.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx10(
-  SelectPrimitive.ScrollUpButton,
-  {
-    ref,
-    className: cn(
-      "flex cursor-default items-center justify-center py-1",
-      className
-    ),
-    ...props,
-    children: /* @__PURE__ */ jsx10(ChevronUp, { className: "h-4 w-4" })
-  }
-));
-SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
-var SelectScrollDownButton = React9.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx10(
-  SelectPrimitive.ScrollDownButton,
-  {
-    ref,
-    className: cn(
-      "flex cursor-default items-center justify-center py-1",
-      className
-    ),
-    ...props,
-    children: /* @__PURE__ */ jsx10(ChevronDown2, { className: "h-4 w-4" })
-  }
-));
-SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
-var SelectContent = React9.forwardRef(({ className, children, position = "popper", ...props }, ref) => /* @__PURE__ */ jsx10(SelectPrimitive.Portal, { children: /* @__PURE__ */ jsxs4(
-  SelectPrimitive.Content,
-  {
-    ref,
-    className: cn(
-      "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
-      position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-      className
-    ),
-    position,
-    ...props,
-    children: [
-      /* @__PURE__ */ jsx10(SelectScrollUpButton, {}),
-      /* @__PURE__ */ jsx10(
-        SelectPrimitive.Viewport,
-        {
-          className: cn(
-            "p-1",
-            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-          ),
-          children
-        }
-      ),
-      /* @__PURE__ */ jsx10(SelectScrollDownButton, {})
-    ]
-  }
-) }));
-SelectContent.displayName = SelectPrimitive.Content.displayName;
-var SelectLabel = React9.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx10(
-  SelectPrimitive.Label,
-  {
-    ref,
-    className: cn("px-2 py-1.5 text-sm font-semibold", className),
-    ...props
-  }
-));
-SelectLabel.displayName = SelectPrimitive.Label.displayName;
-var SelectItem = React9.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs4(
-  SelectPrimitive.Item,
-  {
-    ref,
-    className: cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    ),
-    ...props,
-    children: [
-      /* @__PURE__ */ jsx10("span", { className: "absolute right-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx10(SelectPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx10(Check2, { className: "h-4 w-4" }) }) }),
-      /* @__PURE__ */ jsx10(SelectPrimitive.ItemText, { children })
-    ]
-  }
-));
-SelectItem.displayName = SelectPrimitive.Item.displayName;
-var SelectSeparator = React9.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx10(
-  SelectPrimitive.Separator,
-  {
-    ref,
-    className: cn("-mx-1 my-1 h-px bg-muted", className),
-    ...props
-  }
-));
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
-
-// src/components/AgentSelect.tsx
-import { jsx as jsx11, jsxs as jsxs5 } from "react/jsx-runtime";
-var AgentSelect = ({
-  agents,
-  selectedAgentId,
-  onAgentSelect,
-  className = "",
-  placeholder = "Select an agent...",
-  disabled = false
-}) => {
-  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
-  return /* @__PURE__ */ jsxs5(Select, { value: selectedAgentId, onValueChange: onAgentSelect, disabled, children: [
-    /* @__PURE__ */ jsx11(SelectTrigger, { className: `w-full ${className} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`, children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-2", children: [
-      /* @__PURE__ */ jsx11(Bot2, { className: "h-4 w-4" }),
-      /* @__PURE__ */ jsx11(SelectValue, { placeholder, children: selectedAgent?.name || placeholder })
-    ] }) }),
-    /* @__PURE__ */ jsx11(SelectContent, { children: agents.map((agent) => /* @__PURE__ */ jsx11(SelectItem, { value: agent.id, children: /* @__PURE__ */ jsxs5("div", { className: "flex items-center space-x-2", children: [
-      /* @__PURE__ */ jsx11(Bot2, { className: "h-4 w-4" }),
-      /* @__PURE__ */ jsxs5("div", { className: "flex flex-col", children: [
-        /* @__PURE__ */ jsx11("span", { className: "font-medium", children: agent.name }),
-        agent.description && /* @__PURE__ */ jsx11("span", { className: "text-xs text-muted-foreground", children: agent.description })
-      ] })
-    ] }) }, agent.id)) })
-  ] });
 };
 
 // src/components/ui/sonner.tsx
 import { useTheme as useTheme2 } from "next-themes";
 import { Toaster as Sonner } from "sonner";
-import { jsx as jsx12 } from "react/jsx-runtime";
+import { jsx as jsx26 } from "react/jsx-runtime";
 var Toaster = ({ ...props }) => {
   const { theme = "system" } = useTheme2();
-  return /* @__PURE__ */ jsx12(
+  return /* @__PURE__ */ jsx26(
     Sonner,
     {
       theme,
@@ -1837,9 +2788,9 @@ var Toaster = ({ ...props }) => {
 };
 
 // src/components/ChatInput.tsx
-import { useRef as useRef4, useEffect as useEffect8 } from "react";
+import { useRef as useRef4, useEffect as useEffect9 } from "react";
 import { Send, Square } from "lucide-react";
-import { jsx as jsx13, jsxs as jsxs6 } from "react/jsx-runtime";
+import { jsx as jsx27, jsxs as jsxs13 } from "react/jsx-runtime";
 var ChatInput = ({
   value,
   onChange,
@@ -1851,7 +2802,7 @@ var ChatInput = ({
   className = ""
 }) => {
   const textareaRef = useRef4(null);
-  useEffect8(() => {
+  useEffect9(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -1877,8 +2828,8 @@ var ChatInput = ({
   };
   const hasContent = value.trim().length > 0;
   const isDisabled = disabled || isStreaming;
-  return /* @__PURE__ */ jsx13("div", { className: `relative flex min-h-14 w-full items-end ${className}`, children: /* @__PURE__ */ jsx13("div", { className: "relative flex w-full flex-auto flex-col", children: /* @__PURE__ */ jsxs6("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full", children: [
-    /* @__PURE__ */ jsx13(
+  return /* @__PURE__ */ jsx27("div", { className: `relative flex min-h-14 w-full items-end ${className}`, children: /* @__PURE__ */ jsx27("div", { className: "relative flex w-full flex-auto flex-col", children: /* @__PURE__ */ jsxs13("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full", children: [
+    /* @__PURE__ */ jsx27(
       "textarea",
       {
         ref: textareaRef,
@@ -1891,13 +2842,13 @@ var ChatInput = ({
         className: "max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-20 text-foreground min-h-[52px] max-h-[120px]"
       }
     ),
-    /* @__PURE__ */ jsx13("div", { className: "absolute right-2 bottom-0 flex items-center h-full", children: /* @__PURE__ */ jsx13(
+    /* @__PURE__ */ jsx27("div", { className: "absolute right-2 bottom-0 flex items-center h-full", children: /* @__PURE__ */ jsx27(
       "button",
       {
         onClick: isStreaming ? handleStop : handleSend,
         disabled: !hasContent && !isStreaming,
         className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : hasContent && !disabled ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"}`,
-        children: isStreaming ? /* @__PURE__ */ jsx13(Square, { className: "h-5 w-5" }) : /* @__PURE__ */ jsx13(Send, { className: "h-5 w-5" })
+        children: isStreaming ? /* @__PURE__ */ jsx27(Square, { className: "h-5 w-5" }) : /* @__PURE__ */ jsx27(Send, { className: "h-5 w-5" })
       }
     ) })
   ] }) }) });
@@ -1918,7 +2869,7 @@ function uuidv4() {
 }
 
 // src/components/EmbeddableChat.tsx
-import { jsx as jsx14, jsxs as jsxs7 } from "react/jsx-runtime";
+import { jsx as jsx28, jsxs as jsxs14 } from "react/jsx-runtime";
 var EmbeddableChat = ({
   threadId = uuidv4(),
   agent,
@@ -1940,7 +2891,7 @@ var EmbeddableChat = ({
   onResponse: _onResponse,
   onMessagesUpdate
 }) => {
-  const [input, setInput] = useState10("");
+  const [input, setInput] = useState11("");
   const messagesEndRef = useRef5(null);
   const {
     messages,
@@ -1957,13 +2908,14 @@ var EmbeddableChat = ({
     getMetadata,
     onMessagesUpdate
   });
-  useEffect9(() => {
+  useEffect10(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading)
+      return;
     const messageText = input.trim();
     setInput("");
     try {
@@ -1982,7 +2934,7 @@ var EmbeddableChat = ({
     }
     return message.role;
   };
-  const renderedMessages = useMemo2(() => {
+  const renderedMessages = useMemo3(() => {
     return messages.filter((msg) => shouldDisplayMessage(msg, showDebug)).map((message, index) => {
       const messageContent = extractTextFromMessage(message);
       const key = `message-${index}`;
@@ -1990,7 +2942,7 @@ var EmbeddableChat = ({
       if (isDistriMessage4(message)) {
         switch (getMessageType(message)) {
           case "user":
-            return /* @__PURE__ */ jsx14(
+            return /* @__PURE__ */ jsx28(
               UserMessageComponent,
               {
                 message,
@@ -1999,11 +2951,11 @@ var EmbeddableChat = ({
               key
             );
           case "assistant":
-            return /* @__PURE__ */ jsx14(
+            return /* @__PURE__ */ jsx28(
               AssistantMessageComponent,
               {
                 name: agent?.name,
-                avatar: agent?.iconUrl ? /* @__PURE__ */ jsx14("img", { src: agent.iconUrl, alt: agent.name, className: "w-6 h-6 rounded-full" }) : /* @__PURE__ */ jsx14("div", { className: "w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs", children: agent?.name?.charAt(0).toUpperCase() || "A" }),
+                avatar: agent?.iconUrl ? /* @__PURE__ */ jsx28("img", { src: agent.iconUrl, alt: agent.name, className: "w-6 h-6 rounded-full" }) : /* @__PURE__ */ jsx28("div", { className: "w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs", children: agent?.name?.charAt(0).toUpperCase() || "A" }),
                 message,
                 timestamp,
                 isStreaming: isStreaming && index === messages.length - 1
@@ -2015,7 +2967,7 @@ var EmbeddableChat = ({
               const toolCallState = toolCallStates.get(part.tool_call.tool_call_id);
               return toolCallState;
             }).filter(Boolean);
-            return /* @__PURE__ */ jsx14(
+            return /* @__PURE__ */ jsx28(
               AssistantWithToolCallsComponent,
               {
                 message,
@@ -2026,7 +2978,7 @@ var EmbeddableChat = ({
               key
             );
           case "plan":
-            return /* @__PURE__ */ jsx14(
+            return /* @__PURE__ */ jsx28(
               PlanMessageComponent,
               {
                 message,
@@ -2036,7 +2988,7 @@ var EmbeddableChat = ({
               key
             );
           case "debug":
-            return /* @__PURE__ */ jsx14(
+            return /* @__PURE__ */ jsx28(
               DebugMessage,
               {
                 message,
@@ -2061,7 +3013,7 @@ var EmbeddableChat = ({
     toolCallStates,
     isStreaming
   ]);
-  return /* @__PURE__ */ jsxs7(
+  return /* @__PURE__ */ jsxs14(
     "div",
     {
       className: `distri-chat ${className} ${theme === "dark" ? "dark" : "light"} w-full bg-background text-foreground flex flex-col relative`,
@@ -2069,7 +3021,7 @@ var EmbeddableChat = ({
         ...style
       },
       children: [
-        /* @__PURE__ */ jsx14("div", { className: "pt-6 px-6 bg-background flex-shrink-0 z-10", children: showAgentSelector && availableAgents && availableAgents.length > 0 && /* @__PURE__ */ jsx14("div", { className: "mb-6", children: /* @__PURE__ */ jsx14(
+        /* @__PURE__ */ jsx28("div", { className: "pt-6 px-6 bg-background flex-shrink-0 z-10", children: showAgentSelector && availableAgents && availableAgents.length > 0 && /* @__PURE__ */ jsx28("div", { className: "mb-6", children: /* @__PURE__ */ jsx28(
           AgentSelect,
           {
             agents: availableAgents,
@@ -2079,25 +3031,25 @@ var EmbeddableChat = ({
             disabled: disableAgentSelection || messages.length > 0
           }
         ) }) }),
-        /* @__PURE__ */ jsx14(Toaster, {}),
-        /* @__PURE__ */ jsx14("div", { className: "flex-1 relative min-h-0", children: /* @__PURE__ */ jsxs7("div", { className: "absolute inset-0 flex flex-col", children: [
-          /* @__PURE__ */ jsx14("div", { className: "flex-1 overflow-y-auto distri-scroll bg-background", children: /* @__PURE__ */ jsxs7("div", { className: "mx-auto", style: { maxWidth: "var(--thread-content-max-width)" }, children: [
-            messages.length === 0 ? /* @__PURE__ */ jsx14("div", { className: "h-full flex items-center justify-center min-h-[400px]", children: /* @__PURE__ */ jsxs7("div", { className: "text-center", children: [
-              /* @__PURE__ */ jsx14(MessageSquare, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
-              /* @__PURE__ */ jsx14("h3", { className: "text-lg font-medium text-foreground mb-2", children: "Start a conversation" }),
-              /* @__PURE__ */ jsx14("p", { className: "text-muted-foreground max-w-sm", children: placeholder || "Type your message below to begin chatting." })
-            ] }) }) : /* @__PURE__ */ jsx14("div", { className: "space-y-0 pt-4", children: renderedMessages }),
-            isLoading && /* @__PURE__ */ jsxs7("div", { className: "px-6 py-4 flex items-center space-x-2 bg-muted rounded-lg mt-4", children: [
-              /* @__PURE__ */ jsx14("div", { className: "h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" }),
-              /* @__PURE__ */ jsx14("span", { className: "text-muted-foreground text-sm", children: "Thinking..." })
+        /* @__PURE__ */ jsx28(Toaster, {}),
+        /* @__PURE__ */ jsx28("div", { className: "flex-1 relative min-h-0", children: /* @__PURE__ */ jsxs14("div", { className: "absolute inset-0 flex flex-col", children: [
+          /* @__PURE__ */ jsx28("div", { className: "flex-1 overflow-y-auto distri-scroll bg-background", children: /* @__PURE__ */ jsxs14("div", { className: "mx-auto", style: { maxWidth: "var(--thread-content-max-width)" }, children: [
+            messages.length === 0 ? /* @__PURE__ */ jsx28("div", { className: "h-full flex items-center justify-center min-h-[400px]", children: /* @__PURE__ */ jsxs14("div", { className: "text-center", children: [
+              /* @__PURE__ */ jsx28(MessageSquare, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
+              /* @__PURE__ */ jsx28("h3", { className: "text-lg font-medium text-foreground mb-2", children: "Start a conversation" }),
+              /* @__PURE__ */ jsx28("p", { className: "text-muted-foreground max-w-sm", children: placeholder || "Type your message below to begin chatting." })
+            ] }) }) : /* @__PURE__ */ jsx28("div", { className: "space-y-0 pt-4", children: renderedMessages }),
+            isLoading && /* @__PURE__ */ jsxs14("div", { className: "px-6 py-4 flex items-center space-x-2 bg-muted rounded-lg mt-4", children: [
+              /* @__PURE__ */ jsx28("div", { className: "h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" }),
+              /* @__PURE__ */ jsx28("span", { className: "text-muted-foreground text-sm", children: "Thinking..." })
             ] }),
-            error && /* @__PURE__ */ jsx14("div", { className: "px-6 py-4 bg-destructive/20 border border-destructive/20 rounded-lg mt-4", children: /* @__PURE__ */ jsxs7("div", { className: "flex items-center space-x-2", children: [
-              /* @__PURE__ */ jsx14("div", { className: "h-4 w-4 rounded-full bg-destructive" }),
-              /* @__PURE__ */ jsx14("span", { className: "text-destructive text-sm", children: error.message || String(error) })
+            error && /* @__PURE__ */ jsx28("div", { className: "px-6 py-4 bg-destructive/20 border border-destructive/20 rounded-lg mt-4", children: /* @__PURE__ */ jsxs14("div", { className: "flex items-center space-x-2", children: [
+              /* @__PURE__ */ jsx28("div", { className: "h-4 w-4 rounded-full bg-destructive" }),
+              /* @__PURE__ */ jsx28("span", { className: "text-destructive text-sm", children: error.message || String(error) })
             ] }) }),
-            /* @__PURE__ */ jsx14("div", { ref: messagesEndRef })
+            /* @__PURE__ */ jsx28("div", { ref: messagesEndRef })
           ] }) }),
-          /* @__PURE__ */ jsx14("div", { className: "absolute bottom-0 left-0 right-0 bg-background py-4", children: /* @__PURE__ */ jsx14("div", { className: "mx-auto", style: { maxWidth: "var(--thread-content-max-width)" }, children: /* @__PURE__ */ jsx14(
+          /* @__PURE__ */ jsx28("div", { className: "absolute bottom-0 left-0 right-0 bg-background py-4", children: /* @__PURE__ */ jsx28("div", { className: "mx-auto", style: { maxWidth: "var(--thread-content-max-width)" }, children: /* @__PURE__ */ jsx28(
             ChatInput,
             {
               value: input,
@@ -2111,1035 +3063,24 @@ var EmbeddableChat = ({
             }
           ) }) })
         ] }) }),
-        /* @__PURE__ */ jsx14(Toaster, {})
+        /* @__PURE__ */ jsx28(Toaster, {})
       ]
     }
   );
 };
-
-// src/components/AgentList.tsx
-import React12 from "react";
-import { RefreshCw, Play, Bot as Bot3 } from "lucide-react";
-import { jsx as jsx15, jsxs as jsxs8 } from "react/jsx-runtime";
-var AgentList = ({ agents, onRefresh, onStartChat }) => {
-  const [refreshing, setRefreshing] = React12.useState(false);
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await onRefresh();
-    } finally {
-      setRefreshing(false);
-    }
-  };
-  return /* @__PURE__ */ jsxs8("div", { className: "", children: [
-    /* @__PURE__ */ jsxs8("div", { className: "flex items-center justify-between p-6 border-b border-border", children: [
-      /* @__PURE__ */ jsx15("h2", { className: "text-xl font-semibold text-foreground", children: "Available Agents" }),
-      /* @__PURE__ */ jsxs8(
-        "button",
-        {
-          onClick: handleRefresh,
-          disabled: refreshing,
-          className: "flex items-center space-x-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors",
-          children: [
-            /* @__PURE__ */ jsx15(RefreshCw, { className: `h-4 w-4 ${refreshing ? "animate-spin" : ""}` }),
-            /* @__PURE__ */ jsx15("span", { children: "Refresh" })
-          ]
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsx15("div", { className: "p-6", children: agents.length === 0 ? /* @__PURE__ */ jsxs8("div", { className: "text-center py-12", children: [
-      /* @__PURE__ */ jsx15(Bot3, { className: "h-16 w-16 text-muted-foreground mx-auto mb-4" }),
-      /* @__PURE__ */ jsx15("p", { className: "text-muted-foreground text-lg", children: "No agents available" }),
-      /* @__PURE__ */ jsx15("p", { className: "text-sm text-muted-foreground mt-2", children: "Check your server connection" })
-    ] }) : /* @__PURE__ */ jsx15("div", { className: "grid gap-6 md:grid-cols-2 lg:grid-cols-3", children: agents.map((agent) => /* @__PURE__ */ jsxs8(
-      "div",
-      {
-        className: "bg-card border border-border rounded-xl p-6 hover:border-border/80 hover:bg-card/80 transition-all duration-200",
-        children: [
-          /* @__PURE__ */ jsx15("div", { className: "flex items-start justify-between mb-4", children: /* @__PURE__ */ jsxs8("div", { className: "flex items-center space-x-3", children: [
-            /* @__PURE__ */ jsx15("div", { className: "w-12 h-12 bg-primary rounded-full flex items-center justify-center", children: /* @__PURE__ */ jsx15(Bot3, { className: "h-6 w-6 text-primary-foreground" }) }),
-            /* @__PURE__ */ jsxs8("div", { children: [
-              /* @__PURE__ */ jsx15("h3", { className: "font-semibold text-foreground text-lg", children: agent.name }),
-              /* @__PURE__ */ jsx15("div", { className: "flex items-center space-x-1", children: /* @__PURE__ */ jsx15("span", { className: "text-xs text-muted-foreground capitalize", children: agent.version ? `v${agent.version}` : "Latest" }) })
-            ] })
-          ] }) }),
-          /* @__PURE__ */ jsx15("p", { className: "text-sm text-muted-foreground mb-6 line-clamp-3", children: agent.description || "No description available" }),
-          /* @__PURE__ */ jsxs8("div", { className: "flex items-center justify-between", children: [
-            /* @__PURE__ */ jsx15("div", { className: "text-xs text-muted-foreground", children: agent.version && `Version ${agent.version}` }),
-            /* @__PURE__ */ jsx15("div", { className: "flex items-center space-x-2", children: /* @__PURE__ */ jsxs8(
-              "button",
-              {
-                onClick: () => onStartChat(agent),
-                className: "flex items-center space-x-1 px-3 py-2 text-xs bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors",
-                children: [
-                  /* @__PURE__ */ jsx15(Play, { className: "h-3 w-3" }),
-                  /* @__PURE__ */ jsx15("span", { children: "Chat" })
-                ]
-              }
-            ) })
-          ] })
-        ]
-      },
-      agent.name
-    )) }) })
-  ] });
-};
-var AgentList_default = AgentList;
-
-// src/components/AgentsPage.tsx
-import { jsx as jsx16, jsxs as jsxs9 } from "react/jsx-runtime";
-var AgentsPage = ({ onStartChat }) => {
-  const { agents, loading, refetch } = useAgents();
-  const handleRefresh = async () => {
-    await refetch();
-  };
-  const handleStartChat = (agent) => {
-    onStartChat?.(agent);
-  };
-  if (loading) {
-    return /* @__PURE__ */ jsx16("div", { className: "h-full bg-background flex items-center justify-center", children: /* @__PURE__ */ jsxs9("div", { className: "flex items-center space-x-2", children: [
-      /* @__PURE__ */ jsx16("div", { className: "h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" }),
-      /* @__PURE__ */ jsx16("span", { className: "text-foreground", children: "Loading agents..." })
-    ] }) });
-  }
-  return /* @__PURE__ */ jsx16("div", { className: "h-full bg-background overflow-auto", children: /* @__PURE__ */ jsxs9("div", { className: "container mx-auto p-6", children: [
-    /* @__PURE__ */ jsx16("h1", { className: "text-3xl font-bold text-foreground mb-6", children: "Agents" }),
-    /* @__PURE__ */ jsx16(
-      AgentList_default,
-      {
-        agents,
-        onRefresh: handleRefresh,
-        onStartChat: handleStartChat
-      }
-    )
-  ] }) });
-};
-var AgentsPage_default = AgentsPage;
 
 // src/components/AppSidebar.tsx
 import { useState as useState12, useCallback as useCallback7 } from "react";
 import { MoreHorizontal, Trash2, Edit3, Bot as Bot4, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader22 } from "lucide-react";
 
-// src/components/ui/sidebar.tsx
-import * as React16 from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva as cva2 } from "class-variance-authority";
-import { PanelLeft } from "lucide-react";
-
-// src/components/ui/separator.tsx
-import * as React13 from "react";
-import * as SeparatorPrimitive from "@radix-ui/react-separator";
-import { jsx as jsx17 } from "react/jsx-runtime";
-var Separator2 = React13.forwardRef(
-  ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => /* @__PURE__ */ jsx17(
-    SeparatorPrimitive.Root,
-    {
-      ref,
-      decorative,
-      orientation,
-      className: cn(
-        "shrink-0 bg-border",
-        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
-        className
-      ),
-      ...props
-    }
-  )
-);
-Separator2.displayName = SeparatorPrimitive.Root.displayName;
-
-// src/components/ui/sheet.tsx
-import * as React14 from "react";
-import * as SheetPrimitive from "@radix-ui/react-dialog";
-import { cva } from "class-variance-authority";
-import { X } from "lucide-react";
-import { jsx as jsx18, jsxs as jsxs10 } from "react/jsx-runtime";
-var Sheet = SheetPrimitive.Root;
-var SheetPortal = SheetPrimitive.Portal;
-var SheetOverlay = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx18(
-  SheetPrimitive.Overlay,
-  {
-    className: cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    ),
-    ...props,
-    ref
-  }
-));
-SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
-var sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
-  {
-    variants: {
-      side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
-        bottom: "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-        right: "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm"
-      }
-    },
-    defaultVariants: {
-      side: "right"
-    }
-  }
-);
-var SheetContent = React14.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxs10(SheetPortal, { children: [
-  /* @__PURE__ */ jsx18(SheetOverlay, {}),
-  /* @__PURE__ */ jsxs10(
-    SheetPrimitive.Content,
-    {
-      ref,
-      className: cn(sheetVariants({ side }), className),
-      ...props,
-      children: [
-        children,
-        /* @__PURE__ */ jsxs10(SheetPrimitive.Close, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
-          /* @__PURE__ */ jsx18(X, { className: "h-4 w-4" }),
-          /* @__PURE__ */ jsx18("span", { className: "sr-only", children: "Close" })
-        ] })
-      ]
-    }
-  )
-] }));
-SheetContent.displayName = SheetPrimitive.Content.displayName;
-var SheetHeader = ({
-  className,
-  ...props
-}) => /* @__PURE__ */ jsx18(
-  "div",
-  {
-    className: cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    ),
-    ...props
-  }
-);
-SheetHeader.displayName = "SheetHeader";
-var SheetFooter = ({
-  className,
-  ...props
-}) => /* @__PURE__ */ jsx18(
-  "div",
-  {
-    className: cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    ),
-    ...props
-  }
-);
-SheetFooter.displayName = "SheetFooter";
-var SheetTitle = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx18(
-  SheetPrimitive.Title,
-  {
-    ref,
-    className: cn("text-lg font-semibold text-foreground", className),
-    ...props
-  }
-));
-SheetTitle.displayName = SheetPrimitive.Title.displayName;
-var SheetDescription = React14.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx18(
-  SheetPrimitive.Description,
-  {
-    ref,
-    className: cn("text-sm text-muted-foreground", className),
-    ...props
-  }
-));
-SheetDescription.displayName = SheetPrimitive.Description.displayName;
-
-// src/components/ui/skeleton.tsx
-import { jsx as jsx19 } from "react/jsx-runtime";
-function Skeleton({
-  className,
-  ...props
-}) {
-  return /* @__PURE__ */ jsx19(
-    "div",
-    {
-      className: cn("animate-pulse rounded-md bg-muted", className),
-      ...props
-    }
-  );
-}
-
-// src/components/ui/tooltip.tsx
-import * as React15 from "react";
-import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { jsx as jsx20 } from "react/jsx-runtime";
-var TooltipProvider = TooltipPrimitive.Provider;
-var Tooltip = TooltipPrimitive.Root;
-var TooltipTrigger = TooltipPrimitive.Trigger;
-var TooltipContent = React15.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx20(
-  TooltipPrimitive.Content,
-  {
-    ref,
-    sideOffset,
-    className: cn(
-      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    ),
-    ...props
-  }
-));
-TooltipContent.displayName = TooltipPrimitive.Content.displayName;
-
-// src/components/ui/sidebar.tsx
-import { jsx as jsx21, jsxs as jsxs11 } from "react/jsx-runtime";
-var SIDEBAR_COOKIE_NAME = "sidebar:state";
-var SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-var SIDEBAR_WIDTH = "16rem";
-var SIDEBAR_WIDTH_MOBILE = "18rem";
-var SIDEBAR_WIDTH_ICON = "3rem";
-var SIDEBAR_KEYBOARD_SHORTCUT = "b";
-var SidebarContext = React16.createContext(null);
-function useSidebar() {
-  const context = React16.useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.");
-  }
-  return context;
-}
-var SidebarProvider = React16.forwardRef(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
-  const [_open, _setOpen] = React16.useState(defaultOpen);
-  const open = openProp ?? _open;
-  const setOpen = React16.useCallback(
-    (value) => {
-      const openState = typeof value === "function" ? value(open) : value;
-      if (setOpenProp) {
-        setOpenProp(openState);
-      } else {
-        _setOpen(openState);
-      }
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
-    },
-    [setOpenProp, open]
-  );
-  const [openMobile, setOpenMobile] = React16.useState(false);
-  const [isMobile, setIsMobile] = React16.useState(false);
-  React16.useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768 && open) {
-        setOpen(false);
-      }
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, [setOpen, open]);
-  React16.useEffect(() => {
-    const savedState = localStorage.getItem(SIDEBAR_COOKIE_NAME);
-    if (savedState !== null) {
-      setOpen(savedState === "true");
-    }
-  }, [setOpen]);
-  React16.useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        setOpen(!open);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, setOpen]);
-  const toggleSidebar = React16.useCallback(() => {
-    return isMobile ? setOpenMobile((open2) => !open2) : setOpen((open2) => !open2);
-  }, [isMobile, setOpen, setOpenMobile]);
-  const state = open ? "expanded" : "collapsed";
-  const contextValue = React16.useMemo(
-    () => ({
-      state,
-      open,
-      setOpen,
-      isMobile,
-      openMobile,
-      setOpenMobile,
-      toggleSidebar
-    }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
-  );
-  return /* @__PURE__ */ jsx21(SidebarContext.Provider, { value: contextValue, children: /* @__PURE__ */ jsx21(TooltipProvider, { delayDuration: 0, children: /* @__PURE__ */ jsx21(
-    "div",
-    {
-      style: {
-        "--sidebar-width": SIDEBAR_WIDTH,
-        "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-        ...style
-      },
-      className: cn(
-        "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
-        className
-      ),
-      ref,
-      ...props,
-      children
-    }
-  ) }) });
-});
-SidebarProvider.displayName = "SidebarProvider";
-var Sidebar = React16.forwardRef(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
-  if (collapsible === "none") {
-    return /* @__PURE__ */ jsx21(
-      "div",
-      {
-        className: cn(
-          "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
-          className
-        ),
-        ref,
-        ...props,
-        children
-      }
-    );
-  }
-  if (isMobile) {
-    return /* @__PURE__ */ jsx21(Sheet, { open: openMobile, onOpenChange: setOpenMobile, ...props, children: /* @__PURE__ */ jsx21(
-      SheetContent,
-      {
-        "data-sidebar": "sidebar",
-        "data-mobile": "true",
-        className: "w-[--sidebar-width-mobile] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
-        style: {
-          "--sidebar-width": SIDEBAR_WIDTH_MOBILE
-        },
-        side,
-        children: /* @__PURE__ */ jsx21("div", { className: "flex h-full w-full flex-col", children })
-      }
-    ) });
-  }
-  return /* @__PURE__ */ jsxs11(
-    "div",
-    {
-      ref,
-      className: "group peer hidden md:block text-sidebar-foreground",
-      "data-state": state,
-      "data-collapsible": state === "collapsed" ? collapsible : "",
-      "data-variant": variant,
-      "data-side": side,
-      children: [
-        /* @__PURE__ */ jsx21(
-          "div",
-          {
-            className: cn(
-              "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
-              "group-data-[collapsible=offcanvas]:w-0",
-              "group-data-[side=right]:rotate-180",
-              variant === "floating" || variant === "inset" ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
-            )
-          }
-        ),
-        /* @__PURE__ */ jsx21(
-          "div",
-          {
-            className: cn(
-              "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
-              side === "left" ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]" : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-              // Adjust the padding for floating and inset variants.
-              variant === "floating" || variant === "inset" ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]" : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-              className
-            ),
-            ...props,
-            children: /* @__PURE__ */ jsx21(
-              "div",
-              {
-                "data-sidebar": "sidebar",
-                className: "flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow",
-                children
-              }
-            )
-          }
-        )
-      ]
-    }
-  );
-});
-Sidebar.displayName = "Sidebar";
-var SidebarTrigger = React16.forwardRef(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar();
-  return /* @__PURE__ */ jsxs11(
-    Button,
-    {
-      ref,
-      "data-sidebar": "trigger",
-      variant: "ghost",
-      size: "icon",
-      className: cn("h-7 w-7", className),
-      onClick: (event) => {
-        onClick?.(event);
-        toggleSidebar();
-      },
-      ...props,
-      children: [
-        /* @__PURE__ */ jsx21(PanelLeft, {}),
-        /* @__PURE__ */ jsx21("span", { className: "sr-only", children: "Toggle Sidebar" })
-      ]
-    }
-  );
-});
-SidebarTrigger.displayName = "SidebarTrigger";
-var SidebarRail = React16.forwardRef(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar();
-  return /* @__PURE__ */ jsx21(
-    "button",
-    {
-      ref,
-      "data-sidebar": "rail",
-      "aria-label": "Toggle Sidebar",
-      tabIndex: -1,
-      onClick: toggleSidebar,
-      title: "Toggle Sidebar",
-      className: cn(
-        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] after:-translate-x-1/2 after:bg-sidebar-border hover:after:bg-sidebar-accent-foreground group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
-        "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
-        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
-        "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
-        "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarRail.displayName = "SidebarRail";
-var SidebarInset = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "main",
-    {
-      ref,
-      className: cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarInset.displayName = "SidebarInset";
-var SidebarHeader = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "div",
-    {
-      ref,
-      "data-sidebar": "header",
-      className: cn("flex flex-col gap-2 p-2", className),
-      ...props
-    }
-  );
-});
-SidebarHeader.displayName = "SidebarHeader";
-var SidebarFooter = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "div",
-    {
-      ref,
-      "data-sidebar": "footer",
-      className: cn("flex flex-col gap-2 p-2", className),
-      ...props
-    }
-  );
-});
-SidebarFooter.displayName = "SidebarFooter";
-var SidebarSeparator = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    Separator2,
-    {
-      ref,
-      "data-sidebar": "separator",
-      className: cn("mx-2 w-auto bg-sidebar-border", className),
-      ...props
-    }
-  );
-});
-SidebarSeparator.displayName = "SidebarSeparator";
-var SidebarContent = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "div",
-    {
-      ref,
-      "data-sidebar": "content",
-      className: cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarContent.displayName = "SidebarContent";
-var SidebarGroup = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "div",
-    {
-      ref,
-      "data-sidebar": "group",
-      className: cn("relative flex w-full min-w-0 flex-col p-2", className),
-      ...props
-    }
-  );
-});
-SidebarGroup.displayName = "SidebarGroup";
-var SidebarGroupLabel = React16.forwardRef(({ className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "div";
-  return /* @__PURE__ */ jsx21(
-    Comp,
-    {
-      ref,
-      "data-sidebar": "group-label",
-      className: cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarGroupLabel.displayName = "SidebarGroupLabel";
-var SidebarGroupAction = React16.forwardRef(({ className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
-  return /* @__PURE__ */ jsx21(
-    Comp,
-    {
-      ref,
-      "data-sidebar": "group-action",
-      className: cn(
-        "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
-        "after:absolute after:-inset-2 after:md:hidden",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarGroupAction.displayName = "SidebarGroupAction";
-var SidebarGroupContent = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "div",
-    {
-      ref,
-      "data-sidebar": "group-content",
-      className: cn("w-full text-sm", className),
-      ...props
-    }
-  );
-});
-SidebarGroupContent.displayName = "SidebarGroupContent";
-var SidebarMenu = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "ul",
-    {
-      ref,
-      "data-sidebar": "menu",
-      className: cn("flex w-full min-w-0 flex-col gap-1", className),
-      ...props
-    }
-  );
-});
-SidebarMenu.displayName = "SidebarMenu";
-var SidebarMenuItem = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "li",
-    {
-      ref,
-      "data-sidebar": "menu-item",
-      className: cn("group/menu-item relative", className),
-      ...props
-    }
-  );
-});
-SidebarMenuItem.displayName = "SidebarMenuItem";
-var sidebarMenuButtonVariants = cva2(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        outline: "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]"
-      },
-      size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
-        lg: "h-12 text-sm group-data-[collapsible=icon]:!size-8"
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default"
-    }
-  }
-);
-var SidebarMenuButton = React16.forwardRef(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
-  const button = /* @__PURE__ */ jsx21(
-    Comp,
-    {
-      ref,
-      "data-sidebar": "menu-button",
-      "data-size": size,
-      "data-active": isActive,
-      className: cn(sidebarMenuButtonVariants({ variant, size }), className),
-      ...props
-    }
-  );
-  if (!tooltip) {
-    return button;
-  }
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip
-    };
-  }
-  return /* @__PURE__ */ jsxs11(Tooltip, { children: [
-    /* @__PURE__ */ jsx21(TooltipTrigger, { asChild: true, children: button }),
-    /* @__PURE__ */ jsx21(
-      TooltipContent,
-      {
-        side: "right",
-        align: "center",
-        hidden: state !== "collapsed" || isMobile,
-        ...tooltip
-      }
-    )
-  ] });
-});
-SidebarMenuButton.displayName = "SidebarMenuButton";
-var SidebarMenuAction = React16.forwardRef(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
-  return /* @__PURE__ */ jsx21(
-    Comp,
-    {
-      ref,
-      "data-sidebar": "menu-action",
-      className: cn(
-        "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
-        "after:absolute after:-inset-2 after:md:hidden",
-        "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-1.5",
-        "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
-        showOnHover && "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarMenuAction.displayName = "SidebarMenuAction";
-var SidebarMenuBadge = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "div",
-    {
-      ref,
-      "data-sidebar": "menu-badge",
-      className: cn(
-        "absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums text-sidebar-foreground select-none pointer-events-none",
-        "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
-        "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-1.5",
-        "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarMenuBadge.displayName = "SidebarMenuBadge";
-var SidebarMenuSkeleton = React16.forwardRef(({ className, showIcon = false, ...props }, ref) => {
-  const width = React16.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
-  return /* @__PURE__ */ jsxs11(
-    "div",
-    {
-      ref,
-      "data-sidebar": "menu-skeleton",
-      className: cn("rounded-md h-8 flex gap-2 px-2 items-center", className),
-      ...props,
-      children: [
-        showIcon && /* @__PURE__ */ jsx21(Skeleton, { className: "size-4 rounded-md", "data-sidebar": "menu-skeleton-icon" }),
-        /* @__PURE__ */ jsx21(
-          Skeleton,
-          {
-            className: "h-4 flex-1 max-w-[--skeleton-width]",
-            "data-sidebar": "menu-skeleton-text",
-            style: {
-              "--skeleton-width": width
-            }
-          }
-        )
-      ]
-    }
-  );
-});
-SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton";
-var SidebarMenuSub = React16.forwardRef(({ className, ...props }, ref) => {
-  return /* @__PURE__ */ jsx21(
-    "ul",
-    {
-      ref,
-      "data-sidebar": "menu-sub",
-      className: cn(
-        "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarMenuSub.displayName = "SidebarMenuSub";
-var SidebarMenuSubItem = React16.forwardRef(({ ...props }, ref) => {
-  return /* @__PURE__ */ jsx21("li", { ref, ...props });
-});
-SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
-var SidebarMenuSubButton = React16.forwardRef(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a";
-  return /* @__PURE__ */ jsx21(
-    Comp,
-    {
-      ref,
-      "data-sidebar": "menu-sub-button",
-      "data-size": size,
-      "data-active": isActive,
-      className: cn(
-        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-foreground/50",
-        "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
-        size === "sm" && "text-xs",
-        size === "md" && "text-sm",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      ),
-      ...props
-    }
-  );
-});
-SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
-
-// src/components/ui/input.tsx
-import * as React17 from "react";
-import { jsx as jsx22 } from "react/jsx-runtime";
-var Input = React17.forwardRef(
-  ({ className, type, ...props }, ref) => {
-    return /* @__PURE__ */ jsx22(
-      "input",
-      {
-        type,
-        className: cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        ),
-        ref,
-        ...props
-      }
-    );
-  }
-);
-Input.displayName = "Input";
-
-// src/components/ui/card.tsx
-import * as React18 from "react";
-import { jsx as jsx23 } from "react/jsx-runtime";
-var Card = React18.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
-  "div",
-  {
-    ref,
-    className: cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
-      className
-    ),
-    ...props
-  }
-));
-Card.displayName = "Card";
-var CardHeader = React18.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
-  "div",
-  {
-    ref,
-    className: cn("flex flex-col space-y-1.5 p-6", className),
-    ...props
-  }
-));
-CardHeader.displayName = "CardHeader";
-var CardTitle = React18.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
-  "h3",
-  {
-    ref,
-    className: cn(
-      "text-2xl font-semibold leading-none tracking-tight",
-      className
-    ),
-    ...props
-  }
-));
-CardTitle.displayName = "CardTitle";
-var CardDescription = React18.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
-  "p",
-  {
-    ref,
-    className: cn("text-sm text-muted-foreground", className),
-    ...props
-  }
-));
-CardDescription.displayName = "CardDescription";
-var CardContent = React18.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23("div", { ref, className: cn("p-6 pt-0", className), ...props }));
-CardContent.displayName = "CardContent";
-var CardFooter = React18.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
-  "div",
-  {
-    ref,
-    className: cn("flex items-center p-6 pt-0", className),
-    ...props
-  }
-));
-CardFooter.displayName = "CardFooter";
-
-// src/components/ui/badge.tsx
-import { cva as cva3 } from "class-variance-authority";
-import { jsx as jsx24 } from "react/jsx-runtime";
-var badgeVariants = cva3(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground"
-      }
-    },
-    defaultVariants: {
-      variant: "default"
-    }
-  }
-);
-
-// src/components/ui/dialog.tsx
-import * as React19 from "react";
-import { jsx as jsx25, jsxs as jsxs12 } from "react/jsx-runtime";
-var Dialog = React19.createContext({});
-var DialogTrigger = React19.forwardRef(({ className, children, ...props }, ref) => {
-  const context = React19.useContext(Dialog);
-  return /* @__PURE__ */ jsx25(
-    "button",
-    {
-      ref,
-      className: cn(className),
-      onClick: () => context.onOpenChange?.(true),
-      ...props,
-      children
-    }
-  );
-});
-DialogTrigger.displayName = "DialogTrigger";
-var DialogContent = React19.forwardRef(({ className, children, ...props }, ref) => {
-  const context = React19.useContext(Dialog);
-  if (!context.open) return null;
-  return /* @__PURE__ */ jsx25("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", children: /* @__PURE__ */ jsxs12(
-    "div",
-    {
-      ref,
-      className: cn(
-        "relative z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg",
-        className
-      ),
-      ...props,
-      children: [
-        children,
-        /* @__PURE__ */ jsx25(
-          "button",
-          {
-            className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            onClick: () => context.onOpenChange?.(false),
-            children: /* @__PURE__ */ jsxs12(
-              "svg",
-              {
-                width: "24",
-                height: "24",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2",
-                strokeLinecap: "round",
-                strokeLinejoin: "round",
-                className: "h-4 w-4",
-                children: [
-                  /* @__PURE__ */ jsx25("path", { d: "m18 6-12 12" }),
-                  /* @__PURE__ */ jsx25("path", { d: "m6 6 12 12" })
-                ]
-              }
-            )
-          }
-        )
-      ]
-    }
-  ) });
-});
-DialogContent.displayName = "DialogContent";
-var DialogHeader = React19.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx25(
-  "div",
-  {
-    ref,
-    className: cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
-    ),
-    ...props
-  }
-));
-DialogHeader.displayName = "DialogHeader";
-var DialogTitle = React19.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx25(
-  "h3",
-  {
-    ref,
-    className: cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    ),
-    ...props
-  }
-));
-DialogTitle.displayName = "DialogTitle";
-
-// src/components/ui/textarea.tsx
-import * as React20 from "react";
-import { jsx as jsx26 } from "react/jsx-runtime";
-var Textarea = React20.forwardRef(
-  ({ className, ...props }, ref) => {
-    return /* @__PURE__ */ jsx26(
-      "textarea",
-      {
-        className: cn(
-          "flex min-h-[80px] w-full rounded-md border-none bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 resize-none",
-          className
-        ),
-        ref,
-        ...props
-      }
-    );
-  }
-);
-Textarea.displayName = "Textarea";
-
 // src/components/ui/dropdown-menu.tsx
-import * as React21 from "react";
+import * as React23 from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check as Check3, ChevronRight as ChevronRight2, Circle } from "lucide-react";
-import { jsx as jsx27, jsxs as jsxs13 } from "react/jsx-runtime";
+import { jsx as jsx29, jsxs as jsxs15 } from "react/jsx-runtime";
 var DropdownMenu = DropdownMenuPrimitive.Root;
 var DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
-var DropdownMenuSubTrigger = React21.forwardRef(({ className, inset, children, ...props }, ref) => /* @__PURE__ */ jsxs13(
+var DropdownMenuSubTrigger = React23.forwardRef(({ className, inset, children, ...props }, ref) => /* @__PURE__ */ jsxs15(
   DropdownMenuPrimitive.SubTrigger,
   {
     ref,
@@ -3151,12 +3092,12 @@ var DropdownMenuSubTrigger = React21.forwardRef(({ className, inset, children, .
     ...props,
     children: [
       children,
-      /* @__PURE__ */ jsx27(ChevronRight2, { className: "ml-auto" })
+      /* @__PURE__ */ jsx29(ChevronRight2, { className: "ml-auto" })
     ]
   }
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
-var DropdownMenuSubContent = React21.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx27(
+var DropdownMenuSubContent = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx29(
   DropdownMenuPrimitive.SubContent,
   {
     ref,
@@ -3168,7 +3109,7 @@ var DropdownMenuSubContent = React21.forwardRef(({ className, ...props }, ref) =
   }
 ));
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
-var DropdownMenuContent = React21.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx27(DropdownMenuPrimitive.Portal, { children: /* @__PURE__ */ jsx27(
+var DropdownMenuContent = React23.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx29(DropdownMenuPrimitive.Portal, { children: /* @__PURE__ */ jsx29(
   DropdownMenuPrimitive.Content,
   {
     ref,
@@ -3182,7 +3123,7 @@ var DropdownMenuContent = React21.forwardRef(({ className, sideOffset = 4, ...pr
   }
 ) }));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
-var DropdownMenuItem = React21.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx27(
+var DropdownMenuItem = React23.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx29(
   DropdownMenuPrimitive.Item,
   {
     ref,
@@ -3195,7 +3136,7 @@ var DropdownMenuItem = React21.forwardRef(({ className, inset, ...props }, ref) 
   }
 ));
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
-var DropdownMenuCheckboxItem = React21.forwardRef(({ className, children, checked, ...props }, ref) => /* @__PURE__ */ jsxs13(
+var DropdownMenuCheckboxItem = React23.forwardRef(({ className, children, checked, ...props }, ref) => /* @__PURE__ */ jsxs15(
   DropdownMenuPrimitive.CheckboxItem,
   {
     ref,
@@ -3206,13 +3147,13 @@ var DropdownMenuCheckboxItem = React21.forwardRef(({ className, children, checke
     checked,
     ...props,
     children: [
-      /* @__PURE__ */ jsx27("span", { className: "absolute left-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx27(DropdownMenuPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx27(Check3, { className: "h-4 w-4" }) }) }),
+      /* @__PURE__ */ jsx29("span", { className: "absolute left-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx29(DropdownMenuPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx29(Check3, { className: "h-4 w-4" }) }) }),
       children
     ]
   }
 ));
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
-var DropdownMenuRadioItem = React21.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs13(
+var DropdownMenuRadioItem = React23.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs15(
   DropdownMenuPrimitive.RadioItem,
   {
     ref,
@@ -3222,13 +3163,13 @@ var DropdownMenuRadioItem = React21.forwardRef(({ className, children, ...props 
     ),
     ...props,
     children: [
-      /* @__PURE__ */ jsx27("span", { className: "absolute left-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx27(DropdownMenuPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx27(Circle, { className: "h-2 w-2 fill-current" }) }) }),
+      /* @__PURE__ */ jsx29("span", { className: "absolute left-2 flex h-3.5 w-3.5 items-center justify-center", children: /* @__PURE__ */ jsx29(DropdownMenuPrimitive.ItemIndicator, { children: /* @__PURE__ */ jsx29(Circle, { className: "h-2 w-2 fill-current" }) }) }),
       children
     ]
   }
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
-var DropdownMenuLabel = React21.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx27(
+var DropdownMenuLabel = React23.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx29(
   DropdownMenuPrimitive.Label,
   {
     ref,
@@ -3241,7 +3182,7 @@ var DropdownMenuLabel = React21.forwardRef(({ className, inset, ...props }, ref)
   }
 ));
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
-var DropdownMenuSeparator = React21.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx27(
+var DropdownMenuSeparator = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx29(
   DropdownMenuPrimitive.Separator,
   {
     ref,
@@ -3254,7 +3195,7 @@ var DropdownMenuShortcut = ({
   className,
   ...props
 }) => {
-  return /* @__PURE__ */ jsx27(
+  return /* @__PURE__ */ jsx29(
     "span",
     {
       className: cn("ml-auto text-xs tracking-widest opacity-60", className),
@@ -3265,7 +3206,7 @@ var DropdownMenuShortcut = ({
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 // src/components/AppSidebar.tsx
-import { jsx as jsx28, jsxs as jsxs14 } from "react/jsx-runtime";
+import { jsx as jsx30, jsxs as jsxs16 } from "react/jsx-runtime";
 var ThreadItem = ({
   thread,
   isActive,
@@ -3290,8 +3231,8 @@ var ThreadItem = ({
       setIsEditing(false);
     }
   }, [handleRename, thread.title]);
-  return /* @__PURE__ */ jsxs14(SidebarMenuItem, { className: "mb-3", children: [
-    /* @__PURE__ */ jsx28(SidebarMenuButton, { asChild: true, isActive, children: /* @__PURE__ */ jsx28("div", { onClick, children: isEditing ? /* @__PURE__ */ jsx28(
+  return /* @__PURE__ */ jsxs16(SidebarMenuItem, { className: "mb-3", children: [
+    /* @__PURE__ */ jsx30(SidebarMenuButton, { asChild: true, isActive, children: /* @__PURE__ */ jsx30("div", { onClick, children: isEditing ? /* @__PURE__ */ jsx30(
       Input,
       {
         value: editTitle,
@@ -3302,17 +3243,17 @@ var ThreadItem = ({
         autoFocus: true,
         onClick: (e) => e.stopPropagation()
       }
-    ) : /* @__PURE__ */ jsxs14("div", { className: "flex-1", children: [
-      /* @__PURE__ */ jsx28("p", { className: "text-sm font-medium truncate leading-tight", children: thread.title || "New Chat" }),
-      /* @__PURE__ */ jsx28("p", { className: "text-xs text-muted-foreground truncate leading-tight mt-0.5", children: thread.last_message || "No messages yet" })
+    ) : /* @__PURE__ */ jsxs16("div", { className: "flex-1", children: [
+      /* @__PURE__ */ jsx30("p", { className: "text-sm font-medium truncate leading-tight", children: thread.title || "New Chat" }),
+      /* @__PURE__ */ jsx30("p", { className: "text-xs text-muted-foreground truncate leading-tight mt-0.5", children: thread.last_message || "No messages yet" })
     ] }) }) }),
-    !isEditing && /* @__PURE__ */ jsxs14(DropdownMenu, { children: [
-      /* @__PURE__ */ jsx28(DropdownMenuTrigger, { asChild: true, children: /* @__PURE__ */ jsx28(SidebarMenuAction, { onClick: (e) => {
+    !isEditing && /* @__PURE__ */ jsxs16(DropdownMenu, { children: [
+      /* @__PURE__ */ jsx30(DropdownMenuTrigger, { asChild: true, children: /* @__PURE__ */ jsx30(SidebarMenuAction, { onClick: (e) => {
         e.stopPropagation();
         setShowMenu(!showMenu);
-      }, children: /* @__PURE__ */ jsx28(MoreHorizontal, {}) }) }),
-      /* @__PURE__ */ jsxs14(DropdownMenuContent, { className: "w-[--radix-popper-anchor-width]", children: [
-        /* @__PURE__ */ jsxs14(
+      }, children: /* @__PURE__ */ jsx30(MoreHorizontal, {}) }) }),
+      /* @__PURE__ */ jsxs16(DropdownMenuContent, { className: "w-[--radix-popper-anchor-width]", children: [
+        /* @__PURE__ */ jsxs16(
           DropdownMenuItem,
           {
             onClick: (e) => {
@@ -3321,12 +3262,12 @@ var ThreadItem = ({
               setShowMenu(false);
             },
             children: [
-              /* @__PURE__ */ jsx28(Edit3, { className: "h-3 w-3" }),
-              /* @__PURE__ */ jsx28("span", { children: "Rename" })
+              /* @__PURE__ */ jsx30(Edit3, { className: "h-3 w-3" }),
+              /* @__PURE__ */ jsx30("span", { children: "Rename" })
             ]
           }
         ),
-        /* @__PURE__ */ jsxs14(
+        /* @__PURE__ */ jsxs16(
           DropdownMenuItem,
           {
             onClick: (e) => {
@@ -3335,8 +3276,8 @@ var ThreadItem = ({
               setShowMenu(false);
             },
             children: [
-              /* @__PURE__ */ jsx28(Trash2, { className: "h-3 w-3" }),
-              /* @__PURE__ */ jsx28("span", { children: "Delete" })
+              /* @__PURE__ */ jsx30(Trash2, { className: "h-3 w-3" }),
+              /* @__PURE__ */ jsx30("span", { children: "Delete" })
             ]
           }
         )
@@ -3360,40 +3301,40 @@ function AppSidebar({
   const handleRefresh = useCallback7(() => {
     refetch();
   }, [refetch]);
-  return /* @__PURE__ */ jsxs14(Sidebar, { collapsible: "icon", variant: "floating", children: [
-    /* @__PURE__ */ jsx28(SidebarHeader, { children: /* @__PURE__ */ jsx28(SidebarMenu, { children: /* @__PURE__ */ jsxs14(SidebarMenuItem, { children: [
-      /* @__PURE__ */ jsxs14(
+  return /* @__PURE__ */ jsxs16(Sidebar, { collapsible: "icon", variant: "floating", children: [
+    /* @__PURE__ */ jsx30(SidebarHeader, { children: /* @__PURE__ */ jsx30(SidebarMenu, { children: /* @__PURE__ */ jsxs16(SidebarMenuItem, { children: [
+      /* @__PURE__ */ jsxs16(
         SidebarMenuButton,
         {
           onClick: onLogoClick,
           children: [
-            /* @__PURE__ */ jsx28(Bot4, {}),
+            /* @__PURE__ */ jsx30(Bot4, {}),
             "Distri"
           ]
         }
       ),
-      /* @__PURE__ */ jsxs14(
+      /* @__PURE__ */ jsxs16(
         SidebarMenuAction,
         {
           onClick: () => setTheme(theme === "light" ? "dark" : "light"),
           title: "Toggle theme",
           className: "absolute right-0 top-0",
           children: [
-            /* @__PURE__ */ jsxs14("svg", { className: "h-4 w-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: [
-              /* @__PURE__ */ jsx28("circle", { cx: "12", cy: "12", r: "5" }),
-              /* @__PURE__ */ jsx28("path", { d: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" })
+            /* @__PURE__ */ jsxs16("svg", { className: "h-4 w-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: [
+              /* @__PURE__ */ jsx30("circle", { cx: "12", cy: "12", r: "5" }),
+              /* @__PURE__ */ jsx30("path", { d: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" })
             ] }),
-            /* @__PURE__ */ jsx28("svg", { className: "absolute h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsx28("path", { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" }) })
+            /* @__PURE__ */ jsx30("svg", { className: "absolute h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", children: /* @__PURE__ */ jsx30("path", { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" }) })
           ]
         }
       )
     ] }) }) }),
-    /* @__PURE__ */ jsx28(SidebarSeparator, {}),
-    /* @__PURE__ */ jsxs14(SidebarContent, { children: [
-      /* @__PURE__ */ jsxs14(SidebarGroup, { children: [
-        /* @__PURE__ */ jsx28(SidebarGroupLabel, { children: "Actions" }),
-        /* @__PURE__ */ jsx28(SidebarGroupContent, { children: /* @__PURE__ */ jsxs14(SidebarMenu, { children: [
-          /* @__PURE__ */ jsx28(SidebarMenuItem, { className: "mb-1", children: /* @__PURE__ */ jsxs14(
+    /* @__PURE__ */ jsx30(SidebarSeparator, {}),
+    /* @__PURE__ */ jsxs16(SidebarContent, { children: [
+      /* @__PURE__ */ jsxs16(SidebarGroup, { children: [
+        /* @__PURE__ */ jsx30(SidebarGroupLabel, { children: "Actions" }),
+        /* @__PURE__ */ jsx30(SidebarGroupContent, { children: /* @__PURE__ */ jsxs16(SidebarMenu, { children: [
+          /* @__PURE__ */ jsx30(SidebarMenuItem, { className: "mb-1", children: /* @__PURE__ */ jsxs16(
             SidebarMenuButton,
             {
               isActive: currentPage === "chat",
@@ -3402,30 +3343,30 @@ function AppSidebar({
                 onNewChat();
               },
               children: [
-                /* @__PURE__ */ jsx28(Edit2, { className: "h-4 w-4" }),
+                /* @__PURE__ */ jsx30(Edit2, { className: "h-4 w-4" }),
                 "New Chat"
               ]
             }
           ) }),
-          /* @__PURE__ */ jsx28(SidebarMenuItem, { className: "mb-1", children: /* @__PURE__ */ jsxs14(
+          /* @__PURE__ */ jsx30(SidebarMenuItem, { className: "mb-1", children: /* @__PURE__ */ jsxs16(
             SidebarMenuButton,
             {
               isActive: currentPage === "agents",
               onClick: () => onPageChange("agents"),
               children: [
-                /* @__PURE__ */ jsx28(Users, { className: "h-4 w-4" }),
+                /* @__PURE__ */ jsx30(Users, { className: "h-4 w-4" }),
                 "Agents"
               ]
             }
           ) })
         ] }) })
       ] }),
-      open && /* @__PURE__ */ jsxs14(SidebarGroup, { children: [
-        /* @__PURE__ */ jsx28(SidebarGroupLabel, { children: "Conversations" }),
-        /* @__PURE__ */ jsx28(SidebarGroupContent, { children: /* @__PURE__ */ jsx28(SidebarMenu, { children: threadsLoading ? /* @__PURE__ */ jsxs14(SidebarMenuItem, { children: [
-          /* @__PURE__ */ jsx28(Loader22, { className: "h-4 w-4 animate-spin" }),
-          /* @__PURE__ */ jsx28("span", { children: "Loading threads..." })
-        ] }) : threads.length === 0 ? /* @__PURE__ */ jsx28(SidebarMenuItem, { children: "No conversations yet" }) : threads.map((thread) => /* @__PURE__ */ jsx28(
+      open && /* @__PURE__ */ jsxs16(SidebarGroup, { children: [
+        /* @__PURE__ */ jsx30(SidebarGroupLabel, { children: "Conversations" }),
+        /* @__PURE__ */ jsx30(SidebarGroupContent, { children: /* @__PURE__ */ jsx30(SidebarMenu, { children: threadsLoading ? /* @__PURE__ */ jsxs16(SidebarMenuItem, { children: [
+          /* @__PURE__ */ jsx30(Loader22, { className: "h-4 w-4 animate-spin" }),
+          /* @__PURE__ */ jsx30("span", { children: "Loading threads..." })
+        ] }) : threads.length === 0 ? /* @__PURE__ */ jsx30(SidebarMenuItem, { children: "No conversations yet" }) : threads.map((thread) => /* @__PURE__ */ jsx30(
           ThreadItem,
           {
             thread,
@@ -3436,27 +3377,27 @@ function AppSidebar({
           },
           thread.id
         )) }) }),
-        /* @__PURE__ */ jsxs14(
+        /* @__PURE__ */ jsxs16(
           SidebarGroupAction,
           {
             onClick: handleRefresh,
             disabled: threadsLoading,
             title: "Refresh conversations",
             children: [
-              /* @__PURE__ */ jsx28(RefreshCw2, { className: `${threadsLoading ? "animate-spin" : ""}` }),
-              /* @__PURE__ */ jsx28("span", { className: "sr-only", children: "Refresh conversations" })
+              /* @__PURE__ */ jsx30(RefreshCw2, { className: `${threadsLoading ? "animate-spin" : ""}` }),
+              /* @__PURE__ */ jsx30("span", { className: "sr-only", children: "Refresh conversations" })
             ]
           }
         )
       ] })
     ] }),
-    /* @__PURE__ */ jsx28(SidebarFooter, { children: /* @__PURE__ */ jsx28(SidebarMenu, { children: /* @__PURE__ */ jsx28(SidebarMenuItem, { children: /* @__PURE__ */ jsxs14(
+    /* @__PURE__ */ jsx30(SidebarFooter, { children: /* @__PURE__ */ jsx30(SidebarMenu, { children: /* @__PURE__ */ jsx30(SidebarMenuItem, { children: /* @__PURE__ */ jsxs16(
       SidebarMenuButton,
       {
         onClick: () => window.open("https://github.com/your-repo/distri", "_blank"),
         title: "GitHub",
         children: [
-          /* @__PURE__ */ jsx28(Github, {}),
+          /* @__PURE__ */ jsx30(Github, {}),
           "Distri"
         ]
       }
@@ -3465,7 +3406,7 @@ function AppSidebar({
 }
 
 // src/components/FullChat.tsx
-import { jsx as jsx29, jsxs as jsxs15 } from "react/jsx-runtime";
+import { jsx as jsx31, jsxs as jsxs17 } from "react/jsx-runtime";
 var FullChat = ({
   agentId: initialAgentId,
   getMetadata,
@@ -3541,20 +3482,22 @@ var FullChat = ({
   }, [refetchThreads]);
   const renderMainContent = () => {
     if (currentPage === "agents") {
-      return /* @__PURE__ */ jsx29(AgentsPage_default, { onStartChat: (agent2) => {
+      return /* @__PURE__ */ jsx31(AgentsPage_default, { onStartChat: (agent2) => {
         setCurrentPage("chat");
         handleAgentSelect(agent2.id);
       } });
     }
     if (!agent) {
-      if (agentLoading) return /* @__PURE__ */ jsx29("div", { children: "Loading agent..." });
-      if (agentError) return /* @__PURE__ */ jsxs15("div", { children: [
-        "Error loading agent: ",
-        agentError.message
-      ] });
-      return /* @__PURE__ */ jsx29("div", { children: "No agent selected" });
+      if (agentLoading)
+        return /* @__PURE__ */ jsx31("div", { children: "Loading agent..." });
+      if (agentError)
+        return /* @__PURE__ */ jsxs17("div", { children: [
+          "Error loading agent: ",
+          agentError.message
+        ] });
+      return /* @__PURE__ */ jsx31("div", { children: "No agent selected" });
     }
-    return /* @__PURE__ */ jsx29(
+    return /* @__PURE__ */ jsx31(
       EmbeddableChat,
       {
         threadId: selectedThreadId,
@@ -3576,7 +3519,7 @@ var FullChat = ({
       }
     );
   };
-  return /* @__PURE__ */ jsx29("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ jsxs15(
+  return /* @__PURE__ */ jsx31("div", { className: `distri-chat ${className} h-full`, children: /* @__PURE__ */ jsxs17(
     SidebarProvider,
     {
       defaultOpen,
@@ -3585,7 +3528,7 @@ var FullChat = ({
         "--sidebar-width-mobile": "18rem"
       },
       children: [
-        /* @__PURE__ */ jsx29(
+        /* @__PURE__ */ jsx31(
           AppSidebar,
           {
             selectedThreadId,
@@ -3601,10 +3544,10 @@ var FullChat = ({
             onPageChange: setCurrentPage
           }
         ),
-        /* @__PURE__ */ jsxs15(SidebarInset, { children: [
-          /* @__PURE__ */ jsx29("header", { className: "flex h-16 shrink-0 items-center gap-2 px-4 border-b", children: /* @__PURE__ */ jsxs15("div", { className: "flex items-center gap-2 flex-1", children: [
-            /* @__PURE__ */ jsx29(SidebarTrigger, { className: "-ml-1" }),
-            availableAgents && availableAgents.length > 0 && /* @__PURE__ */ jsx29("div", { className: "w-64", children: /* @__PURE__ */ jsx29(
+        /* @__PURE__ */ jsxs17(SidebarInset, { children: [
+          /* @__PURE__ */ jsx31("header", { className: "flex h-16 shrink-0 items-center gap-2 px-4 border-b", children: /* @__PURE__ */ jsxs17("div", { className: "flex items-center gap-2 flex-1", children: [
+            /* @__PURE__ */ jsx31(SidebarTrigger, { className: "-ml-1" }),
+            availableAgents && availableAgents.length > 0 && /* @__PURE__ */ jsx31("div", { className: "w-64", children: /* @__PURE__ */ jsx31(
               AgentSelect,
               {
                 agents: availableAgents,
@@ -3615,34 +3558,13 @@ var FullChat = ({
               }
             ) })
           ] }) }),
-          /* @__PURE__ */ jsx29("main", { className: "flex-1 overflow-hidden", children: renderMainContent() })
+          /* @__PURE__ */ jsx31("main", { className: "flex-1 overflow-hidden", children: renderMainContent() })
         ] })
       ]
     }
   ) });
 };
 var FullChat_default = FullChat;
-
-// src/components/ThemeToggle.tsx
-import React24 from "react";
-import { Moon, Sun } from "lucide-react";
-import { jsx as jsx30, jsxs as jsxs16 } from "react/jsx-runtime";
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const dropdownRef = React24.useRef(null);
-  return /* @__PURE__ */ jsx30("div", { className: "relative", ref: dropdownRef, children: /* @__PURE__ */ jsxs16(
-    "button",
-    {
-      onClick: () => setTheme(theme === "light" ? "dark" : "light"),
-      className: "flex items-center justify-center w-9 h-9 rounded-md border bg-background hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
-      children: [
-        /* @__PURE__ */ jsx30(Sun, { className: "h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" }),
-        /* @__PURE__ */ jsx30(Moon, { className: "absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" }),
-        /* @__PURE__ */ jsx30("span", { className: "sr-only", children: "Toggle theme" })
-      ]
-    }
-  ) });
-}
 export {
   AgentSelect,
   ApprovalToolCall,

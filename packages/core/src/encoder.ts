@@ -18,6 +18,94 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
   };
 }
 
+/**
+ * Converts A2A artifacts to DistriMessage or DistriEvent based on content
+ */
+export function convertA2AArtifactToDistri(artifact: any): DistriMessage | DistriEvent | null {
+  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
+    return null;
+  }
+
+  const part = artifact.parts[0];
+  if (!part || part.kind !== 'data' || !part.data) {
+    return null;
+  }
+
+  const data = part.data;
+  
+  // Handle different artifact types based on the data structure
+  if (data.type === 'llm_response') {
+    // This is an LLM response with potential tool calls
+    const message: DistriMessage = {
+      id: data.id || artifact.artifactId,
+      role: 'assistant',
+      parts: [],
+      created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
+    };
+
+    // Add content if present
+    if (data.content && data.content.trim()) {
+      message.parts.push({ type: 'text', text: data.content });
+    }
+
+    // Add tool calls if present
+    if (data.tool_calls && Array.isArray(data.tool_calls)) {
+      data.tool_calls.forEach((toolCall: any) => {
+        const parsedInput = typeof toolCall.input === 'string' 
+          ? JSON.parse(toolCall.input) 
+          : toolCall.input;
+        
+        message.parts.push({
+          type: 'tool_call',
+          tool_call: {
+            tool_call_id: toolCall.tool_call_id,
+            tool_name: toolCall.tool_name,
+            input: parsedInput,
+          }
+        });
+      });
+    }
+
+    return message;
+  }
+
+  if (data.type === 'tool_results') {
+    // This contains tool results
+    const message: DistriMessage = {
+      id: data.id || artifact.artifactId,
+      role: 'assistant',
+      parts: [],
+      created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
+    };
+
+    if (data.results && Array.isArray(data.results)) {
+      data.results.forEach((result: any) => {
+        let parsedResult = result.result;
+        if (typeof parsedResult === 'string') {
+          try {
+            parsedResult = JSON.parse(parsedResult);
+          } catch {
+            // Keep as string if not valid JSON
+          }
+        }
+
+        message.parts.push({
+          type: 'tool_result',
+          tool_result: {
+            tool_call_id: result.tool_call_id,
+            result: parsedResult,
+            success: data.success !== false,
+          }
+        });
+      });
+    }
+
+    return message;
+  }
+
+  return null;
+}
+
 export function decodeA2AStreamEvent(event: A2AStreamEventData): DistriEvent | DistriMessage {
   if (event.kind === 'message') {
     return convertA2AMessageToDistri(event as Message) as DistriMessage;
@@ -155,4 +243,27 @@ export function extractToolResultsFromDistriMessage(message: DistriMessage): any
   return message.parts
     .filter(part => part.type === 'tool_result')
     .map(part => (part as { type: 'tool_result'; tool_result: any }).tool_result);
+}
+
+/**
+ * Process A2A messages.json data and convert to DistriMessage array
+ */
+export function processA2AMessagesData(data: any[]): DistriMessage[] {
+  const results: DistriMessage[] = [];
+  
+  for (const item of data) {
+    if (item.kind === 'message') {
+      // Regular message
+      const distriMessage = convertA2AMessageToDistri(item);
+      results.push(distriMessage);
+    } else if (item.artifactId && item.parts) {
+      // Artifact
+      const distriMessage = convertA2AArtifactToDistri(item);
+      if (distriMessage && 'role' in distriMessage) {
+        results.push(distriMessage as DistriMessage);
+      }
+    }
+  }
+  
+  return results;
 }

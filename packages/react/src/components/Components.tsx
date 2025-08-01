@@ -4,6 +4,19 @@ import { DistriMessage } from '@distri/core';
 import MessageRenderer from './MessageRenderer';
 import { ToolCallState } from '@/types';
 
+export { FullChat } from './FullChat'
+export { EmbeddableChat } from './EmbeddableChat'
+export { DistriProvider } from '../DistriProvider'
+export { ThemeProvider } from './ThemeProvider'
+export { ThemeToggle } from './ThemeToggle'
+export { default as AgentList } from './AgentList'
+export { AgentSelect } from './AgentSelect'
+export { default as AgentsPage } from './AgentsPage'
+export { default as MessageRenderer } from './MessageRenderer'
+export { ExecutionSteps } from './ExecutionSteps'
+export { useChatConfig } from './ChatContext'
+export * from './ui'
+
 export interface BaseMessageProps {
   content?: string;
   message?: DistriMessage;
