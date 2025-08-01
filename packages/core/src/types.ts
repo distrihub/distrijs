@@ -19,8 +19,6 @@ export interface DistriMessage {
 
 export type DistriStreamEvent = DistriMessage | DistriEvent;
 
-
-
 /**
  * Context required for constructing A2A messages from DistriMessage
  */
@@ -278,5 +276,5 @@ export function isDistriMessage(event: DistriStreamEvent): event is DistriMessag
 }
 
 export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
-  return 'type' in event && 'metadata' in event;
+  return 'type' in event && 'data' in event;
 }

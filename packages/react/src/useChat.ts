@@ -1,15 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriClient } from '@distri/core';
 import {
+  Agent,
+  DistriClient,
   DistriMessage,
   DistriPart,
   InvokeContext,
   DistriEvent,
+  DistriStreamEvent,
+  isDistriMessage,
+  isDistriEvent,
   convertDistriMessageToA2A,
-  ToolResult
+  decodeA2AStreamEvent,
+
+  ToolResult,
+  ToolResultPart
 } from '@distri/core';
-import { decodeA2AStreamEvent } from '../../core/src/encoder';
-import { DistriStreamEvent, isDistriMessage, ToolResultPart } from '../../core/src/types';
 import { registerTools } from './hooks/registerTools';
 import { useToolCallState } from './hooks/useToolCallState';
 import { DistriAnyTool, ToolCallState } from './types';
@@ -26,16 +31,15 @@ export interface UseChatOptions {
 }
 
 export interface UseChatReturn {
-  messages: DistriStreamEvent[];
-  isStreaming: boolean;
-  sendMessage: (content: string | DistriPart[]) => Promise<void>;
-  sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+  messages: (DistriMessage | DistriEvent)[];
+  executionEvents: DistriEvent[];
   isLoading: boolean;
+  isStreaming: boolean;
   error: Error | null;
-  clearMessages: () => void;
-  agent: Agent | undefined;
+  sendMessage: (content: string | DistriPart[]) => Promise<void>;
+  sendMessageStream: (content: string | DistriPart[], role?: 'user' | 'tool') => Promise<void>;
   toolCallStates: Map<string, ToolCallState>;
-  hasPendingToolCalls: () => boolean;
+  clearMessages: () => void;
   stopStreaming: () => void;
 }
 
@@ -49,6 +53,7 @@ export function useChat({
   tools,
 }: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
+  const [executionEvents, setExecutionEvents] = useState<DistriEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -107,7 +112,13 @@ export function useChat({
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
+      
       setMessages(distriMessages);
+      
+      // Extract execution events
+      const execEvents = distriMessages.filter(isDistriEvent).filter(isExecutionEvent) as DistriEvent[];
+      setExecutionEvents(execEvents);
+      
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch messages');
@@ -148,6 +159,13 @@ export function useChat({
           // Add new message
           return [...prev, distriMessage];
         }
+      } else if (isDistriEvent(event)) {
+        // Handle execution events separately for tracking
+        const distriEvent = event as DistriEvent;
+        if (isExecutionEvent(distriEvent)) {
+          setExecutionEvents(prevEvents => [...prevEvents, distriEvent]);
+        }
+        return [...prev, event];
       } else {
         return [...prev, event];
       }
@@ -185,7 +203,22 @@ export function useChat({
     }
 
     onMessage?.(event);
-  }, [onMessage, agent]);
+  }, [toolStateHandler, onMessage]);
+
+  // Helper function to determine if an event is execution-related
+  const isExecutionEvent = (event: DistriEvent): boolean => {
+    return [
+      'run_started',
+      'run_finished', 
+      'plan_started',
+      'plan_finished',
+      'step_started',
+      'step_completed',
+      'tool_execution_start',
+      'tool_execution_end',
+      'tool_rejected'
+    ].includes(event.type);
+  };
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
@@ -328,15 +361,14 @@ export function useChat({
 
   return {
     messages,
+    executionEvents,
+    isLoading,
     isStreaming,
+    error,
     sendMessage,
     sendMessageStream,
-    isLoading,
-    error,
-    clearMessages,
-    agent: agent || undefined,
     toolCallStates: toolStateHandler.toolCallStates,
-    hasPendingToolCalls: toolStateHandler.hasPendingToolCalls,
+    clearMessages,
     stopStreaming,
   };
 } 

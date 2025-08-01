@@ -1,5 +1,5 @@
 // Core hooks
-export { useDistri, DistriProvider } from './DistriProvider';
+export { DistriProvider } from './DistriProvider';
 export { useAgent } from './useAgent';
 export { useAgents } from './useAgents';
 export { useChat } from './useChat';
@@ -8,8 +8,9 @@ export { registerTools } from './hooks/registerTools';
 export { useToolCallState } from './hooks/useToolCallState';
 
 // Components
-export { default as FullChat } from './components/FullChat';
 export { EmbeddableChat } from './components/EmbeddableChat';
+export { FullChat } from './components/FullChat';
+export { ExecutionSteps, ExecutionTracker } from './components/ExecutionSteps';
 export { AgentSelect } from './components/AgentSelect';
 export { ChatInput } from './components/ChatInput';
 export { ThemeProvider, useTheme } from './components/ThemeProvider';

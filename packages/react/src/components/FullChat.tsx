@@ -1,218 +1,313 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Agent } from '@distri/core';
-import { useThreads } from '../useThreads';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { MessageSquare } from 'lucide-react';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
 import { useChat } from '../useChat';
-import { EmbeddableChat } from './EmbeddableChat';
-import AgentsPage from './AgentsPage';
-import { AppSidebar } from './AppSidebar';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from './ui/sidebar';
+import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './Components';
+import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';
 import { AgentSelect } from './AgentSelect';
-import { useAgent } from '@/useAgent';
-import { useTheme } from './ThemeProvider';
-import { uuidv4 } from '../../../core/src/distri-client';
-
+import { Toaster } from './ui/sonner';
+import { ChatInput } from './ChatInput';
+import { DistriAnyTool, ToolCallState } from '../types';
+import { ExecutionTracker } from './ExecutionSteps';
 
 export interface FullChatProps {
-  agentId: string;
-  agent?: Agent;
-  getMetadata?: () => Promise<any>;
+  agent: Agent;
+  threadId: string;
   className?: string;
-  // Available agents for selection
-  availableAgents?: Array<{ id: string; name: string; description?: string }>;
-  // Customization props
+  style?: React.CSSProperties;
+  getMetadata?: () => any;
+  tools?: DistriAnyTool[];
+  availableAgents?: Agent[];
+  
+  // Components customization
   UserMessageComponent?: React.ComponentType<any>;
   AssistantMessageComponent?: React.ComponentType<any>;
   AssistantWithToolCallsComponent?: React.ComponentType<any>;
   PlanMessageComponent?: React.ComponentType<any>;
+  
   // Theme
   theme?: 'light' | 'dark' | 'auto';
   // Show debug info
   showDebug?: boolean;
-
+  // Show agent selector
+  showAgentSelector?: boolean;
+  // Placeholder for input
+  placeholder?: string;
+  // Disable agent selection if thread has started
+  disableAgentSelection?: boolean;
+  
   // Callbacks
   onAgentSelect?: (agentId: string) => void;
-  onThreadSelect?: (threadId: string) => void;
-  onThreadCreate?: (threadId: string) => void;
-  onThreadDelete?: (threadId: string) => void;
-  onLogoClick?: () => void;
+  onResponse?: (message: DistriMessage) => void;
+  onMessagesUpdate?: () => void;
 }
 
-type PageType = 'chat' | 'agents';
+export type MessageComponentType = MessageRole | 'assistant_with_tools' | 'plan' | 'debug' | 'tool';
 
 export const FullChat: React.FC<FullChatProps> = ({
-  agentId: initialAgentId,
-  getMetadata,
+  agent,
+  threadId,
   className = '',
-  UserMessageComponent,
-  AssistantMessageComponent,
-  AssistantWithToolCallsComponent,
-  PlanMessageComponent,
+  style = {},
+  getMetadata,
+  tools,
+  availableAgents = [],
+  UserMessageComponent = UserMessage,
+  AssistantMessageComponent = AssistantMessage,
+  AssistantWithToolCallsComponent = AssistantWithToolCalls,
+  PlanMessageComponent = PlanMessage,
+  theme = 'dark',
   showDebug = false,
-  onThreadSelect,
-  onThreadCreate,
-  onThreadDelete,
-  onLogoClick,
-  availableAgents,
+  showAgentSelector = true,
+  placeholder = "Type your message...",
+  disableAgentSelection = false,
   onAgentSelect,
+  onResponse: _onResponse,
+  onMessagesUpdate,
 }) => {
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(uuidv4());
-  const [currentAgentId, setCurrentAgentId] = useState<string>(initialAgentId);
-  const { threads, refetch: refetchThreads } = useThreads();
-  const [currentPage, setCurrentPage] = useState<PageType>('chat');
-  const [defaultOpen, setDefaultOpen] = useState(true);
-  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId: currentAgentId });
-  const { theme } = useTheme();
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get the current thread
-  const currentThread = threads.find(t => t.id === selectedThreadId);
-
-  // Use chat hook to get messages for the selected thread
-  const { messages } = useChat({
-    threadId: selectedThreadId,
+  const {
+    messages,
+    executionEvents,
+    isLoading,
+    isStreaming,
+    error,
+    sendMessage: sendChatMessage,
+    toolCallStates,
+    stopStreaming,
+  } = useChat({
+    threadId,
     agent: agent || undefined,
-    getMetadata
+    tools,
+    getMetadata,
+    onMessagesUpdate
   });
 
-  // Check if thread has started (has messages)
-  const threadHasStarted = messages.length > 0;
-
-  // Load sidebar state from localStorage
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    const savedState = localStorage.getItem('sidebar:state');
-    if (savedState !== null) {
-      setDefaultOpen(savedState === 'true');
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, []);
+  }, [messages]);
 
-  // Auto-populate agent ID from thread when thread is selected
-  useEffect(() => {
-    if (currentThread?.agent_id && currentThread.agent_id !== currentAgentId) {
-      setCurrentAgentId(currentThread.agent_id);
-      onAgentSelect?.(currentThread.agent_id);
+  const sendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const messageText = input.trim();
+    setInput('');
+
+    try {
+      await sendChatMessage(messageText);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setInput(messageText); // Restore input on error
     }
-  }, [currentThread?.agent_id, currentAgentId, onAgentSelect]);
-
-  const handleNewChat = useCallback(() => {
-    const newThreadId = `thread-${Date.now()}`;
-    setSelectedThreadId(newThreadId);
-    onThreadCreate?.(newThreadId);
-  }, [onThreadCreate]);
-
-  const handleThreadSelect = useCallback((threadId: string) => {
-    setCurrentPage('chat');
-    setSelectedThreadId(threadId);
-    onThreadSelect?.(threadId);
-  }, [onThreadSelect]);
-
-  const handleThreadDelete = useCallback((threadId: string) => {
-    // If deleting the active thread, switch to a new one
-    if (threadId === selectedThreadId) {
-      const remainingThreads = threads.filter(t => t.id !== threadId);
-      if (remainingThreads.length > 0) {
-        setSelectedThreadId(remainingThreads[0].id);
-      } else {
-        handleNewChat();
-      }
-    }
-    onThreadDelete?.(threadId);
-    refetchThreads();
-  }, [selectedThreadId, threads, handleNewChat, onThreadDelete, refetchThreads]);
-
-  const handleAgentSelect = useCallback((newAgentId: string) => {
-    // Only allow agent selection if thread hasn't started
-    if (!threadHasStarted) {
-      setCurrentAgentId(newAgentId);
-      onAgentSelect?.(newAgentId);
-    }
-  }, [threadHasStarted, onAgentSelect]);
-
-  const handleMessagesUpdate = useCallback(() => {
-    refetchThreads();
-  }, [refetchThreads]);
-
-  const renderMainContent = () => {
-    if (currentPage === 'agents') {
-      return <AgentsPage onStartChat={(agent) => {
-        setCurrentPage('chat');
-        handleAgentSelect(agent.id);
-      }} />;
-    }
-
-    if (!agent) {
-      if (agentLoading) return <div>Loading agent...</div>;
-      if (agentError) return <div>Error loading agent: {agentError.message}</div>;
-      return <div>No agent selected</div>;
-    }
-
-    return (
-      <EmbeddableChat
-        threadId={selectedThreadId}
-        showAgentSelector={false}
-        agent={agent}
-        getMetadata={getMetadata}
-        height="calc(100vh - 4rem)"
-        availableAgents={availableAgents}
-        UserMessageComponent={UserMessageComponent}
-        AssistantMessageComponent={AssistantMessageComponent}
-        AssistantWithToolCallsComponent={AssistantWithToolCallsComponent}
-        PlanMessageComponent={PlanMessageComponent}
-        theme={theme as 'light' | 'dark' | 'auto'}
-        showDebug={showDebug}
-        placeholder="Type your message..."
-        disableAgentSelection={threadHasStarted}
-        onAgentSelect={handleAgentSelect}
-        onMessagesUpdate={handleMessagesUpdate}
-      />
-    );
   };
 
-  return (
+  const getMessageType = (message: DistriMessage): MessageComponentType => {
+    if (message.parts.some((part: DistriPart) => part.type === 'tool_call')) {
+      return 'assistant_with_tools';
+    }
+    if (message.parts.some((part: DistriPart) => part.type === 'plan')) {
+      return 'plan';
+    }
+    return message.role;
+  };
 
-    <div className={`distri-chat ${className} h-full`}>
-      <SidebarProvider defaultOpen={defaultOpen}
-        style={{
-          "--sidebar-width": "20rem",
-          "--sidebar-width-mobile": "18rem",
-        } as React.CSSProperties}>
-        <AppSidebar
-          selectedThreadId={selectedThreadId}
-          currentPage={currentPage}
-          onNewChat={handleNewChat}
-          onThreadSelect={handleThreadSelect}
-          onThreadDelete={handleThreadDelete}
-          onThreadRename={(threadId: string, newTitle: string) => {
-            // Placeholder for thread rename functionality
-            console.log('Rename thread', threadId, 'to', newTitle);
-            refetchThreads();
-          }}
-          onLogoClick={onLogoClick}
-          onPageChange={setCurrentPage}
-        />
-        <SidebarInset>
-          {/* Header with agent selector only */}
-          <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
-            <div className="flex items-center gap-2 flex-1">
-              <SidebarTrigger className="-ml-1" />
-              {availableAgents && availableAgents.length > 0 && (
-                <div className="w-64">
-                  <AgentSelect
-                    agents={availableAgents}
-                    selectedAgentId={currentAgentId}
-                    onAgentSelect={handleAgentSelect}
-                    placeholder="Select an agent..."
-                    disabled={threadHasStarted}
-                  />
+  const renderedMessages = useMemo(() => {
+    return messages
+      .filter(msg => shouldDisplayMessage(msg, showDebug))
+      .map((message, index) => {
+        const messageContent = extractTextFromMessage(message);
+        const key = `message-${index}`;
+
+        // Get timestamp from message metadata or parts
+        const timestamp = (message as any).created_at ? new Date((message as any).created_at) : undefined;
+
+        if (isDistriMessage(message)) {
+          switch (getMessageType(message)) {
+            case 'user':
+              return (
+                <UserMessageComponent
+                  key={key}
+                  message={message}
+                  timestamp={timestamp}
+                />
+              );
+
+            case 'assistant':
+              return (
+                <AssistantMessageComponent
+                  key={key}
+                  name={agent?.name}
+                  avatar={agent?.iconUrl ? (
+                    <img src={agent.iconUrl} alt={agent.name} className="w-6 h-6 rounded-full" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">
+                      {agent?.name?.charAt(0).toUpperCase() || 'A'}
+                    </div>
+                  )}
+                  message={message}
+                  timestamp={timestamp}
+                  isStreaming={isStreaming && index === messages.length - 1}
+                />
+              );
+
+            case 'assistant_with_tools':
+              // Extract tool calls from message parts and get their status from the tool call state
+              const states = (message.parts || [])
+                .filter((part: any) => part.tool_call)
+                .map((part: any) => {
+                  const toolCallState = toolCallStates.get(part.tool_call.tool_call_id);
+                  return toolCallState;
+                }).filter(Boolean) as ToolCallState[];
+
+              return (
+                <AssistantWithToolCallsComponent
+                  key={key}
+                  message={message}
+                  toolCallStates={states}
+                  timestamp={timestamp}
+                  isStreaming={isStreaming && index === messages.length - 1}
+                />
+              );
+
+            case 'plan':
+              return (
+                <PlanMessageComponent
+                  key={key}
+                  message={message}
+                  plan={messageContent}
+                  timestamp={timestamp}
+                />
+              );
+
+            case 'debug':
+              return (
+                <DebugMessage
+                  key={key}
+                  message={message}
+                  timestamp={timestamp}
+                />
+              );
+
+            default:
+              return null;
+          }
+        } else {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  }, [
+    messages,
+    showDebug,
+    UserMessageComponent,
+    AssistantMessageComponent,
+    AssistantWithToolCallsComponent,
+    PlanMessageComponent,
+    toolCallStates,
+    isStreaming
+  ]);
+
+  return (
+    <div
+      className={`distri-chat ${className} ${theme === 'dark' ? 'dark' : 'light'} w-full bg-background text-foreground flex flex-col relative`}
+      style={{
+        ...style
+      }}
+    >
+      {/* Top padding and Agent Selector */}
+      <div className="pt-6 px-6 bg-background flex-shrink-0 z-10">
+        {showAgentSelector && availableAgents && availableAgents.length > 0 && (
+          <div className="mb-6">
+            <AgentSelect
+              agents={availableAgents}
+              selectedAgentId={agent?.id}
+              onAgentSelect={(agentId: string) => onAgentSelect?.(agentId)}
+              className="w-full"
+              disabled={disableAgentSelection || messages.length > 0}
+            />
+          </div>
+        )}
+      </div>
+      <Toaster />
+
+      {/* Main Chat Area - Full height scrollable container */}
+      <div className="flex-1 relative min-h-0">
+        <div className="absolute inset-0 flex flex-col">
+          {/* Messages Area - Full height scrollable */}
+          <div className="flex-1 overflow-y-auto distri-scroll bg-background">
+            <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center min-h-[400px]">
+                  <div className="text-center">
+                    <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">
+                      Start a conversation
+                    </h3>
+                    <p className="text-muted-foreground max-w-sm">
+                      {placeholder || "Type your message below to begin chatting."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-0 pt-4">
+                  {renderedMessages}
+                  
+                  {/* Execution Tracker */}
+                  {executionEvents.length > 0 && (
+                    <div className="px-6 py-4">
+                      <ExecutionTracker
+                        events={executionEvents}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          </header>
 
-          {/* Main content area */}
-          <main className="flex-1 overflow-hidden">
-            {renderMainContent()}
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+              {/* Loading state */}
+              {isLoading && (
+                <div className="px-6 py-4 flex items-center space-x-2 bg-muted rounded-lg mt-4">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
+                  <span className="text-muted-foreground text-sm">Thinking...</span>
+                </div>
+              )}
+
+              {/* Error state */}
+              {error && (
+                <div className="px-6 py-4 bg-destructive/20 border border-destructive/20 rounded-lg mt-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="h-4 w-4 rounded-full bg-destructive"></div>
+                    <span className="text-destructive text-sm">{error.message || String(error)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Input Area - Absolutely positioned at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 bg-background py-4">
+            <div className="mx-auto" style={{ maxWidth: 'var(--thread-content-max-width)' }}>
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSend={sendMessage}
+                onStop={stopStreaming}
+                placeholder={placeholder}
+                disabled={isLoading}
+                isStreaming={isStreaming}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <Toaster />
     </div>
   );
 };
