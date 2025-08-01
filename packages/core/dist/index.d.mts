@@ -17,6 +17,18 @@ interface RunErrorEvent {
         code?: string;
     };
 }
+interface PlanStartedEvent {
+    type: 'plan_started';
+    data: {
+        initial_plan?: boolean;
+    };
+}
+interface PlanFinishedEvent {
+    type: 'plan_finished';
+    data: {
+        total_steps?: number;
+    };
+}
 interface TextMessageStartEvent {
     type: 'text_message_start';
     data: {
@@ -66,6 +78,15 @@ interface ToolCallResultEvent {
         result: string;
     };
 }
+interface TaskArtifactEvent {
+    type: 'task_artifact';
+    data: {
+        artifact_id: string;
+        artifact_type: string;
+        resolution?: any;
+        content?: any;
+    };
+}
 interface AgentHandoverEvent {
     type: 'agent_handover';
     data: {
@@ -74,7 +95,7 @@ interface AgentHandoverEvent {
         reason?: string;
     };
 }
-type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | AgentHandoverEvent;
+type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | PlanStartedEvent | PlanFinishedEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | TaskArtifactEvent | AgentHandoverEvent;
 
 /**
  * Message roles supported by Distri
@@ -528,4 +549,4 @@ declare function extractToolCallsFromDistriMessage(message: DistriMessage): any[
  */
 declare function extractToolResultsFromDistriMessage(message: DistriMessage): any[];
 
-export { A2AProtocolError, type A2AStreamEventData, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type ChatProps, type CodeObservationPart, ConnectionError, type ConnectionStatus, type DataPart, type DistriBaseTool, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type FileBytes, type FileType, type FileUrl, type ImageBytesPart, type ImagePart, type ImageUrlPart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanPart, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolHandler, type ToolResult, type ToolResultPart, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, processA2AMessagesData, processA2AStreamData, uuidv4 };
+export { A2AProtocolError, type A2AStreamEventData, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type ChatProps, type CodeObservationPart, ConnectionError, type ConnectionStatus, type DataPart, type DistriBaseTool, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type FileBytes, type FileType, type FileUrl, type ImageBytesPart, type ImagePart, type ImageUrlPart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanFinishedEvent, type PlanPart, type PlanStartedEvent, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TaskArtifactEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolHandler, type ToolResult, type ToolResultPart, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, processA2AMessagesData, processA2AStreamData, uuidv4 };

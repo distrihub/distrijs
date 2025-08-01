@@ -263,6 +263,20 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
         type: "run_finished",
         data: {}
       };
+    case "plan_started":
+      return {
+        type: "plan_started",
+        data: {
+          initial_plan: metadata.initial_plan
+        }
+      };
+    case "plan_finished":
+      return {
+        type: "plan_finished",
+        data: {
+          total_steps: metadata.total_steps
+        }
+      };
     case "step_started":
       return {
         type: "tool_call_start",
@@ -285,7 +299,7 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
         type: "tool_call_start",
         data: {
           tool_call_id: metadata.tool_call_id,
-          tool_call_name: metadata.tool_call_name,
+          tool_call_name: metadata.tool_call_name || "Tool",
           parent_message_id: statusUpdate.taskId,
           is_external: true
         }
@@ -321,6 +335,7 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
         }
       };
     default:
+      console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
       return {
         type: "run_started",
         data: { metadata }
@@ -336,6 +351,17 @@ function convertA2AArtifactToDistri(artifact) {
     return null;
   }
   const data = part.data;
+  if (data.resolution) {
+    return {
+      type: "task_artifact",
+      data: {
+        artifact_id: data.id || artifact.artifactId,
+        artifact_type: data.type || "unknown",
+        resolution: data.resolution,
+        content: data
+      }
+    };
+  }
   if (data.type === "llm_response") {
     const message = {
       id: data.id || artifact.artifactId,

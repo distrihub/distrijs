@@ -97,6 +97,31 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
             });
             break;
 
+          case 'plan_started':
+            const planStartId = 'plan_start';
+            if (!stepMap.has(planStartId)) {
+              stepOrder.push(planStartId);
+            }
+            stepMap.set(planStartId, {
+              id: planStartId,
+              type: 'step',
+              title: 'Planning task execution',
+              status: 'running',
+            });
+            break;
+
+          case 'plan_finished':
+            const planFinishId = 'plan_start'; // Update the existing plan step
+            const planStep = stepMap.get(planFinishId);
+            if (planStep) {
+              planStep.status = 'completed';
+              const planData = distriEvent.data as any;
+              if (planData.total_steps) {
+                planStep.title = `Plan completed (${planData.total_steps} steps)`;
+              }
+            }
+            break;
+
           case 'tool_call_start':
             const startData = distriEvent.data as any;
             const toolStartId = `tool_${startData.tool_call_id}`;
@@ -121,6 +146,40 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
             if (existingStep) {
               existingStep.status = 'completed';
             }
+            break;
+
+          case 'tool_call_result':
+            const resultData = distriEvent.data as any;
+            const toolResultId = `tool_${resultData.tool_call_id}`;
+            
+            const resultStep = stepMap.get(toolResultId);
+            if (resultStep) {
+              resultStep.toolResult = {
+                tool_call_id: resultData.tool_call_id,
+                result: resultData.result,
+                success: true
+              };
+              resultStep.status = 'completed';
+            }
+            break;
+
+          case 'task_artifact':
+            const artifactData = distriEvent.data as any;
+            const artifactId = `artifact_${artifactData.artifact_id}`;
+            
+            if (!stepMap.has(artifactId)) {
+              stepOrder.push(artifactId);
+            }
+            
+            stepMap.set(artifactId, {
+              id: artifactId,
+              type: 'step',
+              title: `Task ${artifactData.artifact_type}`,
+              status: 'completed',
+              content: artifactData.resolution ? 
+                JSON.stringify(artifactData.resolution, null, 2) : 
+                'Artifact generated',
+            });
             break;
 
           case 'text_message_start':
@@ -158,6 +217,19 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
             if (msgEndStep) {
               msgEndStep.status = 'completed';
             }
+            break;
+
+          case 'run_finished':
+            // Mark all remaining running steps as completed
+            stepMap.forEach(step => {
+              if (step.status === 'running') {
+                step.status = 'completed';
+              }
+            });
+            break;
+
+          default:
+            console.warn('Unhandled event type:', distriEvent.type, distriEvent);
             break;
         }
       }

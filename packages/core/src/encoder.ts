@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, TaskArtifactEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -41,6 +41,22 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         data: {}
       } as RunFinishedEvent;
 
+    case 'plan_started':
+      return {
+        type: 'plan_started',
+        data: {
+          initial_plan: metadata.initial_plan
+        }
+      } as PlanStartedEvent;
+
+    case 'plan_finished':
+      return {
+        type: 'plan_finished',
+        data: {
+          total_steps: metadata.total_steps
+        }
+      } as PlanFinishedEvent;
+
     case 'step_started':
       return {
         type: 'tool_call_start',
@@ -65,7 +81,7 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         type: 'tool_call_start',
         data: {
           tool_call_id: metadata.tool_call_id,
-          tool_call_name: metadata.tool_call_name,
+          tool_call_name: metadata.tool_call_name || 'Tool',
           parent_message_id: statusUpdate.taskId,
           is_external: true
         }
@@ -106,7 +122,8 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       } as TextMessageEndEvent;
 
     default:
-      // Return a generic event for unhandled metadata types
+      // For unrecognized metadata types, create a generic run_started event
+      console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
       return {
         type: 'run_started',
         data: { metadata }
@@ -128,6 +145,19 @@ export function convertA2AArtifactToDistri(artifact: any): DistriMessage | Distr
   }
 
   const data = part.data;
+  
+  // Handle TaskArtifact with Resolution
+  if (data.resolution) {
+    return {
+      type: 'task_artifact',
+      data: {
+        artifact_id: data.id || artifact.artifactId,
+        artifact_type: data.type || 'unknown',
+        resolution: data.resolution,
+        content: data
+      }
+    } as TaskArtifactEvent;
+  }
   
   // Handle different artifact types based on the data structure
   if (data.type === 'llm_response') {

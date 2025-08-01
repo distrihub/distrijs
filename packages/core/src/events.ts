@@ -19,6 +19,20 @@ export interface RunErrorEvent {
   };
 }
 
+export interface PlanStartedEvent {
+  type: 'plan_started';
+  data: {
+    initial_plan?: boolean;
+  };
+}
+
+export interface PlanFinishedEvent {
+  type: 'plan_finished';
+  data: {
+    total_steps?: number;
+  };
+}
+
 export interface TextMessageStartEvent {
   type: 'text_message_start';
   data: {
@@ -75,6 +89,16 @@ export interface ToolCallResultEvent {
   };
 }
 
+export interface TaskArtifactEvent {
+  type: 'task_artifact';
+  data: {
+    artifact_id: string;
+    artifact_type: string;
+    resolution?: any;
+    content?: any;
+  };
+}
+
 export interface AgentHandoverEvent {
   type: 'agent_handover';
   data: {
@@ -89,6 +113,8 @@ export type DistriEvent =
   | RunStartedEvent
   | RunFinishedEvent
   | RunErrorEvent
+  | PlanStartedEvent
+  | PlanFinishedEvent
   | TextMessageStartEvent
   | TextMessageContentEvent
   | TextMessageEndEvent
@@ -96,4 +122,5 @@ export type DistriEvent =
   | ToolCallArgsEvent
   | ToolCallEndEvent
   | ToolCallResultEvent
+  | TaskArtifactEvent
   | AgentHandoverEvent;
