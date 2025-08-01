@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, A2AStreamEventData, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart } from './types';
-import { DistriEvent } from './events';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart } from './types';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -16,6 +16,102 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
     parts: a2aMessage.parts.map(convertA2APartToDistri),
     created_at: (a2aMessage as any).createdAt,
   };
+}
+
+/**
+ * Converts A2A status-update events to DistriEvent based on metadata type
+ */
+export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent | null {
+  if (!statusUpdate.metadata || !statusUpdate.metadata.type) {
+    return null;
+  }
+
+  const metadata = statusUpdate.metadata;
+  
+  switch (metadata.type) {
+    case 'run_started':
+      return {
+        type: 'run_started',
+        data: {}
+      } as RunStartedEvent;
+
+    case 'run_finished':
+      return {
+        type: 'run_finished', 
+        data: {}
+      } as RunFinishedEvent;
+
+    case 'step_started':
+      return {
+        type: 'tool_call_start',
+        data: {
+          tool_call_id: metadata.step_id,
+          tool_call_name: metadata.step_title || 'Processing',
+          parent_message_id: statusUpdate.taskId,
+          is_external: false
+        }
+      } as ToolCallStartEvent;
+
+    case 'step_completed':
+      return {
+        type: 'tool_call_end',
+        data: {
+          tool_call_id: metadata.step_id
+        }
+      } as ToolCallEndEvent;
+
+    case 'tool_execution_start':
+      return {
+        type: 'tool_call_start',
+        data: {
+          tool_call_id: metadata.tool_call_id,
+          tool_call_name: metadata.tool_call_name,
+          parent_message_id: statusUpdate.taskId,
+          is_external: true
+        }
+      } as ToolCallStartEvent;
+
+    case 'tool_execution_end':
+      return {
+        type: 'tool_call_end',
+        data: {
+          tool_call_id: metadata.tool_call_id
+        }
+      } as ToolCallEndEvent;
+
+    case 'text_message_start':
+      return {
+        type: 'text_message_start',
+        data: {
+          message_id: metadata.message_id,
+          role: metadata.role === 'assistant' ? 'assistant' : 'user'
+        }
+      } as TextMessageStartEvent;
+
+    case 'text_message_content':
+      return {
+        type: 'text_message_content',
+        data: {
+          message_id: metadata.message_id,
+          delta: metadata.delta || ''
+        }
+      } as TextMessageContentEvent;
+
+    case 'text_message_end':
+      return {
+        type: 'text_message_end',
+        data: {
+          message_id: metadata.message_id
+        }
+      } as TextMessageEndEvent;
+
+    default:
+      // Return a generic event for unhandled metadata types
+      return {
+        type: 'run_started',
+        data: { metadata }
+      } as RunStartedEvent;
+  }
 }
 
 /**
@@ -106,17 +202,75 @@ export function convertA2AArtifactToDistri(artifact: any): DistriMessage | Distr
   return null;
 }
 
-export function decodeA2AStreamEvent(event: A2AStreamEventData): DistriEvent | DistriMessage {
+/**
+ * Enhanced decoder for A2A stream events that properly handles all event types
+ */
+export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | null {
+  // Handle JSONrpc wrapped events from stream.json
+  if (event.jsonrpc && event.result) {
+    return decodeA2AStreamEvent(event.result);
+  }
+
+  // Handle regular messages
   if (event.kind === 'message') {
-    return convertA2AMessageToDistri(event as Message) as DistriMessage;
+    return convertA2AMessageToDistri(event as Message);
   }
-  else if (event.kind === 'status-update') {
-    return event as unknown as DistriEvent;
+  
+  // Handle status updates with proper conversion
+  if (event.kind === 'status-update') {
+    return convertA2AStatusUpdateToDistri(event);
   }
-  else if (event.kind === 'artifact-update') {
-    return event as unknown as DistriEvent;
+  
+  // Handle artifact updates  
+  if (event.kind === 'artifact-update') {
+    return convertA2AArtifactToDistri(event);
   }
-  return event as unknown as DistriEvent;
+
+  // Handle artifacts (without kind field)
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
+  }
+
+  return null;
+}
+
+/**
+ * Process A2A stream data (like from stream.json) and convert to DistriMessage/DistriEvent array
+ */
+export function processA2AStreamData(streamData: any[]): (DistriMessage | DistriEvent)[] {
+  const results: (DistriMessage | DistriEvent)[] = [];
+  
+  for (const item of streamData) {
+    const converted = decodeA2AStreamEvent(item);
+    if (converted) {
+      results.push(converted);
+    }
+  }
+  
+  return results;
+}
+
+/**
+ * Process A2A messages.json data and convert to DistriMessage array
+ */
+export function processA2AMessagesData(data: any[]): DistriMessage[] {
+  const results: DistriMessage[] = [];
+  
+  for (const item of data) {
+    if (item.kind === 'message') {
+      // Regular message
+      const distriMessage = convertA2AMessageToDistri(item);
+      results.push(distriMessage);
+    } else if (item.artifactId && item.parts) {
+      // Artifact
+      const distriMessage = convertA2AArtifactToDistri(item);
+      if (distriMessage && 'role' in distriMessage) {
+        results.push(distriMessage as DistriMessage);
+      }
+    }
+  }
+  
+  return results;
 }
 
 /**
@@ -243,27 +397,4 @@ export function extractToolResultsFromDistriMessage(message: DistriMessage): any
   return message.parts
     .filter(part => part.type === 'tool_result')
     .map(part => (part as { type: 'tool_result'; tool_result: any }).tool_result);
-}
-
-/**
- * Process A2A messages.json data and convert to DistriMessage array
- */
-export function processA2AMessagesData(data: any[]): DistriMessage[] {
-  const results: DistriMessage[] = [];
-  
-  for (const item of data) {
-    if (item.kind === 'message') {
-      // Regular message
-      const distriMessage = convertA2AMessageToDistri(item);
-      results.push(distriMessage);
-    } else if (item.artifactId && item.parts) {
-      // Artifact
-      const distriMessage = convertA2AArtifactToDistri(item);
-      if (distriMessage && 'role' in distriMessage) {
-        results.push(distriMessage as DistriMessage);
-      }
-    }
-  }
-  
-  return results;
 }

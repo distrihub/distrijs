@@ -4,9 +4,9 @@ import {
   DistriBaseTool,
   DistriMessage
 } from './types';
-import { convertA2AMessageToDistri } from './encoder';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { DistriEvent } from './events';
+import { decodeA2AStreamEvent } from './encoder';
 
 /**
  * Configuration for Agent invoke method
@@ -128,18 +128,9 @@ export class Agent {
 
     return (async function* () {
       for await (const event of a2aStream) {
-
-        if (event.kind === 'message') {
-          yield convertA2AMessageToDistri(event as Message);
-        }
-        else if (event.kind === 'status-update') {
-          yield event as unknown as DistriEvent;
-        }
-        else if (event.kind === 'artifact-update') {
-          yield event as unknown as DistriEvent;
-        }
-        else {
-          yield event as unknown as DistriEvent;
+        const converted = decodeA2AStreamEvent(event);
+        if (converted) {
+          yield converted;
         }
       }
     })();

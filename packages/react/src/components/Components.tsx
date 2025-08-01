@@ -14,6 +14,7 @@ export { AgentSelect } from './AgentSelect'
 export { default as AgentsPage } from './AgentsPage'
 export { default as MessageRenderer } from './MessageRenderer'
 export { ExecutionSteps } from './ExecutionSteps'
+export { TaskExecutionRenderer } from './TaskExecutionRenderer'
 export { useChatConfig } from './ChatContext'
 export * from './ui'
 
