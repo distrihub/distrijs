@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { DistriProvider, useAgents, FullChat, ThemeProvider } from '@distri/react';
-import { DistriAgent } from '@distri/core';
+import { DistriProvider, useAgentDefinitions, FullChat, ThemeProvider } from '@distri/react';
+import { AgentDefinition } from '@distri/core';
 
 function AppContent() {
-  const { agents, loading } = useAgents();
-  const [selectedAgent, setSelectedAgent] = useState<DistriAgent | null>(null);
+  const { agents, loading } = useAgentDefinitions();
+  const [selectedAgent, setSelectedAgent] = useState<AgentDefinition | null>(null);
 
   useEffect(() => {
     if (!loading && agents.length > 0 && !selectedAgent) {
@@ -28,7 +28,7 @@ function AppContent() {
     return null;
   }
 
-  const availableAgents = agents.map((agent: DistriAgent) => ({
+  const availableAgents = agents.map((agent: AgentDefinition) => ({
     id: agent.id,
     name: agent.name,
     description: agent.description
@@ -41,7 +41,7 @@ function AppContent() {
         agentId={selectedAgent?.id || ''}
         availableAgents={availableAgents}
         onAgentSelect={(agentId: string) => {
-          const agent = agents.find((a: DistriAgent) => a.id === agentId);
+          const agent = agents.find((a: AgentDefinition) => a.id === agentId);
           if (agent) setSelectedAgent(agent);
         }}
 

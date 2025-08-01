@@ -190,7 +190,7 @@ interface ToolResult {
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
  */
-interface DistriAgent {
+interface AgentDefinition {
     /** The name of the agent. */
     name: string;
     id: string;
@@ -262,7 +262,7 @@ interface Thread {
 }
 interface ChatProps {
     thread: Thread;
-    agent: DistriAgent;
+    agent: AgentDefinition;
     onThreadUpdate?: () => void;
 }
 /**
@@ -315,11 +315,11 @@ declare class DistriClient {
     /**
      * Get all available agents from the Distri server
      */
-    getAgents(): Promise<DistriAgent[]>;
+    getAgents(): Promise<AgentDefinition[]>;
     /**
      * Get specific agent by ID
      */
-    getAgent(agentId: string): Promise<DistriAgent>;
+    getAgent(agentId: string): Promise<AgentDefinition>;
     /**
      * Get or create A2AClient for an agent
      */
@@ -425,7 +425,7 @@ declare class Agent {
     private client;
     private agentDefinition;
     private tools;
-    constructor(agentDefinition: DistriAgent, client: DistriClient);
+    constructor(agentDefinition: AgentDefinition, client: DistriClient);
     /**
      * Add a tool to the agent (AG-UI style)
      */
@@ -472,7 +472,7 @@ declare class Agent {
     /**
      * Create an agent instance from an agent ID
      */
-    static create(agentId: string, client: DistriClient): Promise<Agent>;
+    static create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent>;
     /**
      * List all available agents
      */
@@ -517,4 +517,4 @@ declare function extractToolResultsFromDistriMessage(message: DistriMessage): an
  */
 declare function processA2AMessagesData(data: any[]): DistriMessage[];
 
-export { A2AProtocolError, type A2AStreamEventData, Agent, type AgentHandoverEvent, ApiError, type ChatProps, type CodeObservationPart, ConnectionError, type ConnectionStatus, type DataPart, type DistriAgent, type DistriBaseTool, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type FileBytes, type FileType, type FileUrl, type ImageBytesPart, type ImagePart, type ImageUrlPart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanPart, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolHandler, type ToolResult, type ToolResultPart, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, processA2AMessagesData, uuidv4 };
+export { A2AProtocolError, type A2AStreamEventData, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type ChatProps, type CodeObservationPart, ConnectionError, type ConnectionStatus, type DataPart, type DistriBaseTool, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type FileBytes, type FileType, type FileUrl, type ImageBytesPart, type ImagePart, type ImageUrlPart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanPart, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolHandler, type ToolResult, type ToolResultPart, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, processA2AMessagesData, uuidv4 };

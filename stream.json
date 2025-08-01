@@ -1,0 +1,4015 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "submitted",
+        "message": null,
+        "timestamp": "1754070972747"
+      },
+      "final": true,
+      "metadata": {
+        "type": "run_started"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070972747"
+      },
+      "final": false,
+      "metadata": {
+        "type": "plan_started",
+        "initial_plan": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070972747"
+      },
+      "final": false,
+      "metadata": {
+        "type": "plan_finished",
+        "total_steps": 1
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070972747"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_started",
+        "step_id": "1",
+        "step_index": 0,
+        "step_title": "Generating response ..."
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "d0c0bfa7-f2cb-44a4-821f-8624fb197f78",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_start",
+        "message_id": "d0c0bfa7-f2cb-44a4-821f-8624fb197f78",
+        "role": "assistant"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "d0c0bfa7-f2cb-44a4-821f-8624fb197f78",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_end",
+        "message_id": "d0c0bfa7-f2cb-44a4-821f-8624fb197f78"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "artifactId": "89e0ea8a-ec32-44dd-9151-02da7488697a",
+      "parts": [
+        {
+          "kind": "data",
+          "data": {
+            "id": "89e0ea8a-ec32-44dd-9151-02da7488697a",
+            "created_at": 1754070975967,
+            "updated_at": 1754070975967,
+            "type": "llm_response",
+            "step_id": "1",
+            "content": "",
+            "tool_calls": [
+              {
+                "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
+                "tool_name": "search",
+                "input": "{\"query\": \"Tazapay founders\"}"
+              },
+              {
+                "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
+                "tool_name": "extract_structured_data",
+                "input": "{\"url\": \"https://www.tazapay.com\"}"
+              }
+            ],
+            "success": true,
+            "rejected": false,
+            "reason": null,
+            "timestamp": 1754070975967
+          }
+        }
+      ],
+      "name": "89e0ea8a-ec32-44dd-9151-02da7488697a",
+      "description": null
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070975968"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_completed",
+        "step_id": "1",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070975968"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_started",
+        "step_id": "7c246028-737e-4239-8f62-fbd29b8402ef",
+        "step_index": 1,
+        "step_title": "Executing tools: search, extract_structured_data"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070975968"
+      },
+      "final": false,
+      "metadata": {
+        "type": "tool_execution_start",
+        "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
+        "tool_call_name": "search",
+        "input": "{\"query\": \"Tazapay founders\"}"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070975968"
+      },
+      "final": false,
+      "metadata": {
+        "type": "tool_execution_start",
+        "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
+        "tool_call_name": "extract_structured_data",
+        "input": "{\"url\": \"https://www.tazapay.com\"}"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070976223"
+      },
+      "final": false,
+      "metadata": {
+        "type": "tool_execution_end",
+        "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
+        "tool_call_name": "extract_structured_data",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070978935"
+      },
+      "final": false,
+      "metadata": {
+        "type": "tool_execution_end",
+        "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
+        "tool_call_name": "search",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "artifactId": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
+      "parts": [
+        {
+          "kind": "data",
+          "data": {
+            "id": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
+            "created_at": 1754070978927,
+            "updated_at": 1754070978927,
+            "type": "tool_results",
+            "step_id": "7c246028-737e-4239-8f62-fbd29b8402ef",
+            "results": [
+              {
+                "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
+                "tool_name": "search",
+                "result": "{\"answer\":null,\"results\":[{\"title\":\"TazaPay - 2025 Founders and Board of Directors - Tracxn\",\"url\":\"https://tracxn.com/d/companies/tazapay/__rJPcCRN4b9Dubk5iNSIxkeLPWHAwjGAM-VrqoASnSAs/founders-and-board-of-directors\",\"content\":\"TazaPay - 2025 Founders and Board of Directors - Tracxn *   Customers   Investment Industry Venture Capital FundsPrivate Equity FundsAccelerators & IncubatorsInvestment Banks      Corporates and Startups Corp Dev and M&A TeamsCorporate InnovationStartup FoundersSales Team      Ecosystem Journalists and PublicationsUniversities     View All Customers Contact Us   TazaPay founders & board of directors TazaPay's Founders TazaPay's Team *   Saroj Mishra: Co-Founder & COO at TazaPay and 1 other company, angel Investor in 2 companies and on the board of 3 other companies. *   Rahul Shinghal: Co-Founder & CEO at TazaPay and on the board of 1 other company. *   Arul Kumaravel: Co-Founder & CTO at TazaPay and on the board of 1 other company. FAQ's about TazaPay's team Who are the founders of TazaPay?\",\"score\":0.8963332,\"raw_content\":null},{\"title\":\"Tazapay - Crunchbase Company Profile & Funding\",\"url\":\"https://www.crunchbase.com/organization/tazapay\",\"content\":\"Legal Name TAZAPAY PTE. LTD. ; Operating Status Active ; Company Type For Profit ; Founders Abhishek Sharma, Rahul Shinghal.\",\"score\":0.88799405,\"raw_content\":null},{\"title\":\"Rahul Shinghal - Co-Founder & Chief Executive Officer at Tazapay\",\"url\":\"https://www.zoominfo.com/p/Rahul-Shinghal/1372738269\",\"content\":\"Rahul Shinghal is the Co-Founder & Chief Executive Officer at Tazapay, a borderless payments platform provider. They bring extensive experience in the payments\",\"score\":0.8325776,\"raw_content\":null},{\"title\":\"Arul Kumaravel - Tazapay - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/arulk\",\"content\":\"Arul Kumaravel\\nCo-Founder & CTO at TazaPay\\nSingapore\\n500 connections, 13701 followers\\n\\n\\nAbout\\nAccomplished Technology Leader with extensive experience in building and leading teams through full-cycle project management, strategic product development and marketing initiatives. Directed the development of numerous high-profile products for Microsoft, Amazon, Grab reaching millions of customers worldwide.  Combines strong background in both business and technology for dynamic and innovative approaches toward business strategy and revenue growth. Holds a Master of Business Administration in Finance & Strategic Management from the University of Pennsylvania. Fluent in English and Tamil.\\n\\nSpecialties: \\nSoftware Development\\nProject Management\\nSoftware Management\\nProduct Development\\nFull Lifecycle Management\\nBusiness Strategy\\nStrategic Planning / Analysis\\nMarketing\\nRevenue Growth\\nTeam Development / Management\\n\\n\\nExperience\\nCo-Founder & CTO\\n[Tazapay](https://www.linkedin.com/company/tazapay/)  \\nJanuary 2020 - Present\\nSingapore\\nTazaPay is a dynamic Singapore-based fintech start-up dedicated to facilitating seamless cross-border payments. We provide comprehensive solutions, including checkout, payment links, and escrow services, aimed at simplifying international transactions while mitigating risks for both buyers and sellers in the online marketplace. We successfully secured Series A funding from key investors, including Sequoia.\\n\\n•\\tSpearheaded the development of the MVP, laying the foundation for our ground-breaking fintech solution. Designed and architected the product as a cutting-edge, cloud-native application, ensuring scalability and efficiency. Drove alignment across teams for using a scalable integrated architecture to facilitate more cross-vertical initiatives\\n•\\tLed the growth of our engineering team to >50 dedicated engineers. Developed L&D programs to accelerate onboarding and maximize growth. Successfully groomed 4 engineers into engineering leads, empowering them to effectively manage their respective teams.\\n•\\tDrove exponential business growth, elevating our monthly TPV from $0 to $300M, maintaining a monthly double-digit growth rate. \\n•\\tNavigated complex regulatory landscapes in Canada and Singapore, securing multiple essential licenses and ensuring full compliance with regulatory frameworks in these countries.\\n•\\tLed funding efforts and secured a US$3.2M seed funding from Sequoia in Dec 2020 and US$1.8M in Mar 2021 to accelerate our regional growth.\\n•\\tMember of the CTO advisory group of our investors, offering strategic insights to support their portfolio companies.\\n•\\tServed as a mentor to numerous CTOs and Heads of Engineering in Southeast Asia, actively participating in the regional start-up ecosystem.\\n\\n\\nEducation\\nThe Wharton School\\nMaster in Business Administration, Finance & Strategic Management\\n2007 - 2009\\nNone\",\"score\":0.81595254,\"raw_content\":null},{\"title\":\"Rahul Shinghal - Tazapay - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/rahulshinghal\",\"content\":\"Rahul Shinghal\\nFintech and Payments | Founder | Stripe | PayPal\\nSingapore\\n500 connections, 20528 followers\\n\\n\\nAbout\\nI love payments and Fintech and am passionate about using the power to tech to solve real world problems and truly democratise commerce and trade.  I have worked in payments  for over 20 years at PayPal and Stripe. I call Singapore home, am married and  have 2 lovely daughters. \\nThrough my corporate career, I have strived to build high performance teams, develop talent and help people find their true north. I believe diversity is a fact and inclusion is a choice and have worked hard to create a diverse and inclusive workplace. Company culture and organisation systems,  eat vision, mission and tech prowess for breakfast, and I hope to create an organisation where people are proud of their craft, have deep respect for their colleagues  and driven by the problem we are trying to solve.\\n\\n\\nExperience\\nCo-founder and CEO\\n[Tazapay](https://www.linkedin.com/company/tazapay/)  \\nMay 2020 - Present\\nSingapore\\nTazapay is a  cross-border payment platform offering both an integrated checkout solution for merchants and marketplaces, as well as payment links for negotiated, larger value deals. Tazapay has built a network of local collections via local banks and real time schemes in over 80 markets, this network is exposed over a single API – offering merchants a cost effective and secure way of collecting cross border payments. \\nThe company is licensed and has established product market fit with cross border ecommerce , Gaming and B2B marketplaces\\n \\nThe team size is around 100 full time employees and we have raised ~$20 Million so far.\\nWe are backed by Sequoia , Saisson Capital, PayPal , RTP global and January Capital \\n\\n\\n\\nWe are hiring across engineering, product marketing, risk and GTM, please DM if interested.\\n\\n\\nEducation\\nNMIMS\\nMBA, Marketing/Marketing Management, General\\n1997 - 1999\\nNone\",\"score\":0.80625874,\"raw_content\":null}]}"
+              },
+              {
+                "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
+                "tool_name": "extract_structured_data",
+                "result": "[\n  {\n    \"type\": \"json-ld\",\n    \"data\": {\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"Organization\",\n      \"name\": \"Tazapay\",\n      \"url\": \"https://tazapay.com\",\n      \"logo\": \"https://cdn.prod.website-files.com/6598f4892384e3889d845a2d/659935b6b3e321ccea7079a1_tazapay-logo.svg\",\n      \"description\": \"Tazapay offers a comprehensive international payment gateway, enabling businesses to manage cross-border transactions with ease and efficiency.\",\n      \"contactPoint\": {\n        \"@type\": \"ContactPoint\",\n        \"email\": \"askus@tazapay.com\",\n        \"contactType\": \"Customer Service\",\n        \"areaServed\": \"Worldwide\",\n        \"availableLanguage\": [\n          \"English\"\n        ]\n      },\n      \"sameAs\": [\n        \"https://www.facebook.com/tazapay\",\n        \"https://www.twitter.com/tazapay\",\n        \"https://www.linkedin.com/company/tazapay\"\n      ]\n    }\n  }\n]"
+              }
+            ],
+            "success": true,
+            "rejected": false,
+            "reason": null,
+            "timestamp": 1754070978927
+          }
+        }
+      ],
+      "name": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
+      "description": null
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070978935"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_completed",
+        "step_id": "7c246028-737e-4239-8f62-fbd29b8402ef",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070978935"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_started",
+        "step_id": "b3d37941-2609-4751-91e2-cb0ff0511beb",
+        "step_index": 2,
+        "step_title": "Tools executed: search, extract_structured_data"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "a854c81a-838e-43da-87aa-a213a3b1ba49",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_start",
+        "message_id": "a854c81a-838e-43da-87aa-a213a3b1ba49",
+        "role": "assistant"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "a854c81a-838e-43da-87aa-a213a3b1ba49",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_end",
+        "message_id": "a854c81a-838e-43da-87aa-a213a3b1ba49"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "artifactId": "19583577-51ab-4b41-9f63-3833a56c0fa8",
+      "parts": [
+        {
+          "kind": "data",
+          "data": {
+            "id": "19583577-51ab-4b41-9f63-3833a56c0fa8",
+            "created_at": 1754070991272,
+            "updated_at": 1754070991272,
+            "type": "llm_response",
+            "step_id": "b3d37941-2609-4751-91e2-cb0ff0511beb",
+            "content": "",
+            "tool_calls": [
+              {
+                "tool_call_id": "call_RWZcM0mIh2bXGSWt9otKsfv2",
+                "tool_name": "final",
+                "input": "{\"result\":\"Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.\",\"summary\":\"The founders of Tazapay were identified along with their roles and backgrounds, and a brief overview of the company and its services was provided.\"}"
+              }
+            ],
+            "success": true,
+            "rejected": false,
+            "reason": null,
+            "timestamp": 1754070991272
+          }
+        }
+      ],
+      "name": "19583577-51ab-4b41-9f63-3833a56c0fa8",
+      "description": null
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070991277"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_completed",
+        "step_id": "b3d37941-2609-4751-91e2-cb0ff0511beb",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070991277"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_started",
+        "step_id": "01d55f7d-6535-46b6-b6e8-60e805523d3c",
+        "step_index": 3,
+        "step_title": "Executing tools: final"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070991278"
+      },
+      "final": false,
+      "metadata": {
+        "type": "tool_execution_start",
+        "tool_call_id": "call_RWZcM0mIh2bXGSWt9otKsfv2",
+        "tool_call_name": "final",
+        "input": "{\"result\":\"Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.\",\"summary\":\"The founders of Tazapay were identified along with their roles and backgrounds, and a brief overview of the company and its services was provided.\"}"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070991278"
+      },
+      "final": false,
+      "metadata": {
+        "type": "tool_execution_end",
+        "tool_call_id": "call_RWZcM0mIh2bXGSWt9otKsfv2",
+        "tool_call_name": "final",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "artifactId": "ffb1a0c2-a419-4fa9-9fb2-599e64e56b39",
+      "parts": [
+        {
+          "kind": "data",
+          "data": {
+            "id": "ffb1a0c2-a419-4fa9-9fb2-599e64e56b39",
+            "created_at": 1754070991273,
+            "updated_at": 1754070991273,
+            "type": "tool_results",
+            "step_id": "01d55f7d-6535-46b6-b6e8-60e805523d3c",
+            "results": [
+              {
+                "tool_call_id": "call_RWZcM0mIh2bXGSWt9otKsfv2",
+                "tool_name": "final",
+                "result": {
+                  "status": "completed",
+                  "result": "Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.",
+                  "summary": "The founders of Tazapay were identified along with their roles and backgrounds, and a brief overview of the company and its services was provided.",
+                  "message": "Task completed successfully"
+                }
+              }
+            ],
+            "success": true,
+            "rejected": false,
+            "reason": null,
+            "timestamp": 1754070991273
+          }
+        }
+      ],
+      "name": "ffb1a0c2-a419-4fa9-9fb2-599e64e56b39",
+      "description": null
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070991278"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_completed",
+        "step_id": "01d55f7d-6535-46b6-b6e8-60e805523d3c",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070991278"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_started",
+        "step_id": "2d474328-ca0a-441d-a31b-9165c2aeadb0",
+        "step_index": 4,
+        "step_title": "Tools executed: final"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "3d3357cc-15d1-415a-bfef-dbbd6af1c54f",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_start",
+        "message_id": "3d3357cc-15d1-415a-bfef-dbbd6af1c54f",
+        "role": "assistant"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_start",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "role": "assistant"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ""
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ""
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "T"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "T"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "az"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "az"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "apay"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "apay"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " is"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " is"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " a"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " a"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " fintech"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " fintech"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " company"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " company"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " offering"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " offering"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " a"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " a"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " comprehensive"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " comprehensive"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " international"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " international"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " payment"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " payment"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " gateway"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " gateway"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " that"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " that"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " enables"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " enables"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " businesses"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " businesses"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " to"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " to"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " manage"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " manage"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " cross"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " cross"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "-border"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "-border"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " transactions"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " transactions"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " efficiently"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " efficiently"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "."
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "."
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " It"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " It"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " was"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " was"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " co"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " co"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "-founded"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "-founded"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " by"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " by"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Rahul"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Rahul"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Sh"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Sh"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "ing"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "ing"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "hal"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "hal"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " ("
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " ("
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Co"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "Co"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "-Founder"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "-Founder"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " &"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " &"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " CEO"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " CEO"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "),"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "),"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Sar"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Sar"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "oj"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "oj"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Mish"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Mish"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "ra"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "ra"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " ("
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " ("
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Co"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "Co"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "-Founder"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "-Founder"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " &"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " &"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " COO"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " COO"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "),"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "),"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " and"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " and"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Ar"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Ar"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "ul"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "ul"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Kumar"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Kumar"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "avel"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "avel"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " ("
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " ("
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Co"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "Co"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "-Founder"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "-Founder"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " &"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " &"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " CTO"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " CTO"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ")."
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ")."
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Rahul"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Rahul"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Sh"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Sh"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "ing"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "ing"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "hal"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "hal"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " has"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " has"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " over"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " over"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " "
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " "
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "20"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "20"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " years"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " years"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " of"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " of"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " experience"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " experience"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " in"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " in"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " payments"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " payments"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " at"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " at"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " companies"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " companies"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " like"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " like"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Pay"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Pay"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Pal"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "Pal"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " and"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " and"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Stripe"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Stripe"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "."
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "."
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Ar"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Ar"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "ul"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "ul"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Kumar"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Kumar"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "avel"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "avel"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " has"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " has"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " extensive"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " extensive"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " experience"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " experience"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " in"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " in"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " technology"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " technology"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " leadership"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " leadership"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " and"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " and"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " product"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " product"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " development"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " development"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ","
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ","
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " having"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " having"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " worked"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " worked"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " with"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " with"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " companies"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " companies"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " such"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " such"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " as"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " as"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Microsoft"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Microsoft"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ","
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ","
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Amazon"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Amazon"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ","
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ","
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " and"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " and"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Grab"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Grab"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "."
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "."
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " T"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " T"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "az"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "az"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "apay"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "apay"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " is"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " is"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " a"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " a"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Singapore"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Singapore"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "-based"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "-based"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " startup"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " startup"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " backed"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " backed"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " by"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " by"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " investors"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " investors"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " including"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " including"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " Se"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " Se"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "quo"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "quo"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "ia"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "ia"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " and"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " and"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " offers"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " offers"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " solutions"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " solutions"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " like"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " like"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " integrated"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " integrated"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " checkout"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " checkout"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ","
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ","
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " payment"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " payment"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " links"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " links"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": ","
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": ","
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " and"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " and"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " escrow"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " escrow"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": " services"
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": " services"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "."
+        }
+      ],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_content",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5",
+        "delta": "."
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "215ce2db-1414-4be8-b379-f204d9d441f5",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_end",
+        "message_id": "215ce2db-1414-4be8-b379-f204d9d441f5"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "message",
+      "messageId": "3d3357cc-15d1-415a-bfef-dbbd6af1c54f",
+      "role": "agent",
+      "parts": [],
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "taskId": null,
+      "referenceTaskIds": [],
+      "extensions": [],
+      "metadata": {
+        "type": "text_message_end",
+        "message_id": "3d3357cc-15d1-415a-bfef-dbbd6af1c54f"
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "artifactId": "db9f5f0d-810e-429c-9e18-42d46e949f33",
+      "parts": [
+        {
+          "kind": "data",
+          "data": {
+            "id": "db9f5f0d-810e-429c-9e18-42d46e949f33",
+            "created_at": 1754070995888,
+            "updated_at": 1754070995888,
+            "type": "llm_response",
+            "step_id": "2d474328-ca0a-441d-a31b-9165c2aeadb0",
+            "content": "Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.",
+            "tool_calls": [],
+            "success": true,
+            "rejected": false,
+            "reason": null,
+            "timestamp": 1754070995888
+          }
+        }
+      ],
+      "name": "db9f5f0d-810e-429c-9e18-42d46e949f33",
+      "description": null
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070995888"
+      },
+      "final": false,
+      "metadata": {
+        "type": "step_completed",
+        "step_id": "2d474328-ca0a-441d-a31b-9165c2aeadb0",
+        "success": true
+      }
+    },
+    "id": "1"
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {
+      "kind": "status-update",
+      "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+      "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+      "status": {
+        "state": "working",
+        "message": null,
+        "timestamp": "1754070995888"
+      },
+      "final": true,
+      "metadata": {
+        "type": "run_finished"
+      }
+    },
+    "id": "1"
+  }
+]

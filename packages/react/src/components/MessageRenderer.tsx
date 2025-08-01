@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Copy, Check, Brain, Wrench, FileText } from 'lucide-react';
-import { useChatConfig } from './ChatContext';
 import { DistriMessage, DistriPart, DistriStreamEvent, isDistriMessage } from '@distri/core';
 import { ExecutionSteps } from './ExecutionSteps';
 
@@ -103,8 +102,8 @@ const PartRenderer: React.FC<{
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-300">
             <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto">
-              {typeof part.tool_result.result === 'string' 
-                ? part.tool_result.result 
+              {typeof part.tool_result.result === 'string'
+                ? part.tool_result.result
                 : JSON.stringify(part.tool_result.result, null, 2)}
             </pre>
           </div>
@@ -144,9 +143,9 @@ const PartRenderer: React.FC<{
     case 'image_url':
       return (
         <div className="my-2">
-          <img 
-            src={part.image.url} 
-            alt={part.image.name || 'Image'} 
+          <img
+            src={part.image.url}
+            alt={part.image.name || 'Image'}
             className="max-w-full h-auto rounded-lg border"
           />
         </div>
@@ -154,9 +153,9 @@ const PartRenderer: React.FC<{
     case 'image_bytes':
       return (
         <div className="my-2">
-          <img 
-            src={`data:${part.image.mime_type};base64,${part.image.data}`} 
-            alt={part.image.name || 'Image'} 
+          <img
+            src={`data:${part.image.mime_type};base64,${part.image.data}`}
+            alt={part.image.name || 'Image'}
             className="max-w-full h-auto rounded-lg border"
           />
         </div>
@@ -180,9 +179,9 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
   // Check if this is part of an execution sequence (multiple messages with tool calls)
   const isExecutionSequence = useMemo(() => {
     if (!messages || messages.length <= 1) return false;
-    
-    return messages.some(msg => 
-      isDistriMessage(msg) && 
+
+    return messages.some(msg =>
+      isDistriMessage(msg) &&
       msg.parts.some(part => part.type === 'tool_call' || part.type === 'tool_result')
     );
   }, [messages]);

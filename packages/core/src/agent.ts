@@ -1,6 +1,6 @@
 import { DistriClient } from './distri-client';
 import {
-  DistriAgent,
+  AgentDefinition,
   DistriBaseTool,
   DistriMessage
 } from './types';
@@ -37,10 +37,10 @@ export interface InvokeResult {
  */
 export class Agent {
   private client: DistriClient;
-  private agentDefinition: DistriAgent;
+  private agentDefinition: AgentDefinition;
   private tools: Map<string, DistriBaseTool> = new Map();
 
-  constructor(agentDefinition: DistriAgent, client: DistriClient) {
+  constructor(agentDefinition: AgentDefinition, client: DistriClient) {
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
@@ -167,8 +167,8 @@ export class Agent {
   /**
    * Create an agent instance from an agent ID
    */
-  static async create(agentId: string, client: DistriClient): Promise<Agent> {
-    const agentDefinition = await client.getAgent(agentId);
+  static async create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent> {
+    const agentDefinition = typeof agentIdOrDef === 'string' ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
     return new Agent(agentDefinition, client);
   }
 

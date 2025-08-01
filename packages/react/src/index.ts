@@ -1,7 +1,7 @@
 // Core hooks
 export { useDistri, DistriProvider } from './DistriProvider';
 export { useAgent } from './useAgent';
-export { useAgents } from './useAgents';
+export { useAgentDefinitions } from './useAgentDefinitions';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
 export { registerTools } from './hooks/registerTools';

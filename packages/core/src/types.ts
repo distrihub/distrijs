@@ -113,7 +113,7 @@ export interface ToolResult {
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
  */
-export interface DistriAgent {
+export interface AgentDefinition {
   /** The name of the agent. */
   name: string;
 
@@ -208,7 +208,7 @@ export interface Thread {
 
 export interface ChatProps {
   thread: Thread;
-  agent: DistriAgent;
+  agent: AgentDefinition;
   onThreadUpdate?: () => void;
 }
 

@@ -1,0 +1,181 @@
+[
+  {
+    "kind": "message",
+    "messageId": "1595e622-6a0d-4b48-8929-afc31bbd3d5e",
+    "role": "user",
+    "parts": [
+      {
+        "kind": "text",
+        "text": "who are tazapay founders"
+      }
+    ],
+    "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
+    "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
+    "referenceTaskIds": [],
+    "extensions": [],
+    "metadata": "text"
+  },
+  {
+    "artifactId": "d5b31e13-48cc-43ce-9d0c-0d002261b7db",
+    "parts": [
+      {
+        "kind": "data",
+        "data": null
+      }
+    ],
+    "name": "d5b31e13-48cc-43ce-9d0c-0d002261b7db",
+    "description": null
+  },
+  {
+    "artifactId": "89e0ea8a-ec32-44dd-9151-02da7488697a",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "89e0ea8a-ec32-44dd-9151-02da7488697a",
+          "created_at": 1754070975967,
+          "updated_at": 1754070975967,
+          "type": "llm_response",
+          "step_id": "1",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
+              "tool_name": "search",
+              "input": "{\"query\": \"Tazapay founders\"}"
+            },
+            {
+              "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
+              "tool_name": "extract_structured_data",
+              "input": "{\"url\": \"https://www.tazapay.com\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754070975967
+        }
+      }
+    ],
+    "name": "89e0ea8a-ec32-44dd-9151-02da7488697a",
+    "description": null
+  },
+  {
+    "artifactId": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
+          "created_at": 1754070978927,
+          "updated_at": 1754070978927,
+          "type": "tool_results",
+          "step_id": "7c246028-737e-4239-8f62-fbd29b8402ef",
+          "results": [
+            {
+              "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
+              "tool_name": "search",
+              "result": "{\"answer\":null,\"results\":[{\"title\":\"TazaPay - 2025 Founders and Board of Directors - Tracxn\",\"url\":\"https://tracxn.com/d/companies/tazapay/__rJPcCRN4b9Dubk5iNSIxkeLPWHAwjGAM-VrqoASnSAs/founders-and-board-of-directors\",\"content\":\"TazaPay - 2025 Founders and Board of Directors - Tracxn *   Customers   Investment Industry Venture Capital FundsPrivate Equity FundsAccelerators & IncubatorsInvestment Banks      Corporates and Startups Corp Dev and M&A TeamsCorporate InnovationStartup FoundersSales Team      Ecosystem Journalists and PublicationsUniversities     View All Customers Contact Us   TazaPay founders & board of directors TazaPay's Founders TazaPay's Team *   Saroj Mishra: Co-Founder & COO at TazaPay and 1 other company, angel Investor in 2 companies and on the board of 3 other companies. *   Rahul Shinghal: Co-Founder & CEO at TazaPay and on the board of 1 other company. *   Arul Kumaravel: Co-Founder & CTO at TazaPay and on the board of 1 other company. FAQ's about TazaPay's team Who are the founders of TazaPay?\",\"score\":0.8963332,\"raw_content\":null},{\"title\":\"Tazapay - Crunchbase Company Profile & Funding\",\"url\":\"https://www.crunchbase.com/organization/tazapay\",\"content\":\"Legal Name TAZAPAY PTE. LTD. ; Operating Status Active ; Company Type For Profit ; Founders Abhishek Sharma, Rahul Shinghal.\",\"score\":0.88799405,\"raw_content\":null},{\"title\":\"Rahul Shinghal - Co-Founder & Chief Executive Officer at Tazapay\",\"url\":\"https://www.zoominfo.com/p/Rahul-Shinghal/1372738269\",\"content\":\"Rahul Shinghal is the Co-Founder & Chief Executive Officer at Tazapay, a borderless payments platform provider. They bring extensive experience in the payments\",\"score\":0.8325776,\"raw_content\":null},{\"title\":\"Arul Kumaravel - Tazapay - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/arulk\",\"content\":\"Arul Kumaravel\\nCo-Founder & CTO at TazaPay\\nSingapore\\n500 connections, 13701 followers\\n\\n\\nAbout\\nAccomplished Technology Leader with extensive experience in building and leading teams through full-cycle project management, strategic product development and marketing initiatives. Directed the development of numerous high-profile products for Microsoft, Amazon, Grab reaching millions of customers worldwide.  Combines strong background in both business and technology for dynamic and innovative approaches toward business strategy and revenue growth. Holds a Master of Business Administration in Finance & Strategic Management from the University of Pennsylvania. Fluent in English and Tamil.\\n\\nSpecialties: \\nSoftware Development\\nProject Management\\nSoftware Management\\nProduct Development\\nFull Lifecycle Management\\nBusiness Strategy\\nStrategic Planning / Analysis\\nMarketing\\nRevenue Growth\\nTeam Development / Management\\n\\n\\nExperience\\nCo-Founder & CTO\\n[Tazapay](https://www.linkedin.com/company/tazapay/)  \\nJanuary 2020 - Present\\nSingapore\\nTazaPay is a dynamic Singapore-based fintech start-up dedicated to facilitating seamless cross-border payments. We provide comprehensive solutions, including checkout, payment links, and escrow services, aimed at simplifying international transactions while mitigating risks for both buyers and sellers in the online marketplace. We successfully secured Series A funding from key investors, including Sequoia.\\n\\n•\\tSpearheaded the development of the MVP, laying the foundation for our ground-breaking fintech solution. Designed and architected the product as a cutting-edge, cloud-native application, ensuring scalability and efficiency. Drove alignment across teams for using a scalable integrated architecture to facilitate more cross-vertical initiatives\\n•\\tLed the growth of our engineering team to >50 dedicated engineers. Developed L&D programs to accelerate onboarding and maximize growth. Successfully groomed 4 engineers into engineering leads, empowering them to effectively manage their respective teams.\\n•\\tDrove exponential business growth, elevating our monthly TPV from $0 to $300M, maintaining a monthly double-digit growth rate. \\n•\\tNavigated complex regulatory landscapes in Canada and Singapore, securing multiple essential licenses and ensuring full compliance with regulatory frameworks in these countries.\\n•\\tLed funding efforts and secured a US$3.2M seed funding from Sequoia in Dec 2020 and US$1.8M in Mar 2021 to accelerate our regional growth.\\n•\\tMember of the CTO advisory group of our investors, offering strategic insights to support their portfolio companies.\\n•\\tServed as a mentor to numerous CTOs and Heads of Engineering in Southeast Asia, actively participating in the regional start-up ecosystem.\\n\\n\\nEducation\\nThe Wharton School\\nMaster in Business Administration, Finance & Strategic Management\\n2007 - 2009\\nNone\",\"score\":0.81595254,\"raw_content\":null},{\"title\":\"Rahul Shinghal - Tazapay - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/rahulshinghal\",\"content\":\"Rahul Shinghal\\nFintech and Payments | Founder | Stripe | PayPal\\nSingapore\\n500 connections, 20528 followers\\n\\n\\nAbout\\nI love payments and Fintech and am passionate about using the power to tech to solve real world problems and truly democratise commerce and trade.  I have worked in payments  for over 20 years at PayPal and Stripe. I call Singapore home, am married and  have 2 lovely daughters. \\nThrough my corporate career, I have strived to build high performance teams, develop talent and help people find their true north. I believe diversity is a fact and inclusion is a choice and have worked hard to create a diverse and inclusive workplace. Company culture and organisation systems,  eat vision, mission and tech prowess for breakfast, and I hope to create an organisation where people are proud of their craft, have deep respect for their colleagues  and driven by the problem we are trying to solve.\\n\\n\\nExperience\\nCo-founder and CEO\\n[Tazapay](https://www.linkedin.com/company/tazapay/)  \\nMay 2020 - Present\\nSingapore\\nTazapay is a  cross-border payment platform offering both an integrated checkout solution for merchants and marketplaces, as well as payment links for negotiated, larger value deals. Tazapay has built a network of local collections via local banks and real time schemes in over 80 markets, this network is exposed over a single API – offering merchants a cost effective and secure way of collecting cross border payments. \\nThe company is licensed and has established product market fit with cross border ecommerce , Gaming and B2B marketplaces\\n \\nThe team size is around 100 full time employees and we have raised ~$20 Million so far.\\nWe are backed by Sequoia , Saisson Capital, PayPal , RTP global and January Capital \\n\\n\\n\\nWe are hiring across engineering, product marketing, risk and GTM, please DM if interested.\\n\\n\\nEducation\\nNMIMS\\nMBA, Marketing/Marketing Management, General\\n1997 - 1999\\nNone\",\"score\":0.80625874,\"raw_content\":null}]}"
+            },
+            {
+              "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
+              "tool_name": "extract_structured_data",
+              "result": "[\n  {\n    \"type\": \"json-ld\",\n    \"data\": {\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"Organization\",\n      \"name\": \"Tazapay\",\n      \"url\": \"https://tazapay.com\",\n      \"logo\": \"https://cdn.prod.website-files.com/6598f4892384e3889d845a2d/659935b6b3e321ccea7079a1_tazapay-logo.svg\",\n      \"description\": \"Tazapay offers a comprehensive international payment gateway, enabling businesses to manage cross-border transactions with ease and efficiency.\",\n      \"contactPoint\": {\n        \"@type\": \"ContactPoint\",\n        \"email\": \"askus@tazapay.com\",\n        \"contactType\": \"Customer Service\",\n        \"areaServed\": \"Worldwide\",\n        \"availableLanguage\": [\n          \"English\"\n        ]\n      },\n      \"sameAs\": [\n        \"https://www.facebook.com/tazapay\",\n        \"https://www.twitter.com/tazapay\",\n        \"https://www.linkedin.com/company/tazapay\"\n      ]\n    }\n  }\n]"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754070978927
+        }
+      }
+    ],
+    "name": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
+    "description": null
+  },
+  {
+    "artifactId": "19583577-51ab-4b41-9f63-3833a56c0fa8",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "19583577-51ab-4b41-9f63-3833a56c0fa8",
+          "created_at": 1754070991272,
+          "updated_at": 1754070991272,
+          "type": "llm_response",
+          "step_id": "b3d37941-2609-4751-91e2-cb0ff0511beb",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_RWZcM0mIh2bXGSWt9otKsfv2",
+              "tool_name": "final",
+              "input": "{\"result\":\"Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.\",\"summary\":\"The founders of Tazapay were identified along with their roles and backgrounds, and a brief overview of the company and its services was provided.\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754070991272
+        }
+      }
+    ],
+    "name": "19583577-51ab-4b41-9f63-3833a56c0fa8",
+    "description": null
+  },
+  {
+    "artifactId": "ffb1a0c2-a419-4fa9-9fb2-599e64e56b39",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "ffb1a0c2-a419-4fa9-9fb2-599e64e56b39",
+          "created_at": 1754070991273,
+          "updated_at": 1754070991273,
+          "type": "tool_results",
+          "step_id": "01d55f7d-6535-46b6-b6e8-60e805523d3c",
+          "results": [
+            {
+              "tool_call_id": "call_RWZcM0mIh2bXGSWt9otKsfv2",
+              "tool_name": "final",
+              "result": {
+                "status": "completed",
+                "result": "Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.",
+                "summary": "The founders of Tazapay were identified along with their roles and backgrounds, and a brief overview of the company and its services was provided.",
+                "message": "Task completed successfully"
+              }
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754070991273
+        }
+      }
+    ],
+    "name": "ffb1a0c2-a419-4fa9-9fb2-599e64e56b39",
+    "description": null
+  },
+  {
+    "artifactId": "db9f5f0d-810e-429c-9e18-42d46e949f33",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "db9f5f0d-810e-429c-9e18-42d46e949f33",
+          "created_at": 1754070995888,
+          "updated_at": 1754070995888,
+          "type": "llm_response",
+          "step_id": "2d474328-ca0a-441d-a31b-9165c2aeadb0",
+          "content": "Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.",
+          "tool_calls": [],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754070995888
+        }
+      }
+    ],
+    "name": "db9f5f0d-810e-429c-9e18-42d46e949f33",
+    "description": null
+  }
+]

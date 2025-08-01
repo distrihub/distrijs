@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Agent } from '@distri/core';
+import { Agent, AgentDefinition } from '@distri/core';
 import { useThreads } from '../useThreads';
 import { useChat } from '../useChat';
 import { EmbeddableChat } from './EmbeddableChat';
@@ -56,11 +56,11 @@ export const FullChat: React.FC<FullChatProps> = ({
   onAgentSelect,
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<string>(uuidv4());
-  const [currentAgentId, setCurrentAgentId] = useState<string>(initialAgentId);
+  const [currentAgentId, setCurrentAgentId] = useState<string | AgentDefinition>(initialAgentId);
   const { threads, refetch: refetchThreads } = useThreads();
   const [currentPage, setCurrentPage] = useState<PageType>('chat');
   const [defaultOpen, setDefaultOpen] = useState(true);
-  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentId: currentAgentId });
+  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentIdOrDef: currentAgentId });
   const { theme } = useTheme();
 
   // Get the current thread
@@ -197,7 +197,7 @@ export const FullChat: React.FC<FullChatProps> = ({
                 <div className="w-64">
                   <AgentSelect
                     agents={availableAgents}
-                    selectedAgentId={currentAgentId}
+                    selectedAgentId={typeof currentAgentId === 'string' ? currentAgentId : currentAgentId.id}
                     onAgentSelect={handleAgentSelect}
                     placeholder="Select an agent..."
                     disabled={threadHasStarted}

@@ -2,7 +2,7 @@ import { A2AClient, Message, MessageSendParams, Task, SendMessageResponse, GetTa
 import {
   DistriMessage,
   DistriPart,
-  DistriAgent,
+  AgentDefinition,
   DistriThread,
   InvokeContext,
   DistriClientConfig,
@@ -38,7 +38,7 @@ export class DistriClient {
   /**
    * Get all available agents from the Distri server
    */
-  async getAgents(): Promise<DistriAgent[]> {
+  async getAgents(): Promise<AgentDefinition[]> {
     try {
       const response = await this.fetch(`/agents`, {
         headers: {
@@ -49,7 +49,7 @@ export class DistriClient {
         throw new ApiError(`Failed to fetch agents: ${response.statusText}`, response.status);
       }
 
-      const agents: DistriAgent[] = await response.json();
+      const agents: AgentDefinition[] = await response.json();
       // Temporary fix for agents without an id
       agents.forEach(agent => {
         if (!agent.id) {
@@ -67,7 +67,7 @@ export class DistriClient {
   /**
    * Get specific agent by ID
    */
-  async getAgent(agentId: string): Promise<DistriAgent> {
+  async getAgent(agentId: string): Promise<AgentDefinition> {
     try {
       const response = await this.fetch(`/agents/${agentId}`, {
         headers: {
@@ -81,7 +81,7 @@ export class DistriClient {
         throw new ApiError(`Failed to fetch agent: ${response.statusText}`, response.status);
       }
 
-      const agent: DistriAgent = await response.json();
+      const agent: AgentDefinition = await response.json();
       // If the agent doesn't have an id, set it to the agentId
       if (!agent.id) {
         agent.id = agentId;

@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { DistriAgent } from '@distri/core';
+import { AgentDefinition } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
 export interface UseAgentsResult {
-  agents: DistriAgent[];
+  agents: AgentDefinition[];
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-  getAgent: (agentId: string) => Promise<DistriAgent>;
+  getAgent: (agentId: string) => Promise<AgentDefinition>;
 }
 
-export function useAgents(): UseAgentsResult {
+export function useAgentDefinitions(): UseAgentsResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agents, setAgents] = useState<DistriAgent[]>([]);
+  const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -27,14 +27,14 @@ export function useAgents(): UseAgentsResult {
       const fetchedAgents = await client.getAgents();
       setAgents(fetchedAgents);
     } catch (err) {
-      console.error('[useAgents] Failed to fetch agents:', err);
+      console.error('[useAgentDefinitions] Failed to fetch agents:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch agents'));
     } finally {
       setLoading(false);
     }
   }, [client]);
 
-  const getAgent = useCallback(async (agentId: string): Promise<DistriAgent> => {
+  const getAgent = useCallback(async (agentId: string): Promise<AgentDefinition> => {
     if (!client) {
       throw new Error('Client not available');
     }
@@ -60,7 +60,7 @@ export function useAgents(): UseAgentsResult {
     }
 
     if (clientError) {
-      console.error('[useAgents] Client error:', clientError);
+      console.error('[useAgentDefinitions] Client error:', clientError);
       setError(clientError);
       setLoading(false);
       return;
@@ -69,7 +69,7 @@ export function useAgents(): UseAgentsResult {
     if (client) {
       fetchAgents();
     } else {
-      console.log('[useAgents] No client available');
+      console.log('[useAgentDefinitions] No client available');
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchAgents]);
