@@ -4,6 +4,27 @@ import { DistriEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
+ * Simple UUID v4 generator
+ */
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * Create an InvokeContext for message conversion
+ */
+export function createInvokeContext(threadId?: string, runId?: string): InvokeContext {
+  return {
+    thread_id: threadId || generateUUID(),
+    run_id: runId,
+  };
+}
+
+/**
  * Converts an A2A Message to a DistriMessage
  */
 export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {

@@ -1,5 +1,5 @@
-// Core client
-export { DistriClient } from './distri-client';
+// Core Distri Framework
+
 export { Agent } from './agent';
 export type { InvokeConfig, InvokeResult } from './agent';
 
@@ -7,8 +7,8 @@ export type { InvokeConfig, InvokeResult } from './agent';
 export type {
   // Core types
   DistriAgent,
-  DistriBaseTool,
   DistriFnTool,
+  DistriBaseTool,
   ToolCall,
   ToolResult,
   ModelSettings,
@@ -35,18 +35,6 @@ export type {
   FileType,
   InvokeContext,
   DistriStreamEvent,
-  
-  // Task message types
-  TaskMessage,
-  TaskMessageData,
-  ExecutionStep,
-  PlanStartedData,
-  PlanFinishedData,
-  StepStartedData,
-  StepCompletedData,
-  ToolExecutionStartData,
-  ToolExecutionEndData,
-  ToolRejectedData,
 } from './types';
 
 export {
@@ -84,12 +72,9 @@ export type {
 export {
   convertA2AMessageToDistri,
   convertDistriMessageToA2A,
-  convertA2APartToDistri,
-  convertDistriPartToA2A,
-  extractTextFromDistriMessage,
-  extractToolCallsFromDistriMessage,
-  extractToolResultsFromDistriMessage,
+  decodeA2AStreamEvent,
+  createInvokeContext,
 } from './encoder';
 
-
-export { uuidv4 } from './distri-client';
+// Client
+export { DistriClient } from './distri-client';

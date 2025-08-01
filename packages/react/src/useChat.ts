@@ -1,30 +1,23 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriClient } from '@distri/core';
 import {
-  DistriMessage,
-  DistriPart,
-  InvokeContext,
-  DistriEvent,
-  convertDistriMessageToA2A,
-  ToolResult
-} from '@distri/core';
-import { decodeA2AStreamEvent } from '../../core/src/encoder';
-import { DistriStreamEvent, isDistriMessage, ToolResultPart } from '../../core/src/types';
-import { registerTools } from './hooks/registerTools';
-import { useToolCallState } from './hooks/useToolCallState';
-import { DistriAnyTool, ToolCallState } from './types';
-import {
+  Agent,
   DistriClient,
   DistriMessage,
   DistriPart,
+  InvokeContext,
   DistriEvent,
   DistriStreamEvent,
   isDistriMessage,
   isDistriEvent,
   convertDistriMessageToA2A,
   decodeA2AStreamEvent,
-  createInvokeContext,
-} from '@distrijs/core';
+
+  ToolResult,
+  ToolResultPart
+} from '@distri/core';
+import { registerTools } from './hooks/registerTools';
+import { useToolCallState } from './hooks/useToolCallState';
+import { DistriAnyTool, ToolCallState } from './types';
 
 export interface UseChatOptions {
   threadId: string;
@@ -44,7 +37,7 @@ export interface UseChatReturn {
   isStreaming: boolean;
   error: Error | null;
   sendMessage: (content: string | DistriPart[]) => Promise<void>;
-  sendMessageStream: (content: string | DistriPart[], role?: MessageRole) => Promise<void>;
+  sendMessageStream: (content: string | DistriPart[], role?: 'user' | 'tool') => Promise<void>;
   toolCallStates: Map<string, ToolCallState>;
   clearMessages: () => void;
   stopStreaming: () => void;

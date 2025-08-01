@@ -1,14 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { Agent, DistriAgent } from '@distrijs/core';
+import { Agent } from '@distri/core';
 import {
   DistriMessage,
   DistriPart,
-  DistriEvent,
   isDistriMessage,
-  isDistriEvent,
   MessageRole,
-} from '@distrijs/core';
+  } from '@distri/core';
 import { useChat } from '../useChat';
 import { DistriAnyTool, ToolCallState } from '../types';
 import { ChatInput } from './ChatInput';
@@ -52,24 +49,32 @@ export interface EmbeddableChatProps {
 
 export type MessageComponentType = MessageRole | 'assistant_with_tools' | 'plan' | 'debug' | 'tool';
 
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
-  threadId = uuidv4(),
+  threadId = generateUUID(),
   agent,
   className = '',
   style = {},
   getMetadata,
   tools,
-  availableAgents = [],
+  // availableAgents = [],
   UserMessageComponent = UserMessage,
   AssistantMessageComponent = AssistantMessage,
   AssistantWithToolCallsComponent = AssistantWithToolCalls,
   PlanMessageComponent = PlanMessage,
   theme = 'dark',
   showDebug = false,
-  showAgentSelector = true,
+  // showAgentSelector = true,
   placeholder = "Type your message...",
-  disableAgentSelection = false,
-  onAgentSelect,
+  // disableAgentSelection = false,
+  // onAgentSelect,
   onResponse: _onResponse,
   onMessagesUpdate,
 }) => {
@@ -251,18 +256,13 @@ export const EmbeddableChat: React.FC<EmbeddableChatProps> = ({
       {/* Input Section */}
       <div className="border-t p-4">
         <ChatInput
-          input={input}
-          setInput={setInput}
-          sendMessage={sendMessage}
-          isLoading={isLoading}
-          isStreaming={isStreaming}
-          stopStreaming={stopStreaming}
+          value={input}
+          onChange={setInput}
+          onSend={sendMessage}
+          onStop={stopStreaming}
           placeholder={placeholder}
-          agent={agent}
-          availableAgents={availableAgents}
-          showAgentSelector={showAgentSelector}
-          disableAgentSelection={disableAgentSelection}
-          onAgentSelect={onAgentSelect}
+          disabled={isLoading}
+          isStreaming={isStreaming}
         />
       </div>
     </div>

@@ -16,6 +16,58 @@ interface RunErrorEvent {
         code?: string;
     };
 }
+interface PlanStartedEvent {
+    type: 'plan_started';
+    data: {
+        initial_plan: boolean;
+    };
+}
+interface PlanFinishedEvent {
+    type: 'plan_finished';
+    data: {};
+}
+interface PlanPrunedEvent {
+    type: 'plan_pruned';
+    data: {
+        removed_steps: string[];
+    };
+}
+interface StepStartedEvent {
+    type: 'step_started';
+    data: {
+        step_id: string;
+        step_index: number;
+    };
+}
+interface StepCompletedEvent {
+    type: 'step_completed';
+    data: {
+        step_id: string;
+        success: boolean;
+    };
+}
+interface ToolExecutionStartEvent {
+    type: 'tool_execution_start';
+    data: {
+        tool_call_id: string;
+        tool_call_name: string;
+    };
+}
+interface ToolExecutionEndEvent {
+    type: 'tool_execution_end';
+    data: {
+        tool_call_id: string;
+        tool_call_name: string;
+        success: boolean;
+    };
+}
+interface ToolRejectedEvent {
+    type: 'tool_rejected';
+    data: {
+        step_id: string;
+        reason: string;
+    };
+}
 interface TextMessageStartEvent {
     type: 'text_message_start';
     data: {
@@ -36,12 +88,39 @@ interface TextMessageEndEvent {
         message_id: string;
     };
 }
+interface MessageEvent {
+    type: 'message';
+    data: {
+        message: any;
+    };
+}
+interface ExecutionResultEvent {
+    type: 'execution_result';
+    data: {
+        result: any;
+    };
+}
+interface AgentHandoverEvent {
+    type: 'agent_handover';
+    data: {
+        from_agent: string;
+        to_agent: string;
+        reason?: string;
+    };
+}
+interface FeedbackReceivedEvent {
+    type: 'feedback_received';
+    data: {
+        feedback: string;
+    };
+}
 interface ToolCallStartEvent {
     type: 'tool_call_start';
     data: {
         tool_call_id: string;
         tool_call_name: string;
         parent_message_id?: string;
+        step_id?: string;
         is_external?: boolean;
     };
 }
@@ -65,15 +144,7 @@ interface ToolCallResultEvent {
         result: string;
     };
 }
-interface AgentHandoverEvent {
-    type: 'agent_handover';
-    data: {
-        from_agent: string;
-        to_agent: string;
-        reason?: string;
-    };
-}
-type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | AgentHandoverEvent;
+type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | PlanStartedEvent | PlanFinishedEvent | PlanPrunedEvent | StepStartedEvent | StepCompletedEvent | ToolExecutionStartEvent | ToolExecutionEndEvent | ToolRejectedEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | MessageEvent | ExecutionResultEvent | AgentHandoverEvent | FeedbackReceivedEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent;
 
 /**
  * Message roles supported by Distri
@@ -374,7 +445,6 @@ declare class DistriClient {
      */
     static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams;
 }
-declare function uuidv4(): string;
 
 /**
  * Configuration for Agent invoke method
@@ -460,32 +530,17 @@ declare class Agent {
 }
 
 /**
+ * Create an InvokeContext for message conversion
+ */
+declare function createInvokeContext(threadId?: string, runId?: string): InvokeContext;
+/**
  * Converts an A2A Message to a DistriMessage
  */
 declare function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage;
-/**
- * Converts an A2A Part to a DistriPart
- */
-declare function convertA2APartToDistri(a2aPart: Part): DistriPart;
+declare function decodeA2AStreamEvent(event: A2AStreamEventData): DistriEvent | DistriMessage;
 /**
  * Converts a DistriMessage to an A2A Message using the provided context
  */
 declare function convertDistriMessageToA2A(distriMessage: DistriMessage, context: InvokeContext): Message;
-/**
- * Converts a DistriPart to an A2A Part
- */
-declare function convertDistriPartToA2A(distriPart: DistriPart): Part;
-/**
- * Extract text content from DistriMessage
- */
-declare function extractTextFromDistriMessage(message: DistriMessage): string;
-/**
- * Extract tool calls from DistriMessage
- */
-declare function extractToolCallsFromDistriMessage(message: DistriMessage): any[];
-/**
- * Extract tool results from DistriMessage
- */
-declare function extractToolResultsFromDistriMessage(message: DistriMessage): any[];
 
-export { Agent, type AgentHandoverEvent, type ChatProps, type CodeObservationPart, type ConnectionStatus, type DataPart, type DistriAgent, type DistriBaseTool, DistriClient, type DistriClientConfig, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type FileType, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanPart, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolResult, type ToolResultPart, convertA2AMessageToDistri, convertA2APartToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, uuidv4 };
+export { Agent, type AgentHandoverEvent, type ChatProps, type CodeObservationPart, type ConnectionStatus, type DataPart, type DistriAgent, type DistriBaseTool, DistriClient, type DistriClientConfig, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriStreamEvent, type DistriThread, type ExecutionResultEvent, type FeedbackReceivedEvent, type FileType, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type McpDefinition, type McpServerType, type MessageEvent, type MessageRole, type ModelProvider, type ModelSettings, type PlanFinishedEvent, type PlanPart, type PlanPrunedEvent, type PlanStartedEvent, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type StepCompletedEvent, type StepStartedEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolExecutionEndEvent, type ToolExecutionStartEvent, type ToolRejectedEvent, type ToolResult, type ToolResultPart, convertA2AMessageToDistri, convertDistriMessageToA2A, createInvokeContext, decodeA2AStreamEvent, isDistriEvent, isDistriMessage };

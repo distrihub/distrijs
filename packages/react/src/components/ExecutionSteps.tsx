@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  DistriEvent, 
-  PlanStartedEvent, 
-  PlanFinishedEvent, 
-  StepStartedEvent, 
-  StepCompletedEvent,
-  ToolExecutionStartEvent,
-  ToolExecutionEndEvent,
-  ToolRejectedEvent 
-} from '@distrijs/core';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Play } from 'lucide-react';
+  DistriEvent,
+  StepStartedEvent,
+  StepCompletedEvent 
+} from '@distri/core';
+import { ChevronRight, CheckCircle, XCircle, Clock, Play } from 'lucide-react';
 
 export interface ExecutionStep {
   id: string;
@@ -50,7 +45,7 @@ const StepStatusIcon: React.FC<{ status: ExecutionStep['status'] }> = ({ status 
   }
 };
 
-const StepItem: React.FC<StepItemProps> = ({ step, isActive, isExpanded, onToggleExpanded }) => {
+const StepItem: React.FC<StepItemProps> = ({ step, isActive, onToggleExpanded }) => {
   return (
     <div className={`border-l-2 pl-4 pb-4 transition-all duration-200 ${
       isActive ? 'border-blue-500' : 'border-border'

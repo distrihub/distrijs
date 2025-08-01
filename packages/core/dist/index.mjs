@@ -1,6 +1,273 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
+
+// src/encoder.ts
+function generateUUID() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === "x" ? r : r & 3 | 8;
+    return v.toString(16);
+  });
+}
+function createInvokeContext(threadId, runId) {
+  return {
+    thread_id: threadId || generateUUID(),
+    run_id: runId
+  };
+}
+function convertA2AMessageToDistri(a2aMessage) {
+  const role = a2aMessage.role === "agent" ? "assistant" : "user";
+  return {
+    id: a2aMessage.messageId,
+    role,
+    parts: a2aMessage.parts.map(convertA2APartToDistri),
+    created_at: a2aMessage.createdAt
+  };
+}
+function decodeA2AStreamEvent(event) {
+  if (event.kind === "message") {
+    return convertA2AMessageToDistri(event);
+  } else if (event.kind === "status-update") {
+    return event;
+  } else if (event.kind === "artifact-update") {
+    return event;
+  }
+  return event;
+}
+function convertA2APartToDistri(a2aPart) {
+  switch (a2aPart.kind) {
+    case "text":
+      return { type: "text", text: a2aPart.text };
+    case "file":
+      if ("uri" in a2aPart.file) {
+        return { type: "image_url", image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+      } else {
+        return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+      }
+    case "data":
+      switch (a2aPart.data.part_type) {
+        case "tool_call":
+          return { type: "tool_call", tool_call: a2aPart.data };
+        case "tool_result":
+          return { type: "tool_result", tool_result: a2aPart.data };
+        case "code_observation":
+          return { type: "code_observation", thought: a2aPart.data.thought, code: a2aPart.data.code };
+        case "plan":
+          return { type: "plan", plan: a2aPart.data.plan };
+        default:
+          return { type: "data", data: a2aPart.data };
+      }
+    default:
+      return { type: "text", text: JSON.stringify(a2aPart) };
+  }
+}
+function convertDistriMessageToA2A(distriMessage, context) {
+  let role;
+  switch (distriMessage.role) {
+    case "assistant":
+      role = "agent";
+      break;
+    case "user":
+      role = "user";
+      break;
+    case "system":
+    case "tool":
+      role = "user";
+      break;
+    default:
+      role = "user";
+  }
+  return {
+    messageId: distriMessage.id,
+    role,
+    parts: distriMessage.parts.map(convertDistriPartToA2A),
+    kind: "message",
+    contextId: context.thread_id,
+    taskId: context.run_id
+  };
+}
+function convertDistriPartToA2A(distriPart) {
+  switch (distriPart.type) {
+    case "text":
+      return { kind: "text", text: distriPart.text };
+    case "image_url":
+      return { kind: "file", file: { mimeType: distriPart.image.mime_type, uri: distriPart.image.url } };
+    case "image_bytes":
+      return { kind: "file", file: { mimeType: distriPart.image.mime_type, bytes: distriPart.image.data } };
+    case "tool_call":
+      return { kind: "data", data: { part_type: "tool_call", tool_call: distriPart.tool_call } };
+    case "tool_result":
+      let val = {
+        kind: "data",
+        data: {
+          tool_call_id: distriPart.tool_result.tool_call_id,
+          result: distriPart.tool_result.result,
+          part_type: "tool_result"
+        }
+      };
+      console.log("<> val", val);
+      return val;
+    case "code_observation":
+      return { kind: "data", data: { ...distriPart, part_type: "code_observation" } };
+    case "plan":
+      return { kind: "data", data: { ...distriPart, part_type: "plan" } };
+    case "data":
+      return { kind: "data", ...distriPart.data };
+  }
+}
+
+// src/agent.ts
+var Agent = class _Agent {
+  constructor(agentDefinition, client) {
+    this.tools = /* @__PURE__ */ new Map();
+    this.agentDefinition = agentDefinition;
+    this.client = client;
+  }
+  /**
+   * Add a tool to the agent (AG-UI style)
+   */
+  registerTool(tool) {
+    this.tools.set(tool.name, tool);
+  }
+  /**
+   * Add multiple tools at once
+   */
+  registerTools(tools) {
+    tools.forEach((tool) => this.registerTool(tool));
+  }
+  /**
+   * Remove a tool
+   */
+  unregisterTool(toolName) {
+    this.tools.delete(toolName);
+  }
+  /**
+   * Get all registered tools
+   */
+  getTools() {
+    return Array.from(this.tools.values());
+  }
+  /**
+   * Check if a tool is registered
+   */
+  hasTool(toolName) {
+    return this.tools.has(toolName);
+  }
+  /**
+   * Get agent information
+   */
+  get id() {
+    return this.agentDefinition.id;
+  }
+  get name() {
+    return this.agentDefinition.name;
+  }
+  get description() {
+    return this.agentDefinition.description;
+  }
+  get iconUrl() {
+    return this.agentDefinition.icon_url;
+  }
+  /**
+   * Fetch messages for a thread (public method for useChat)
+   */
+  async getThreadMessages(threadId) {
+    return this.client.getThreadMessages(threadId);
+  }
+  /**
+   * Direct (non-streaming) invoke
+   */
+  async invoke(params) {
+    const enhancedParams = this.enhanceParamsWithTools(params);
+    console.log("enhancedParams", enhancedParams);
+    return await this.client.sendMessage(this.agentDefinition.id, enhancedParams);
+  }
+  /**
+   * Streaming invoke
+   */
+  async invokeStream(params) {
+    const enhancedParams = this.enhanceParamsWithTools(params);
+    console.log("enhancedParams", enhancedParams);
+    const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
+    return async function* () {
+      for await (const event of a2aStream) {
+        if (event.kind === "message") {
+          yield convertA2AMessageToDistri(event);
+        } else if (event.kind === "status-update") {
+          yield event;
+        } else if (event.kind === "artifact-update") {
+          yield event;
+        } else {
+          yield event;
+        }
+      }
+    }();
+  }
+  /**
+   * Enhance message params with tool definitions
+   */
+  enhanceParamsWithTools(params) {
+    const tools = this.getTools();
+    return {
+      ...params,
+      metadata: {
+        ...params.metadata,
+        tools: tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.input_schema
+        }))
+      }
+    };
+  }
+  /**
+   * Create an agent instance from an agent ID
+   */
+  static async create(agentId, client) {
+    const agentDefinition = await client.getAgent(agentId);
+    return new _Agent(agentDefinition, client);
+  }
+  /**
+   * List all available agents
+   */
+  static async list(client) {
+    const agentDefinitions = await client.getAgents();
+    return agentDefinitions.map((def) => new _Agent(def, client));
+  }
+};
+
+// src/types.ts
+var DistriError = class extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "DistriError";
+  }
+};
+var A2AProtocolError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "A2A_PROTOCOL_ERROR", details);
+    this.name = "A2AProtocolError";
+  }
+};
+var ApiError = class extends DistriError {
+  constructor(message, statusCode, details) {
+    super(message, "API_ERROR", details);
+    this.statusCode = statusCode;
+    this.name = "ApiError";
+  }
+};
+function isDistriMessage(event) {
+  return "id" in event && "role" in event && "parts" in event;
+}
+function isDistriEvent(event) {
+  return "type" in event && "data" in event;
+}
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
@@ -119,7 +386,8 @@ var A2AClient = class {
           throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
         }
       } catch (e) {
-        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for")) throw e;
+        if (e.message.startsWith("RPC error for") || e.message.startsWith("HTTP error for"))
+          throw e;
         throw new Error(`HTTP error for ${method}! Status: ${httpResponse.status} ${httpResponse.statusText}. Response: ${errorBodyText}`);
       }
     }
@@ -181,7 +449,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for message/stream: ${response.status} ${response.statusText}`);
@@ -272,7 +541,8 @@ var A2AClient = class {
           throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. RPC Error: ${errorJson.error.message} (Code: ${errorJson.error.code})`);
         }
       } catch (e) {
-        if (e.message.startsWith("HTTP error establishing stream")) throw e;
+        if (e.message.startsWith("HTTP error establishing stream"))
+          throw e;
         throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}. Response: ${errorBody || "(empty)"}`);
       }
       throw new Error(`HTTP error establishing stream for tasks/resubscribe: ${response.status} ${response.statusText}`);
@@ -372,136 +642,6 @@ var A2AClient = class {
   }
 };
 
-// src/types.ts
-var DistriError = class extends Error {
-  constructor(message, code, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "DistriError";
-  }
-};
-var A2AProtocolError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "A2A_PROTOCOL_ERROR", details);
-    this.name = "A2AProtocolError";
-  }
-};
-var ApiError = class extends DistriError {
-  constructor(message, statusCode, details) {
-    super(message, "API_ERROR", details);
-    this.statusCode = statusCode;
-    this.name = "ApiError";
-  }
-};
-function isDistriMessage(event) {
-  return "id" in event && "role" in event && "parts" in event;
-}
-function isDistriEvent(event) {
-  return "type" in event && "metadata" in event;
-}
-
-// src/encoder.ts
-function convertA2AMessageToDistri(a2aMessage) {
-  const role = a2aMessage.role === "agent" ? "assistant" : "user";
-  return {
-    id: a2aMessage.messageId,
-    role,
-    parts: a2aMessage.parts.map(convertA2APartToDistri),
-    created_at: a2aMessage.createdAt
-  };
-}
-function convertA2APartToDistri(a2aPart) {
-  switch (a2aPart.kind) {
-    case "text":
-      return { type: "text", text: a2aPart.text };
-    case "file":
-      if ("uri" in a2aPart.file) {
-        return { type: "image_url", image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
-      } else {
-        return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
-      }
-    case "data":
-      switch (a2aPart.data.part_type) {
-        case "tool_call":
-          return { type: "tool_call", tool_call: a2aPart.data };
-        case "tool_result":
-          return { type: "tool_result", tool_result: a2aPart.data };
-        case "code_observation":
-          return { type: "code_observation", thought: a2aPart.data.thought, code: a2aPart.data.code };
-        case "plan":
-          return { type: "plan", plan: a2aPart.data.plan };
-        default:
-          return { type: "data", data: a2aPart.data };
-      }
-    default:
-      return { type: "text", text: JSON.stringify(a2aPart) };
-  }
-}
-function convertDistriMessageToA2A(distriMessage, context) {
-  let role;
-  switch (distriMessage.role) {
-    case "assistant":
-      role = "agent";
-      break;
-    case "user":
-      role = "user";
-      break;
-    case "system":
-    case "tool":
-      role = "user";
-      break;
-    default:
-      role = "user";
-  }
-  return {
-    messageId: distriMessage.id,
-    role,
-    parts: distriMessage.parts.map(convertDistriPartToA2A),
-    kind: "message",
-    contextId: context.thread_id,
-    taskId: context.run_id
-  };
-}
-function convertDistriPartToA2A(distriPart) {
-  switch (distriPart.type) {
-    case "text":
-      return { kind: "text", text: distriPart.text };
-    case "image_url":
-      return { kind: "file", file: { mimeType: distriPart.image.mime_type, uri: distriPart.image.url } };
-    case "image_bytes":
-      return { kind: "file", file: { mimeType: distriPart.image.mime_type, bytes: distriPart.image.data } };
-    case "tool_call":
-      return { kind: "data", data: { part_type: "tool_call", tool_call: distriPart.tool_call } };
-    case "tool_result":
-      let val = {
-        kind: "data",
-        data: {
-          tool_call_id: distriPart.tool_result.tool_call_id,
-          result: distriPart.tool_result.result,
-          part_type: "tool_result"
-        }
-      };
-      console.log("<> val", val);
-      return val;
-    case "code_observation":
-      return { kind: "data", data: { ...distriPart, part_type: "code_observation" } };
-    case "plan":
-      return { kind: "data", data: { ...distriPart, part_type: "plan" } };
-    case "data":
-      return { kind: "data", ...distriPart.data };
-  }
-}
-function extractTextFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "text").map((part) => part.text).join("\n");
-}
-function extractToolCallsFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "tool_call").map((part) => part.tool_call);
-}
-function extractToolResultsFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "tool_result").map((part) => part.tool_result);
-}
-
 // src/distri-client.ts
 var DistriClient = class {
   constructor(config) {
@@ -539,7 +679,8 @@ var DistriClient = class {
       });
       return agents;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch agents", "FETCH_ERROR", error);
     }
   }
@@ -565,7 +706,8 @@ var DistriClient = class {
       }
       return agent;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, "FETCH_ERROR", error);
     }
   }
@@ -599,7 +741,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, "SEND_MESSAGE_ERROR", error);
     }
   }
@@ -632,7 +775,8 @@ var DistriClient = class {
       }
       throw new DistriError("Invalid response format", "INVALID_RESPONSE");
     } catch (error) {
-      if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
+      if (error instanceof A2AProtocolError || error instanceof DistriError)
+        throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, "GET_TASK_ERROR", error);
     }
   }
@@ -659,7 +803,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError("Failed to fetch threads", "FETCH_ERROR", error);
     }
   }
@@ -671,7 +816,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -689,7 +835,8 @@ var DistriClient = class {
       }
       return await response.json();
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError)
+        throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, "FETCH_ERROR", error);
     }
   }
@@ -833,138 +980,14 @@ function uuidv4() {
     (b, i) => ([4, 6, 8, 10].includes(i) ? "-" : "") + b.toString(16).padStart(2, "0")
   ).join("");
 }
-
-// src/agent.ts
-var Agent = class _Agent {
-  constructor(agentDefinition, client) {
-    this.tools = /* @__PURE__ */ new Map();
-    this.agentDefinition = agentDefinition;
-    this.client = client;
-  }
-  /**
-   * Add a tool to the agent (AG-UI style)
-   */
-  registerTool(tool) {
-    this.tools.set(tool.name, tool);
-  }
-  /**
-   * Add multiple tools at once
-   */
-  registerTools(tools) {
-    tools.forEach((tool) => this.registerTool(tool));
-  }
-  /**
-   * Remove a tool
-   */
-  unregisterTool(toolName) {
-    this.tools.delete(toolName);
-  }
-  /**
-   * Get all registered tools
-   */
-  getTools() {
-    return Array.from(this.tools.values());
-  }
-  /**
-   * Check if a tool is registered
-   */
-  hasTool(toolName) {
-    return this.tools.has(toolName);
-  }
-  /**
-   * Get agent information
-   */
-  get id() {
-    return this.agentDefinition.id;
-  }
-  get name() {
-    return this.agentDefinition.name;
-  }
-  get description() {
-    return this.agentDefinition.description;
-  }
-  get iconUrl() {
-    return this.agentDefinition.icon_url;
-  }
-  /**
-   * Fetch messages for a thread (public method for useChat)
-   */
-  async getThreadMessages(threadId) {
-    return this.client.getThreadMessages(threadId);
-  }
-  /**
-   * Direct (non-streaming) invoke
-   */
-  async invoke(params) {
-    const enhancedParams = this.enhanceParamsWithTools(params);
-    console.log("enhancedParams", enhancedParams);
-    return await this.client.sendMessage(this.agentDefinition.id, enhancedParams);
-  }
-  /**
-   * Streaming invoke
-   */
-  async invokeStream(params) {
-    const enhancedParams = this.enhanceParamsWithTools(params);
-    console.log("enhancedParams", enhancedParams);
-    const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
-    return async function* () {
-      for await (const event of a2aStream) {
-        if (event.kind === "message") {
-          yield convertA2AMessageToDistri(event);
-        } else if (event.kind === "status-update") {
-          yield event;
-        } else if (event.kind === "artifact-update") {
-          yield event;
-        } else {
-          yield event;
-        }
-      }
-    }();
-  }
-  /**
-   * Enhance message params with tool definitions
-   */
-  enhanceParamsWithTools(params) {
-    const tools = this.getTools();
-    return {
-      ...params,
-      metadata: {
-        ...params.metadata,
-        tools: tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          input_schema: tool.input_schema
-        }))
-      }
-    };
-  }
-  /**
-   * Create an agent instance from an agent ID
-   */
-  static async create(agentId, client) {
-    const agentDefinition = await client.getAgent(agentId);
-    return new _Agent(agentDefinition, client);
-  }
-  /**
-   * List all available agents
-   */
-  static async list(client) {
-    const agentDefinitions = await client.getAgents();
-    return agentDefinitions.map((def) => new _Agent(def, client));
-  }
-};
 export {
   Agent,
   DistriClient,
   convertA2AMessageToDistri,
-  convertA2APartToDistri,
   convertDistriMessageToA2A,
-  convertDistriPartToA2A,
-  extractTextFromDistriMessage,
-  extractToolCallsFromDistriMessage,
-  extractToolResultsFromDistriMessage,
+  createInvokeContext,
+  decodeA2AStreamEvent,
   isDistriEvent,
-  isDistriMessage,
-  uuidv4
+  isDistriMessage
 };
 //# sourceMappingURL=index.mjs.map

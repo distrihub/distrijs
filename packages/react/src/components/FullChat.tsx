@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Agent, DistriMessage, DistriPart, DistriEvent, isDistriMessage, MessageRole } from '@distrijs/core';
+import { Agent, DistriMessage, DistriPart, isDistriMessage, MessageRole } from '@distri/core';
 import { useChat } from '../useChat';
 import { UserMessage, AssistantMessage, AssistantWithToolCalls, PlanMessage, DebugMessage } from './Components';
 import { shouldDisplayMessage, extractTextFromMessage } from '../utils/messageUtils';

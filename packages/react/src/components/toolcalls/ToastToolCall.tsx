@@ -2,7 +2,13 @@ import React, { useEffect } from 'react';
 import { UiToolProps } from '@/types';
 import { ToolResult } from '@distri/core';
 
-import { toast } from "sonner";
+// import { toast } from "sonner";
+const toast = { 
+  success: (msg: string, _options?: any) => console.log(msg), 
+  error: (msg: string, _options?: any) => console.log(msg),
+  warning: (msg: string, _options?: any) => console.log(msg),
+  info: (msg: string, _options?: any) => console.log(msg)
+};
 
 export const ToastToolCall: React.FC<UiToolProps> = ({
   toolCall,
