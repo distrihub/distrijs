@@ -339,7 +339,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
     case 'tool_call':
       return { kind: 'data', data: { part_type: 'tool_call', tool_call: distriPart.tool_call } };
     case 'tool_result':
-      let val = {
+      const val = {
         kind: 'data', data: {
           tool_call_id: distriPart.tool_result.tool_call_id,
           result: distriPart.tool_result.result,

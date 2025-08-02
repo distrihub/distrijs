@@ -32,11 +32,22 @@
     "dev:demo": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/full-demo",
     "dev:maps": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/maps-demo",
     "lint": "turbo lint",
+    "lint:check": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "lint:check:packages": "eslint packages --ext .js,.jsx,.ts,.tsx",
+    "lint:fix:packages": "eslint packages --ext .js,.jsx,.ts,.tsx --fix",
+    "lint:check:samples": "eslint samples --ext .js,.jsx,.ts,.tsx",
+    "lint:fix:samples": "eslint samples --ext .js,.jsx,.ts,.tsx --fix",
     "clean": "turbo clean",
     "type-check": "turbo type-check"
   },
   "devDependencies": {
-    "turbo": "^2.0.0"
+    "turbo": "^2.0.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^5.2.0"
   },
   "dependencies": {
     "@a2a-js/sdk": "https://github.com/v3g42/a2a-js.git#51444c9",
