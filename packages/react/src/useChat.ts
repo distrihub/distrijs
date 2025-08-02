@@ -29,17 +29,26 @@ export interface UseChatOptions {
   overrideChatState?: ChatStateStore;
 }
 
+export type StreamHandler = (
+  stream: AsyncGenerator<DistriEvent | DistriMessage | DistriArtifact>
+) => Promise<void> | void;
+
 export interface UseChatReturn {
   messages: (DistriEvent | DistriMessage | DistriArtifact)[];
   isStreaming: boolean;
-  sendMessage: (content: string | DistriPart[]) => Promise<void>;
-  sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+  sendMessage: (content: string | DistriPart[], streamHandler?: StreamHandler) => Promise<void>;
+  sendMessageStream: (
+    content: string | DistriPart[],
+    role?: 'user' | 'tool',
+    streamHandler?: StreamHandler
+  ) => Promise<void>;
   isLoading: boolean;
   error: Error | null;
   clearMessages: () => void;
   agent: Agent | undefined;
   hasPendingToolCalls: () => boolean;
 
+  replayToIndex: (index: number) => void;
   stopStreaming: () => void;
 }
 
@@ -135,6 +144,20 @@ export function useChat({
     filteredMessages.forEach(message => {
       chatState.addMessage(message);
       chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
+
+  const replayToIndex = useCallback((index: number) => {
+    chatState.clearMessages();
+    chatState.clearAllStates();
+    chatState.setError(null);
+
+    const messagesToReplay = allMessagesRef.current.slice(0, index + 1);
+    messagesToReplay.forEach((message, idx) => {
+      if (!messageFilter || messageFilter(message, idx)) {
+        chatState.addMessage(message);
+        chatState.processMessage(message);
+      }
     });
   }, [chatState, messageFilter]);
 
@@ -275,7 +298,7 @@ export function useChat({
     onMessage?.(event);
   }, [onMessage, agent, chatState, messageFilter]);
 
-  const sendMessage = useCallback(async (content: string | DistriPart[]) => {
+  const sendMessage = useCallback(async (content: string | DistriPart[], streamHandler?: StreamHandler) => {
     if (!agent) return;
 
     chatState.setLoading(true);
@@ -310,11 +333,22 @@ export function useChat({
         metadata: contextMetadata
       });
 
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
+      const processedStream = (async function* () {
+        for await (const event of stream) {
+          if (abortControllerRef.current?.signal.aborted) {
+            break;
+          }
+          handleStreamEvent(event);
+          yield event;
         }
-        handleStreamEvent(event);
+      })();
+
+      if (streamHandler) {
+        await streamHandler(processedStream);
+      } else {
+        for await (const _ of processedStream) {
+          // no-op, events already handled
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -331,7 +365,11 @@ export function useChat({
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
 
-  const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
+  const sendMessageStream = useCallback(async (
+    content: string | DistriPart[],
+    role: 'user' | 'tool' = 'user',
+    streamHandler?: StreamHandler
+  ) => {
     if (!agent) return;
 
     chatState.setLoading(true);
@@ -366,11 +404,22 @@ export function useChat({
         metadata: { ...contextMetadata }
       });
 
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
+      const processedStream = (async function* () {
+        for await (const event of stream) {
+          if (abortControllerRef.current?.signal.aborted) {
+            break;
+          }
+          handleStreamEvent(event);
+          yield event;
         }
-        handleStreamEvent(event);
+      })();
+
+      if (streamHandler) {
+        await streamHandler(processedStream);
+      } else {
+        for await (const _ of processedStream) {
+          // no-op
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -467,6 +516,7 @@ export function useChat({
     clearMessages,
     agent: agent || undefined,
     hasPendingToolCalls: chatState.hasPendingToolCalls,
+    replayToIndex,
     stopStreaming,
   };
-} 
+}

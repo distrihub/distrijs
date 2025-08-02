@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
@@ -25,7 +25,11 @@ export interface ChatProps {
   theme?: 'light' | 'dark' | 'auto';
 }
 
-export function Chat({
+export interface ChatHandle {
+  replayToIndex: (index: number) => void;
+}
+
+export const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
   threadId,
   agent,
   onMessage,
@@ -36,7 +40,7 @@ export function Chat({
   messageFilter,
   overrideChatState,
   theme = 'auto',
-}: ChatProps) {
+}: ChatProps, ref) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -44,6 +48,7 @@ export function Chat({
   const {
     sendMessage,
     stopStreaming,
+    replayToIndex: replayMessagesToIndex,
   } = useChat({
     threadId,
     agent,
@@ -55,6 +60,12 @@ export function Chat({
     tools,
     overrideChatState,
   });
+
+  useImperativeHandle(ref, () => ({
+    replayToIndex: (index: number) => {
+      replayMessagesToIndex(index);
+    }
+  }), [replayMessagesToIndex]);
 
   // Get chat state - use override if provided, otherwise get from store
   const chatState = overrideChatState || useChatStateStore.getState();
@@ -232,13 +243,13 @@ console.log('Full chat state:', useChatStateStore.getState());`}
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
-          <div className="text-destructive text-xs">
-            <strong>Error:</strong> {error.message}
+        {error && (
+          <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
+            <div className="text-destructive text-xs">
+              <strong>Error:</strong> {error.message}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        )}
+      </div>
+    );
+  });
