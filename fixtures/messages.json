@@ -1,0 +1,919 @@
+[
+  {
+    "kind": "message",
+    "messageId": "f7e4b68b-90b5-431b-ba4f-9b0badc9573a",
+    "role": "user",
+    "parts": [
+      {
+        "kind": "text",
+        "text": "how many langdb founders"
+      }
+    ],
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "referenceTaskIds": [],
+    "extensions": [],
+    "metadata": "text"
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101048573"
+    },
+    "final": false,
+    "metadata": {
+      "type": "run_started"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101048573"
+    },
+    "final": false,
+    "metadata": {
+      "type": "plan_started",
+      "initial_plan": true
+    }
+  },
+  {
+    "artifactId": "d75f655e-9d2f-4304-aa6c-f945f5221ffa",
+    "parts": [
+      {
+        "kind": "data",
+        "data": null
+      }
+    ],
+    "name": "d75f655e-9d2f-4304-aa6c-f945f5221ffa",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101048573"
+    },
+    "final": false,
+    "metadata": {
+      "type": "plan_finished",
+      "total_steps": 1
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101048573"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "1",
+      "step_index": 0,
+      "step_title": "Generating response ..."
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101048573"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_start",
+      "message_id": "8f3fd1b0-3723-4a63-ad10-43e97501c751",
+      "role": "assistant"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101051997"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_end",
+      "message_id": "8f3fd1b0-3723-4a63-ad10-43e97501c751"
+    }
+  },
+  {
+    "artifactId": "338cc2c7-bc4a-411e-a9c8-4713549410ba",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "338cc2c7-bc4a-411e-a9c8-4713549410ba",
+          "created_at": 1754101051998,
+          "updated_at": 1754101051998,
+          "type": "llm_response",
+          "step_id": "1",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_59lXAK3hM6iOt6vVxGzgA28U",
+              "tool_name": "search",
+              "input": "{\"query\":\"LangDB founders\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754101051997
+        }
+      }
+    ],
+    "name": "338cc2c7-bc4a-411e-a9c8-4713549410ba",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101051998"
+    },
+    "final": false,
+    "metadata": {
+      "type": "artifact",
+      "artifact": {
+        "id": "338cc2c7-bc4a-411e-a9c8-4713549410ba",
+        "created_at": 1754101051998,
+        "updated_at": 1754101051998,
+        "type": "llm_response",
+        "step_id": "1",
+        "content": "",
+        "tool_calls": [
+          {
+            "tool_call_id": "call_59lXAK3hM6iOt6vVxGzgA28U",
+            "tool_name": "search",
+            "input": "{\"query\":\"LangDB founders\"}"
+          }
+        ],
+        "success": true,
+        "rejected": false,
+        "reason": null,
+        "timestamp": 1754101051997
+      }
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101051998"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_completed",
+      "step_id": "1",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101051998"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "86d644d4-b98c-4237-a08a-7cfbe044a224",
+      "step_index": 1,
+      "step_title": "Executing tools: search"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101051998"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_start",
+      "tool_call_id": "call_59lXAK3hM6iOt6vVxGzgA28U",
+      "tool_call_name": "search",
+      "input": "{\"query\":\"LangDB founders\"}"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101054689"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_end",
+      "tool_call_id": "call_59lXAK3hM6iOt6vVxGzgA28U",
+      "tool_call_name": "search",
+      "success": true
+    }
+  },
+  {
+    "artifactId": "a4e8e309-b1ad-496c-9f52-8ed33776f69b",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "a4e8e309-b1ad-496c-9f52-8ed33776f69b",
+          "created_at": 1754101054689,
+          "updated_at": 1754101054689,
+          "type": "tool_results",
+          "step_id": "86d644d4-b98c-4237-a08a-7cfbe044a224",
+          "results": [
+            {
+              "tool_call_id": "call_59lXAK3hM6iOt6vVxGzgA28U",
+              "tool_name": "search",
+              "result": "{\"answer\":null,\"results\":[{\"title\":\"Vivek G. - Co-Founder at LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/vivekgudapuri\",\"content\":\"Vivek G.\\nCo-Founder at LangDB\\nSingapore\\n2294 connections, 2907 followers\\n\\n\\nAbout\\nExperienced technology professional with a demonstrated history of building and scaling platforms from scratch to success. <br><br>An entrepreneur, technology and product leader with strong expertise in areas of data and platform engineering. He has helped in bringing two startups to scale and recently co-founded LangDB.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb)  \\nJuly 2022 - Present\\nSingapore, Singapore\\nThe Fastest Enterprise AI Gateway. Built in Rust and Open Source.\\n\\n\\nEducation\\nN/A\",\"score\":0.74363416,\"raw_content\":null},{\"title\":\"Matteo Pelati - LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/matteopelati\",\"content\":\"Matteo Pelati\\nEvery company on earth will need an AI Gateway - sooner or later\\nNone\\n500 connections, 5560 followers\\n\\n\\nAbout\\nSoftware architect, manager and entrepreneur with more than 20 years of experience in software engineering and management. Led engineering teams of sizes of more than 70 people.\\nExtensive experience in designing, implementing and delivering big data analytics and machine learning products from the ground up.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb/)  \\nOctober 2022 - Present\\nSingapore\\nWorking on something really cool\\n\\n\\nEducation\\nUniversità degli Studi di Milano\\nMS, Computer Science\\n1997 - 2002\\nNone\",\"score\":0.69672287,\"raw_content\":null},{\"title\":\"Vivek Gudapuri (@vivek_gudapuri) / X\",\"url\":\"https://x.com/vivek_gudapuri\",\"content\":\"Vivek Gudapuri (@vivek_gudapuri) / X Don’t miss what’s happening People on X are the first to know. Log in Sign up Vivek Gudapuri 554 posts See new posts Image 1: Opens profile photo Follow Click to Follow vivek_gudapuri Vivek Gudapuri @vivek_gudapuri Co-Founder  @LangDB | AI Gateway Entrepreneur Joined October 2021 109 Following 108 Followers Posts Replies Media @vivek_gudapuri hasn’t posted When they do, their posts will show up here. New to X? Sign up now to get your own personalized timeline! Sign up with Apple Create account By signing up, you agree to the Terms of Service and Privacy Policy, including Cookie Use. Terms of Service Privacy Policy Cookie Policy © 2025 X Corp.\",\"score\":0.6301622,\"raw_content\":null},{\"title\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact ...\",\"url\":\"https://rocketreach.co/matteo-pelati-email_37107114\",\"content\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact Information Image 2: Matteo Pelati Email & Phone Number Matteo Pelati Email & Phone Number Preparing profile… View Matteo's Email & Phone Number (It's Free) ### Matteo Pelati Work ### Matteo Pelati Skills With a robust skill set that includes Java, JavaScript, AJAX, Web Development, .NET and more. Matteo Pelati has 2 emails and 3 mobile phone numbers on RocketReach. Matteo Pelati Emails Matteo Pelati Phone Numbers Preparing profile… View Matteo's Email & Phone Number (It's Free) Image 5: Goldman Sachs Employee Matteo Pelati's profile photo ### Matteo Pelati #### Global Head of Product Data Engineering and Apac Head of Data Engineering at Goldman Sachs None   View \",\"score\":0.5057865,\"raw_content\":null},{\"title\":\"About LangDB\",\"url\":\"https://langdb.ai/about/\",\"content\":\"Image 1: logoDark *   AI Gateway Image 2: Matteo Pelati Connect on LinkedIn Veteran software architect and data engineering leader with 20+ years of experience. Expert in building large-scale data analytics and ML platforms. Former Head of APAC Data Engineering @ Goldman Sachs Former Head of Data Platform @ DBS Bank Image 3: Vivek Gudapuri Connect on LinkedIn Expert in building innovative platforms in data, logistics, and fintech. Chief Technology Officer @ OpenFabric Chief Technology Officer @ Yojee We're always looking for talented individuals to join our mission of revolutionizing how businesses interact with their data through AI. Image 4: Sequoia Capital Image 5: Gradient Ventures Image 6: January Capital Image 7: logoDark LinkedIn Follow us on LinkedIn\",\"score\":0.36168364,\"raw_content\":null}]}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754101054689
+        }
+      }
+    ],
+    "name": "a4e8e309-b1ad-496c-9f52-8ed33776f69b",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101054689"
+    },
+    "final": false,
+    "metadata": {
+      "type": "artifact",
+      "artifact": {
+        "id": "a4e8e309-b1ad-496c-9f52-8ed33776f69b",
+        "created_at": 1754101054689,
+        "updated_at": 1754101054689,
+        "type": "tool_results",
+        "step_id": "86d644d4-b98c-4237-a08a-7cfbe044a224",
+        "results": [
+          {
+            "tool_call_id": "call_59lXAK3hM6iOt6vVxGzgA28U",
+            "tool_name": "search",
+            "result": "{\"answer\":null,\"results\":[{\"title\":\"Vivek G. - Co-Founder at LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/vivekgudapuri\",\"content\":\"Vivek G.\\nCo-Founder at LangDB\\nSingapore\\n2294 connections, 2907 followers\\n\\n\\nAbout\\nExperienced technology professional with a demonstrated history of building and scaling platforms from scratch to success. <br><br>An entrepreneur, technology and product leader with strong expertise in areas of data and platform engineering. He has helped in bringing two startups to scale and recently co-founded LangDB.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb)  \\nJuly 2022 - Present\\nSingapore, Singapore\\nThe Fastest Enterprise AI Gateway. Built in Rust and Open Source.\\n\\n\\nEducation\\nN/A\",\"score\":0.74363416,\"raw_content\":null},{\"title\":\"Matteo Pelati - LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/matteopelati\",\"content\":\"Matteo Pelati\\nEvery company on earth will need an AI Gateway - sooner or later\\nNone\\n500 connections, 5560 followers\\n\\n\\nAbout\\nSoftware architect, manager and entrepreneur with more than 20 years of experience in software engineering and management. Led engineering teams of sizes of more than 70 people.\\nExtensive experience in designing, implementing and delivering big data analytics and machine learning products from the ground up.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb/)  \\nOctober 2022 - Present\\nSingapore\\nWorking on something really cool\\n\\n\\nEducation\\nUniversità degli Studi di Milano\\nMS, Computer Science\\n1997 - 2002\\nNone\",\"score\":0.69672287,\"raw_content\":null},{\"title\":\"Vivek Gudapuri (@vivek_gudapuri) / X\",\"url\":\"https://x.com/vivek_gudapuri\",\"content\":\"Vivek Gudapuri (@vivek_gudapuri) / X Don’t miss what’s happening People on X are the first to know. Log in Sign up Vivek Gudapuri 554 posts See new posts Image 1: Opens profile photo Follow Click to Follow vivek_gudapuri Vivek Gudapuri @vivek_gudapuri Co-Founder  @LangDB | AI Gateway Entrepreneur Joined October 2021 109 Following 108 Followers Posts Replies Media @vivek_gudapuri hasn’t posted When they do, their posts will show up here. New to X? Sign up now to get your own personalized timeline! Sign up with Apple Create account By signing up, you agree to the Terms of Service and Privacy Policy, including Cookie Use. Terms of Service Privacy Policy Cookie Policy © 2025 X Corp.\",\"score\":0.6301622,\"raw_content\":null},{\"title\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact ...\",\"url\":\"https://rocketreach.co/matteo-pelati-email_37107114\",\"content\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact Information Image 2: Matteo Pelati Email & Phone Number Matteo Pelati Email & Phone Number Preparing profile… View Matteo's Email & Phone Number (It's Free) ### Matteo Pelati Work ### Matteo Pelati Skills With a robust skill set that includes Java, JavaScript, AJAX, Web Development, .NET and more. Matteo Pelati has 2 emails and 3 mobile phone numbers on RocketReach. Matteo Pelati Emails Matteo Pelati Phone Numbers Preparing profile… View Matteo's Email & Phone Number (It's Free) Image 5: Goldman Sachs Employee Matteo Pelati's profile photo ### Matteo Pelati #### Global Head of Product Data Engineering and Apac Head of Data Engineering at Goldman Sachs None   View \",\"score\":0.5057865,\"raw_content\":null},{\"title\":\"About LangDB\",\"url\":\"https://langdb.ai/about/\",\"content\":\"Image 1: logoDark *   AI Gateway Image 2: Matteo Pelati Connect on LinkedIn Veteran software architect and data engineering leader with 20+ years of experience. Expert in building large-scale data analytics and ML platforms. Former Head of APAC Data Engineering @ Goldman Sachs Former Head of Data Platform @ DBS Bank Image 3: Vivek Gudapuri Connect on LinkedIn Expert in building innovative platforms in data, logistics, and fintech. Chief Technology Officer @ OpenFabric Chief Technology Officer @ Yojee We're always looking for talented individuals to join our mission of revolutionizing how businesses interact with their data through AI. Image 4: Sequoia Capital Image 5: Gradient Ventures Image 6: January Capital Image 7: logoDark LinkedIn Follow us on LinkedIn\",\"score\":0.36168364,\"raw_content\":null}]}"
+          }
+        ],
+        "success": true,
+        "rejected": false,
+        "reason": null,
+        "timestamp": 1754101054689
+      }
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101054689"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_completed",
+      "step_id": "86d644d4-b98c-4237-a08a-7cfbe044a224",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101054689"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "2a74cbc3-0095-4608-a988-eedf5a403a53",
+      "step_index": 2,
+      "step_title": "Tools executed: search"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101054689"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_start",
+      "message_id": "7f304553-16f0-4e8b-a923-6d30a9c5fb97",
+      "role": "assistant"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057288"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_end",
+      "message_id": "7f304553-16f0-4e8b-a923-6d30a9c5fb97"
+    }
+  },
+  {
+    "artifactId": "2a2e80c2-8423-4765-befd-de7e621d02e6",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "2a2e80c2-8423-4765-befd-de7e621d02e6",
+          "created_at": 1754101057288,
+          "updated_at": 1754101057288,
+          "type": "llm_response",
+          "step_id": "2a74cbc3-0095-4608-a988-eedf5a403a53",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_rrJhKnkvYMS1RMAnQQyuTqes",
+              "tool_name": "extract_structured_data",
+              "input": "{\"url\": \"https://langdb.ai/about/\"}"
+            },
+            {
+              "tool_call_id": "call_qWlJ8G73SeWa9p6UpC4VLmz2",
+              "tool_name": "extract_text",
+              "input": "{\"selector\": \"body\", \"url\": \"https://langdb.ai/about/\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754101057288
+        }
+      }
+    ],
+    "name": "2a2e80c2-8423-4765-befd-de7e621d02e6",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057288"
+    },
+    "final": false,
+    "metadata": {
+      "type": "artifact",
+      "artifact": {
+        "id": "2a2e80c2-8423-4765-befd-de7e621d02e6",
+        "created_at": 1754101057288,
+        "updated_at": 1754101057288,
+        "type": "llm_response",
+        "step_id": "2a74cbc3-0095-4608-a988-eedf5a403a53",
+        "content": "",
+        "tool_calls": [
+          {
+            "tool_call_id": "call_rrJhKnkvYMS1RMAnQQyuTqes",
+            "tool_name": "extract_structured_data",
+            "input": "{\"url\": \"https://langdb.ai/about/\"}"
+          },
+          {
+            "tool_call_id": "call_qWlJ8G73SeWa9p6UpC4VLmz2",
+            "tool_name": "extract_text",
+            "input": "{\"selector\": \"body\", \"url\": \"https://langdb.ai/about/\"}"
+          }
+        ],
+        "success": true,
+        "rejected": false,
+        "reason": null,
+        "timestamp": 1754101057288
+      }
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057288"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_completed",
+      "step_id": "2a74cbc3-0095-4608-a988-eedf5a403a53",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057288"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "26b99e6c-9d2a-4440-98c7-47b4389478a3",
+      "step_index": 3,
+      "step_title": "Executing tools: extract_structured_data, extract_text"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057288"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_start",
+      "tool_call_id": "call_rrJhKnkvYMS1RMAnQQyuTqes",
+      "tool_call_name": "extract_structured_data",
+      "input": "{\"url\": \"https://langdb.ai/about/\"}"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057289"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_start",
+      "tool_call_id": "call_qWlJ8G73SeWa9p6UpC4VLmz2",
+      "tool_call_name": "extract_text",
+      "input": "{\"selector\": \"body\", \"url\": \"https://langdb.ai/about/\"}"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057427"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_end",
+      "tool_call_id": "call_rrJhKnkvYMS1RMAnQQyuTqes",
+      "tool_call_name": "extract_structured_data",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057427"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_end",
+      "tool_call_id": "call_qWlJ8G73SeWa9p6UpC4VLmz2",
+      "tool_call_name": "extract_text",
+      "success": true
+    }
+  },
+  {
+    "artifactId": "1795abcc-a0c6-419e-9b2a-f8e0f6a687f4",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "1795abcc-a0c6-419e-9b2a-f8e0f6a687f4",
+          "created_at": 1754101057427,
+          "updated_at": 1754101057427,
+          "type": "tool_results",
+          "step_id": "26b99e6c-9d2a-4440-98c7-47b4389478a3",
+          "results": [
+            {
+              "tool_call_id": "call_rrJhKnkvYMS1RMAnQQyuTqes",
+              "tool_name": "extract_structured_data",
+              "result": "[]"
+            },
+            {
+              "tool_call_id": "call_qWlJ8G73SeWa9p6UpC4VLmz2",
+              "tool_name": "extract_text",
+              "result": "[\n  \"\\u001f�\\b\\u0003�}\\u000bW�F��_�U��˜�e��\\u0018`G<�\\u0004f``��\\u0002�Ӗڲ@�H2������nI�l���$���\\t�Gwuuu��Tջ�ݏ;�_N�� ���\\n��<\\u00128�\\u0002\\n\\u0004dy$I6\\u0005�ķ\\u0002�IJ�\\u001f�4{��1�����iJ�5 �\\u0019M7�a��m��=\\u000e�O7�;���0N\\u0005d�AJ�tS\\u0018�v:ش�kQ�n\\u001a�\\n��%\\u001eN,��MY�\\u001a(��n�i�w4~\\u0011��s�[\\u0014SoS�b��\\u0016� ��M�y\\u001d�q�LR��Vӧ�K�D��\\u001d[�\\u0013��UU�q\\\"F�(��\\u0015\\u0001�dS�\\u0001�\\u0010�I\\u0012Ʈ�\\u0006����ID��&oZ\\u00195I'\\u001eM\\u0006���\\u0003[I�����fɪE\\f�շm�J�l!��ZԦ�E7\\u0005�>pb뭎�X�ڭ�\\\"�_\\u0014����$��fQ��%�e1�r���m��жE3��:��5�ؓ����`�YO+v�T@}�Z���\\nc7�l\\n^8Z��`\\u0018�&�\\u0011�Eĺ�JOR)�Ў֖\\u0015��\\u0016o\\u0012\\u0018�CEIl-���e�\\u0018T�}��'RO�%b�m�\\u000f\\u0010I&��)\\b[\\u001bM\\u000ei\\u0005��.a�m��R��(��\\u0018\\u001d���|�\\u0006�D\\u00116�*�\\u001d��v�P�M�\\fQ�ZX�d��Q�-u\\u0014Y��\\u000e�DQ�84y�$�p�6�\\u0006�D7\\fY�U�e[m��,���$\\u001c����Hm�C��bt�v�ɰ\\nCǴ�hZ��;�j�X�B4CPW%���dJT�/I�#0�7��J\\u0001�\\n�#�<�1\\u0007i\\u001a%�f6�x�;w\\u0012�V�7� qSڼI��ӛ�_V�G$�\\\\���ɟ\\u001f�Q��\\u000b�s�Ma�`~�A>i<�\\u001fٴOc��h�$b�:a\\bi-���y�F]���F#�\\tCǣ)q|\\u0012\\u0010��\\f���0'��<8?�'��;�\\u000e:�V�FU�\\n�8��)r�0�Gy�$IBӤ���N�>��עk��;uS�n�\\u000f(�'IJ�\\u0014�\\u0005)���M(2\\u000f�\\u0001I�L6��a�\\u0002ڔ#��`�\\u0011<�$\\u000e\\u0010�\\ttD\\u0002gw���\\u0001E)%>�с\\u001b��v\\u0018\\u0014y$퇱�@$�Q8���&�\\u001b\\u0006(\\nQL�Bo\\b����\\u001b�ԉ\\t<\\u0011g��-����Nʘql�����'��1��y��\\t\\u00074�\\n3H\\u0007q\\u0018�V�\\f�7I]+)@Fq\\u0018�\\u0018�r�t\\u0019!J`\\u001f�]=�z�\\u001d��\\u00114�\\u0019��1�T�\\u0018�����<&��k!�,>Rt�g\\u0004\\u0013B��\\n\\u001cħ�w@\\nR��Qd�\\u001c.�\\u0007���9;�\\u0013f�D��\\u0013F4pb\\u0012\\n0�\\\"F��/�)K�\\f�ӑ��4�Z$�Kp���xr�ء�|���O�l\\u0015��A�*\\u0006/C۩d�\\u0005�\\\"��2c��c��%�=M6\\u0005���\\u0015ݘA\\u0011t8�\\u0016��7�$]�Y�Bo�w=/����\\u0014j˪��r/��Ax\\u001c�C�V�|�{�О����5��@|zm��\\u001dKG=\\u0007�S�\\u0013\\u0006)q\\u0003\\u001a#P�؉�\\u0004뒄�]w�H�$ak�9[[?\\u0004Q\\u001c:1M��Q\\b� ��\\u0006i�\\n>L_#�G�=b�:q8\\f��\\u000f{\\u001dM7��Q���%ݾ;���{�\\u00066\\u001dweC�ަa�E�[��Ӯ��y�]Y���v@]g�v�h\\\\\\u0019\\\"��W�M\\\"�L�=/�n��I/\\u0001�E�Ƭg\\tZ4��1нp��\\u0001��QWB\\u0012��h�2\\\\\\u001b�@�޿\\n#b��+��#ڻuS��$H@yv�0%)�I���\\u0006��\\u001e�KѸ��h��-��u��޴B�$r��ƋȲ��\\u001e�3R�e\\u001dH��_32�KT�kFE��\\n�n/�m\\u001a�^\\bOᲫDc���ks�#\\u0012� �^�4��\\u0015za\\\\pH�\\u0002���MLlw�tu��:����M�\\u0016��\\fo�I�� �\\n(��\\u001b�a{H߮��A�6��I\\u001a����+(��\\u0017��\\u0003׶i0�vL=��w���\\u0019�i��0_�9fx���N�1�i��f�U��ׅ�+\\u0001�=�`,n�\\u001a��ûGFY\\u0006}1ԍ&W5\\u001b�{�\\u001c�k�\\u001d��������\\u000f��x�\\u0017T\\u001e�YӀ��H\\\\�2\\u0018�#�0\\t�ABS<�\\u0012�{t�ܔ�\\t�(�0t�5\\t�p�y�E\\u0019Y1��\\u0012Z�ŀO�p\\u0014�(\\u000e����@\\u001a\\fA����?��H\\\"\\u0012\\u0014��A���C��M�+�\\u0004Gc\\u0016/a�C�h\\u0002�*X?�2��.6$\\u000e�\\u0002����a�;\\u0007%i\\u001c�\\u0002s\\fc`�\\u001d�\\u0011\\u0001�[5����\\u0019oJ\\u0002�Fn��M�y\\u0001�\\u0002?\\u0005\\u0013��D�ɦ�,S��p=�� �.i��\\u001c�b\\u0018;ME��&���FD�\\u0001�7�cEUE\\ni�!\\u001a���:b�TEl�+M\\u0017U$yrG�rGaMp�\\u000e�v\\u0012�F\\t�a�0�t��\\u0006Rն�BmC4�ltD��\\u0005��\\u000e\\t�\\u000e.��a\\\\$w�{P\\u001e�3x�w�V�zM۽��p&>��1_|.W��B��KLO3\\u0015�\\u0001\\u001e�\\u000bEb�\\\\�O\\u001d��DG�Ӯ9�c�Aܳþ�i��.�R\\u00114w�\\u0015t�u�P)\\u0018�#\\u001c��S�C�\\u0016(Kp@�0\\b%ӂٳd�c2\\u0003�\\u0011��T63\\f\\u0017\\u001a\\u001bE�\\u0004���-�\\u0014�\\u0013����p4�`�b'ەU� \\u0017�\\\\!W�6k4\\f�£�D��F�*�#�҂�lz��=�������\\\\�M�O��r��,�}]\\u0004p�$�c�z���O��9����뚷\\u0015&�/\\b�8��μ�p͹�I�vx��5{�$�|�k�\\u001eQ����E�c���ߊ0�$��B�R��(�s��x�Yr4�\\u0014d��~�ء�\\u0012]��X\\u0010g=b��+c��\\u0017:��\\u001a�=u��^輮YG�k��҉7�6k��\\u0013��uM�}�X:Y�QpM�\\u0006�,��yG�s��\\u0011\\u0004��Q�G1��G�[�G��\\u0010��4FA\\u0018�W����\\u0014s�`+)�:��6E�\\u000b��21\\u00199�\\n=�\\u001fc��ݳr��`�c߻�44K���n����7N��\\b6�Y[�\\\\kg$\\u001b��Aj�%j��\\u0014��*RE\\u0003�����*�X\\u0017\\n,gU�@\\u0012V�\\\"��Z\\u0017\\u0015�WŢ�t�\\u0001eUѸ��*�2�D��b\\u000b)�V�t�\\u0002\\u001dXs\\t\\u0019����\\n�e?��XX\\u0011\\n,��.ꢊ\\n�\\n}�k��`Yl�����\\u00194��\\u0006@\\u0016U\\u0004\\n;He��\\u0014�\\u0003hhb\\u0007�\\\"�7Ǣ�e��a>\\n�������ib\\u001b�wd�\\u0010e\\u0004�5Y\\u0006`\\u0012Rtł;I� �#��\\\"鰕4:��\\u0014�#*�ql\\u0003�Hnq��\\u000bY\\u0011e$�$`PM\\u00125�kȢ�$$ᖄd\\u001d�5���\\u000e�\\u001fJX�E\\n�d���6V\\nF+\\t+0\\u0019Y\\u0017[H���9\\b�0: �\\n�\\u0005�\\u0014\\u0019��:{�\\u0012u�\\u0002�(\\u0012���e\\u0003��6���l`U\\u0005b\\u0003\\u0019MYfM`1�KY\\u0012u\\u0018�\\u0001\\u0002\\n*�iڜ�؀�/,�\\n\\u0004cOZو�\\u000e\\u0019\\u001d���ߊ�ȣɢ���\\u000e��mQO4N�\\u000e{�ڢn1�os�\\u00062:Xi!Y\\u0015[H��\\u00160\\\"b���e�Ɍ�-N\\u0007\\u0015��]\\u0001�HB\\u001d��]�\\u0012�%\\u0019֛O\\u000f��Ah!�3��\\fFaF\\u001dQE-��\\u001dj�\\u0019���NH�D�-5p���)mQA��\\u0012�LnU\\u0003����+�/�)���:j����;-\\u0010@]\\u0011;\\u0016\\b\\u0004��\\f��MSfb\\u0006\\\"�V�?\\u0003��2�Af���|\\u0018�Ge\\u000b��g�>�%Fd�I�,�U�&�\\u000f\\u0002̄\\u0005��-&��\\n����w���B�\\\\\\\\�ֽ�*��T]4o#�\\t�\\u001df�\\to�3[)\\b��v����\\u0005\\u001d+쇣]�\\u0015�\\u000f2!k �l\\u0010̉\\u0001\\u000b�g�+��Q3m�d��1�Q$\\u0013D&_0\\u0001����HL9��\\u0005\\u001c�\\\\|�[�rTf\\n�\\\"L�=�I&﹆͘5i7�\\u001b��G�[f��̰Y��\\u000f\\u0003��'\\u0003\\u0012S��\\n� ��>�ʀ���\\u001b�`���\\u000f�|���'h�����f�{�K\\u001bB��r������TY\\u0017e0��\\nȢl �%J\\u0006f�����TM\\u0006U�\\u001bc��\\u0017h\\\\nƯ\\u0007��\\u001d�}�+��R��H��?)\\n���rKlk����\\u001b\\\\\\u0002������#��\\u0016;m�#\\\"-�s&�\\u001d�*H6����B�����ٽ/!6Q��F\\u000b�$�f����o\\u0015M\\u0015; ؊�#�r�\\u0010;�\\u0002��\\u0018���7�P\\u001b=\\u0011�AFU�Ͻ���]�:����V��\\u0018g\\u0018\\u001d+mU�����v���@�B�������I�\\u0018k�G\\u0004'c�g!���`>�N�74s�\\u0005��\\u0013�&X�n����\\\\�2��P�텞��\\u001a83\\u001bs\\u001f�����l���Y\\u0016j���}�N�P?��I7\\u001c��e�zW4���{D\\u001d��U�O�h����zn l\\u001d�\\u000e:\\f2��|��y�\\u0004���U�\\\"q�`\\u0018\\t[g�\\u0013��\\u0011���M���s����\\u000f�~¶�@9Eԅ���0M!1�e@�on'����ִ��7�H��\\u0006?\\n\\u001c,C\\u0003\\u0003ah�5ٰ��-1���/\\u0005l\\u0006ή1�}�*;쁬�{�\\u0016���A�A�1(l��z`UY\\u0003�ŻKXUp\\u0006\\u0003���1P\\u0001�HlO�b�d5,�5\\f_ȂC\\u0002R�I�'W��\\u0003�\\u0017��\\u0002='�\\u0016�1v.�\\f��\\n }�E^���$�<�b����o\\u0012`���;��7N��4-�\\u001aP���\\u000b\\n�\\u001d�\\u0016����!�{��\\u000b\\n\\u0001��n�}*4*i�]�>\\n�$K�E�0F,%\\u0018R\\u0010YJ,�X�[�\\u0010d����\\u000f�ԍ<��\\u0016��0��\\u0012��`cC�3�\\u0013'B��k��\\t��2��$Mi�NX6��\\u0010n��9K��\\n;!�@\\b\\n!!>5��H \\t��Hm7`.�\\u001b4}\\u0006,b���Cc񰿹w�\\u0016\\u001d\\fm\\u0012\\n�g�{\\u0007М\\fXSx�z�f(�%� \\\\�\\u0019\\nE)�p�òQ���d�GX\\u001b{y{�J�+[\\n���\\u0006K\\u001f{\\\\�Ouy��zXV�3\\u0006�R\\u0002�Fs W\\u0006��0�\\u0018�]b7��q�8R�����X\\u0014O���W�����W�\\u001b�W\\u0019�9\\u001c?\\u000ec��1�Fs�T\\u0006rb׆��_�9%X�D��Pi�9L\\nT�9)Z\\u0015)=U\\u000e]��c�r{��j�=��{�\\u0007��fu�H?)㇋��k\\u0013C�%*�D�'�057P+��[\\u0018�� \\t[\\u00152l4\\u0007�#^�L\\\"\\u0010,��������RZ�\\u0005y�Sa�hFu[�������ʂ\\u001b�\\f�\\b�h��Gӄ�����=>�U�z�OP4\\u0004�w0@��\\u0005.H��P�\\u0007�kY$�x��\\u0018�\\t��J�\\u0019���XD\\u0013��@�]k��;�\\\"\\nR�S\\t+\\u0010m��!�hSꉍ�\\u0011����1Cm�)t\\n\\u0019�J\\u0012\\u0004\\\\҄�[\\u001b�\\u001b[\\u001eE֘��&�O\\fݷ6��e] �ȶ�)�2\\tc�7rSA��+�c��q<�}���\\\\,�\\u0012\\u0007@ ����_U\\u001f�m�}.ݾ]�tI�\\u0010T�T�*�o����\\t�\\u0010\\u0004@�0@G����F��d�,Z0cm���\\u001bMiL\\u0002���tDb�Hl�\\u0006�R�\\u0012��B4p܀RH\\u0010B\\u001eOB\\u001d��)��hBI�����8��\\u000b��\\\"ڃ�\\u0014�\\u0001�\\n]�f�@|y�*\\u0007J�J\\u00186��QQ���L�g��2q�f\\u001bF[�a��\\u0018���\\u0006��\\u0013s\\u0007�{�Y�C\\u0007�g�$@g�\\u001a$l���~�ea\\u0016\\u000e\\u0003Q�N����\\u0019�&�풮;\\u0003���Y��\\u001d\\u0003�)�)�`��,�5����X-�H�F_m�%�~�Ѫ���j͸����w�����:�� \\b�ЙT,R\\u0014�w4�,�n���\\u0006+\\u0004f\\u0007�~��8\\u001dFI��r� �c�85E�4a\\u0003A�-\\u0001sŋ����n\\n�g���(M�#l�i�ޱ��}ҋ]���,��%�����1�{4\\u0006SƶU0�s(�}�N��\\u0006\\t�3J\\u000b\\fԒm^�%��t{����\\n\\u0010l���-_e[˶�je\\\\�H��\\u0015P�\\u0015�\\u001c����;�??���[�|�\\u0011�$�\\u000b�[�\\u000e�GR����D�{��C�%P-\\f\\u001a�RA\\u001c�+\\u0015��\\u0010�P\\u000f�;i�Є�\\u0013��J9��\\u0003���\\u0011���3@桘\\u0019��Ծ d�Ȭ.���~�'�VGW�NO�Yr�\\u0018-YSZv۰��mv:}���\\n�o\\u001b���;D�J���ї\\u0015�-��-�\\nX��Q�\\u0019�q��\\u00101R�HB\\u0017}�-E�K��s\\u0001�4��\\u0014�<\\u001d1AA'Y�XR\\u0017���\\u0011�Ǭ��\\u001c�\\u000fd�\\u0007l�Y�\\\\��G9��mb�B\\u001c~2��Ӝ-+d�î�p4Kѹ� m\\u0016����\\f�#n\\u001d�./\\u001az�]<�\\u000eC��\\u001d\\u0012�)�\\u0016��J�d�����bػ�\\u0016OM&n�\\u0006�Bѡ����P�$=��)�ȋ}U�\\u0019��*�f\\u0017}M�\\u001c@�%�\\\"�F�t\\u0018�d\\u0011YTM��E�^\\tY�\\f}Ѳ-Y!��Rt��\\u0004C��G�EU�\\u001f5^\\u000b�ܐ�\\\"��i\\u001d�eIZ�&���!+I+�\\u00060�\\\"�|*���;&se;yA����\\u0005�H�����R\\u0004Tc��`��L\\u0018t�u����{�\\nMm\\u0005#�\\n�#�\\u0016�\\u0019�ߪ`�W�bl�l�b���%\\t�I�)�!ku���^�=[�(��FN*�Cť�(\\u0003\\u0017�y�O�9_���\\\\��/\\u000bA���(�v�*1�Az�\\u0011S�0�hl��\\n[�ۺ�\\u001c苽R U��\\u0007��\\u001c�w\\u0017�\\u0018L���\\fj�(���agS�wCk�� e[�o9�l\\u0016=ό_������\\u001d/��\\u0014�އ>�\\u0016t*�г��o�\\u0012�\\\"��\\f�}��LB�%�7\\u0012���\\u0007n�~���\\u000b2\\u0017�ʘ7�Fؚ���-\\u0012p8ذG\\u0019\\u000e�������r�q���+l���y�!?y��f�TU����5a�\\u001d.�I���S�͔�~\\u0002Q\\u001e���}V��Zt��K�\\u0014��Y�)\\u00195^U�W�+�7z��'��Hܬ\\u000b�\\u001es�[2O\\u000fxZā\\u0014I�!�\\u0004a��}�\\u0017��y��R����J>[��Mj|v@��b0<[�\\u0013�9�a6���?��ǟA���c����#4Lj���wz|���Υ����$��\\u000e��{����G[n�\\u0004E�bvVP�r���{q�F����\\u000b��������\\b��w�f\\u000ep]c�!���G\\u0017�k�\\u001f|)4.�Q)�B���2�>�#�/���^C�\\u0016���%|)<\\\\]\\u0006J݈�\\u000e\\u000ef����R��\\f�E}��\\u0005��-�[w��L_au����\\u000b�hu\\u001a\\u0017W\\n ��e��\\u001e^hjGk\\\\\\\\\\n���`�p�,k���5=V?E�RD\\u000e�?�M�{x�(��wb�\\u0010�Y��T�\\u0014�GZG.=�u\\u000f/:�\\u0002�v\\f��\\u0017\\u001fx�\\u0007�i�\\f=�[��2���\\u0017�$\\u0003l��k`/8𖵔�u=��j˱8`G��\\u0013�\\u001f��&jú�|�%2lp�=��ۺ�W\\u000f^���e k��\\u000bY6ʫ��~�\\u001ad���7a\\n%�$)���m\\\\^^\\ng�\\t)�|\\b�\\n�}\\u00116�S�E\\u001af�\\u0012��� �\\u0013\\u0013�>�bF���\\u001c\\u0004��7.�[\\u00066}���\\n1\\u001b\\\\���\\u0001Wpt����p��}3�\\\";��+?������x�\\u0005\\u001b�Y��\\u001b�\\u0001{I�!|\\u0005���9z;�4��ۇ�@��<��8�n�\\u0001�I��e\\t)p*��$�&\\\"6���Wj�\\u0015\\u0010�̽\\u0007��h���9\\ntIj\\\\\\n�4�ZěR \\n#�\\u0019\\u0010x?%�։�\\u001cYy9��Dɗ;\\u001b]�\\u001b]c�׎Q��\\u0004����z�[�^\\\\\\n?2H?\\u001e\\u0001K�-\\u0005\\u000bǾ\\\"\\u001f�l����}�e\\u0018���i����`�>��\\b\\u0007��Ĵvp\\u0018{'$Nae/�GLC�+.\\u0004�A��1�E+0�\\u0003׳c\\u001a�g���{�Û{q}}b\\u001e�]_û�+�\\u000f�\\u0006.X�\\n��gZ�M�!-�tF�\\nYM�\\u0010��\\u0005��ȸ\\u0014\\u001a\\u0005�m��D|�¹���k$�3X塋\\u00018\\u001b��(���\\u0004~�\\u0012\\t\\u001c\\u001a��ě���\\u0010Ά|~|t)�^_��\\u0007\\u0005��\\u0015�F��\\u000f�]�5��_�\\u001c��^4,\\u0017\\u0014M ��h���ŻRI@���\\u0015\\u0006\\u0014�\\u000econr���h��\\n��\\u0017_�����'Z�L.��\\t�E�iNVц'����h�04~h��f5\\u0017�[�Y�\\u000fc�^=\\\\\\n\\u000f\\u000fW�I��5\\ns²\\nعR��\\\"7�\\u0017Byn��젗B�\\u0004\\u0002H�\\u001a�֪�X<ӥ\\u0004\\u0003��\\u0010IYN�'�Z�\\u0013�\\\\{�:q\\u0016\\u0017e<�\\u0012%��L��|م���Q�\\u0004,�-���E�\\u0016��ܢ�\\u0011��?�b6�\\u001d|\\t\\u0006����\\u0011�\\f_N���M�\\u0016Rf\\f����45�<=���/�\\u001cs�<5M���6�ݦ2��3���\\u001d\\u0007~��]39�3�����{�����ᗃ�C\\u000ev\\u000e�\\u000fw>;�s<�ԣ����D�t��h����\\\\�N�\\b���qp�\\u001e��\\u001a6�m\\u000e3�ug4:�\\u0019�Ow\\u0007�����|o|��!��\\u000e�\\u001c�\\u001c;����stn%���ԣ��͏�\\u0003��o���m�Z���Y_~>�i\\n[?7�;��ޡi:�y�}�;{�{�{��c�\\fMso۬�߶���=���M�1��ўi\\u000e��=x�s�l���\\u0007�i:{�۳�N\\u000f�L���ާ��g�\\b�\\u001f��{�y�6o5-L?�\\u000f?�\\u001f4[j\\u001dӓ�Tn\\u0002n����m��`\\u001cn\\u0003\\f���7w�06���Ǭ��'�3f\\u0001~�=���^�\\u000fl\\u0003�\\u001d٪�\\u0013J�%\\u001bR���mU VI�fv�$�\\u0003u��>��=�_f&���Y#k{��OgI\\u0006����UEE@4}!{��}S��\\u0002sy�\\u0019�*Tz�⩤�Ϗ�\\u001a+�VW�&̯��˄yJ%X\\u0015��k\\u00069��K�b�؋\\f��������=�\\u0012��n�e�����wG�����Ѽ�}d�5G��������?��yz���{ۧ�>\\u000f�Mb�\\u000e��>\\u0019m+���o��\\u001c\\u000f�\\u001cXG��V��`�s\\u001d\\u000e���f'4w̽\\u001d�t�i�\\u000f\\u0003p���{&�k���V>�h\\u000fƼ�m��l�Dn�C���Y|w��e������w�������ZJO_���R\\t����Ǌ]�\\u0007���)s��S�@\\u001c��Ŵ�Ӭ\\u0014׮�9��n�g�W�Ν����^E�n��d���m�w��,1ͭ�\\\\)o�K�z�׹\\\"�\\u0015��k~�dU�O��\\u0019�~�{�\\u0007קk�\\u0015j��[�&��-xn����\\f+ԫ�dġ����ީ�󧴵�ݥ4���ʻ˙��\\u001a�\\\\�$vv\\u001f���X[�<\\u0013��JdT5y-2�Uk��\\u0012����JF�̍���Eƙ��\\u0017 \\\"���˯�����˒�^���y\\u001a�i��\\u0012��\\u0001��\\\"/\\u0006� $�\\\\�\\u001f�\\nN)�H^!�7����\\\\\\u0011���4Z�ڪ\\n�J�\\u0001X�~+֌�l�\\u001e�!�ۯ������'1�*�\\u001f��KA�R4��UW͸ĕїm�JU���Ϸ��_Y\\n�\\u0015*������|I|��\\\\\\u0018IȊ��mΥ �œ��`�3�JI���(�t����L\\u0007\\n�3\\u001b����M\\u0002��e���\\u0016��y\\u00047�7�)�+bm�\\u000e���_�@�uH��NX& ����\\u0004����J�Ųs\\u001b�Y\\u0001~���-D+\\u0016��3�rD�5\\bڂ3&֙Rv\\u001aŢ\\u0019��'W�3�쌋e�_;��I�ف\\u0019�D��\\u000f�X�W,\\u001d��Z$��؎�Xj怏)o�a�\\u0015k�V8��I[�'�\\b��ƾ\\u0006�5v�K�\\u0015��\\u0001N\\u0019i\\\\\\nK\\u000f\\u0018�\\u0014�V\\u000f~�z��\\u0013��Z��Kإ\\u001aԾ�o|O�x���\\t\\u001c�\\u0004֚CY\\n2U~�Jʿ\\u001f\\u001a\\u0017�n%\\u001d�)�2\\\"1�<�}\\n�)��|A��\\u0003��\\u0003��\\u0013ƌ ����r�\\u0017�\\nc�\\u0018\\n�i\\u001c�|�gʦً38!$Y����־O�\\u000f�.Z���O�\\u000fW�F��)Z,\\u001e)\\b�}.���-\\u0018��j�,s��{���%+�_�DSu����\\u0005�9��u���M\\u0010�\\u0005Y�гQ\\u0010��\\u0007�퇁�4(;����\\u001a\\u000b��Xͫ�M\\u000e崝��\\u0015\\u000f\\u000e���+?B�\\u0007I���70�i��\\u000f�~�-?ڢ+=��!\\u00063��\\u0003�k�\\u00123o�+Gc���k��鑟�\\u0006�\\u0013�7\\u000f��\\u0017\\u001b�S�rE\\u0012����q\\u0004�\\u000b\\u0006���2\\u00020`\\u0019\\u0001IZk\\\\E�\\u001b�\\u000f�>[���\\u0016�2H���1'���CM�V��%g�,��J�ȌT?�\\b��oc��ܲ�Y��+�/�\\u000e0Q��PX�����\\u00118��|���&�\\f(��z\\u001a�]�8�(�\\u0016��\\u0010��8nUf�1�Z��M��|A> l��0��T2\\t�8F�B��\\u001f#�@��8�ZnS\\u0016�\\u0006��㾛nZ�E׮L>n�0�0N�a�\\\\+;h�X�wMv�P�d\\u0005MI�O�Za\\u0015��a6�t�K�\\u000b���O�\\u0003�ڼ!w��1��_�P�XA��ȝ;\\tٶ:\\fXZ�M�̟�$����׮��e��v4�]\\u001c��B5}]�_۽~����Q>���\\u00173���}�H�r�x�`�\\u0010�\\t���0CJ\\u001b����H�h�$b�?aT�Z\\n�ǎ:�ֳX%̜��Ε:8?�'��;�\\u000e:�����5��w/�\\u001f�:�np:$�pt\\u0016�\\u0001�g�����*�\\u0005��\\u0002���$;\\\"\\u000b�R2X\\u0012E|9O��C�\\u001c��R���jH���\\u0017:��rM�dE�\\u0010z�\\u00157,w\\u0002�KMF�]�i�_5z\\u0003zi����\\u0010vP\\u0016�R\\u0010\\u0005����ɽg\\u0016��c\\t |��E���\\u001e���t;�\\u001f�An~�y��%�\\u0007Ι\\u0017�\\u0012����\\u0003e�8�OV�]���|\\u0011_����\\u0010���\\u0001�ϲ��a��m�9\\n1�\\u0010�vjZ������G������8@�t|V\\u0003j$P\\nE3=:p\\u0003���\\u001f1��o�J�r]F\\u001aV�2X/��px$Q\\\\��6��-����N����\\u0019u�O�A\\u0003J\\n���N8�1m�\\u0001\\u0014wD��0�C\\n\\u0016\\f��\\u0001�8�*.n�B�;]��O]\\u0010�~�e�r\\u001ee�@g�\\u001aƔ��#?��\\nx^=�Oѥ�ف}\\b\\n_\\u001c�ɁA�H��<�̓�E4hգ��\\u0013�g\\u0010�O�˼V�Nqb\\u0012\\n0�(F��/�)��V;j{f�S�9�k�؞\\u001b5\\u0019��i�\\u001dZq�aV\\u000b���ˮ�<�B�a^˚��\\u0002\\u0004�ͪN��3\\u001b��mNu_Sޮ��\\u001cƸ蓸��G&w���\\u001b�&;��]�ޘ�\\u0010�c{����\\u001d�1 Mp%�6���l�?��d�k�\"\n]"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754101057427
+        }
+      }
+    ],
+    "name": "1795abcc-a0c6-419e-9b2a-f8e0f6a687f4",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057427"
+    },
+    "final": false,
+    "metadata": {
+      "type": "artifact",
+      "artifact": {
+        "id": "1795abcc-a0c6-419e-9b2a-f8e0f6a687f4",
+        "created_at": 1754101057427,
+        "updated_at": 1754101057427,
+        "type": "tool_results",
+        "step_id": "26b99e6c-9d2a-4440-98c7-47b4389478a3",
+        "results": [
+          {
+            "tool_call_id": "call_rrJhKnkvYMS1RMAnQQyuTqes",
+            "tool_name": "extract_structured_data",
+            "result": "[]"
+          },
+          {
+            "tool_call_id": "call_qWlJ8G73SeWa9p6UpC4VLmz2",
+            "tool_name": "extract_text",
+            "result": "[\n  \"\\u001f�\\b\\u0003�}\\u000bW�F��_�U��˜�e��\\u0018`G<�\\u0004f``��\\u0002�Ӗڲ@�H2������nI�l���$���\\t�Gwuuu��Tջ�ݏ;�_N�� ���\\n��<\\u00128�\\u0002\\n\\u0004dy$I6\\u0005�ķ\\u0002�IJ�\\u001f�4{��1�����iJ�5 �\\u0019M7�a��m��=\\u000e�O7�;���0N\\u0005d�AJ�tS\\u0018�v:ش�kQ�n\\u001a�\\n��%\\u001eN,��MY�\\u001a(��n�i�w4~\\u0011��s�[\\u0014SoS�b��\\u0016� ��M�y\\u001d�q�LR��Vӧ�K�D��\\u001d[�\\u0013��UU�q\\\"F�(��\\u0015\\u0001�dS�\\u0001�\\u0010�I\\u0012Ʈ�\\u0006����ID��&oZ\\u00195I'\\u001eM\\u0006���\\u0003[I�����fɪE\\f�շm�J�l!��ZԦ�E7\\u0005�>pb뭎�X�ڭ�\\\"�_\\u0014����$��fQ��%�e1�r���m��жE3��:��5�ؓ����`�YO+v�T@}�Z���\\nc7�l\\n^8Z��`\\u0018�&�\\u0011�Eĺ�JOR)�Ў֖\\u0015��\\u0016o\\u0012\\u0018�CEIl-���e�\\u0018T�}��'RO�%b�m�\\u000f\\u0010I&��)\\b[\\u001bM\\u000ei\\u0005��.a�m��R��(��\\u0018\\u001d���|�\\u0006�D\\u00116�*�\\u001d��v�P�M�\\fQ�ZX�d��Q�-u\\u0014Y��\\u000e�DQ�84y�$�p�6�\\u0006�D7\\fY�U�e[m��,���$\\u001c����Hm�C��bt�v�ɰ\\nCǴ�hZ��;�j�X�B4CPW%���dJT�/I�#0�7��J\\u0001�\\n�#�<�1\\u0007i\\u001a%�f6�x�;w\\u0012�V�7� qSڼI��ӛ�_V�G$�\\\\���ɟ\\u001f�Q��\\u000b�s�Ma�`~�A>i<�\\u001fٴOc��h�$b�:a\\bi-���y�F]���F#�\\tCǣ)q|\\u0012\\u0010��\\f���0'��<8?�'��;�\\u000e:�V�FU�\\n�8��)r�0�Gy�$IBӤ���N�>��עk��;uS�n�\\u000f(�'IJ�\\u0014�\\u0005)���M(2\\u000f�\\u0001I�L6��a�\\u0002ڔ#��`�\\u0011<�$\\u000e\\u0010�\\ttD\\u0002gw���\\u0001E)%>�с\\u001b��v\\u0018\\u0014y$퇱�@$�Q8���&�\\u001b\\u0006(\\nQL�Bo\\b����\\u001b�ԉ\\t<\\u0011g��-����Nʘql�����'��1��y��\\t\\u00074�\\n3H\\u0007q\\u0018�V�\\f�7I]+)@Fq\\u0018�\\u0018�r�t\\u0019!J`\\u001f�]=�z�\\u001d��\\u00114�\\u0019��1�T�\\u0018�����<&��k!�,>Rt�g\\u0004\\u0013B��\\n\\u001cħ�w@\\nR��Qd�\\u001c.�\\u0007���9;�\\u0013f�D��\\u0013F4pb\\u0012\\n0�\\\"F��/�)K�\\f�ӑ��4�Z$�Kp���xr�ء�|���O�l\\u0015��A�*\\u0006/C۩d�\\u0005�\\\"��2c��c��%�=M6\\u0005���\\u0015ݘA\\u0011t8�\\u0016��7�$]�Y�Bo�w=/����\\u0014j˪��r/��Ax\\u001c�C�V�|�{�О����5��@|zm��\\u001dKG=\\u0007�S�\\u0013\\u0006)q\\u0003\\u001a#P�؉�\\u0004뒄�]w�H�$ak�9[[?\\u0004Q\\u001c:1M��Q\\b� ��\\u0006i�\\n>L_#�G�=b�:q8\\f��\\u000f{\\u001dM7��Q���%ݾ;���{�\\u00066\\u001dweC�ަa�E�[��Ӯ��y�]Y���v@]g�v�h\\\\\\u0019\\\"��W�M\\\"�L�=/�n��I/\\u0001�E�Ƭg\\tZ4��1нp��\\u0001��QWB\\u0012��h�2\\\\\\u001b�@�޿\\n#b��+��#ڻuS��$H@yv�0%)�I���\\u0006��\\u001e�KѸ��h��-��u��޴B�$r��ƋȲ��\\u001e�3R�e\\u001dH��_32�KT�kFE��\\n�n/�m\\u001a�^\\bOᲫDc���ks�#\\u0012� �^�4��\\u0015za\\\\pH�\\u0002���MLlw�tu��:����M�\\u0016��\\fo�I�� �\\n(��\\u001b�a{H߮��A�6��I\\u001a����+(��\\u0017��\\u0003׶i0�vL=��w���\\u0019�i��0_�9fx���N�1�i��f�U��ׅ�+\\u0001�=�`,n�\\u001a��ûGFY\\u0006}1ԍ&W5\\u001b�{�\\u001c�k�\\u001d��������\\u000f��x�\\u0017T\\u001e�YӀ��H\\\\�2\\u0018�#�0\\t�ABS<�\\u0012�{t�ܔ�\\t�(�0t�5\\t�p�y�E\\u0019Y1��\\u0012Z�ŀO�p\\u0014�(\\u000e����@\\u001a\\fA����?��H\\\"\\u0012\\u0014��A���C��M�+�\\u0004Gc\\u0016/a�C�h\\u0002�*X?�2��.6$\\u000e�\\u0002����a�;\\u0007%i\\u001c�\\u0002s\\fc`�\\u001d�\\u0011\\u0001�[5����\\u0019oJ\\u0002�Fn��M�y\\u0001�\\u0002?\\u0005\\u0013��D�ɦ�,S��p=�� �.i��\\u001c�b\\u0018;ME��&���FD�\\u0001�7�cEUE\\ni�!\\u001a���:b�TEl�+M\\u0017U$yrG�rGaMp�\\u000e�v\\u0012�F\\t�a�0�t��\\u0006Rն�BmC4�ltD��\\u0005��\\u000e\\t�\\u000e.��a\\\\$w�{P\\u001e�3x�w�V�zM۽��p&>��1_|.W��B��KLO3\\u0015�\\u0001\\u001e�\\u000bEb�\\\\�O\\u001d��DG�Ӯ9�c�Aܳþ�i��.�R\\u00114w�\\u0015t�u�P)\\u0018�#\\u001c��S�C�\\u0016(Kp@�0\\b%ӂٳd�c2\\u0003�\\u0011��T63\\f\\u0017\\u001a\\u001bE�\\u0004���-�\\u0014�\\u0013����p4�`�b'ەU� \\u0017�\\\\!W�6k4\\f�£�D��F�*�#�҂�lz��=�������\\\\�M�O��r��,�}]\\u0004p�$�c�z���O��9����뚷\\u0015&�/\\b�8��μ�p͹�I�vx��5{�$�|�k�\\u001eQ����E�c���ߊ0�$��B�R��(�s��x�Yr4�\\u0014d��~�ء�\\u0012]��X\\u0010g=b��+c��\\u0017:��\\u001a�=u��^輮YG�k��҉7�6k��\\u0013��uM�}�X:Y�QpM�\\u0006�,��yG�s��\\u0011\\u0004��Q�G1��G�[�G��\\u0010��4FA\\u0018�W����\\u0014s�`+)�:��6E�\\u000b��21\\u00199�\\n=�\\u001fc��ݳr��`�c߻�44K���n����7N��\\b6�Y[�\\\\kg$\\u001b��Aj�%j��\\u0014��*RE\\u0003�����*�X\\u0017\\n,gU�@\\u0012V�\\\"��Z\\u0017\\u0015�WŢ�t�\\u0001eUѸ��*�2�D��b\\u000b)�V�t�\\u0002\\u001dXs\\t\\u0019����\\n�e?��XX\\u0011\\n,��.ꢊ\\n�\\n}�k��`Yl�����\\u00194��\\u0006@\\u0016U\\u0004\\n;He��\\u0014�\\u0003hhb\\u0007�\\\"�7Ǣ�e��a>\\n�������ib\\u001b�wd�\\u0010e\\u0004�5Y\\u0006`\\u0012Rtł;I� �#��\\\"鰕4:��\\u0014�#*�ql\\u0003�Hnq��\\u000bY\\u0011e$�$`PM\\u00125�kȢ�$$ᖄd\\u001d�5���\\u000e�\\u001fJX�E\\n�d���6V\\nF+\\t+0\\u0019Y\\u0017[H���9\\b�0: �\\n�\\u0005�\\u0014\\u0019��:{�\\u0012u�\\u0002�(\\u0012���e\\u0003��6���l`U\\u0005b\\u0003\\u0019MYfM`1�KY\\u0012u\\u0018�\\u0001\\u0002\\n*�iڜ�؀�/,�\\n\\u0004cOZو�\\u000e\\u0019\\u001d���ߊ�ȣɢ���\\u000e��mQO4N�\\u000e{�ڢn1�os�\\u00062:Xi!Y\\u0015[H��\\u00160\\\"b���e�Ɍ�-N\\u0007\\u0015��]\\u0001�HB\\u001d��]�\\u0012�%\\u0019֛O\\u000f��Ah!�3��\\fFaF\\u001dQE-��\\u001dj�\\u0019���NH�D�-5p���)mQA��\\u0012�LnU\\u0003����+�/�)���:j����;-\\u0010@]\\u0011;\\u0016\\b\\u0004��\\f��MSfb\\u0006\\\"�V�?\\u0003��2�Af���|\\u0018�Ge\\u000b��g�>�%Fd�I�,�U�&�\\u000f\\u0002̄\\u0005��-&��\\n����w���B�\\\\\\\\�ֽ�*��T]4o#�\\t�\\u001df�\\to�3[)\\b��v����\\u0005\\u001d+쇣]�\\u0015�\\u000f2!k �l\\u0010̉\\u0001\\u000b�g�+��Q3m�d��1�Q$\\u0013D&_0\\u0001����HL9��\\u0005\\u001c�\\\\|�[�rTf\\n�\\\"L�=�I&﹆͘5i7�\\u001b��G�[f��̰Y��\\u000f\\u0003��'\\u0003\\u0012S��\\n� ��>�ʀ���\\u001b�`���\\u000f�|���'h�����f�{�K\\u001bB��r������TY\\u0017e0��\\nȢl �%J\\u0006f�����TM\\u0006U�\\u001bc��\\u0017h\\\\nƯ\\u0007��\\u001d�}�+��R��H��?)\\n���rKlk����\\u001b\\\\\\u0002������#��\\u0016;m�#\\\"-�s&�\\u001d�*H6����B�����ٽ/!6Q��F\\u000b�$�f����o\\u0015M\\u0015; ؊�#�r�\\u0010;�\\u0002��\\u0018���7�P\\u001b=\\u0011�AFU�Ͻ���]�:����V��\\u0018g\\u0018\\u001d+mU�����v���@�B�������I�\\u0018k�G\\u0004'c�g!���`>�N�74s�\\u0005��\\u0013�&X�n����\\\\�2��P�텞��\\u001a83\\u001bs\\u001f�����l���Y\\u0016j���}�N�P?��I7\\u001c��e�zW4���{D\\u001d��U�O�h����zn l\\u001d�\\u000e:\\f2��|��y�\\u0004���U�\\\"q�`\\u0018\\t[g�\\u0013��\\u0011���M���s����\\u000f�~¶�@9Eԅ���0M!1�e@�on'����ִ��7�H��\\u0006?\\n\\u001c,C\\u0003\\u0003ah�5ٰ��-1���/\\u0005l\\u0006ή1�}�*;쁬�{�\\u0016���A�A�1(l��z`UY\\u0003�ŻKXUp\\u0006\\u0003���1P\\u0001�HlO�b�d5,�5\\f_ȂC\\u0002R�I�'W��\\u0003�\\u0017��\\u0002='�\\u0016�1v.�\\f��\\n }�E^���$�<�b����o\\u0012`���;��7N��4-�\\u001aP���\\u000b\\n�\\u001d�\\u0016����!�{��\\u000b\\n\\u0001��n�}*4*i�]�>\\n�$K�E�0F,%\\u0018R\\u0010YJ,�X�[�\\u0010d����\\u000f�ԍ<��\\u0016��0��\\u0012��`cC�3�\\u0013'B��k��\\t��2��$Mi�NX6��\\u0010n��9K��\\n;!�@\\b\\n!!>5��H \\t��Hm7`.�\\u001b4}\\u0006,b���Cc񰿹w�\\u0016\\u001d\\fm\\u0012\\n�g�{\\u0007М\\fXSx�z�f(�%� \\\\�\\u0019\\nE)�p�òQ���d�GX\\u001b{y{�J�+[\\n���\\u0006K\\u001f{\\\\�Ouy��zXV�3\\u0006�R\\u0002�Fs W\\u0006��0�\\u0018�]b7��q�8R�����X\\u0014O���W�����W�\\u001b�W\\u0019�9\\u001c?\\u000ec��1�Fs�T\\u0006rb׆��_�9%X�D��Pi�9L\\nT�9)Z\\u0015)=U\\u000e]��c�r{��j�=��{�\\u0007��fu�H?)㇋��k\\u0013C�%*�D�'�057P+��[\\u0018�� \\t[\\u00152l4\\u0007�#^�L\\\"\\u0010,��������RZ�\\u0005y�Sa�hFu[�������ʂ\\u001b�\\f�\\b�h��Gӄ�����=>�U�z�OP4\\u0004�w0@��\\u0005.H��P�\\u0007�kY$�x��\\u0018�\\t��J�\\u0019���XD\\u0013��@�]k��;�\\\"\\nR�S\\t+\\u0010m��!�hSꉍ�\\u0011����1Cm�)t\\n\\u0019�J\\u0012\\u0004\\\\҄�[\\u001b�\\u001b[\\u001eE֘��&�O\\fݷ6��e] �ȶ�)�2\\tc�7rSA��+�c��q<�}���\\\\,�\\u0012\\u0007@ ����_U\\u001f�m�}.ݾ]�tI�\\u0010T�T�*�o����\\t�\\u0010\\u0004@�0@G����F��d�,Z0cm���\\u001bMiL\\u0002���tDb�Hl�\\u0006�R�\\u0012��B4p܀RH\\u0010B\\u001eOB\\u001d��)��hBI�����8��\\u000b��\\\"ڃ�\\u0014�\\u0001�\\n]�f�@|y�*\\u0007J�J\\u00186��QQ���L�g��2q�f\\u001bF[�a��\\u0018���\\u0006��\\u0013s\\u0007�{�Y�C\\u0007�g�$@g�\\u001a$l���~�ea\\u0016\\u000e\\u0003Q�N����\\u0019�&�풮;\\u0003���Y��\\u001d\\u0003�)�)�`��,�5����X-�H�F_m�%�~�Ѫ���j͸����w�����:�� \\b�ЙT,R\\u0014�w4�,�n���\\u0006+\\u0004f\\u0007�~��8\\u001dFI��r� �c�85E�4a\\u0003A�-\\u0001sŋ����n\\n�g���(M�#l�i�ޱ��}ҋ]���,��%�����1�{4\\u0006SƶU0�s(�}�N��\\u0006\\t�3J\\u000b\\fԒm^�%��t{����\\n\\u0010l���-_e[˶�je\\\\�H��\\u0015P�\\u0015�\\u001c����;�??���[�|�\\u0011�$�\\u000b�[�\\u000e�GR����D�{��C�%P-\\f\\u001a�RA\\u001c�+\\u0015��\\u0010�P\\u000f�;i�Є�\\u0013��J9��\\u0003���\\u0011���3@桘\\u0019��Ծ d�Ȭ.���~�'�VGW�NO�Yr�\\u0018-YSZv۰��mv:}���\\n�o\\u001b���;D�J���ї\\u0015�-��-�\\nX��Q�\\u0019�q��\\u00101R�HB\\u0017}�-E�K��s\\u0001�4��\\u0014�<\\u001d1AA'Y�XR\\u0017���\\u0011�Ǭ��\\u001c�\\u000fd�\\u0007l�Y�\\\\��G9��mb�B\\u001c~2��Ӝ-+d�î�p4Kѹ� m\\u0016����\\f�#n\\u001d�./\\u001az�]<�\\u000eC��\\u001d\\u0012�)�\\u0016��J�d�����bػ�\\u0016OM&n�\\u0006�Bѡ����P�$=��)�ȋ}U�\\u0019��*�f\\u0017}M�\\u001c@�%�\\\"�F�t\\u0018�d\\u0011YTM��E�^\\tY�\\f}Ѳ-Y!��Rt��\\u0004C��G�EU�\\u001f5^\\u000b�ܐ�\\\"��i\\u001d�eIZ�&���!+I+�\\u00060�\\\"�|*���;&se;yA����\\u0005�H�����R\\u0004Tc��`��L\\u0018t�u����{�\\nMm\\u0005#�\\n�#�\\u0016�\\u0019�ߪ`�W�bl�l�b���%\\t�I�)�!ku���^�=[�(��FN*�Cť�(\\u0003\\u0017�y�O�9_���\\\\��/\\u000bA���(�v�*1�Az�\\u0011S�0�hl��\\n[�ۺ�\\u001c苽R U��\\u0007��\\u001c�w\\u0017�\\u0018L���\\fj�(���agS�wCk�� e[�o9�l\\u0016=ό_������\\u001d/��\\u0014�އ>�\\u0016t*�г��o�\\u0012�\\\"��\\f�}��LB�%�7\\u0012���\\u0007n�~���\\u000b2\\u0017�ʘ7�Fؚ���-\\u0012p8ذG\\u0019\\u000e�������r�q���+l���y�!?y��f�TU����5a�\\u001d.�I���S�͔�~\\u0002Q\\u001e���}V��Zt��K�\\u0014��Y�)\\u00195^U�W�+�7z��'��Hܬ\\u000b�\\u001es�[2O\\u000fxZā\\u0014I�!�\\u0004a��}�\\u0017��y��R����J>[��Mj|v@��b0<[�\\u0013�9�a6���?��ǟA���c����#4Lj���wz|���Υ����$��\\u000e��{����G[n�\\u0004E�bvVP�r���{q�F����\\u000b��������\\b��w�f\\u000ep]c�!���G\\u0017�k�\\u001f|)4.�Q)�B���2�>�#�/���^C�\\u0016���%|)<\\\\]\\u0006J݈�\\u000e\\u000ef����R��\\f�E}��\\u0005��-�[w��L_au����\\u000b�hu\\u001a\\u0017W\\n ��e��\\u001e^hjGk\\\\\\\\\\n���`�p�,k���5=V?E�RD\\u000e�?�M�{x�(��wb�\\u0010�Y��T�\\u0014�GZG.=�u\\u000f/:�\\u0002�v\\f��\\u0017\\u001fx�\\u0007�i�\\f=�[��2���\\u0017�$\\u0003l��k`/8𖵔�u=��j˱8`G��\\u0013�\\u001f��&jú�|�%2lp�=��ۺ�W\\u000f^���e k��\\u000bY6ʫ��~�\\u001ad���7a\\n%�$)���m\\\\^^\\ng�\\t)�|\\b�\\n�}\\u00116�S�E\\u001af�\\u0012��� �\\u0013\\u0013�>�bF���\\u001c\\u0004��7.�[\\u00066}���\\n1\\u001b\\\\���\\u0001Wpt����p��}3�\\\";��+?������x�\\u0005\\u001b�Y��\\u001b�\\u0001{I�!|\\u0005���9z;�4��ۇ�@��<��8�n�\\u0001�I��e\\t)p*��$�&\\\"6���Wj�\\u0015\\u0010�̽\\u0007��h���9\\ntIj\\\\\\n�4�ZěR \\n#�\\u0019\\u0010x?%�։�\\u001cYy9��Dɗ;\\u001b]�\\u001b]c�׎Q��\\u0004����z�[�^\\\\\\n?2H?\\u001e\\u0001K�-\\u0005\\u000bǾ\\\"\\u001f�l����}�e\\u0018���i����`�>��\\b\\u0007��Ĵvp\\u0018{'$Nae/�GLC�+.\\u0004�A��1�E+0�\\u0003׳c\\u001a�g���{�Û{q}}b\\u001e�]_û�+�\\u000f�\\u0006.X�\\n��gZ�M�!-�tF�\\nYM�\\u0010��\\u0005��ȸ\\u0014\\u001a\\u0005�m��D|�¹���k$�3X塋\\u00018\\u001b��(���\\u0004~�\\u0012\\t\\u001c\\u001a��ě���\\u0010Ά|~|t)�^_��\\u0007\\u0005��\\u0015�F��\\u000f�]�5��_�\\u001c��^4,\\u0017\\u0014M ��h���ŻRI@���\\u0015\\u0006\\u0014�\\u000econr���h��\\n��\\u0017_�����'Z�L.��\\t�E�iNVц'����h�04~h��f5\\u0017�[�Y�\\u000fc�^=\\\\\\n\\u000f\\u000fW�I��5\\ns²\\nعR��\\\"7�\\u0017Byn��젗B�\\u0004\\u0002H�\\u001a�֪�X<ӥ\\u0004\\u0003��\\u0010IYN�'�Z�\\u0013�\\\\{�:q\\u0016\\u0017e<�\\u0012%��L��|م���Q�\\u0004,�-���E�\\u0016��ܢ�\\u0011��?�b6�\\u001d|\\t\\u0006����\\u0011�\\f_N���M�\\u0016Rf\\f����45�<=���/�\\u001cs�<5M���6�ݦ2��3���\\u001d\\u0007~��]39�3�����{�����ᗃ�C\\u000ev\\u000e�\\u000fw>;�s<�ԣ����D�t��h����\\\\�N�\\b���qp�\\u001e��\\u001a6�m\\u000e3�ug4:�\\u0019�Ow\\u0007�����|o|��!��\\u000e�\\u001c�\\u001c;����stn%���ԣ��͏�\\u0003��o���m�Z���Y_~>�i\\n[?7�;��ޡi:�y�}�;{�{�{��c�\\fMso۬�߶���=���M�1��ўi\\u000e��=x�s�l���\\u0007�i:{�۳�N\\u000f�L���ާ��g�\\b�\\u001f��{�y�6o5-L?�\\u000f?�\\u001f4[j\\u001dӓ�Tn\\u0002n����m��`\\u001cn\\u0003\\f���7w�06���Ǭ��'�3f\\u0001~�=���^�\\u000fl\\u0003�\\u001d٪�\\u0013J�%\\u001bR���mU VI�fv�$�\\u0003u��>��=�_f&���Y#k{��OgI\\u0006����UEE@4}!{��}S��\\u0002sy�\\u0019�*Tz�⩤�Ϗ�\\u001a+�VW�&̯��˄yJ%X\\u0015��k\\u00069��K�b�؋\\f��������=�\\u0012��n�e�����wG�����Ѽ�}d�5G��������?��yz���{ۧ�>\\u000f�Mb�\\u000e��>\\u0019m+���o��\\u001c\\u000f�\\u001cXG��V��`�s\\u001d\\u000e���f'4w̽\\u001d�t�i�\\u000f\\u0003p���{&�k���V>�h\\u000fƼ�m��l�Dn�C���Y|w��e������w�������ZJO_���R\\t����Ǌ]�\\u0007���)s��S�@\\u001c��Ŵ�Ӭ\\u0014׮�9��n�g�W�Ν����^E�n��d���m�w��,1ͭ�\\\\)o�K�z�׹\\\"�\\u0015��k~�dU�O��\\u0019�~�{�\\u0007קk�\\u0015j��[�&��-xn����\\f+ԫ�dġ����ީ�󧴵�ݥ4���ʻ˙��\\u001a�\\\\�$vv\\u001f���X[�<\\u0013��JdT5y-2�Uk��\\u0012����JF�̍���Eƙ��\\u0017 \\\"���˯�����˒�^���y\\u001a�i��\\u0012��\\u0001��\\\"/\\u0006� $�\\\\�\\u001f�\\nN)�H^!�7����\\\\\\u0011���4Z�ڪ\\n�J�\\u0001X�~+֌�l�\\u001e�!�ۯ������'1�*�\\u001f��KA�R4��UW͸ĕїm�JU���Ϸ��_Y\\n�\\u0015*������|I|��\\\\\\u0018IȊ��mΥ �œ��`�3�JI���(�t����L\\u0007\\n�3\\u001b����M\\u0002��e���\\u0016��y\\u00047�7�)�+bm�\\u000e���_�@�uH��NX& ����\\u0004����J�Ųs\\u001b�Y\\u0001~���-D+\\u0016��3�rD�5\\bڂ3&֙Rv\\u001aŢ\\u0019��'W�3�쌋e�_;��I�ف\\u0019�D��\\u000f�X�W,\\u001d��Z$��؎�Xj怏)o�a�\\u0015k�V8��I[�'�\\b��ƾ\\u0006�5v�K�\\u0015��\\u0001N\\u0019i\\\\\\nK\\u000f\\u0018�\\u0014�V\\u000f~�z��\\u0013��Z��Kإ\\u001aԾ�o|O�x���\\t\\u001c�\\u0004֚CY\\n2U~�Jʿ\\u001f\\u001a\\u0017�n%\\u001d�)�2\\\"1�<�}\\n�)��|A��\\u0003��\\u0003��\\u0013ƌ ����r�\\u0017�\\nc�\\u0018\\n�i\\u001c�|�gʦً38!$Y����־O�\\u000f�.Z���O�\\u000fW�F��)Z,\\u001e)\\b�}.���-\\u0018��j�,s��{���%+�_�DSu����\\u0005�9��u���M\\u0010�\\u0005Y�гQ\\u0010��\\u0007�퇁�4(;����\\u001a\\u000b��Xͫ�M\\u000e崝��\\u0015\\u000f\\u000e���+?B�\\u0007I���70�i��\\u000f�~�-?ڢ+=��!\\u00063��\\u0003�k�\\u00123o�+Gc���k��鑟�\\u0006�\\u0013�7\\u000f��\\u0017\\u001b�S�rE\\u0012����q\\u0004�\\u000b\\u0006���2\\u00020`\\u0019\\u0001IZk\\\\E�\\u001b�\\u000f�>[���\\u0016�2H���1'���CM�V��%g�,��J�ȌT?�\\b��oc��ܲ�Y��+�/�\\u000e0Q��PX�����\\u00118��|���&�\\f(��z\\u001a�]�8�(�\\u0016��\\u0010��8nUf�1�Z��M��|A> l��0��T2\\t�8F�B��\\u001f#�@��8�ZnS\\u0016�\\u0006��㾛nZ�E׮L>n�0�0N�a�\\\\+;h�X�wMv�P�d\\u0005MI�O�Za\\u0015��a6�t�K�\\u000b���O�\\u0003�ڼ!w��1��_�P�XA��ȝ;\\tٶ:\\fXZ�M�̟�$����׮��e��v4�]\\u001c��B5}]�_۽~����Q>���\\u00173���}�H�r�x�`�\\u0010�\\t���0CJ\\u001b����H�h�$b�?aT�Z\\n�ǎ:�ֳX%̜��Ε:8?�'��;�\\u000e:�����5��w/�\\u001f�:�np:$�pt\\u0016�\\u0001�g�����*�\\u0005��\\u0002���$;\\\"\\u000b�R2X\\u0012E|9O��C�\\u001c��R���jH���\\u0017:��rM�dE�\\u0010z�\\u00157,w\\u0002�KMF�]�i�_5z\\u0003zi����\\u0010vP\\u0016�R\\u0010\\u0005����ɽg\\u0016��c\\t |��E���\\u001e���t;�\\u001f�An~�y��%�\\u0007Ι\\u0017�\\u0012����\\u0003e�8�OV�]���|\\u0011_����\\u0010���\\u0001�ϲ��a��m�9\\n1�\\u0010�vjZ������G������8@�t|V\\u0003j$P\\nE3=:p\\u0003���\\u001f1��o�J�r]F\\u001aV�2X/��px$Q\\\\��6��-����N����\\u0019u�O�A\\u0003J\\n���N8�1m�\\u0001\\u0014wD��0�C\\n\\u0016\\f��\\u0001�8�*.n�B�;]��O]\\u0010�~�e�r\\u001ee�@g�\\u001aƔ��#?��\\nx^=�Oѥ�ف}\\b\\n_\\u001c�ɁA�H��<�̓�E4hգ��\\u0013�g\\u0010�O�˼V�Nqb\\u0012\\n0�(F��/�)��V;j{f�S�9�k�؞\\u001b5\\u0019��i�\\u001dZq�aV\\u000b���ˮ�<�B�a^˚��\\u0002\\u0004�ͪN��3\\u001b��mNu_Sޮ��\\u001cƸ蓸��G&w���\\u001b�&;��]�ޘ�\\u0010�c{����\\u001d�1 Mp%�6���l�?��d�k�\"\n]"
+          }
+        ],
+        "success": true,
+        "rejected": false,
+        "reason": null,
+        "timestamp": 1754101057427
+      }
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057427"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_completed",
+      "step_id": "26b99e6c-9d2a-4440-98c7-47b4389478a3",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057427"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "f9df4c03-1aa0-402c-8850-02c1e0a06989",
+      "step_index": 4,
+      "step_title": "Tools executed: extract_structured_data, extract_text"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101057427"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_start",
+      "message_id": "75f7ad09-b7fe-49bc-9ac6-4d514df82637",
+      "role": "assistant"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060664"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_end",
+      "message_id": "75f7ad09-b7fe-49bc-9ac6-4d514df82637"
+    }
+  },
+  {
+    "artifactId": "e6f35e64-bf3d-48df-ace5-7e821fa04aa9",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "e6f35e64-bf3d-48df-ace5-7e821fa04aa9",
+          "created_at": 1754101060664,
+          "updated_at": 1754101060664,
+          "type": "llm_response",
+          "step_id": "f9df4c03-1aa0-402c-8850-02c1e0a06989",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_mt1nS9knqY0oLhZvRTUyGbez",
+              "tool_name": "extract_text",
+              "input": "{\"selector\":\"body > div:nth-child(1) > main > div > section:nth-child(2)\",\"url\":\"https://langdb.ai/about/\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754101060664
+        }
+      }
+    ],
+    "name": "e6f35e64-bf3d-48df-ace5-7e821fa04aa9",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060664"
+    },
+    "final": false,
+    "metadata": {
+      "type": "artifact",
+      "artifact": {
+        "id": "e6f35e64-bf3d-48df-ace5-7e821fa04aa9",
+        "created_at": 1754101060664,
+        "updated_at": 1754101060664,
+        "type": "llm_response",
+        "step_id": "f9df4c03-1aa0-402c-8850-02c1e0a06989",
+        "content": "",
+        "tool_calls": [
+          {
+            "tool_call_id": "call_mt1nS9knqY0oLhZvRTUyGbez",
+            "tool_name": "extract_text",
+            "input": "{\"selector\":\"body > div:nth-child(1) > main > div > section:nth-child(2)\",\"url\":\"https://langdb.ai/about/\"}"
+          }
+        ],
+        "success": true,
+        "rejected": false,
+        "reason": null,
+        "timestamp": 1754101060664
+      }
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060664"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_completed",
+      "step_id": "f9df4c03-1aa0-402c-8850-02c1e0a06989",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060664"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "07eadcff-f02b-4566-85d9-277ce9ffeec5",
+      "step_index": 5,
+      "step_title": "Executing tools: extract_text"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060664"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_start",
+      "tool_call_id": "call_mt1nS9knqY0oLhZvRTUyGbez",
+      "tool_call_name": "extract_text",
+      "input": "{\"selector\":\"body > div:nth-child(1) > main > div > section:nth-child(2)\",\"url\":\"https://langdb.ai/about/\"}"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060743"
+    },
+    "final": false,
+    "metadata": {
+      "type": "tool_execution_end",
+      "tool_call_id": "call_mt1nS9knqY0oLhZvRTUyGbez",
+      "tool_call_name": "extract_text",
+      "success": true
+    }
+  },
+  {
+    "artifactId": "253d361f-056c-482f-b77d-2cf9c144d5ae",
+    "parts": [
+      {
+        "kind": "data",
+        "data": {
+          "id": "253d361f-056c-482f-b77d-2cf9c144d5ae",
+          "created_at": 1754101060743,
+          "updated_at": 1754101060743,
+          "type": "tool_results",
+          "step_id": "07eadcff-f02b-4566-85d9-277ce9ffeec5",
+          "results": [
+            {
+              "tool_call_id": "call_mt1nS9knqY0oLhZvRTUyGbez",
+              "tool_name": "extract_text",
+              "result": "[]"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754101060743
+        }
+      }
+    ],
+    "name": "253d361f-056c-482f-b77d-2cf9c144d5ae",
+    "description": null
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060743"
+    },
+    "final": false,
+    "metadata": {
+      "type": "artifact",
+      "artifact": {
+        "id": "253d361f-056c-482f-b77d-2cf9c144d5ae",
+        "created_at": 1754101060743,
+        "updated_at": 1754101060743,
+        "type": "tool_results",
+        "step_id": "07eadcff-f02b-4566-85d9-277ce9ffeec5",
+        "results": [
+          {
+            "tool_call_id": "call_mt1nS9knqY0oLhZvRTUyGbez",
+            "tool_name": "extract_text",
+            "result": "[]"
+          }
+        ],
+        "success": true,
+        "rejected": false,
+        "reason": null,
+        "timestamp": 1754101060743
+      }
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060743"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_completed",
+      "step_id": "07eadcff-f02b-4566-85d9-277ce9ffeec5",
+      "success": true
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060743"
+    },
+    "final": false,
+    "metadata": {
+      "type": "step_started",
+      "step_id": "5248b243-e26d-4267-b0aa-924cbf1c8389",
+      "step_index": 6,
+      "step_title": "Tools executed: extract_text"
+    }
+  },
+  {
+    "kind": "status-update",
+    "taskId": "d5082455-cf27-44a7-ba23-eda7d3cc6d32",
+    "contextId": "312a379e-f1c3-4a66-b6a6-fa311e2bce5c",
+    "status": {
+      "state": "submitted",
+      "message": null,
+      "timestamp": "1754101060743"
+    },
+    "final": false,
+    "metadata": {
+      "type": "text_message_start",
+      "message_id": "eeb69269-1ce3-4815-a418-80c9415c0ad4",
+      "role": "assistant"
+    }
+  }
+]

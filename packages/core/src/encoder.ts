@@ -1,6 +1,6 @@
-import { Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, TaskArtifactEvent } from './events';
+import { Artifact, Message, Part } from '@a2a-js/sdk/client';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact } from './types';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -27,7 +27,7 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
   }
 
   const metadata = statusUpdate.metadata;
-  
+
   switch (metadata.type) {
     case 'run_started':
       return {
@@ -37,7 +37,7 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
 
     case 'run_finished':
       return {
-        type: 'run_finished', 
+        type: 'run_finished',
         data: {}
       } as RunFinishedEvent;
 
@@ -132,9 +132,9 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
 }
 
 /**
- * Converts A2A artifacts to DistriMessage or DistriEvent based on content
+ * Converts A2A artifacts to DistriArtifact, DistriPlan, or DistriMessage based on content
  */
-export function convertA2AArtifactToDistri(artifact: any): DistriMessage | DistriEvent | null {
+export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact | DistriMessage | null {
   if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
     return null;
   }
@@ -144,98 +144,60 @@ export function convertA2AArtifactToDistri(artifact: any): DistriMessage | Distr
     return null;
   }
 
-  const data = part.data;
-  
-  // Handle TaskArtifact with Resolution
-  if (data.resolution) {
-    return {
-      type: 'task_artifact',
-      data: {
-        artifact_id: data.id || artifact.artifactId,
-        artifact_type: data.type || 'unknown',
-        resolution: data.resolution,
-        content: data
-      }
-    } as TaskArtifactEvent;
-  }
-  
+  const data = part.data as any;
+
   // Handle different artifact types based on the data structure
   if (data.type === 'llm_response') {
-    // This is an LLM response with potential tool calls
-    const message: DistriMessage = {
+    // Convert to AssistantWithToolCalls for LLM responses
+    const executionResult: AssistantWithToolCalls = {
       id: data.id || artifact.artifactId,
-      role: 'assistant',
-      parts: [],
-      created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
+      type: 'llm_response',
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      content: data.content || '',
+      tool_calls: data.tool_calls || [],
+      step_id: data.step_id,
+      success: data.success,
+      rejected: data.rejected,
+      reason: data.reason
     };
 
-    // Add content if present
-    if (data.content && data.content.trim()) {
-      message.parts.push({ type: 'text', text: data.content });
-    }
-
-    // Add tool calls if present
-    if (data.tool_calls && Array.isArray(data.tool_calls)) {
-      data.tool_calls.forEach((toolCall: any) => {
-        const parsedInput = typeof toolCall.input === 'string' 
-          ? JSON.parse(toolCall.input) 
-          : toolCall.input;
-        
-        message.parts.push({
-          type: 'tool_call',
-          tool_call: {
-            tool_call_id: toolCall.tool_call_id,
-            tool_name: toolCall.tool_name,
-            input: parsedInput,
-          }
-        });
-      });
-    }
-
-    return message;
+    return executionResult;
   }
 
   if (data.type === 'tool_results') {
-    // This contains tool results
-    const message: DistriMessage = {
+    // Convert to ToolResults for tool results
+    const executionResult: ToolResults = {
       id: data.id || artifact.artifactId,
-      role: 'assistant',
-      parts: [],
-      created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
+      type: 'tool_results',
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      results: data.results || [],
+      step_id: data.step_id,
+      success: data.success,
+      rejected: data.rejected,
+      reason: data.reason
     };
 
-    if (data.results && Array.isArray(data.results)) {
-      data.results.forEach((result: any) => {
-        let parsedResult = result.result;
-        if (typeof parsedResult === 'string') {
-          try {
-            parsedResult = JSON.parse(parsedResult);
-          } catch {
-            // Keep as string if not valid JSON
-          }
-        }
-
-        message.parts.push({
-          type: 'tool_result',
-          tool_result: {
-            tool_call_id: result.tool_call_id,
-            result: parsedResult,
-            success: data.success !== false,
-          }
-        });
-      });
-    }
-
-    return message;
+    return executionResult;
   }
 
-  return null;
+  // For other artifact types, create a generic artifact
+  const executionResult: GenericArtifact = {
+    id: artifact.artifactId,
+    type: 'artifact',
+    timestamp: Date.now(),
+    data: data,
+    artifactId: artifact.artifactId,
+    name: artifact.name || '',
+    description: artifact.description || null
+  };
+
+  return executionResult;
 }
 
 /**
  * Enhanced decoder for A2A stream events that properly handles all event types
  */
-export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | null {
+export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | DistriArtifact | null {
   // Handle JSONrpc wrapped events from stream.json
   if (event.jsonrpc && event.result) {
     return decodeA2AStreamEvent(event.result);
@@ -245,12 +207,12 @@ export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | 
   if (event.kind === 'message') {
     return convertA2AMessageToDistri(event as Message);
   }
-  
+
   // Handle status updates with proper conversion
   if (event.kind === 'status-update') {
     return convertA2AStatusUpdateToDistri(event);
   }
-  
+
   // Handle artifact updates  
   if (event.kind === 'artifact-update') {
     return convertA2AArtifactToDistri(event);
@@ -265,18 +227,18 @@ export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | 
 }
 
 /**
- * Process A2A stream data (like from stream.json) and convert to DistriMessage/DistriEvent array
+ * Process A2A stream data (like from stream.json) and convert to DistriMessage/DistriEvent/DistriArtifact array
  */
-export function processA2AStreamData(streamData: any[]): (DistriMessage | DistriEvent)[] {
-  const results: (DistriMessage | DistriEvent)[] = [];
-  
+export function processA2AStreamData(streamData: any[]): (DistriMessage | DistriEvent | DistriArtifact)[] {
+  const results: (DistriMessage | DistriEvent | DistriArtifact)[] = [];
+
   for (const item of streamData) {
     const converted = decodeA2AStreamEvent(item);
     if (converted) {
       results.push(converted);
     }
   }
-  
+
   return results;
 }
 
@@ -285,21 +247,15 @@ export function processA2AStreamData(streamData: any[]): (DistriMessage | Distri
  */
 export function processA2AMessagesData(data: any[]): DistriMessage[] {
   const results: DistriMessage[] = [];
-  
+
   for (const item of data) {
     if (item.kind === 'message') {
       // Regular message
       const distriMessage = convertA2AMessageToDistri(item);
       results.push(distriMessage);
-    } else if (item.artifactId && item.parts) {
-      // Artifact
-      const distriMessage = convertA2AArtifactToDistri(item);
-      if (distriMessage && 'role' in distriMessage) {
-        results.push(distriMessage as DistriMessage);
-      }
     }
   }
-  
+
   return results;
 }
 

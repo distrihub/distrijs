@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import { User, Bot, Settings, Clock, CheckCircle, XCircle, Brain, Wrench, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { DistriMessage } from '@distri/core';
-import MessageRenderer from './MessageRenderer';
+import { MessageRenderer } from './renderers';
 import { ToolCallState } from '@/types';
 
-export { FullChat } from './FullChat'
-export { EmbeddableChat } from './EmbeddableChat'
+export { Chat, type ChatProps } from './Chat'
 export { DistriProvider } from '../DistriProvider'
 export { ThemeProvider } from './ThemeProvider'
 export { ThemeToggle } from './ThemeToggle'
 export { default as AgentList } from './AgentList'
 export { AgentSelect } from './AgentSelect'
 export { default as AgentsPage } from './AgentsPage'
-export { default as MessageRenderer } from './MessageRenderer'
 export { ExecutionSteps } from './ExecutionSteps'
 export { TaskExecutionRenderer } from './TaskExecutionRenderer'
 export { useChatConfig } from './ChatContext'
@@ -45,6 +43,9 @@ export interface AssistantWithToolCallsProps extends BaseMessageProps {
   toolCallStates: ToolCallState[];
   timestamp?: Date;
   isStreaming?: boolean;
+  // Custom tool renderer
+  ToolResultRenderer?: React.ComponentType<any>;
+  onToolResult?: (toolCallId: string, result: any) => void;
 }
 
 export interface PlanMessageProps extends BaseMessageProps {
@@ -189,6 +190,8 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
   className = '',
   avatar,
   name = "Assistant",
+  ToolResultRenderer,
+  onToolResult,
 }) => {
   // State for collapsible tool results
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -330,22 +333,35 @@ export const AssistantWithToolCalls: React.FC<AssistantWithToolCallsProps> = ({
                     {/* Collapsible Result Section */}
                     {canCollapse && isExpanded && (
                       <div className="p-3 bg-muted/30">
-                        {hasError && (
-                          <div className="mb-3">
-                            <div className="text-xs text-red-600 font-medium mb-1">Error:</div>
-                            <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
-                              {toolCallState?.error}
-                            </div>
-                          </div>
-                        )}
+                        {ToolResultRenderer ? (
+                          <ToolResultRenderer
+                            toolCallId={toolCallState.tool_call_id}
+                            toolName={toolCallState.tool_name}
+                            result={toolCallState.result}
+                            success={toolCallState.status === 'completed'}
+                            error={toolCallState.error}
+                            onSendResponse={onToolResult}
+                          />
+                        ) : (
+                          <>
+                            {hasError && (
+                              <div className="mb-3">
+                                <div className="text-xs text-red-600 font-medium mb-1">Error:</div>
+                                <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                                  {toolCallState?.error}
+                                </div>
+                              </div>
+                            )}
 
-                        {hasResult && (
-                          <div>
-                            <div className="text-xs text-muted-foreground font-medium mb-1">Result:</div>
-                            <div className="text-xs font-mono bg-background p-2 rounded border">
-                              {JSON.stringify(toolCallState?.result, null, 2)}
-                            </div>
-                          </div>
+                            {hasResult && (
+                              <div>
+                                <div className="text-xs text-muted-foreground font-medium mb-1">Result:</div>
+                                <div className="text-xs font-mono bg-background p-2 rounded border">
+                                  {JSON.stringify(toolCallState?.result, null, 2)}
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

@@ -1,158 +1,439 @@
-import { DistriMessage, processA2AMessagesData } from '@distri/core';
+import { DistriEvent, DistriMessage, DistriArtifact, isDistriEvent, isDistriMessage, isDistriArtifact } from '@distri/core';
+import { decodeA2AStreamEvent, processA2AStreamData, processA2AMessagesData } from '@distri/core';
+import { useChatStateStore } from '../stores/chatStateStore';
 
-/**
- * Test utility to process messages.json data and convert to DistriMessage format
- */
-export function testMessageProcessing(messagesJsonData: any[]): DistriMessage[] {
-  console.log('Processing A2A messages data:', messagesJsonData.length, 'items');
-  
-  const distriMessages = processA2AMessagesData(messagesJsonData);
-  
-  console.log('Converted to DistriMessages:', distriMessages.length, 'messages');
-  console.log('Messages structure:', distriMessages.map(msg => ({
-    id: msg.id,
-    role: msg.role,
-    partTypes: msg.parts.map(part => part.type),
-    partCount: msg.parts.length
-  })));
-  
-  return distriMessages;
+// Helper to load fixture data
+export async function loadFixtureData() {
+  try {
+    const messagesResponse = await fetch('/fixtures/messages.json');
+    const streamResponse = await fetch('/fixtures/stream.json');
+
+    const messagesData = await messagesResponse.json();
+    const streamData = await streamResponse.json();
+
+    return { messagesData, streamData };
+  } catch (error) {
+    console.error('Failed to load fixture data:', error);
+    return { messagesData: [], streamData: [] };
+  }
 }
 
-/**
- * Example usage with the provided messages.json data
- */
-export const exampleMessagesData = [
-  {
-    "kind": "message",
-    "messageId": "1595e622-6a0d-4b48-8929-afc31bbd3d5e",
-    "role": "user",
-    "parts": [
-      {
-        "kind": "text",
-        "text": "who are tazapay founders"
-      }
-    ],
-    "contextId": "57fd0469-7e71-4332-b413-78d12950d0e1",
-    "taskId": "6ded840d-e1d5-4cbe-9c3d-bdd5a2cc5fce",
-    "referenceTaskIds": [],
-    "extensions": [],
-    "metadata": "text"
-  },
-  {
-    "artifactId": "89e0ea8a-ec32-44dd-9151-02da7488697a",
-    "parts": [
-      {
-        "kind": "data",
-        "data": {
-          "id": "89e0ea8a-ec32-44dd-9151-02da7488697a",
-          "created_at": 1754070975967,
-          "updated_at": 1754070975967,
-          "type": "llm_response",
-          "step_id": "1",
-          "content": "",
-          "tool_calls": [
-            {
-              "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
-              "tool_name": "search",
-              "input": "{\"query\": \"Tazapay founders\"}"
-            },
-            {
-              "tool_call_id": "call_Y3LYWV2jQ5ySahceV5Dspvf8",
-              "tool_name": "extract_structured_data",
-              "input": "{\"url\": \"https://www.tazapay.com\"}"
-            }
-          ],
-          "success": true,
-          "rejected": false,
-          "reason": null,
-          "timestamp": 1754070975967
-        }
-      }
-    ],
-    "name": "89e0ea8a-ec32-44dd-9151-02da7488697a",
-    "description": null
-  },
-  {
-    "artifactId": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
-    "parts": [
-      {
-        "kind": "data",
-        "data": {
-          "id": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
-          "created_at": 1754070978927,
-          "updated_at": 1754070978927,
-          "type": "tool_results",
-          "step_id": "7c246028-737e-4239-8f62-fbd29b8402ef",
-          "results": [
-            {
-              "tool_call_id": "call_ct3kfS2uhpkXb2xUhSHfXkl4",
-              "tool_name": "search",
-              "result": "{\"answer\":null,\"results\":[{\"title\":\"TazaPay - 2025 Founders and Board of Directors - Tracxn\",\"url\":\"https://tracxn.com/d/companies/tazapay/__rJPcCRN4b9Dubk5iNSIxkeLPWHAwjGAM-VrqoASnSAs/founders-and-board-of-directors\",\"content\":\"TazaPay - 2025 Founders and Board of Directors - Tracxn *   Customers   Investment Industry Venture Capital FundsPrivate Equity FundsAccelerators & IncubatorsInvestment Banks      Corporates and Startups Corp Dev and M&A TeamsCorporate InnovationStartup FoundersSales Team      Ecosystem Journalists and PublicationsUniversities     View All Customers Contact Us   TazaPay founders & board of directors TazaPay's Founders TazaPay's Team *   Saroj Mishra: Co-Founder & COO at TazaPay and 1 other company, angel Investor in 2 companies and on the board of 3 other companies. *   Rahul Shinghal: Co-Founder & CEO at TazaPay and on the board of 1 other company. *   Arul Kumaravel: Co-Founder & CTO at TazaPay and on the board of 1 other company. FAQ's about TazaPay's team Who are the founders of TazaPay?\",\"score\":0.8963332,\"raw_content\":null}]}"
-            }
-          ],
-          "success": true,
-          "rejected": false,
-          "reason": null,
-          "timestamp": 1754070978927
-        }
-      }
-    ],
-    "name": "f2123de7-0b17-4ca3-b9b3-d642c3188bbc",
-    "description": null
-  },
-  {
-    "artifactId": "db9f5f0d-810e-429c-9e18-42d46e949f33",
-    "parts": [
-      {
-        "kind": "data",
-        "data": {
-          "id": "db9f5f0d-810e-429c-9e18-42d46e949f33",
-          "created_at": 1754070995888,
-          "updated_at": 1754070995888,
-          "type": "llm_response",
-          "step_id": "2d474328-ca0a-441d-a31b-9165c2aeadb0",
-          "content": "Tazapay is a fintech company offering a comprehensive international payment gateway that enables businesses to manage cross-border transactions efficiently. It was co-founded by Rahul Shinghal (Co-Founder & CEO), Saroj Mishra (Co-Founder & COO), and Arul Kumaravel (Co-Founder & CTO). Rahul Shinghal has over 20 years of experience in payments at companies like PayPal and Stripe. Arul Kumaravel has extensive experience in technology leadership and product development, having worked with companies such as Microsoft, Amazon, and Grab. Tazapay is a Singapore-based startup backed by investors including Sequoia and offers solutions like integrated checkout, payment links, and escrow services.",
-          "tool_calls": [],
-          "success": true,
-          "rejected": false,
-          "reason": null,
-          "timestamp": 1754070995888
-        }
-      }
-    ],
-    "name": "db9f5f0d-810e-429c-9e18-42d46e949f33",
-    "description": null
-  }
-];
+// Test Zustand state representation after processing events
+export function testZustandStateRepresentation(events: (DistriEvent | DistriMessage | DistriArtifact)[]) {
+  console.log('=== Testing Zustand State Representation ===');
 
-/**
- * Run the test with example data
- */
-export function runTest() {
-  console.log('=== Testing A2A Message Processing ===');
-  const result = testMessageProcessing(exampleMessagesData);
-  
-  console.log('\n=== Expected Output Structure ===');
-  console.log('1. User message: "who are tazapay founders"');
-  console.log('2. Assistant message with tool calls: search + extract_structured_data');
-  console.log('3. Assistant message with tool results: search results');
-  console.log('4. Assistant message with final response about Tazapay founders');
-  
-  console.log('\n=== Rendered Steps ===');
-  result.forEach((msg, index) => {
-    console.log(`${index + 1}. ${msg.role}: ${msg.parts.map(p => p.type).join(', ')}`);
-    if (msg.parts.some(p => p.type === 'tool_call')) {
-      const toolCalls = msg.parts.filter(p => p.type === 'tool_call');
-      toolCalls.forEach(tc => {
-        console.log(`   - Tool: ${(tc as any).tool_call.tool_name}`);
-      });
-    }
-    if (msg.parts.some(p => p.type === 'text')) {
-      const textPart = msg.parts.find(p => p.type === 'text') as any;
-      console.log(`   - Text: ${textPart?.text?.substring(0, 100)}...`);
-    }
+  const store = useChatStateStore.getState();
+  store.clearAllStates();
+
+  const stateSnapshots: Array<{
+    eventIndex: number;
+    event: DistriEvent | DistriMessage | DistriArtifact;
+    state: {
+      tasks: any[];
+      plans: any[];
+      toolCalls: any[];
+      currentTaskId?: string;
+      currentPlanId?: string;
+    };
+  }> = [];
+
+  events.forEach((event, index) => {
+    const eventType = isDistriEvent(event) ? event.type : isDistriMessage(event) ? 'message' : isDistriArtifact(event) ? event.type : 'unknown';
+    console.log(`\nProcessing event ${index + 1}:`, eventType);
+
+    // Process message through Zustand store
+    store.processMessage(event);
+
+    // Take snapshot of current state
+    const currentState = useChatStateStore.getState();
+    stateSnapshots.push({
+      eventIndex: index,
+      event,
+      state: {
+        tasks: Array.from(currentState.tasks.values()),
+        plans: Array.from(currentState.plans.values()),
+        toolCalls: Array.from(currentState.toolCalls.values()),
+        currentTaskId: currentState.currentTaskId,
+        currentPlanId: currentState.currentPlanId,
+      },
+    });
   });
-  
-  return result;
+
+  return stateSnapshots;
+}
+
+// Test cases based on expected Zustand state structure
+export function runZustandStateTests() {
+  console.log('=== Running Zustand State Tests ===');
+
+  // Test Case 1: After run_started event
+  const testCase1 = (snapshots: any[]) => {
+    const runStartedSnapshot = snapshots.find(s =>
+      isDistriEvent(s.event) && s.event.type === 'run_started'
+    );
+
+    if (runStartedSnapshot) {
+      console.log('\nTest Case 1: After run_started event');
+      console.log('Expected State Structure:');
+      console.log('- 1 task with status: "running"');
+      console.log('- currentTaskId should be set');
+      console.log('- plans: []');
+      console.log('- toolCalls: []');
+
+      console.log('\nActual State:');
+      console.log('- Tasks:', runStartedSnapshot.state.tasks);
+      console.log('- Current Task ID:', runStartedSnapshot.state.currentTaskId);
+      console.log('- Plans:', runStartedSnapshot.state.plans);
+      console.log('- Tool Calls:', runStartedSnapshot.state.toolCalls);
+
+      const task = runStartedSnapshot.state.tasks[0];
+      return {
+        hasTask: runStartedSnapshot.state.tasks.length === 1,
+        taskStatus: task?.status === 'running',
+        hasCurrentTaskId: !!runStartedSnapshot.state.currentTaskId,
+        noPlans: runStartedSnapshot.state.plans.length === 0,
+        noToolCalls: runStartedSnapshot.state.toolCalls.length === 0,
+        task: task,
+      };
+    }
+    return null;
+  };
+
+  // Test Case 2: After plan_started event
+  const testCase2 = (snapshots: any[]) => {
+    const planStartedSnapshot = snapshots.find(s =>
+      isDistriEvent(s.event) && s.event.type === 'plan_started'
+    );
+
+    if (planStartedSnapshot) {
+      console.log('\nTest Case 2: After plan_started event');
+      console.log('Expected State Structure:');
+      console.log('- 1 task with status: "running"');
+      console.log('- 1 plan with status: "running"');
+      console.log('- currentTaskId should be set');
+      console.log('- currentPlanId should be set');
+
+      console.log('\nActual State:');
+      console.log('- Tasks:', planStartedSnapshot.state.tasks);
+      console.log('- Plans:', planStartedSnapshot.state.plans);
+      console.log('- Current Task ID:', planStartedSnapshot.state.currentTaskId);
+      console.log('- Current Plan ID:', planStartedSnapshot.state.currentPlanId);
+
+      return {
+        hasTask: planStartedSnapshot.state.tasks.length === 1,
+        hasPlan: planStartedSnapshot.state.plans.length === 1,
+        hasCurrentTaskId: !!planStartedSnapshot.state.currentTaskId,
+        hasCurrentPlanId: !!planStartedSnapshot.state.currentPlanId,
+      };
+    }
+    return null;
+  };
+
+  // Test Case 3: After tool_call_start event
+  const testCase3 = (snapshots: any[]) => {
+    const toolCallStartedSnapshot = snapshots.find(s =>
+      isDistriEvent(s.event) && s.event.type === 'tool_call_start'
+    );
+
+    if (toolCallStartedSnapshot) {
+      console.log('\nTest Case 3: After tool_call_start event');
+      console.log('Expected State Structure:');
+      console.log('- Multiple tasks (main task + tool call task)');
+      console.log('- At least one task with status: "running"');
+
+      console.log('\nActual State:');
+      console.log('- Tasks:', toolCallStartedSnapshot.state.tasks);
+      console.log('- Tool Calls:', toolCallStartedSnapshot.state.toolCalls);
+
+      const runningTasks = toolCallStartedSnapshot.state.tasks.filter((t: any) => t.status === 'running');
+      return {
+        hasTask: toolCallStartedSnapshot.state.tasks.length >= 1,
+        hasRunningTask: runningTasks.length >= 1,
+        tasks: toolCallStartedSnapshot.state.tasks,
+      };
+    }
+    return null;
+  };
+
+  // Test Case 4: After llm_response artifact
+  const testCase4 = (snapshots: any[]) => {
+    const llmResponseSnapshot = snapshots.find(s =>
+      isDistriArtifact(s.event) && s.event.type === 'llm_response'
+    );
+
+    if (llmResponseSnapshot) {
+      console.log('\nTest Case 4: After llm_response artifact');
+      console.log('Expected State Structure:');
+      console.log('- Task should have toolCalls array');
+      console.log('- Task status should be "completed" or "failed"');
+      console.log('- Task should have success/rejected info');
+
+      console.log('\nActual State:');
+      console.log('- Tasks:', llmResponseSnapshot.state.tasks);
+
+      const task = llmResponseSnapshot.state.tasks[0];
+      return {
+        hasTask: llmResponseSnapshot.state.tasks.length > 0,
+        hasToolCalls: task?.toolCalls && task.toolCalls.length > 0,
+        taskStatus: task?.status === 'completed' || task?.status === 'failed',
+        task: task,
+      };
+    }
+    return null;
+  };
+
+  // Test Case 5: After tool_results artifact
+  const testCase5 = (snapshots: any[]) => {
+    const toolResultsSnapshot = snapshots.find(s =>
+      isDistriArtifact(s.event) && s.event.type === 'tool_results'
+    );
+
+    if (toolResultsSnapshot) {
+      console.log('\nTest Case 5: After tool_results artifact');
+      console.log('Expected State Structure:');
+      console.log('- Task should have results array');
+      console.log('- Task status should be "completed" or "failed"');
+      console.log('- Task should have success/rejected info');
+
+      console.log('\nActual State:');
+      console.log('- Tasks:', toolResultsSnapshot.state.tasks);
+
+      const task = toolResultsSnapshot.state.tasks[0];
+      return {
+        hasTask: toolResultsSnapshot.state.tasks.length > 0,
+        hasResults: task?.results && task.results.length > 0,
+        taskStatus: task?.status === 'completed' || task?.status === 'failed',
+        task: task,
+      };
+    }
+    return null;
+  };
+
+  return {
+    testCase1,
+    testCase2,
+    testCase3,
+    testCase4,
+    testCase5
+  };
+}
+
+// Main test function
+export async function runFullZustandTest() {
+  console.log('=== Running Full Zustand State Test ===');
+
+  try {
+    // Load fixture data
+    const { messagesData, streamData } = await loadFixtureData();
+    console.log('Loaded fixtures:', {
+      messagesCount: messagesData.length,
+      streamCount: streamData.length
+    });
+
+    // Process messages
+    const processedMessages = processA2AMessagesData(messagesData);
+    const processedStream = processA2AStreamData(streamData);
+
+    console.log('Processed:', {
+      messages: processedMessages.length,
+      stream: processedStream.length
+    });
+
+    // Combine all events
+    const allEvents = [...processedMessages, ...processedStream];
+
+    // Test Zustand state representation
+    const snapshots = testZustandStateRepresentation(allEvents);
+
+    // Run state tests
+    const testCases = runZustandStateTests();
+    const results = {
+      testCase1: testCases.testCase1(snapshots),
+      testCase2: testCases.testCase2(snapshots),
+      testCase3: testCases.testCase3(snapshots),
+      testCase4: testCases.testCase4(snapshots),
+      testCase5: testCases.testCase5(snapshots),
+    };
+
+    console.log('\n=== Final State Summary ===');
+    const finalSnapshot = snapshots[snapshots.length - 1];
+    console.log('Total Events Processed:', snapshots.length);
+    console.log('Final Tasks:', finalSnapshot.state.tasks.length);
+    console.log('Final Plans:', finalSnapshot.state.plans.length);
+    console.log('Current Task ID:', finalSnapshot.state.currentTaskId);
+    console.log('Current Plan ID:', finalSnapshot.state.currentPlanId);
+
+    return {
+      snapshots,
+      results,
+      finalState: finalSnapshot.state,
+      totalEvents: allEvents.length,
+      processedMessages: processedMessages.length,
+      processedStream: processedStream.length,
+    };
+
+  } catch (error) {
+    console.error('Test failed:', error);
+    return null;
+  }
+}
+
+// Export for browser usage
+if (typeof window !== 'undefined') {
+  (window as any).runFullZustandTest = runFullZustandTest;
+  (window as any).testZustandStateRepresentation = testZustandStateRepresentation;
+  (window as any).loadFixtureData = loadFixtureData;
+
+  // Simple test function for browser console
+  (window as any).testZustandStore = async () => {
+    console.log('=== Testing Zustand Store ===');
+
+    try {
+      const { messagesData, streamData } = await loadFixtureData();
+      console.log('Loaded fixtures:', {
+        messagesCount: messagesData.length,
+        streamCount: streamData.length
+      });
+
+      // Process messages
+      const processedMessages = processA2AMessagesData(messagesData);
+      const processedStream = processA2AStreamData(streamData);
+
+      console.log('Processed:', {
+        messages: processedMessages.length,
+        stream: processedStream.length
+      });
+
+      // Test Zustand store
+      const store = useChatStateStore.getState();
+      store.clearAllStates();
+
+      // Process first 10 events
+      const testEvents = [...processedMessages, ...processedStream].slice(0, 10);
+      testEvents.forEach((event, index) => {
+        console.log(`Processing event ${index + 1}:`, event);
+        store.processMessage(event);
+      });
+
+      // Check final state
+      const finalState = useChatStateStore.getState();
+      console.log('Final Zustand State:');
+      console.log('Tasks:', Array.from(finalState.tasks.values()));
+      console.log('Plans:', Array.from(finalState.plans.values()));
+      console.log('Tool Calls:', Array.from(finalState.toolCalls.values()));
+
+      return {
+        tasks: Array.from(finalState.tasks.values()),
+        plans: Array.from(finalState.plans.values()),
+        toolCalls: Array.from(finalState.toolCalls.values()),
+      };
+
+    } catch (error) {
+      console.error('Test failed:', error);
+      return null;
+    }
+  };
+
+  // Example: Test specific state scenarios
+  (window as any).testStateScenarios = async () => {
+    console.log('=== Testing State Scenarios ===');
+
+    try {
+      const { messagesData, streamData } = await loadFixtureData();
+      const processedMessages = processA2AMessagesData(messagesData);
+      const processedStream = processA2AStreamData(streamData);
+      const allEvents = [...processedMessages, ...processedStream];
+
+      // Test different scenarios
+      const scenarios = [
+        {
+          name: 'Run Started',
+          events: allEvents.slice(0, 3), // First 3 events
+          expectedState: {
+            tasks: 1,
+            plans: 0,
+            toolCalls: 0,
+            hasCurrentTask: true
+          }
+        },
+        {
+          name: 'Plan Started',
+          events: allEvents.slice(0, 5), // First 5 events
+          expectedState: {
+            tasks: 1,
+            plans: 1,
+            toolCalls: 0,
+            hasCurrentTask: true,
+            hasCurrentPlan: true
+          }
+        },
+        {
+          name: 'Tool Call Started',
+          events: allEvents.slice(0, 8), // First 8 events
+          expectedState: {
+            tasks: 1,
+            plans: 1,
+            toolCalls: 1,
+            hasCurrentTask: true,
+            hasCurrentPlan: true
+          }
+        }
+      ];
+
+      const results = [];
+
+      for (const scenario of scenarios) {
+        console.log(`\n--- Testing Scenario: ${scenario.name} ---`);
+
+        const store = useChatStateStore.getState();
+        store.clearAllStates();
+
+        // Process events for this scenario
+        scenario.events.forEach((event, index) => {
+          console.log(`  Event ${index + 1}:`, isDistriEvent(event) ? event.type : 'message');
+          store.processMessage(event);
+        });
+
+        // Check final state
+        const finalState = useChatStateStore.getState();
+        const actualState = {
+          tasks: finalState.tasks.size,
+          plans: finalState.plans.size,
+          toolCalls: finalState.toolCalls.size,
+          hasCurrentTask: !!finalState.currentTaskId,
+          hasCurrentPlan: !!finalState.currentPlanId
+        };
+
+        console.log('Expected State:', scenario.expectedState);
+        console.log('Actual State:', actualState);
+
+        const passed = Object.keys(scenario.expectedState).every(key =>
+          actualState[key as keyof typeof actualState] === scenario.expectedState[key as keyof typeof scenario.expectedState]
+        );
+
+        results.push({
+          scenario: scenario.name,
+          passed,
+          expected: scenario.expectedState,
+          actual: actualState,
+          state: {
+            tasks: Array.from(finalState.tasks.values()),
+            plans: Array.from(finalState.plans.values()),
+            toolCalls: Array.from(finalState.toolCalls.values())
+          }
+        });
+      }
+
+      console.log('\n=== Scenario Results ===');
+      results.forEach(result => {
+        console.log(`${result.scenario}: ${result.passed ? 'PASS' : 'FAIL'}`);
+      });
+
+      return results;
+
+    } catch (error) {
+      console.error('Test failed:', error);
+      return null;
+    }
+  };
 }

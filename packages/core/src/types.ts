@@ -17,7 +17,49 @@ export interface DistriMessage {
   created_at?: string;
 }
 
-export type DistriStreamEvent = DistriMessage | DistriEvent;
+export interface AssistantWithToolCalls {
+  id: string;
+  type: 'llm_response';
+  timestamp: number;
+  content: string;
+  tool_calls: any[];
+  step_id?: string;
+  success: boolean;
+  rejected: boolean;
+  reason: string | null;
+}
+
+export interface ToolResults {
+  id: string;
+  type: 'tool_results';
+  timestamp: number;
+  results: any[];
+  step_id?: string;
+  success: boolean;
+  rejected: boolean;
+  reason: string | null;
+}
+
+export interface GenericArtifact {
+  id: string;
+  type: 'artifact';
+  timestamp: number;
+  data: any;
+  artifactId: string;
+  name: string;
+  description: string | null;
+}
+
+export interface DistriPlan {
+  id: string;
+  type: 'plan';
+  timestamp: number;
+  steps: string[];
+}
+
+export type DistriArtifact = AssistantWithToolCalls | ToolResults | GenericArtifact | DistriPlan;
+
+export type DistriStreamEvent = DistriMessage | DistriEvent | DistriArtifact;
 
 
 
@@ -279,4 +321,12 @@ export function isDistriMessage(event: DistriStreamEvent): event is DistriMessag
 
 export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
   return 'type' in event && 'metadata' in event;
+}
+
+export function isDistriPlan(event: DistriStreamEvent): event is DistriPlan {
+  return 'steps' in event && Array.isArray(event.steps);
+}
+
+export function isDistriArtifact(event: DistriStreamEvent): event is DistriArtifact {
+  return 'type' in event && 'timestamp' in event && 'id' in event;
 }

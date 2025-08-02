@@ -4,6 +4,7 @@ import { DistriAnyTool, DistriUiTool, ToolCallState } from '@/types';
 
 export interface UseToolCallStateOptions {
   onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
+  tools?: DistriAnyTool[];
   agent?: Agent;
 }
 
@@ -27,7 +28,7 @@ export interface UseToolCallStateReturn {
 export function useToolCallState(options: UseToolCallStateOptions): UseToolCallStateReturn {
   const [toolCallStates, setToolCallStates] = useState<Map<string, ToolCallState>>(new Map());
 
-  const { onAllToolsCompleted, agent } = options;
+  const { onAllToolsCompleted, agent, tools } = options;
 
   const executeTool = async (tool: DistriAnyTool | undefined, toolCall: ToolCall) => {
     if (!tool) {
@@ -118,18 +119,24 @@ export function useToolCallState(options: UseToolCallStateOptions): UseToolCallS
       }
 
       // Trigger callback if all tools are completed
-      if (Array.from(newStates.values()).filter(state => state.status === 'pending' || state.status === 'running').length === 0 && onAllToolsCompleted) {
-        onAllToolsCompleted(Array.from(newStates.values()).map(state => ({
-          tool_call_id: state.tool_call_id,
-          result: state.result,
-          success: state.status === 'completed',
-          error: state.error
-        })));
+      if (tools) {
+        const pendingToolCalls = getPendingToolCalls();
+        if (pendingToolCalls.length === 0 && onAllToolsCompleted) {
+          const externalCalls = Array.from(newStates.values()).filter(state => state.status === 'completed' || state.status === 'error' && tools.find(tool => tool.name === state.tool_name)).map(state => ({
+            tool_call_id: state.tool_call_id,
+            result: state.result,
+            success: state.status === 'completed',
+            error: state.error
+          }));
+          if (externalCalls.length > 0) {
+            onAllToolsCompleted(externalCalls);
+          }
+        }
       }
 
       return newStates;
     });
-  }, []);
+  }, [tools]);
 
   // Get tool call state
   const getToolCallState = useCallback((toolCallId: string) => {
@@ -138,19 +145,17 @@ export function useToolCallState(options: UseToolCallStateOptions): UseToolCallS
 
   // Check if there are pending tool calls
   const hasPendingToolCalls = useCallback(() => {
-    return Array.from(toolCallStates.values()).some(
-      state => state.status === 'pending' || state.status === 'running'
-    );
+    return getPendingToolCalls().length > 0;
   }, [toolCallStates]);
 
   // Get pending tool calls
   const getPendingToolCalls = useCallback(() => {
     const pendingIds = Array.from(toolCallStates.entries())
-      .filter(([_, state]) => state.status === 'pending' || state.status === 'running')
+      .filter(([_, state]) => state.status === 'pending' || state.status === 'running' && tools?.find(tool => tool.name === state.tool_name))
       .map(([id, _]) => id);
 
     return Array.from(toolCallStates.values()).filter(state => pendingIds.includes(state.tool_call_id));
-  }, [toolCallStates]);
+  }, [toolCallStates, tools]);
 
   // Clear all state
   const clearAll = useCallback(() => {

@@ -8,8 +8,7 @@ export { registerTools } from './hooks/registerTools';
 export { useToolCallState } from './hooks/useToolCallState';
 
 // Components
-export { default as FullChat } from './components/FullChat';
-export { EmbeddableChat } from './components/EmbeddableChat';
+export { Chat, type ChatProps } from './components/Chat';
 export { AgentSelect } from './components/AgentSelect';
 export { ChatInput } from './components/ChatInput';
 export { ThemeProvider, useTheme } from './components/ThemeProvider';

@@ -5,19 +5,23 @@ import {
   DistriPart,
   InvokeContext,
   DistriEvent,
+  DistriArtifact,
+  AssistantWithToolCalls,
+  ToolResults,
   convertDistriMessageToA2A,
   ToolResult
 } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
-import { DistriStreamEvent, isDistriMessage, ToolResultPart } from '../../core/src/types';
+import { isDistriMessage, isDistriArtifact, ToolResultPart } from '../../core/src/types';
 import { registerTools } from './hooks/registerTools';
 import { useToolCallState } from './hooks/useToolCallState';
+import { useChatStateStore } from './stores/chatStateStore';
 import { DistriAnyTool, ToolCallState } from './types';
 
 export interface UseChatOptions {
   threadId: string;
   agent?: Agent;
-  onMessage?: (message: DistriStreamEvent) => void;
+  onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
   getMetadata?: () => Promise<any>;
@@ -26,7 +30,7 @@ export interface UseChatOptions {
 }
 
 export interface UseChatReturn {
-  messages: DistriStreamEvent[];
+  messages: (DistriEvent | DistriMessage | DistriArtifact)[];
   isStreaming: boolean;
   sendMessage: (content: string | DistriPart[]) => Promise<void>;
   sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
@@ -37,6 +41,10 @@ export interface UseChatReturn {
   toolCallStates: Map<string, ToolCallState>;
   hasPendingToolCalls: () => boolean;
   stopStreaming: () => void;
+  // Chat state management
+  chatState: ReturnType<typeof useChatStateStore.getState>;
+  // Expose tool state for debugging
+  toolStateHandler: ReturnType<typeof useToolCallState>;
 }
 
 export function useChat({
@@ -48,7 +56,7 @@ export function useChat({
   agent,
   tools,
 }: UseChatOptions): UseChatReturn {
-  const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
+  const [messages, setMessages] = useState<(DistriEvent | DistriMessage | DistriArtifact)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -67,12 +75,14 @@ export function useChat({
   // Tool state management with auto-send when all completed  
   const toolStateHandler = useToolCallState({
     agent,
+    tools,
     onAllToolsCompleted: (toolResults: ToolResult[]) => {
       sendToolResultsToAgent(toolResults);
     }
   });
 
-
+  // Chat state management with Zustand
+  const chatState = useChatStateStore.getState();
 
   // Cleanup abort controller on unmount
   useEffect(() => {
@@ -90,31 +100,39 @@ export function useChat({
       // Agent changed, reset all state
       setMessages([]);
       toolStateHandler.clearAll();
+      chatState.clearAllStates();
       setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, toolStateHandler]);
+  }, [agent?.id, toolStateHandler, chatState]);
 
   // Clear messages helper
   const clearMessages = useCallback(() => {
     setMessages([]);
     toolStateHandler.clearAll();
-  }, [toolStateHandler]);
+    chatState.clearAllStates();
+  }, [toolStateHandler, chatState]);
 
   const fetchMessages = useCallback(async () => {
     if (!agent) return;
 
     try {
       const a2aMessages = await agent.getThreadMessages(threadId);
-      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
+      const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean) as (DistriEvent | DistriMessage | DistriArtifact)[];
       setMessages(distriMessages);
+
+      // Process all fetched messages through chat state
+      distriMessages.forEach(message => {
+        chatState.processMessage(message);
+      });
+
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch messages');
       setError(error);
       onError?.(error);
     }
-  }, [threadId, agent?.id, onError, onMessagesUpdate]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState]);
 
   // Fetch messages on mount and when threadId changes
   useEffect(() => {
@@ -123,7 +141,10 @@ export function useChat({
     }
   }, [threadId, agent?.id]);
 
-  const handleStreamEvent = useCallback((event: DistriStreamEvent) => {
+  const handleStreamEvent = useCallback((event: DistriEvent | DistriMessage | DistriArtifact) => {
+    // Process message through chat state
+    chatState.processMessage(event);
+
     // Handle DistriMessage (converted from A2A Message)
     setMessages(prev => {
       if (isDistriMessage(event)) {
@@ -148,12 +169,68 @@ export function useChat({
           // Add new message
           return [...prev, distriMessage];
         }
+      } else if (isDistriArtifact(event)) {
+        const artifact = event as DistriArtifact;
+        const existingArtifactIndex = prev
+          .findIndex(msg => isDistriArtifact(msg) && msg.id && msg.id === artifact.id);
+
+        if (existingArtifactIndex >= 0) {
+          // Update existing artifact
+          const updatedMessages = [...prev];
+          updatedMessages[existingArtifactIndex] = artifact;
+          return updatedMessages;
+        } else {
+          // Add new artifact
+          return [...prev, artifact];
+        }
       } else {
         return [...prev, event];
       }
     });
 
-    // Handle tool calls and results automatically
+    // Handle tool calls and results automatically from artifacts
+    if (isDistriArtifact(event)) {
+      const artifact = event as DistriArtifact;
+
+      if (artifact.type === 'llm_response') {
+        const llmArtifact = artifact as AssistantWithToolCalls;
+
+        // Process tool calls from LLM response
+        if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
+          llmArtifact.tool_calls.forEach(toolCall => {
+            toolStateHandler.initToolCall(toolCall);
+          });
+        }
+      } else if (artifact.type === 'tool_results') {
+        const toolResultsArtifact = artifact as ToolResults;
+
+        // Process tool results
+        if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
+          toolResultsArtifact.results.forEach(result => {
+            let parsedResult = result.result;
+            if (typeof parsedResult === 'string') {
+              try {
+                parsedResult = JSON.parse(parsedResult);
+              } catch {
+                // Keep as string if not valid JSON
+              }
+            }
+
+            toolStateHandler.updateToolCallStatus(
+              result.tool_call_id,
+              {
+                status: toolResultsArtifact.success ? 'completed' : 'error',
+                result: parsedResult,
+                error: toolResultsArtifact.reason || undefined,
+                completedAt: new Date(toolResultsArtifact.timestamp)
+              }
+            );
+          });
+        }
+      }
+    }
+
+    // Handle tool calls and results from regular messages (for backward compatibility)
     if (isDistriMessage(event)) {
       const distriMessage = event as DistriMessage;
 
@@ -185,7 +262,7 @@ export function useChat({
     }
 
     onMessage?.(event);
-  }, [onMessage, agent]);
+  }, [onMessage, agent, toolStateHandler, chatState]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
@@ -338,5 +415,9 @@ export function useChat({
     toolCallStates: toolStateHandler.toolCallStates,
     hasPendingToolCalls: toolStateHandler.hasPendingToolCalls,
     stopStreaming,
+    // Chat state management
+    chatState,
+    // Expose tool state for debugging
+    toolStateHandler,
   };
 } 

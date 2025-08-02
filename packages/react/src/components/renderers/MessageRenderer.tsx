@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Copy, Check, Brain, Wrench, FileText } from 'lucide-react';
 import { DistriMessage, DistriPart, DistriStreamEvent, isDistriMessage } from '@distri/core';
-import { ExecutionSteps } from './ExecutionSteps';
+import { ExecutionSteps } from '../ExecutionSteps';
 
 interface MessageRendererProps {
   content?: string;
@@ -246,10 +246,12 @@ const MessageRenderer: React.FC<MessageRendererProps> = ({
         })}
       </div>
     );
+  } else if (message) {
+    return <div className={`whitespace-pre-wrap break-words text-foreground ${className}`}>{JSON.stringify(message, null, 2)}</div>;
   }
 
   // If we don't have a message but have content, render the content
-  if (!message && content) {
+  else if (!message && content) {
     return (
       <div className={`whitespace-pre-wrap break-words text-foreground ${className}`}>
         {content}
