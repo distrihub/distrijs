@@ -1,5 +1,16 @@
 import { create } from 'zustand';
-import { DistriEvent, DistriMessage, DistriArtifact, isDistriEvent, isDistriArtifact, Agent, ToolCall, ToolResult } from '@distri/core';
+import {
+  DistriEvent,
+  DistriMessage,
+  DistriArtifact,
+  isDistriEvent,
+  isDistriArtifact,
+  isDistriMessage,
+  Agent,
+  ToolCall,
+  ToolResult,
+  Role,
+} from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 
 // State types
@@ -69,6 +80,7 @@ export interface ChatStateStore extends ChatState {
   setStreaming: (isStreaming: boolean) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
+  appendToMessage: (messageId: string, role: Role, delta: string) => void;
 
   // State actions
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
@@ -133,6 +145,34 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
   setError: (error: Error | null) => {
     set({ error });
+  },
+
+  appendToMessage: (messageId: string, role: Role, delta: string) => {
+    set((state: ChatState) => {
+      const newState = { ...state };
+      const index = newState.messages.findIndex(
+        m => isDistriMessage(m) && (m as DistriMessage).id === messageId
+      );
+
+      if (index >= 0) {
+        const existing = newState.messages[index] as DistriMessage;
+        let textPart = existing.parts.find(p => p.type === 'text') as any;
+        if (!textPart) {
+          textPart = { type: 'text', text: '' };
+          existing.parts.push(textPart as any);
+        }
+        (textPart as any).text += delta;
+      } else {
+        const newMessage: DistriMessage = {
+          id: messageId,
+          role,
+          parts: delta ? [{ type: 'text', text: delta }] : [],
+        };
+        newState.messages.push(newMessage);
+      }
+
+      return newState;
+    });
   },
 
   // State actions
@@ -228,15 +268,15 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
 
         case 'text_message_start':
-          // Handle text message start - could be used for typing indicators
+          get().appendToMessage(message.data.message_id, message.data.role, '');
           break;
 
         case 'text_message_content':
-          // Handle streaming content - could be used for real-time updates
+          get().appendToMessage(message.data.message_id, 'assistant', message.data.delta);
           break;
 
         case 'text_message_end':
-          // Handle text message completion
+          // Final text message event - nothing additional needed
           break;
 
         case 'agent_handover':
@@ -522,10 +562,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   updateTask: (taskId: string, updates: Partial<TaskState>) => {
     set((state: ChatState) => {
       const newState = { ...state };
-      const existingTask = newState.tasks.get(taskId);
-      if (existingTask) {
-        newState.tasks.set(taskId, { ...existingTask, ...updates });
-      }
+      const existingTask = newState.tasks.get(taskId) || ({ id: taskId } as TaskState);
+      newState.tasks.set(taskId, { ...existingTask, ...updates });
       return newState;
     });
   },
@@ -533,10 +571,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   updatePlan: (planId: string, updates: Partial<PlanState>) => {
     set((state: ChatState) => {
       const newState = { ...state };
-      const existingPlan = newState.plans.get(planId);
-      if (existingPlan) {
-        newState.plans.set(planId, { ...existingPlan, ...updates });
-      }
+      const existingPlan = newState.plans.get(planId) || ({ id: planId, steps: [], status: 'pending' } as PlanState);
+      newState.plans.set(planId, { ...existingPlan, ...updates });
       return newState;
     });
   },

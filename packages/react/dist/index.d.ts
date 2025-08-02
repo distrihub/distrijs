@@ -1,5 +1,5 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
-import { DistriEvent, DistriMessage, DistriArtifact, DistriClientConfig, AgentDefinition, DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, DistriPart, DistriThread, DistriStreamEvent } from '@distri/core';
+import { DistriEvent, DistriMessage, DistriArtifact, DistriClientConfig, AgentDefinition, DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, Role, DistriPart, DistriThread, DistriStreamEvent } from '@distri/core';
 import * as React$1 from 'react';
 import React__default, { ReactNode } from 'react';
 import * as zustand from 'zustand';
@@ -231,6 +231,7 @@ interface ChatStateStore extends ChatState {
     setStreaming: (isStreaming: boolean) => void;
     setLoading: (isLoading: boolean) => void;
     setError: (error: Error | null) => void;
+    appendToMessage: (messageId: string, role: Role, delta: string) => void;
     processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
     clearAllStates: () => void;
     clearTask: (taskId: string) => void;

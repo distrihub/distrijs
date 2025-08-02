@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact, ToolResults } from '@distri/core';
 import { ChatStateStore } from '../../stores/chatStateStore';
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
@@ -232,16 +232,27 @@ export function MessageRenderer({
       case 'tool_results':
         // Handle tool results
         if (artifact.results && Array.isArray(artifact.results)) {
-          return artifact.results.map((result, resultIndex) => (
-            <ToolResultRenderer
-              key={`tool-result-${index}-${resultIndex}`}
-              toolCallId={result.tool_call_id}
-              toolName={result.tool_name || 'Unknown Tool'}
-              result={result.result}
-              success={result.success}
-              error={result.error}
-            />
-          ));
+          const toolResultsArtifact = artifact as ToolResults;
+          return artifact.results.map((result, resultIndex) => {
+            const success =
+              (result as any).success !== undefined
+                ? (result as any).success
+                : toolResultsArtifact.success ?? ((result as any).status ? (result as any).status === 'completed' : true);
+            const error =
+              (result as any).error !== undefined
+                ? (result as any).error
+                : toolResultsArtifact.success ? undefined : toolResultsArtifact.reason;
+            return (
+              <ToolResultRenderer
+                key={`tool-result-${index}-${resultIndex}`}
+                toolCallId={result.tool_call_id}
+                toolName={result.tool_name || 'Unknown Tool'}
+                result={result.result}
+                success={success}
+                error={error}
+              />
+            );
+          });
         }
         return null;
 

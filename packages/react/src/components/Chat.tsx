@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact, isDistriEvent } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -157,8 +157,8 @@ export function Chat({
       }
     });
 
-    // Render thinking/planning state
-    if (currentPlan?.status === 'running') {
+    const hasPlanStarted = messages.some(m => isDistriEvent(m) && m.type === 'plan_started');
+    if (currentPlan?.status === 'running' && !hasPlanStarted) {
       elements.push(
         <MessageRenderer
           key="planning"
@@ -169,10 +169,8 @@ export function Chat({
       );
     }
 
-    // Show thinking state when there's a running task but no plan is running yet
-    const shouldShowThinkingAfterRunStarted = currentTask?.status === 'running';
-
-    if (shouldShowThinkingAfterRunStarted) {
+    const hasRunStarted = messages.some(m => isDistriEvent(m) && m.type === 'run_started');
+    if (currentTask?.status === 'running' && !hasRunStarted) {
       elements.push(
         <MessageRenderer
           key="thinking-after-run"
@@ -183,10 +181,11 @@ export function Chat({
       );
     }
 
-    // Render streaming indicator if currently streaming and no plan is running
+    const hasTextStart = messages.some(m => isDistriEvent(m) && m.type === 'text_message_start');
     const shouldShowStreamingIndicator = (isStreaming || isLoading) &&
       (!currentPlan || currentPlan.status !== 'running') &&
-      pendingToolCalls.length === 0;
+      pendingToolCalls.length === 0 &&
+      !hasTextStart;
 
     if (shouldShowStreamingIndicator) {
       elements.push(

@@ -2,6 +2,7 @@
 
 // src/components/Chat.tsx
 import { useState as useState2, useCallback as useCallback2, useRef as useRef4, useEffect as useEffect5 } from "react";
+import { isDistriEvent as isDistriEvent4 } from "@distri/core";
 
 // src/components/ChatInput.tsx
 import { useRef, useEffect } from "react";
@@ -279,6 +280,9 @@ function convertA2APartToDistri(a2aPart) {
 function isDistriMessage(event) {
   return "id" in event && "role" in event && "parts" in event;
 }
+function isDistriEvent(event) {
+  return "type" in event && "metadata" in event;
+}
 function isDistriArtifact(event) {
   return "type" in event && "timestamp" in event && "id" in event;
 }
@@ -507,7 +511,11 @@ var defaultTools = [
 
 // src/stores/chatStateStore.ts
 import { create } from "zustand";
-import { isDistriEvent, isDistriArtifact as isDistriArtifact2 } from "@distri/core";
+import {
+  isDistriEvent as isDistriEvent2,
+  isDistriArtifact as isDistriArtifact2,
+  isDistriMessage as isDistriMessage2
+} from "@distri/core";
 var useChatStateStore = create((set, get) => ({
   messages: [],
   isStreaming: false,
@@ -538,10 +546,35 @@ var useChatStateStore = create((set, get) => ({
   setError: (error) => {
     set({ error });
   },
+  appendToMessage: (messageId, role, delta) => {
+    set((state) => {
+      const newState = { ...state };
+      const index = newState.messages.findIndex(
+        (m) => isDistriMessage2(m) && m.id === messageId
+      );
+      if (index >= 0) {
+        const existing = newState.messages[index];
+        let textPart = existing.parts.find((p) => p.type === "text");
+        if (!textPart) {
+          textPart = { type: "text", text: "" };
+          existing.parts.push(textPart);
+        }
+        textPart.text += delta;
+      } else {
+        const newMessage = {
+          id: messageId,
+          role,
+          parts: delta ? [{ type: "text", text: delta }] : []
+        };
+        newState.messages.push(newMessage);
+      }
+      return newState;
+    });
+  },
   // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
-    if (isDistriEvent(message)) {
+    if (isDistriEvent2(message)) {
       switch (message.type) {
         case "run_started":
           const taskId = `task_${Date.now()}`;
@@ -622,8 +655,10 @@ var useChatStateStore = create((set, get) => ({
           }
           break;
         case "text_message_start":
+          get().appendToMessage(message.data.message_id, message.data.role, "");
           break;
         case "text_message_content":
+          get().appendToMessage(message.data.message_id, "assistant", message.data.delta);
           break;
         case "text_message_end":
           break;
@@ -872,20 +907,16 @@ var useChatStateStore = create((set, get) => ({
   updateTask: (taskId, updates) => {
     set((state) => {
       const newState = { ...state };
-      const existingTask = newState.tasks.get(taskId);
-      if (existingTask) {
-        newState.tasks.set(taskId, { ...existingTask, ...updates });
-      }
+      const existingTask = newState.tasks.get(taskId) || { id: taskId };
+      newState.tasks.set(taskId, { ...existingTask, ...updates });
       return newState;
     });
   },
   updatePlan: (planId, updates) => {
     set((state) => {
       const newState = { ...state };
-      const existingPlan = newState.plans.get(planId);
-      if (existingPlan) {
-        newState.plans.set(planId, { ...existingPlan, ...updates });
-      }
+      const existingPlan = newState.plans.get(planId) || { id: planId, steps: [], status: "pending" };
+      newState.plans.set(planId, { ...existingPlan, ...updates });
       return newState;
     });
   },
@@ -996,8 +1027,12 @@ function useChat({
   const handleStreamEvent = useCallback((event) => {
     allMessagesRef.current = [...allMessagesRef.current, event];
     if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
-      chatState.addMessage(event);
-      chatState.processMessage(event);
+      if (isDistriEvent(event) && (event.type === "text_message_start" || event.type === "text_message_content" || event.type === "text_message_end")) {
+        chatState.processMessage(event);
+      } else {
+        chatState.addMessage(event);
+        chatState.processMessage(event);
+      }
     }
     if (isDistriArtifact(event)) {
       const artifact = event;
@@ -1206,7 +1241,7 @@ function useChat({
 }
 
 // src/components/renderers/MessageRenderer.tsx
-import { isDistriMessage as isDistriMessage2, isDistriEvent as isDistriEvent2, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
+import { isDistriMessage as isDistriMessage3, isDistriEvent as isDistriEvent3, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
 
 // src/components/renderers/UserMessageRenderer.tsx
 import { User } from "lucide-react";
@@ -1685,7 +1720,7 @@ function MessageRenderer({
   onToggle = () => {
   }
 }) {
-  if (isDistriMessage2(message)) {
+  if (isDistriMessage3(message)) {
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
@@ -1719,7 +1754,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if (isDistriEvent2(message)) {
+  if (isDistriEvent3(message)) {
     const event = message;
     switch (event.type) {
       case "run_started":
@@ -1840,17 +1875,22 @@ function MessageRenderer({
         return null;
       case "tool_results":
         if (artifact.results && Array.isArray(artifact.results)) {
-          return artifact.results.map((result, resultIndex) => /* @__PURE__ */ jsx17(
-            ToolResultRenderer,
-            {
-              toolCallId: result.tool_call_id,
-              toolName: result.tool_name || "Unknown Tool",
-              result: result.result,
-              success: result.success,
-              error: result.error
-            },
-            `tool-result-${index}-${resultIndex}`
-          ));
+          const toolResultsArtifact = artifact;
+          return artifact.results.map((result, resultIndex) => {
+            const success = result.success !== void 0 ? result.success : toolResultsArtifact.success ?? (result.status ? result.status === "completed" : true);
+            const error = result.error !== void 0 ? result.error : toolResultsArtifact.success ? void 0 : toolResultsArtifact.reason;
+            return /* @__PURE__ */ jsx17(
+              ToolResultRenderer,
+              {
+                toolCallId: result.tool_call_id,
+                toolName: result.tool_name || "Unknown Tool",
+                result: result.result,
+                success,
+                error
+              },
+              `tool-result-${index}-${resultIndex}`
+            );
+          });
         }
         return null;
       default:
@@ -1980,7 +2020,8 @@ function Chat({
         elements.push(renderedMessage);
       }
     });
-    if (currentPlan?.status === "running") {
+    const hasPlanStarted = messages.some((m) => isDistriEvent4(m) && m.type === "plan_started");
+    if (currentPlan?.status === "running" && !hasPlanStarted) {
       elements.push(
         /* @__PURE__ */ jsx18(
           MessageRenderer,
@@ -1993,8 +2034,8 @@ function Chat({
         )
       );
     }
-    const shouldShowThinkingAfterRunStarted = currentTask?.status === "running";
-    if (shouldShowThinkingAfterRunStarted) {
+    const hasRunStarted = messages.some((m) => isDistriEvent4(m) && m.type === "run_started");
+    if (currentTask?.status === "running" && !hasRunStarted) {
       elements.push(
         /* @__PURE__ */ jsx18(
           MessageRenderer,
@@ -2007,7 +2048,8 @@ function Chat({
         )
       );
     }
-    const shouldShowStreamingIndicator = (isStreaming || isLoading) && (!currentPlan || currentPlan.status !== "running") && pendingToolCalls.length === 0;
+    const hasTextStart = messages.some((m) => isDistriEvent4(m) && m.type === "text_message_start");
+    const shouldShowStreamingIndicator = (isStreaming || isLoading) && (!currentPlan || currentPlan.status !== "running") && pendingToolCalls.length === 0 && !hasTextStart;
     if (shouldShowStreamingIndicator) {
       elements.push(
         /* @__PURE__ */ jsx18(
@@ -2605,7 +2647,7 @@ var ExecutionSteps = ({ messages, className = "" }) => {
 
 // src/components/TaskExecutionRenderer.tsx
 import { useMemo } from "react";
-import { isDistriMessage as isDistriMessage3 } from "@distri/core";
+import { isDistriMessage as isDistriMessage4 } from "@distri/core";
 import { CheckCircle as CheckCircle5, Clock as Clock3, AlertCircle as AlertCircle2, Loader2 as Loader23 } from "lucide-react";
 import { jsx as jsx27, jsxs as jsxs19 } from "react/jsx-runtime";
 var TaskExecutionRenderer = ({
@@ -2616,7 +2658,7 @@ var TaskExecutionRenderer = ({
     const stepMap = /* @__PURE__ */ new Map();
     const stepOrder = [];
     events.forEach((event) => {
-      if (isDistriMessage3(event)) {
+      if (isDistriMessage4(event)) {
         const message = event;
         const stepId = `message_${message.id}`;
         if (!stepMap.has(stepId)) {
@@ -3951,9 +3993,9 @@ var SidebarMenuSubButton = React23.forwardRef(({ asChild = false, size = "md", i
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 // src/utils/messageUtils.ts
-import { isDistriMessage as isDistriMessage4, isDistriArtifact as isDistriArtifact4 } from "@distri/core";
+import { isDistriMessage as isDistriMessage5, isDistriArtifact as isDistriArtifact4 } from "@distri/core";
 var extractTextFromMessage = (message) => {
-  if (isDistriMessage4(message)) {
+  if (isDistriMessage5(message)) {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
@@ -3968,7 +4010,7 @@ var shouldDisplayMessage = (message, showDebugMessages = false) => {
   if (isDistriArtifact4(message)) {
     return true;
   }
-  if (isDistriMessage4(message)) {
+  if (isDistriMessage5(message)) {
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;
   }
