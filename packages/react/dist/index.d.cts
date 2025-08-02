@@ -150,6 +150,7 @@ interface UseChatOptions {
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
     onMessagesUpdate?: () => void;
+    messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
     tools?: DistriAnyTool[];
 }
 interface UseChatReturn {
@@ -165,7 +166,7 @@ interface UseChatReturn {
     stopStreaming: () => void;
     chatState: ReturnType<typeof useChatStateStore.getState>;
 }
-declare function useChat({ threadId, onMessage, onError, getMetadata, onMessagesUpdate, agent, tools, }: UseChatOptions): UseChatReturn;
+declare function useChat({ threadId, onMessage, onError, getMetadata, onMessagesUpdate, agent, tools, messageFilter, }: UseChatOptions): UseChatReturn;
 
 interface UseThreadsResult {
     threads: DistriThread[];
@@ -192,10 +193,11 @@ interface ChatProps {
     getMetadata?: () => Promise<any>;
     onMessagesUpdate?: () => void;
     tools?: any[];
+    messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
     MessageRenderer?: React$1.ComponentType<any>;
     theme?: 'light' | 'dark' | 'auto';
 }
-declare function Chat({ threadId, agent, onMessage, onError, getMetadata, onMessagesUpdate, tools, MessageRenderer: CustomMessageRenderer, theme, }: ChatProps): react_jsx_runtime.JSX.Element;
+declare function Chat({ threadId, agent, onMessage, onError, getMetadata, onMessagesUpdate, tools, messageFilter, MessageRenderer: CustomMessageRenderer, theme, }: ChatProps): react_jsx_runtime.JSX.Element;
 
 interface Agent {
     id: string;

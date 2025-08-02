@@ -18,6 +18,9 @@ export interface ChatProps {
   onMessagesUpdate?: () => void;
   tools?: any[];
 
+  // Message filter to control what messages are displayed
+  messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
+
   // Custom renderers
   MessageRenderer?: React.ComponentType<any>;
 
@@ -211,7 +214,7 @@ function useChatState() {
     currentPlan,
     pendingToolCalls,
     completedToolCalls,
-    hasPendingToolCalls
+    hasPendingToolCalls,
   };
 }
 
@@ -223,6 +226,7 @@ export function Chat({
   getMetadata,
   onMessagesUpdate,
   tools,
+  messageFilter,
   MessageRenderer: CustomMessageRenderer,
   theme = 'auto',
 }: ChatProps) {
@@ -241,6 +245,7 @@ export function Chat({
     onError,
     getMetadata,
     onMessagesUpdate,
+    messageFilter,
     tools,
   });
 
@@ -256,6 +261,7 @@ export function Chat({
     completedToolCalls,
     hasPendingToolCalls
   } = useChatState();
+
 
   const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;

@@ -1100,7 +1100,8 @@ function useChat({
   getMetadata,
   onMessagesUpdate,
   agent,
-  tools
+  tools,
+  messageFilter
 }) {
   const abortControllerRef = (0, import_react8.useRef)(null);
   const createInvokeContext = (0, import_react8.useCallback)(() => ({
@@ -1110,6 +1111,7 @@ function useChat({
   }), [threadId, getMetadata]);
   registerTools({ agent, tools });
   const chatState = useChatStateStore.getState();
+  console.log("chatState", chatState);
   (0, import_react8.useEffect)(() => {
     if (agent) {
       chatState.setAgent(agent);
@@ -1126,25 +1128,48 @@ function useChat({
     };
   }, []);
   const agentIdRef = (0, import_react8.useRef)(void 0);
+  const messageFilterRef = (0, import_react8.useRef)(void 0);
+  const allMessagesRef = (0, import_react8.useRef)([]);
+  const reapplyFilter = (0, import_react8.useCallback)(() => {
+    const filteredMessages = allMessagesRef.current.filter(messageFilter || (() => true));
+    chatState.clearMessages();
+    chatState.clearAllStates();
+    chatState.setError(null);
+    filteredMessages.forEach((message) => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
   (0, import_react8.useEffect)(() => {
     if (agent?.id !== agentIdRef.current) {
+      allMessagesRef.current = [];
       chatState.clearMessages();
       chatState.clearAllStates();
       chatState.setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, chatState]);
+    if (messageFilter !== messageFilterRef.current) {
+      messageFilterRef.current = messageFilter;
+      reapplyFilter();
+    }
+  }, [agent?.id, chatState, messageFilter, reapplyFilter]);
+  const addMessages = (0, import_react8.useCallback)((messages) => {
+    allMessagesRef.current = [...allMessagesRef.current, ...messages];
+    const filteredMessages = messages.filter(messageFilter || (() => true));
+    filteredMessages.forEach((message) => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
   const fetchMessages = (0, import_react8.useCallback)(async () => {
     if (!agent) return;
     try {
       chatState.setLoading(true);
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean);
+      allMessagesRef.current = distriMessages;
       chatState.clearMessages();
-      distriMessages.forEach((message) => {
-        chatState.addMessage(message);
-        chatState.processMessage(message);
-      });
+      addMessages(distriMessages);
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to fetch messages");
@@ -1153,15 +1178,18 @@ function useChat({
     } finally {
       chatState.setLoading(false);
     }
-  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState, addMessages]);
   (0, import_react8.useEffect)(() => {
     if (threadId) {
       fetchMessages();
     }
   }, [threadId, agent?.id]);
   const handleStreamEvent = (0, import_react8.useCallback)((event) => {
-    chatState.addMessage(event);
-    chatState.processMessage(event);
+    allMessagesRef.current = [...allMessagesRef.current, event];
+    if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
+      chatState.addMessage(event);
+      chatState.processMessage(event);
+    }
     if (isDistriArtifact(event)) {
       const artifact = event;
       if (artifact.type === "llm_response") {
@@ -1227,7 +1255,7 @@ function useChat({
       }
     }
     onMessage?.(event);
-  }, [onMessage, agent, chatState]);
+  }, [onMessage, agent, chatState, messageFilter]);
   const sendMessage = (0, import_react8.useCallback)(async (content) => {
     if (!agent) return;
     chatState.setLoading(true);
@@ -1242,6 +1270,7 @@ function useChat({
       const distriMessage = import_core4.DistriClient.initDistriMessage("user", parts);
       const context = createInvokeContext();
       const a2aMessage = (0, import_core5.convertDistriMessageToA2A)(distriMessage, context);
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
       chatState.addMessage(distriMessage);
       const contextMetadata = await getMetadata?.() || {};
       const stream = await agent.invokeStream({
@@ -1281,6 +1310,7 @@ function useChat({
       const distriMessage = import_core4.DistriClient.initDistriMessage(role, parts);
       const context = createInvokeContext();
       const a2aMessage = (0, import_core5.convertDistriMessageToA2A)(distriMessage, context);
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
       chatState.addMessage(distriMessage);
       const contextMetadata = await getMetadata?.() || {};
       const stream = await agent.invokeStream({
@@ -1348,14 +1378,18 @@ function useChat({
       abortControllerRef.current.abort();
     }
   }, []);
+  const clearMessages = (0, import_react8.useCallback)(() => {
+    allMessagesRef.current = [];
+    chatState.clearMessages();
+  }, [chatState]);
   return {
-    messages: chatState.messages,
+    messages: allMessagesRef.current,
     isStreaming: chatState.isStreaming,
     sendMessage,
     sendMessageStream,
     isLoading: chatState.isLoading,
     error: chatState.error,
-    clearMessages: chatState.clearMessages,
+    clearMessages,
     agent: agent || void 0,
     hasPendingToolCalls: chatState.hasPendingToolCalls,
     stopStreaming,
@@ -3350,6 +3384,7 @@ function Chat({
   getMetadata,
   onMessagesUpdate,
   tools,
+  messageFilter,
   MessageRenderer: CustomMessageRenderer,
   theme = "auto"
 }) {
@@ -3367,6 +3402,7 @@ function Chat({
     onError,
     getMetadata,
     onMessagesUpdate,
+    messageFilter,
     tools
   });
   const {

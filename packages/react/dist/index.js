@@ -1048,7 +1048,8 @@ function useChat({
   getMetadata,
   onMessagesUpdate,
   agent,
-  tools
+  tools,
+  messageFilter
 }) {
   const abortControllerRef = useRef3(null);
   const createInvokeContext = useCallback3(() => ({
@@ -1058,6 +1059,7 @@ function useChat({
   }), [threadId, getMetadata]);
   registerTools({ agent, tools });
   const chatState = useChatStateStore.getState();
+  console.log("chatState", chatState);
   useEffect6(() => {
     if (agent) {
       chatState.setAgent(agent);
@@ -1074,25 +1076,48 @@ function useChat({
     };
   }, []);
   const agentIdRef = useRef3(void 0);
+  const messageFilterRef = useRef3(void 0);
+  const allMessagesRef = useRef3([]);
+  const reapplyFilter = useCallback3(() => {
+    const filteredMessages = allMessagesRef.current.filter(messageFilter || (() => true));
+    chatState.clearMessages();
+    chatState.clearAllStates();
+    chatState.setError(null);
+    filteredMessages.forEach((message) => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
   useEffect6(() => {
     if (agent?.id !== agentIdRef.current) {
+      allMessagesRef.current = [];
       chatState.clearMessages();
       chatState.clearAllStates();
       chatState.setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, chatState]);
+    if (messageFilter !== messageFilterRef.current) {
+      messageFilterRef.current = messageFilter;
+      reapplyFilter();
+    }
+  }, [agent?.id, chatState, messageFilter, reapplyFilter]);
+  const addMessages = useCallback3((messages) => {
+    allMessagesRef.current = [...allMessagesRef.current, ...messages];
+    const filteredMessages = messages.filter(messageFilter || (() => true));
+    filteredMessages.forEach((message) => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
   const fetchMessages = useCallback3(async () => {
     if (!agent) return;
     try {
       chatState.setLoading(true);
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean);
+      allMessagesRef.current = distriMessages;
       chatState.clearMessages();
-      distriMessages.forEach((message) => {
-        chatState.addMessage(message);
-        chatState.processMessage(message);
-      });
+      addMessages(distriMessages);
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to fetch messages");
@@ -1101,15 +1126,18 @@ function useChat({
     } finally {
       chatState.setLoading(false);
     }
-  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState, addMessages]);
   useEffect6(() => {
     if (threadId) {
       fetchMessages();
     }
   }, [threadId, agent?.id]);
   const handleStreamEvent = useCallback3((event) => {
-    chatState.addMessage(event);
-    chatState.processMessage(event);
+    allMessagesRef.current = [...allMessagesRef.current, event];
+    if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
+      chatState.addMessage(event);
+      chatState.processMessage(event);
+    }
     if (isDistriArtifact(event)) {
       const artifact = event;
       if (artifact.type === "llm_response") {
@@ -1175,7 +1203,7 @@ function useChat({
       }
     }
     onMessage?.(event);
-  }, [onMessage, agent, chatState]);
+  }, [onMessage, agent, chatState, messageFilter]);
   const sendMessage = useCallback3(async (content) => {
     if (!agent) return;
     chatState.setLoading(true);
@@ -1190,6 +1218,7 @@ function useChat({
       const distriMessage = DistriClient2.initDistriMessage("user", parts);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
       chatState.addMessage(distriMessage);
       const contextMetadata = await getMetadata?.() || {};
       const stream = await agent.invokeStream({
@@ -1229,6 +1258,7 @@ function useChat({
       const distriMessage = DistriClient2.initDistriMessage(role, parts);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
       chatState.addMessage(distriMessage);
       const contextMetadata = await getMetadata?.() || {};
       const stream = await agent.invokeStream({
@@ -1296,14 +1326,18 @@ function useChat({
       abortControllerRef.current.abort();
     }
   }, []);
+  const clearMessages = useCallback3(() => {
+    allMessagesRef.current = [];
+    chatState.clearMessages();
+  }, [chatState]);
   return {
-    messages: chatState.messages,
+    messages: allMessagesRef.current,
     isStreaming: chatState.isStreaming,
     sendMessage,
     sendMessageStream,
     isLoading: chatState.isLoading,
     error: chatState.error,
-    clearMessages: chatState.clearMessages,
+    clearMessages,
     agent: agent || void 0,
     hasPendingToolCalls: chatState.hasPendingToolCalls,
     stopStreaming,
@@ -3298,6 +3332,7 @@ function Chat({
   getMetadata,
   onMessagesUpdate,
   tools,
+  messageFilter,
   MessageRenderer: CustomMessageRenderer,
   theme = "auto"
 }) {
@@ -3315,6 +3350,7 @@ function Chat({
     onError,
     getMetadata,
     onMessagesUpdate,
+    messageFilter,
     tools
   });
   const {

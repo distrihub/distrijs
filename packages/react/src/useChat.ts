@@ -24,6 +24,7 @@ export interface UseChatOptions {
   // Ability to override metadata for the stream
   getMetadata?: () => Promise<any>;
   onMessagesUpdate?: () => void;
+  messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
   tools?: DistriAnyTool[];
 }
 
@@ -50,6 +51,7 @@ export function useChat({
   onMessagesUpdate,
   agent,
   tools,
+  messageFilter,
 }: UseChatOptions): UseChatReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -65,6 +67,7 @@ export function useChat({
 
   // Chat state management with Zustand
   const chatState = useChatStateStore.getState();
+  console.log('chatState', chatState);
 
   // Set up the agent and tools in the store
   useEffect(() => {
@@ -87,15 +90,53 @@ export function useChat({
 
   // Reset state when agent changes
   const agentIdRef = useRef<string | undefined>(undefined);
+  const messageFilterRef = useRef<((message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean) | undefined>(undefined);
+
+  // Store all messages in a ref to preserve them when filter changes
+  const allMessagesRef = useRef<(DistriEvent | DistriMessage | DistriArtifact)[]>([]);
+
+  // Function to reapply filter to all messages
+  const reapplyFilter = useCallback(() => {
+    const filteredMessages = allMessagesRef.current.filter(messageFilter || (() => true));
+
+    // Clear store and re-add filtered messages
+    chatState.clearMessages();
+    chatState.clearAllStates();
+    chatState.setError(null);
+
+    filteredMessages.forEach(message => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
+
   useEffect(() => {
     if (agent?.id !== agentIdRef.current) {
       // Agent changed, reset all state
+      allMessagesRef.current = [];
       chatState.clearMessages();
       chatState.clearAllStates();
       chatState.setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, chatState]);
+
+    if (messageFilter !== messageFilterRef.current) {
+      // Message filter changed, reapply filter to existing messages
+      messageFilterRef.current = messageFilter;
+      reapplyFilter();
+    }
+  }, [agent?.id, chatState, messageFilter, reapplyFilter]);
+
+  const addMessages = useCallback((messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => {
+    // Store all messages in ref
+    allMessagesRef.current = [...allMessagesRef.current, ...messages];
+
+    const filteredMessages = messages.filter(messageFilter || (() => true));
+    filteredMessages.forEach(message => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
 
   const fetchMessages = useCallback(async () => {
     if (!agent) return;
@@ -105,12 +146,12 @@ export function useChat({
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean) as (DistriEvent | DistriMessage | DistriArtifact)[];
 
-      // Clear existing messages and add fetched ones
+      // Store all fetched messages in ref
+      allMessagesRef.current = distriMessages;
+
+      // Clear existing messages and add filtered ones
       chatState.clearMessages();
-      distriMessages.forEach(message => {
-        chatState.addMessage(message);
-        chatState.processMessage(message);
-      });
+      addMessages(distriMessages);
 
       onMessagesUpdate?.();
     } catch (err) {
@@ -120,7 +161,7 @@ export function useChat({
     } finally {
       chatState.setLoading(false);
     }
-  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState, addMessages]);
 
   // Fetch messages on mount and when threadId changes
   useEffect(() => {
@@ -130,11 +171,14 @@ export function useChat({
   }, [threadId, agent?.id]);
 
   const handleStreamEvent = useCallback((event: DistriEvent | DistriMessage | DistriArtifact) => {
-    // Add message to state
-    chatState.addMessage(event);
+    // Add message to ref and state
+    allMessagesRef.current = [...allMessagesRef.current, event];
 
-    // Process message through chat state
-    chatState.processMessage(event);
+    // Only add to chat state if it passes the filter
+    if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
+      chatState.addMessage(event);
+      chatState.processMessage(event);
+    }
 
     // Handle tool calls and results automatically from artifacts
     if (isDistriArtifact(event)) {
@@ -224,7 +268,7 @@ export function useChat({
     }
 
     onMessage?.(event);
-  }, [onMessage, agent, chatState]);
+  }, [onMessage, agent, chatState, messageFilter]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
@@ -249,7 +293,8 @@ export function useChat({
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
-      // Add user message to state immediately
+      // Add user message to ref and state immediately
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
       chatState.addMessage(distriMessage);
 
       const contextMetadata = await getMetadata?.() || {};
@@ -303,7 +348,8 @@ export function useChat({
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
-      // Add user message to state immediately
+      // Add user message to ref and state immediately
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
       chatState.addMessage(distriMessage);
 
       const contextMetadata = await getMetadata?.() || {};
@@ -394,14 +440,20 @@ export function useChat({
     }
   }, []);
 
+  // Custom clearMessages that also clears the ref
+  const clearMessages = useCallback(() => {
+    allMessagesRef.current = [];
+    chatState.clearMessages();
+  }, [chatState]);
+
   return {
-    messages: chatState.messages,
+    messages: allMessagesRef.current,
     isStreaming: chatState.isStreaming,
     sendMessage,
     sendMessageStream,
     isLoading: chatState.isLoading,
     error: chatState.error,
-    clearMessages: chatState.clearMessages,
+    clearMessages,
     agent: agent || undefined,
     hasPendingToolCalls: chatState.hasPendingToolCalls,
     stopStreaming,
