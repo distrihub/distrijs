@@ -281,6 +281,7 @@ export function useChat({
     chatState.setLoading(true);
     chatState.setStreaming(true);
     chatState.setError(null);
+    chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -336,6 +337,7 @@ export function useChat({
     chatState.setLoading(true);
     chatState.setStreaming(true);
     chatState.setError(null);
+    chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -452,6 +454,7 @@ export function useChat({
   const clearMessages = useCallback(() => {
     allMessagesRef.current = [];
     chatState.clearMessages();
+    chatState.setStreamingIndicator(undefined);
   }, [chatState]);
 
   return {

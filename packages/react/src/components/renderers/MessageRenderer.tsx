@@ -5,6 +5,7 @@ import { UserMessageRenderer } from './UserMessageRenderer';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { ToolMessageRenderer } from './ToolMessageRenderer';
 import { PlanRenderer } from './PlanRenderer';
+import { StepRenderer } from './StepRenderer';
 import { ToolCallRenderer } from './ToolCallRenderer';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { DebugRenderer } from './DebugRenderer';
@@ -24,6 +25,20 @@ export function MessageRenderer({
   isExpanded = false,
   onToggle = () => { }
 }: MessageRendererProps): React.ReactNode {
+  // Don't render messages with empty content
+  if (isDistriMessage(message)) {
+    const distriMessage = message as DistriMessage;
+    const textContent = distriMessage.parts
+      .filter(part => part.type === 'text')
+      .map(part => (part as { type: 'text'; text: string }).text)
+      .join('')
+      .trim();
+
+    if (!textContent) {
+      return null;
+    }
+  }
+
   // Handle DistriMessage types
   if (isDistriMessage(message)) {
     const distriMessage = message as DistriMessage;
@@ -106,6 +121,34 @@ export function MessageRenderer({
 
       case 'text_message_end':
         // This is handled by the assistant message renderer
+        return null;
+
+      case 'step_started':
+        // Get step from chat state
+        const stepId = event.data.step_id;
+        const step = chatState.steps.get(stepId);
+        if (step) {
+          return (
+            <StepRenderer
+              key={`step-${stepId}`}
+              step={step}
+            />
+          );
+        }
+        return null;
+
+      case 'step_completed':
+        // Get step from chat state
+        const completedStepId = event.data.step_id;
+        const completedStep = chatState.steps.get(completedStepId);
+        if (completedStep) {
+          return (
+            <StepRenderer
+              key={`step-${completedStepId}`}
+              step={completedStep}
+            />
+          );
+        }
         return null;
 
       case 'tool_call_start':

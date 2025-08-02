@@ -102,7 +102,7 @@ interface AssistantMessageRendererProps {
 declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
 
 interface ThinkingRendererProps {
-    event: DistriEvent;
+    indicator: 'agent_starting' | 'planning' | 'generating_response';
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;
@@ -196,6 +196,14 @@ interface PlanState$1 {
     startTime?: number;
     endTime?: number;
 }
+interface StepState {
+    id: string;
+    title: string;
+    index: number;
+    status: 'running' | 'completed' | 'failed';
+    startTime?: number;
+    endTime?: number;
+}
 interface ToolCallState {
     tool_call_id: string;
     tool_name: string;
@@ -218,9 +226,11 @@ interface ChatState {
     error: Error | null;
     tasks: Map<string, TaskState$1>;
     plans: Map<string, PlanState$1>;
+    steps: Map<string, StepState>;
     toolCalls: Map<string, ToolCallState>;
     currentTaskId?: string;
     currentPlanId?: string;
+    streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
     agent?: Agent$1;
     tools?: DistriAnyTool[];
     onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
@@ -232,6 +242,7 @@ interface ChatStateStore extends ChatState {
     setLoading: (isLoading: boolean) => void;
     setError: (error: Error | null) => void;
     appendToMessage: (messageId: string, role: Role, delta: string) => void;
+    setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
     processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
     clearAllStates: () => void;
     clearTask: (taskId: string) => void;
@@ -251,6 +262,7 @@ interface ChatStateStore extends ChatState {
     getPlanById: (planId: string) => PlanState$1 | null;
     updateTask: (taskId: string, updates: Partial<TaskState$1>) => void;
     updatePlan: (planId: string, updates: Partial<PlanState$1>) => void;
+    updateStep: (stepId: string, updates: Partial<StepState>) => void;
     setAgent: (agent: Agent$1) => void;
     setTools: (tools: DistriAnyTool[]) => void;
     setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => void;

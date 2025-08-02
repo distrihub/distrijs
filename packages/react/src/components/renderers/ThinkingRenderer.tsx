@@ -1,37 +1,34 @@
 import React from 'react';
-import { Bot, Brain, Sparkles, Loader2 } from 'lucide-react';
-import { DistriEvent } from '@distri/core';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Brain, Sparkles, Loader2 } from 'lucide-react';
 
 export interface ThinkingRendererProps {
-  event: DistriEvent;
+  indicator: 'agent_starting' | 'planning' | 'generating_response';
   className?: string;
   avatar?: React.ReactNode;
   name?: string;
 }
 
 export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
-  event,
+  indicator,
   className = '',
-  avatar,
   name = "Assistant",
 }) => {
   const getIconAndText = () => {
-    switch (event.type) {
-      case 'run_started':
+    switch (indicator) {
+      case 'agent_starting':
         return {
           icon: <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />,
           text: 'Agent is starting…',
         };
-      case 'plan_started':
+      case 'planning':
         return {
           icon: <Sparkles className="h-4 w-4 text-primary" />,
           text: 'Planning…',
         };
-      case 'text_message_start':
+      case 'generating_response':
         return {
           icon: <Loader2 className="h-4 w-4 text-primary animate-spin" />,
-          text: 'Generating response…',
+          text: null,
         };
       default:
         return {
@@ -45,16 +42,11 @@ export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
 
   return (
     <div className={`flex items-start gap-4 py-6 ${className}`}>
-      <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarFallback className="bg-primary/10 text-primary">
-          {avatar || <Bot className="h-4 w-4" />}
-        </AvatarFallback>
-      </Avatar>
       <div className="flex-1 min-w-0 max-w-3xl">
         <div className="text-sm font-medium text-foreground mb-3">{name}</div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {icon}
-          <span>{text}</span>
+          {text && <span>{text}</span>}
         </div>
       </div>
     </div>

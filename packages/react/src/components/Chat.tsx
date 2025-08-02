@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact, isDistriEvent } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -68,12 +68,10 @@ export function Chat({
   const currentPlanId = useChatStateStore(state => state.currentPlanId);
   const plans = useChatStateStore(state => state.plans);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
-  const currentTaskId = useChatStateStore(state => state.currentTaskId);
-  const tasks = useChatStateStore(state => state.tasks);
+  const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
 
   // Compute derived state
   const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
-  const currentTask = currentTaskId ? tasks.get(currentTaskId) || null : null;
   const pendingToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
     toolCall.status === 'pending' || toolCall.status === 'running'
   );
@@ -158,48 +156,21 @@ export function Chat({
       }
     });
 
-    const hasPlanStarted = messages.some(m => isDistriEvent(m) && m.type === 'plan_started');
-    const hasPlanFinished = messages.some(m => isDistriEvent(m) && m.type === 'plan_finished');
-    if (currentPlan?.status === 'running' && hasPlanStarted && !hasPlanFinished) {
-      elements.push(
-        <ThinkingRenderer
-          key="planning"
-          event={{ type: 'plan_started', data: {} } as DistriEvent}
-        />
-      );
-    }
-
-    // Add thinking indicators at the end based on current state
-    const hasRunStarted = messages.some(m => isDistriEvent(m) && m.type === 'run_started');
-    const hasRunFinished = messages.some(m => isDistriEvent(m) && m.type === 'run_finished');
-    const hasTextEnd = messages.some(m => isDistriEvent(m) && m.type === 'text_message_end');
-
-    // Show "Agent is starting..." when task is running and we have run_started but no run_finished
-    if (currentTask?.status === 'running' && hasRunStarted && !hasRunFinished && pendingToolCalls.length === 0) {
-      elements.push(
-        <ThinkingRenderer
-          key="thinking-after-run"
-          event={{ type: 'run_started', data: {} } as DistriEvent}
-        />
-      );
-    }
-
-    // Show "Generating response..." when streaming and no text end, and no plan running, and no pending tool calls
-    const shouldShowStreamingIndicator = isStreaming &&
-      !hasTextEnd &&
-      (!currentPlan || currentPlan.status !== 'running') &&
-      pendingToolCalls.length === 0;
-
-    if (shouldShowStreamingIndicator) {
-      elements.push(
-        <ThinkingRenderer
-          key="generating"
-          event={{ type: 'text_message_start', data: { message_id: 'streaming', role: 'assistant' } } as DistriEvent}
-        />
-      );
-    }
-
     return elements;
+  };
+
+  // Render thinking indicator separately at the end
+  const renderThinkingIndicator = () => {
+    if (streamingIndicator) {
+      console.log('Rendering thinking indicator:', streamingIndicator);
+      return (
+        <ThinkingRenderer
+          key={`thinking-${streamingIndicator}`}
+          indicator={streamingIndicator}
+        />
+      );
+    }
+    return null;
   };
 
   return (
@@ -209,6 +180,8 @@ export function Chat({
         <div className="max-w-4xl mx-auto px-4 py-8">
           {/* Render all messages and state */}
           {renderMessages()}
+          {/* Render thinking indicator at the end */}
+          {renderThinkingIndicator()}
 
           {/* Debug info - hidden by default */}
           {process.env.NODE_ENV === 'development' && false && (

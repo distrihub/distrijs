@@ -123,6 +123,24 @@ export interface AgentHandoverEvent {
   };
 }
 
+export interface StepStartedEvent {
+  type: 'step_started';
+  data: {
+    step_id: string;
+    step_title: string;
+    step_index: number;
+  };
+}
+
+export interface StepCompletedEvent {
+  type: 'step_completed';
+  data: {
+    step_id: string;
+    step_title: string;
+    step_index: number;
+  };
+}
+
 export interface FeedbackReceivedEvent {
   type: 'feedback_received';
   data: {
@@ -146,6 +164,8 @@ export type DistriEvent =
   | ToolCallEndEvent
   | ToolCallResultEvent
   | ToolRejectedEvent
+  | StepStartedEvent
+  | StepCompletedEvent
   | TaskArtifactEvent
   | AgentHandoverEvent
   | FeedbackReceivedEvent;
