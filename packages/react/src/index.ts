@@ -5,7 +5,6 @@ export { useAgentDefinitions } from './useAgentDefinitions';
 export { useChat } from './useChat';
 export { useThreads } from './useThreads';
 export { registerTools } from './hooks/registerTools';
-export { useToolCallState } from './hooks/useToolCallState';
 
 // Components
 export { Chat, type ChatProps } from './components/Chat';

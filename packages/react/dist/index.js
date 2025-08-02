@@ -230,7 +230,7 @@ function useAgentDefinitions() {
 }
 
 // src/useChat.ts
-import { useState as useState7, useCallback as useCallback4, useEffect as useEffect6, useRef as useRef3 } from "react";
+import { useCallback as useCallback3, useEffect as useEffect6, useRef as useRef3 } from "react";
 import { DistriClient as DistriClient2 } from "@distri/core";
 import {
   convertDistriMessageToA2A
@@ -664,141 +664,40 @@ var defaultTools = [
   // }
 ];
 
-// src/hooks/useToolCallState.ts
-import { useState as useState6, useCallback as useCallback3 } from "react";
-function useToolCallState(options) {
-  const [toolCallStates, setToolCallStates] = useState6(/* @__PURE__ */ new Map());
-  const { onAllToolsCompleted, agent, tools } = options;
-  const executeTool = async (tool, toolCall) => {
-    if (!tool) {
-      console.error(`Tool ${toolCall.tool_name} not found`);
-      return;
-    }
-    let component;
-    if (tool.type === "ui") {
-      component = tool.component({
-        toolCall,
-        toolCallState: toolCallStates.get(toolCall.tool_call_id),
-        completeTool: (result) => {
-          updateToolCallStatus(toolCall.tool_call_id, {
-            status: "completed",
-            result,
-            completedAt: /* @__PURE__ */ new Date()
-          });
-        }
-      });
-      updateToolCallStatus(toolCall.tool_call_id, {
-        tool_name: toolCall.tool_name,
-        input: toolCall.input,
-        component,
-        status: "running",
-        startedAt: /* @__PURE__ */ new Date()
-      });
-    } else {
-      try {
-        const result = await tool.handler(toolCall.input);
-        console.log("result", result);
-        updateToolCallStatus(toolCall.tool_call_id, {
-          status: "completed",
-          result: JSON.stringify(result),
-          completedAt: /* @__PURE__ */ new Date()
-        });
-      } catch (error) {
-        updateToolCallStatus(toolCall.tool_call_id, {
-          status: "error",
-          error: error instanceof Error ? error.message : String(error),
-          completedAt: /* @__PURE__ */ new Date()
-        });
-      }
-    }
-  };
-  const initToolCall = useCallback3((toolCall) => {
-    const tool = agent?.getTools().find((t) => t.name === toolCall.tool_name);
-    setToolCallStates((prev) => {
-      const newStates = new Map(prev);
-      const state = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolCall.tool_name,
-        input: toolCall.input,
-        status: "pending",
-        startedAt: /* @__PURE__ */ new Date()
-      };
-      newStates.set(toolCall.tool_call_id, state);
-      return newStates;
-    });
-    if (tool) {
-      executeTool(tool, toolCall);
-    } else {
-      console.log(agent?.getTools());
-    }
-  }, []);
-  const updateToolCallStatus = useCallback3((toolCallId, updates) => {
-    setToolCallStates((prev) => {
-      const newStates = new Map(prev);
-      const currentState = newStates.get(toolCallId);
-      if (currentState) {
-        newStates.set(toolCallId, {
-          ...currentState,
-          ...updates
-        });
-      }
-      if (tools) {
-        const pendingToolCalls = getPendingToolCalls();
-        if (pendingToolCalls.length === 0 && onAllToolsCompleted) {
-          const externalCalls = Array.from(newStates.values()).filter((state) => state.status === "completed" || state.status === "error" && tools.find((tool) => tool.name === state.tool_name)).map((state) => ({
-            tool_call_id: state.tool_call_id,
-            result: state.result,
-            success: state.status === "completed",
-            error: state.error
-          }));
-          if (externalCalls.length > 0) {
-            onAllToolsCompleted(externalCalls);
-          }
-        }
-      }
-      return newStates;
-    });
-  }, [tools]);
-  const getToolCallState = useCallback3((toolCallId) => {
-    return toolCallStates.get(toolCallId);
-  }, [toolCallStates]);
-  const hasPendingToolCalls = useCallback3(() => {
-    return getPendingToolCalls().length > 0;
-  }, [toolCallStates]);
-  const getPendingToolCalls = useCallback3(() => {
-    const pendingIds = Array.from(toolCallStates.entries()).filter(([_, state]) => state.status === "pending" || state.status === "running" && tools?.find((tool) => tool.name === state.tool_name)).map(([id, _]) => id);
-    return Array.from(toolCallStates.values()).filter((state) => pendingIds.includes(state.tool_call_id));
-  }, [toolCallStates, tools]);
-  const clearAll = useCallback3(() => {
-    setToolCallStates(/* @__PURE__ */ new Map());
-  }, []);
-  const clearToolResults = useCallback3(() => {
-    toolCallStates.forEach((state) => {
-      state.result = void 0;
-      state.error = void 0;
-    });
-  }, []);
-  return {
-    toolCallStates,
-    initToolCall,
-    updateToolCallStatus,
-    getToolCallState,
-    hasPendingToolCalls,
-    getPendingToolCalls,
-    clearAll,
-    clearToolResults
-  };
-}
-
 // src/stores/chatStateStore.ts
 import { create } from "zustand";
 import { isDistriEvent, isDistriArtifact as isDistriArtifact2 } from "@distri/core";
 var useChatStateStore = create((set, get) => ({
+  messages: [],
+  isStreaming: false,
+  isLoading: false,
+  error: null,
   tasks: /* @__PURE__ */ new Map(),
   plans: /* @__PURE__ */ new Map(),
   toolCalls: /* @__PURE__ */ new Map(),
   currentTaskId: void 0,
   currentPlanId: void 0,
+  // Message actions
+  addMessage: (message) => {
+    set((state) => {
+      const newState = { ...state };
+      newState.messages.push(message);
+      return newState;
+    });
+  },
+  clearMessages: () => {
+    set({ messages: [] });
+  },
+  setStreaming: (isStreaming) => {
+    set({ isStreaming });
+  },
+  setLoading: (isLoading) => {
+    set({ isLoading });
+  },
+  setError: (error) => {
+    set({ error });
+  },
+  // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
     if (isDistriEvent(message)) {
@@ -905,7 +804,7 @@ var useChatStateStore = create((set, get) => ({
             if (message.results && Array.isArray(message.results)) {
               message.results.forEach((result) => {
                 get().updateToolCallStatus(result.tool_call_id, {
-                  status: message.success ? "completed" : "failed",
+                  status: message.success ? "completed" : "error",
                   result: result.result,
                   error: message.reason || void 0,
                   endTime: message.timestamp || timestamp
@@ -927,15 +826,21 @@ var useChatStateStore = create((set, get) => ({
       }
     }
   },
-  initToolCall: (toolCall, timestamp) => {
+  initToolCall: (toolCall, timestamp, isExternal) => {
     set((state) => {
       const newState = { ...state };
+      let toolIsExternal = isExternal;
+      if (toolIsExternal === void 0) {
+        const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
+        toolIsExternal = !!distriTool;
+      }
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
         input: toolCall.input || {},
         status: "pending",
-        startTime: timestamp || Date.now()
+        startTime: timestamp || Date.now(),
+        isExternal: toolIsExternal
       });
       return newState;
     });
@@ -948,11 +853,99 @@ var useChatStateStore = create((set, get) => ({
         newState.toolCalls.set(toolCallId, {
           ...existingToolCall,
           ...status2,
-          endTime: status2.status === "completed" || status2.status === "failed" ? Date.now() : existingToolCall.endTime
+          endTime: status2.status === "completed" || status2.status === "error" ? Date.now() : existingToolCall.endTime
         });
       }
       return newState;
     });
+  },
+  executeTool: async (toolCall) => {
+    const state = get();
+    const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
+    if (!distriTool) {
+      console.log(`Tool ${toolCall.tool_name} not found in registered tools - skipping execution`);
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        isExternal: false,
+        status: "pending",
+        startedAt: /* @__PURE__ */ new Date()
+      });
+      return;
+    }
+    if (distriTool?.type === "ui") {
+      const uiTool = distriTool;
+      const component = uiTool.component({
+        toolCall,
+        toolCallState: state.toolCalls.get(toolCall.tool_call_id),
+        completeTool: (result) => {
+          get().updateToolCallStatus(toolCall.tool_call_id, {
+            status: "completed",
+            result,
+            completedAt: /* @__PURE__ */ new Date(),
+            isExternal: true
+            // UI tools are external
+          });
+        }
+      });
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+        component,
+        status: "running",
+        startedAt: /* @__PURE__ */ new Date(),
+        isExternal: true
+        // UI tools are external
+      });
+    } else {
+      try {
+        const result = await distriTool.handler(toolCall.input);
+        get().updateToolCallStatus(toolCall.tool_call_id, {
+          status: "completed",
+          result: JSON.stringify(result),
+          completedAt: /* @__PURE__ */ new Date(),
+          isExternal: true
+          // Function tools are external
+        });
+      } catch (error) {
+        get().updateToolCallStatus(toolCall.tool_call_id, {
+          status: "error",
+          error: error instanceof Error ? error.message : String(error),
+          completedAt: /* @__PURE__ */ new Date(),
+          isExternal: true
+          // Function tools are external
+        });
+      }
+    }
+  },
+  hasPendingToolCalls: () => {
+    const state = get();
+    return Array.from(state.toolCalls.values()).some(
+      (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
+    );
+  },
+  clearToolResults: () => {
+    set((state) => {
+      const newState = { ...state };
+      newState.toolCalls.forEach((toolCall) => {
+        if (toolCall.status === "completed" || toolCall.status === "error") {
+          newState.toolCalls.delete(toolCall.tool_call_id);
+        }
+      });
+      return newState;
+    });
+  },
+  getExternalToolResponses: () => {
+    const state = get();
+    const completedToolCalls = Array.from(state.toolCalls.values()).filter(
+      (toolCall) => (toolCall.status === "completed" || toolCall.status === "error") && toolCall.isExternal && toolCall.result !== void 0
+      // Only return if there's actually a result
+    );
+    return completedToolCalls.map((toolCall) => ({
+      tool_call_id: toolCall.tool_call_id,
+      tool_name: toolCall.tool_name,
+      result: toolCall.result,
+      success: toolCall.status === "completed",
+      error: toolCall.error
+    }));
   },
   getToolCallById: (toolCallId) => {
     const state = get();
@@ -967,11 +960,12 @@ var useChatStateStore = create((set, get) => ({
   getCompletedToolCalls: () => {
     const state = get();
     return Array.from(state.toolCalls.values()).filter(
-      (toolCall) => toolCall.status === "completed" || toolCall.status === "failed"
+      (toolCall) => toolCall.status === "completed" || toolCall.status === "error"
     );
   },
   clearAllStates: () => {
     set({
+      messages: [],
       tasks: /* @__PURE__ */ new Map(),
       plans: /* @__PURE__ */ new Map(),
       toolCalls: /* @__PURE__ */ new Map(),
@@ -1032,6 +1026,16 @@ var useChatStateStore = create((set, get) => ({
       }
       return newState;
     });
+  },
+  // Setup
+  setAgent: (agent) => {
+    set({ agent });
+  },
+  setTools: (tools) => {
+    set({ tools });
+  },
+  setOnAllToolsCompleted: (callback) => {
+    set({ onAllToolsCompleted: callback });
   }
 }));
 
@@ -1045,25 +1049,22 @@ function useChat({
   agent,
   tools
 }) {
-  const [messages, setMessages] = useState7([]);
-  const [isLoading, setIsLoading] = useState7(false);
-  const [isStreaming, setIsStreaming] = useState7(false);
-  const [error, setError] = useState7(null);
   const abortControllerRef = useRef3(null);
-  const createInvokeContext = useCallback4(() => ({
+  const createInvokeContext = useCallback3(() => ({
     thread_id: threadId,
     run_id: void 0,
     getMetadata
   }), [threadId, getMetadata]);
   registerTools({ agent, tools });
-  const toolStateHandler = useToolCallState({
-    agent,
-    tools,
-    onAllToolsCompleted: (toolResults) => {
-      sendToolResultsToAgent(toolResults);
-    }
-  });
   const chatState = useChatStateStore.getState();
+  useEffect6(() => {
+    if (agent) {
+      chatState.setAgent(agent);
+    }
+    if (tools) {
+      chatState.setTools(tools);
+    }
+  }, [agent, tools, chatState]);
   useEffect6(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -1074,32 +1075,30 @@ function useChat({
   const agentIdRef = useRef3(void 0);
   useEffect6(() => {
     if (agent?.id !== agentIdRef.current) {
-      setMessages([]);
-      toolStateHandler.clearAll();
+      chatState.clearMessages();
       chatState.clearAllStates();
-      setError(null);
+      chatState.setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, toolStateHandler, chatState]);
-  const clearMessages = useCallback4(() => {
-    setMessages([]);
-    toolStateHandler.clearAll();
-    chatState.clearAllStates();
-  }, [toolStateHandler, chatState]);
-  const fetchMessages = useCallback4(async () => {
+  }, [agent?.id, chatState]);
+  const fetchMessages = useCallback3(async () => {
     if (!agent) return;
     try {
+      chatState.setLoading(true);
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean);
-      setMessages(distriMessages);
+      chatState.clearMessages();
       distriMessages.forEach((message) => {
+        chatState.addMessage(message);
         chatState.processMessage(message);
       });
       onMessagesUpdate?.();
     } catch (err) {
-      const error2 = err instanceof Error ? err : new Error("Failed to fetch messages");
-      setError(error2);
-      onError?.(error2);
+      const error = err instanceof Error ? err : new Error("Failed to fetch messages");
+      chatState.setError(error);
+      onError?.(error);
+    } finally {
+      chatState.setLoading(false);
     }
   }, [threadId, agent?.id, onError, onMessagesUpdate, chatState]);
   useEffect6(() => {
@@ -1107,45 +1106,18 @@ function useChat({
       fetchMessages();
     }
   }, [threadId, agent?.id]);
-  const handleStreamEvent = useCallback4((event) => {
+  const handleStreamEvent = useCallback3((event) => {
+    chatState.addMessage(event);
     chatState.processMessage(event);
-    setMessages((prev) => {
-      if (isDistriMessage(event)) {
-        const distriMessage = event;
-        const existingMessageIndex = prev.findIndex((msg) => isDistriMessage(msg) && msg.id && msg.id === distriMessage.id);
-        if (existingMessageIndex >= 0) {
-          const updatedMessages = [...prev];
-          const existingMessage = updatedMessages[existingMessageIndex];
-          const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
-          updatedMessages[existingMessageIndex] = {
-            ...existingMessage,
-            parts: mergedParts
-          };
-          return updatedMessages;
-        } else {
-          return [...prev, distriMessage];
-        }
-      } else if (isDistriArtifact(event)) {
-        const artifact = event;
-        const existingArtifactIndex = prev.findIndex((msg) => isDistriArtifact(msg) && msg.id && msg.id === artifact.id);
-        if (existingArtifactIndex >= 0) {
-          const updatedMessages = [...prev];
-          updatedMessages[existingArtifactIndex] = artifact;
-          return updatedMessages;
-        } else {
-          return [...prev, artifact];
-        }
-      } else {
-        return [...prev, event];
-      }
-    });
     if (isDistriArtifact(event)) {
       const artifact = event;
       if (artifact.type === "llm_response") {
         const llmArtifact = artifact;
         if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
           llmArtifact.tool_calls.forEach((toolCall) => {
-            toolStateHandler.initToolCall(toolCall);
+            const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
+            const isExternal = !!distriTool;
+            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal);
           });
         }
       } else if (artifact.type === "tool_results") {
@@ -1159,7 +1131,7 @@ function useChat({
               } catch {
               }
             }
-            toolStateHandler.updateToolCallStatus(
+            chatState.updateToolCallStatus(
               result.tool_call_id,
               {
                 status: toolResultsArtifact.success ? "completed" : "error",
@@ -1178,14 +1150,16 @@ function useChat({
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map((part) => part.tool_call);
         newToolCalls.forEach((toolCall) => {
-          toolStateHandler.initToolCall(toolCall);
+          const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
+          const isExternal = !!distriTool;
+          chatState.initToolCall(toolCall, void 0, isExternal);
         });
       }
       const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map((part) => part.tool_result);
         newToolResults.forEach((toolResult) => {
-          toolStateHandler.updateToolCallStatus(
+          chatState.updateToolCallStatus(
             toolResult.tool_call_id,
             {
               status: toolResult.success ? "completed" : "error",
@@ -1198,12 +1172,12 @@ function useChat({
       }
     }
     onMessage?.(event);
-  }, [onMessage, agent, toolStateHandler, chatState]);
-  const sendMessage = useCallback4(async (content) => {
+  }, [onMessage, agent, chatState]);
+  const sendMessage = useCallback3(async (content) => {
     if (!agent) return;
-    setIsLoading(true);
-    setIsStreaming(true);
-    setError(null);
+    chatState.setLoading(true);
+    chatState.setStreaming(true);
+    chatState.setError(null);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -1213,7 +1187,7 @@ function useChat({
       const distriMessage = DistriClient2.initDistriMessage("user", parts);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
-      setMessages((prev) => [...prev, distriMessage]);
+      chatState.addMessage(distriMessage);
       const contextMetadata = await getMetadata?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
@@ -1229,20 +1203,20 @@ function useChat({
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      const error2 = err instanceof Error ? err : new Error("Failed to send message");
-      setError(error2);
-      onError?.(error2);
+      const error = err instanceof Error ? err : new Error("Failed to send message");
+      chatState.setError(error);
+      onError?.(error);
     } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
+      chatState.setLoading(false);
+      chatState.setStreaming(false);
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
-  const sendMessageStream = useCallback4(async (content, role = "user") => {
+  const sendMessageStream = useCallback3(async (content, role = "user") => {
     if (!agent) return;
-    setIsLoading(true);
-    setIsStreaming(true);
-    setError(null);
+    chatState.setLoading(true);
+    chatState.setStreaming(true);
+    chatState.setError(null);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -1252,7 +1226,7 @@ function useChat({
       const distriMessage = DistriClient2.initDistriMessage(role, parts);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
-      setMessages((prev) => [...prev, distriMessage]);
+      chatState.addMessage(distriMessage);
       const contextMetadata = await getMetadata?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
@@ -1268,63 +1242,81 @@ function useChat({
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      const error2 = err instanceof Error ? err : new Error("Failed to send message");
-      setError(error2);
-      onError?.(error2);
+      const error = err instanceof Error ? err : new Error("Failed to send message");
+      chatState.setError(error);
+      onError?.(error);
     } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
+      chatState.setLoading(false);
+      chatState.setStreaming(false);
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
-  const sendToolResultsToAgent = useCallback4(async (toolResults) => {
-    if (agent && toolResults.length > 0) {
-      console.log("Sending tool results via streaming:", toolResults);
+  const handleExternalToolResponses = useCallback3(async () => {
+    const externalResponses = chatState.getExternalToolResponses();
+    if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
+      console.log("Sending external tool responses:", externalResponses);
       try {
-        const toolResultParts = toolResults.map((result) => ({
+        const toolResultParts = externalResponses.map((result) => ({
           type: "tool_result",
-          tool_result: result
+          tool_result: {
+            tool_call_id: result.tool_call_id,
+            result: result.result,
+            success: result.success,
+            error: result.error
+          }
         }));
         await sendMessageStream(toolResultParts, "tool");
-        toolStateHandler.clearToolResults();
+        chatState.clearToolResults();
       } catch (err) {
-        console.error("Failed to send tool results:", err);
-        setError(err instanceof Error ? err : new Error("Failed to send tool results"));
+        console.error("Failed to send external tool responses:", err);
+        chatState.setError(err instanceof Error ? err : new Error("Failed to send tool responses"));
       }
     }
-  }, [sendMessageStream, toolStateHandler]);
-  const stopStreaming = useCallback4(() => {
+  }, [chatState, sendMessageStream]);
+  useEffect6(() => {
+    const interval = setInterval(() => {
+      const externalResponses = chatState.getExternalToolResponses();
+      if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
+        const hasExternalToolResponses = externalResponses.some((response) => {
+          const toolCall = chatState.getToolCallById(response.tool_call_id);
+          return toolCall && toolCall.isExternal && toolCall.status === "completed";
+        });
+        if (hasExternalToolResponses) {
+          handleExternalToolResponses();
+        }
+      }
+    }, 1e3);
+    return () => clearInterval(interval);
+  }, [chatState, handleExternalToolResponses]);
+  const stopStreaming = useCallback3(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
   }, []);
   return {
-    messages,
-    isStreaming,
+    messages: chatState.messages,
+    isStreaming: chatState.isStreaming,
     sendMessage,
     sendMessageStream,
-    isLoading,
-    error,
-    clearMessages,
+    isLoading: chatState.isLoading,
+    error: chatState.error,
+    clearMessages: chatState.clearMessages,
     agent: agent || void 0,
-    toolCallStates: toolStateHandler.toolCallStates,
-    hasPendingToolCalls: toolStateHandler.hasPendingToolCalls,
+    hasPendingToolCalls: chatState.hasPendingToolCalls,
     stopStreaming,
     // Chat state management
-    chatState,
-    // Expose tool state for debugging
-    toolStateHandler
+    chatState
   };
 }
 
 // src/useThreads.ts
-import { useState as useState8, useEffect as useEffect7, useCallback as useCallback5 } from "react";
+import { useState as useState6, useEffect as useEffect7, useCallback as useCallback4 } from "react";
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = useState8([]);
-  const [loading, setLoading] = useState8(true);
-  const [error, setError] = useState8(null);
-  const fetchThreads = useCallback5(async () => {
+  const [threads, setThreads] = useState6([]);
+  const [loading, setLoading] = useState6(true);
+  const [error, setError] = useState6(null);
+  const fetchThreads = useCallback4(async () => {
     if (!client) {
       console.error("[useThreads] Client not available");
       setError(new Error("Client not available"));
@@ -1343,7 +1335,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const fetchThread = useCallback5(async (threadId) => {
+  const fetchThread = useCallback4(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1355,7 +1347,7 @@ function useThreads() {
       throw err;
     }
   }, [client]);
-  const deleteThread = useCallback5(async (threadId) => {
+  const deleteThread = useCallback4(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -1372,7 +1364,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = useCallback5(async (threadId, localId) => {
+  const updateThread = useCallback4(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -1431,8 +1423,8 @@ function useThreads() {
 }
 
 // src/components/Chat.tsx
-import { useState as useState13, useCallback as useCallback7, useRef as useRef5, useEffect as useEffect10 } from "react";
-import { isDistriMessage as isDistriMessage4, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
+import { useState as useState11, useCallback as useCallback6, useRef as useRef5, useEffect as useEffect10 } from "react";
+import { isDistriMessage as isDistriMessage4 } from "@distri/core";
 
 // src/components/ChatInput.tsx
 import { useRef as useRef4, useEffect as useEffect8 } from "react";
@@ -1502,7 +1494,7 @@ var ChatInput = ({
 };
 
 // src/components/renderers/TaskRenderer.tsx
-import { useState as useState9 } from "react";
+import { useState as useState7 } from "react";
 
 // src/components/ui/badge.tsx
 import { cva } from "class-variance-authority";
@@ -1590,165 +1582,16 @@ import { ChevronDown, ChevronRight, Loader2, CheckCircle as CheckCircle3, XCircl
 // src/components/toolcalls/ToolCallRenderer.tsx
 import { Clock, CheckCircle as CheckCircle2, XCircle as XCircle2, Play } from "lucide-react";
 import { jsx as jsx10, jsxs as jsxs3 } from "react/jsx-runtime";
-function ToolCallRenderer({ toolCall, toolCallState }) {
-  const getStatusIcon = () => {
-    if (!toolCallState) {
-      return /* @__PURE__ */ jsx10(Clock, { className: "w-4 h-4 text-yellow-500" });
-    }
-    switch (toolCallState.status) {
-      case "completed":
-        return /* @__PURE__ */ jsx10(CheckCircle2, { className: "w-4 h-4 text-green-500" });
-      case "error":
-        return /* @__PURE__ */ jsx10(XCircle2, { className: "w-4 h-4 text-red-500" });
-      case "running":
-        return /* @__PURE__ */ jsx10(Play, { className: "w-4 h-4 text-blue-500" });
-      default:
-        return /* @__PURE__ */ jsx10(Clock, { className: "w-4 h-4 text-yellow-500" });
-    }
-  };
-  const getStatusText = () => {
-    if (!toolCallState) {
-      return "Pending";
-    }
-    switch (toolCallState.status) {
-      case "completed":
-        return "Completed";
-      case "error":
-        return "Failed";
-      case "running":
-        return "Running";
-      default:
-        return "Pending";
-    }
-  };
-  const getStatusColor = () => {
-    if (!toolCallState) {
-      return "bg-yellow-100 text-yellow-800";
-    }
-    switch (toolCallState.status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "error":
-        return "bg-red-100 text-red-800";
-      case "running":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-yellow-100 text-yellow-800";
-    }
-  };
-  return /* @__PURE__ */ jsxs3(Card, { className: "mb-2", children: [
-    /* @__PURE__ */ jsx10(CardHeader, { className: "pb-2", children: /* @__PURE__ */ jsxs3("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ jsxs3("div", { className: "flex items-center space-x-2", children: [
-        getStatusIcon(),
-        /* @__PURE__ */ jsx10(CardTitle, { className: "text-sm font-medium", children: toolCall.tool_name }),
-        /* @__PURE__ */ jsx10(Badge, { variant: "secondary", className: getStatusColor(), children: getStatusText() })
-      ] }),
-      /* @__PURE__ */ jsxs3("div", { className: "text-xs text-gray-500", children: [
-        "ID: ",
-        toolCall.tool_call_id
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsx10(CardContent, { className: "pt-0", children: /* @__PURE__ */ jsxs3("div", { className: "space-y-2", children: [
-      /* @__PURE__ */ jsxs3("div", { className: "text-sm", children: [
-        /* @__PURE__ */ jsx10("strong", { children: "Input:" }),
-        /* @__PURE__ */ jsx10("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input, null, 2) })
-      ] }),
-      toolCallState?.result && /* @__PURE__ */ jsxs3("div", { className: "text-sm", children: [
-        /* @__PURE__ */ jsx10("strong", { children: "Result:" }),
-        /* @__PURE__ */ jsx10("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1", children: typeof toolCallState.result === "string" ? toolCallState.result : JSON.stringify(toolCallState.result, null, 2) })
-      ] }),
-      toolCallState?.error && /* @__PURE__ */ jsxs3("div", { className: "text-sm", children: [
-        /* @__PURE__ */ jsx10("strong", { children: "Error:" }),
-        /* @__PURE__ */ jsx10("pre", { className: "whitespace-pre-wrap text-xs bg-red-50 p-2 rounded mt-1 text-red-600", children: toolCallState.error })
-      ] })
-    ] }) })
-  ] });
-}
 
 // src/components/renderers/TaskRenderer.tsx
 import { jsx as jsx11, jsxs as jsxs4 } from "react/jsx-runtime";
-function TaskRenderer({ task, toolCallStates, className = "", onToolResult }) {
-  const [isExpanded, setIsExpanded] = useState9(false);
-  const getStatusIcon = () => {
-    switch (task.status) {
-      case "running":
-        return /* @__PURE__ */ jsx11(Loader2, { className: "w-4 h-4 animate-spin text-blue-500" });
-      case "completed":
-        return /* @__PURE__ */ jsx11(CheckCircle3, { className: "w-4 h-4 text-green-500" });
-      case "failed":
-        return /* @__PURE__ */ jsx11(XCircle3, { className: "w-4 h-4 text-red-500" });
-      default:
-        return /* @__PURE__ */ jsx11(Clock2, { className: "w-4 h-4 text-gray-500" });
-    }
-  };
-  const getStatusColor = () => {
-    switch (task.status) {
-      case "running":
-        return "bg-blue-100 text-blue-800";
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "failed":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-  const hasDetails = task.toolCalls && task.toolCalls.length > 0 || task.results && task.results.length > 0 || task.error;
-  return /* @__PURE__ */ jsxs4(Card, { className: `mb-4 ${className}`, children: [
-    /* @__PURE__ */ jsx11(CardHeader, { className: "pb-3", children: /* @__PURE__ */ jsxs4("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ jsxs4("div", { className: "flex items-center space-x-2", children: [
-        getStatusIcon(),
-        /* @__PURE__ */ jsx11(CardTitle, { className: "text-sm font-medium", children: task.title }),
-        /* @__PURE__ */ jsx11(Badge, { variant: "secondary", className: getStatusColor(), children: task.status }),
-        hasDetails && /* @__PURE__ */ jsx11(
-          Button,
-          {
-            variant: "ghost",
-            size: "sm",
-            onClick: () => setIsExpanded(!isExpanded),
-            className: "p-1 h-6 w-6",
-            children: isExpanded ? /* @__PURE__ */ jsx11(ChevronDown, { className: "w-4 h-4" }) : /* @__PURE__ */ jsx11(ChevronRight, { className: "w-4 h-4" })
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsx11("div", { className: "text-xs text-gray-500", children: task.startTime && new Date(task.startTime).toLocaleTimeString() })
-    ] }) }),
-    isExpanded && hasDetails && /* @__PURE__ */ jsxs4(CardContent, { className: "pt-0 space-y-4", children: [
-      task.toolCalls && task.toolCalls.length > 0 && /* @__PURE__ */ jsxs4("div", { children: [
-        /* @__PURE__ */ jsx11("h4", { className: "text-sm font-medium mb-2", children: "Tool Calls" }),
-        /* @__PURE__ */ jsx11("div", { className: "space-y-2", children: task.toolCalls.map((toolCall, index) => /* @__PURE__ */ jsx11(
-          ToolCallRenderer,
-          {
-            toolCall,
-            toolCallState: toolCallStates.get(toolCall.tool_call_id)
-          },
-          toolCall.tool_call_id || index
-        )) })
-      ] }),
-      task.results && task.results.length > 0 && /* @__PURE__ */ jsxs4("div", { children: [
-        /* @__PURE__ */ jsx11("h4", { className: "text-sm font-medium mb-2", children: "Results" }),
-        /* @__PURE__ */ jsx11("div", { className: "space-y-2", children: task.results.map((result, index) => /* @__PURE__ */ jsxs4("div", { className: "border rounded-lg p-3", children: [
-          /* @__PURE__ */ jsxs4("div", { className: "flex items-center justify-between mb-2", children: [
-            /* @__PURE__ */ jsx11("span", { className: "text-sm font-medium", children: result.tool_name }),
-            /* @__PURE__ */ jsx11(Badge, { variant: "default", className: "text-xs", children: "Success" })
-          ] }),
-          /* @__PURE__ */ jsxs4("div", { className: "text-sm text-gray-600", children: [
-            /* @__PURE__ */ jsx11("strong", { children: "Result:" }),
-            /* @__PURE__ */ jsx11("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof result.result === "string" ? result.result : JSON.stringify(result.result, null, 2) })
-          ] })
-        ] }, result.tool_call_id || index)) })
-      ] }),
-      task.error && /* @__PURE__ */ jsx11("div", { className: "p-2 bg-red-50 border border-red-200 rounded", children: /* @__PURE__ */ jsx11("span", { className: "text-xs text-red-600", children: task.error }) })
-    ] })
-  ] });
-}
 
 // src/components/renderers/ToolResultRenderer.tsx
 import { CheckCircle as CheckCircle4, XCircle as XCircle4, Send as Send2 } from "lucide-react";
 import { jsx as jsx12, jsxs as jsxs5 } from "react/jsx-runtime";
 
 // src/components/Components.tsx
-import React22, { useState as useState12 } from "react";
+import React22, { useState as useState10 } from "react";
 import { User, Bot as Bot3, Settings, Clock as Clock5, CheckCircle as CheckCircle7, XCircle as XCircle5, Brain, Wrench, ChevronDown as ChevronDown3, ChevronRight as ChevronRight2, Loader2 as Loader23 } from "lucide-react";
 
 // src/components/ThemeToggle.tsx
@@ -2048,7 +1891,7 @@ import { CheckCircle as CheckCircle6, Clock as Clock4, AlertCircle as AlertCircl
 import { jsx as jsx19, jsxs as jsxs12 } from "react/jsx-runtime";
 
 // src/components/ChatContext.tsx
-import { createContext as createContext3, useContext as useContext3, useState as useState10 } from "react";
+import { createContext as createContext3, useContext as useContext3, useState as useState8 } from "react";
 import { jsx as jsx20 } from "react/jsx-runtime";
 var ChatContext = createContext3(void 0);
 
@@ -2974,7 +2817,7 @@ var AssistantWithToolCalls2 = ({
   ToolResultRenderer: ToolResultRenderer2,
   onToolResult
 }) => {
-  const [expandedTools, setExpandedTools] = useState12(/* @__PURE__ */ new Set());
+  const [expandedTools, setExpandedTools] = useState10(/* @__PURE__ */ new Set());
   const toggleToolExpansion = (toolCallId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
@@ -3135,95 +2978,9 @@ var DebugMessage = ({
 
 // src/components/renderers/ArtifactRenderer.tsx
 import { jsx as jsx30, jsxs as jsxs17 } from "react/jsx-runtime";
-function ArtifactRenderer({ artifact, toolCallStates }) {
-  switch (artifact.type) {
-    case "llm_response":
-      return renderLLMResponse(artifact, toolCallStates);
-    case "tool_results":
-      return renderToolResults(artifact);
-    case "artifact":
-      return renderGenericArtifact(artifact);
-    default:
-      return null;
-  }
-}
-function renderLLMResponse(llmArtifact, toolCallStates) {
-  const toolCallStatesArray = Array.from(toolCallStates.values()).filter(Boolean);
-  return /* @__PURE__ */ jsxs17("div", { className: "space-y-2", children: [
-    llmArtifact.content && /* @__PURE__ */ jsx30("div", { className: "prose prose-sm max-w-none", children: /* @__PURE__ */ jsx30("p", { children: llmArtifact.content }) }),
-    llmArtifact.tool_calls && llmArtifact.tool_calls.length > 0 && /* @__PURE__ */ jsx30(
-      AssistantWithToolCalls2,
-      {
-        message: {
-          id: llmArtifact.id,
-          role: "assistant",
-          parts: llmArtifact.tool_calls.map((toolCall) => ({
-            type: "tool_call",
-            tool_call: toolCall
-          }))
-        },
-        toolCallStates: toolCallStatesArray,
-        timestamp: new Date(llmArtifact.timestamp),
-        isStreaming: false
-      }
-    )
-  ] });
-}
-function renderToolResults(toolResultsArtifact) {
-  return /* @__PURE__ */ jsxs17("div", { className: "space-y-2", children: [
-    /* @__PURE__ */ jsx30("div", { className: "prose prose-sm max-w-none", children: /* @__PURE__ */ jsxs17("p", { children: [
-      "Tool execution completed with ",
-      toolResultsArtifact.results.length,
-      " result(s)."
-    ] }) }),
-    toolResultsArtifact.results.map((result, index) => /* @__PURE__ */ jsxs17("div", { className: "border rounded-lg p-3", children: [
-      /* @__PURE__ */ jsxs17("div", { className: "flex items-center justify-between mb-2", children: [
-        /* @__PURE__ */ jsx30("span", { className: "text-sm font-medium", children: result.tool_name }),
-        /* @__PURE__ */ jsx30("span", { className: "text-xs text-green-600", children: "Success" })
-      ] }),
-      /* @__PURE__ */ jsxs17("div", { className: "text-sm text-gray-600", children: [
-        /* @__PURE__ */ jsx30("strong", { children: "Result:" }),
-        /* @__PURE__ */ jsx30("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof result.result === "string" ? result.result : JSON.stringify(result.result, null, 2) })
-      ] })
-    ] }, result.tool_call_id || index))
-  ] });
-}
-function renderGenericArtifact(genericArtifact) {
-  return /* @__PURE__ */ jsxs17("div", { className: "space-y-2", children: [
-    /* @__PURE__ */ jsx30("div", { className: "prose prose-sm max-w-none", children: /* @__PURE__ */ jsxs17("p", { children: [
-      "Artifact processed: ",
-      genericArtifact.name
-    ] }) }),
-    /* @__PURE__ */ jsx30("div", { className: "border rounded-lg p-3", children: /* @__PURE__ */ jsxs17("div", { className: "text-sm", children: [
-      /* @__PURE__ */ jsx30("strong", { children: "Data:" }),
-      /* @__PURE__ */ jsx30("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: JSON.stringify(genericArtifact.data, null, 2) })
-    ] }) })
-  ] });
-}
 
 // src/components/renderers/PlanRenderer.tsx
 import { jsx as jsx31, jsxs as jsxs18 } from "react/jsx-runtime";
-function PlanRenderer({ plan }) {
-  return /* @__PURE__ */ jsxs18("div", { className: "space-y-2", children: [
-    /* @__PURE__ */ jsx31("div", { className: "prose prose-sm max-w-none", children: /* @__PURE__ */ jsxs18("p", { children: [
-      "Planning phase completed with ",
-      plan.steps.length,
-      " step(s)."
-    ] }) }),
-    /* @__PURE__ */ jsx31(
-      PlanMessage,
-      {
-        message: {
-          id: plan.id,
-          role: "assistant",
-          parts: []
-        },
-        plan: plan.steps.join("\n"),
-        timestamp: new Date(plan.timestamp)
-      }
-    )
-  ] });
-}
 
 // src/components/renderers/MessageRenderer.tsx
 import React23, { useMemo as useMemo3 } from "react";
@@ -3241,68 +2998,71 @@ var CodeBlock = ({ code, language = "text", className = "" }) => {
       console.error("Failed to copy text: ", err);
     }
   };
-  return /* @__PURE__ */ jsxs19("div", { className: `relative my-4 ${className}`, children: [
-    /* @__PURE__ */ jsxs19("div", { className: "flex justify-between items-center bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-t-md border-b", children: [
-      /* @__PURE__ */ jsx32("span", { className: "text-sm text-gray-600 dark:text-gray-300 font-mono", children: language || "text" }),
+  return /* @__PURE__ */ jsxs19("div", { className: `relative my-3 ${className}`, children: [
+    /* @__PURE__ */ jsxs19("div", { className: "flex justify-between items-center bg-muted px-3 py-1.5 rounded-t-md border-b text-xs", children: [
+      /* @__PURE__ */ jsx32("span", { className: "text-muted-foreground font-mono", children: language || "text" }),
       /* @__PURE__ */ jsx32(
         "button",
         {
           onClick: copyToClipboard,
-          className: "flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors",
+          className: "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
           children: copied ? /* @__PURE__ */ jsxs19(Fragment3, { children: [
-            /* @__PURE__ */ jsx32(Check2, { className: "w-4 h-4" }),
+            /* @__PURE__ */ jsx32(Check2, { className: "w-3 h-3" }),
             "Copied"
           ] }) : /* @__PURE__ */ jsxs19(Fragment3, { children: [
-            /* @__PURE__ */ jsx32(Copy, { className: "w-4 h-4" }),
+            /* @__PURE__ */ jsx32(Copy, { className: "w-3 h-3" }),
             "Copy"
           ] })
         }
       )
     ] }),
-    /* @__PURE__ */ jsx32("div", { className: "bg-gray-50 dark:bg-gray-900 rounded-b-md overflow-hidden", children: /* @__PURE__ */ jsx32("pre", { className: "p-4 overflow-x-auto text-sm", children: /* @__PURE__ */ jsx32("code", { className: "font-mono whitespace-pre-wrap break-words", children: code }) }) })
+    /* @__PURE__ */ jsx32("div", { className: "bg-muted/50 rounded-b-md overflow-hidden", children: /* @__PURE__ */ jsx32("pre", { className: "p-3 overflow-x-auto text-xs", children: /* @__PURE__ */ jsx32("code", { className: "font-mono whitespace-pre-wrap break-words", children: code }) }) })
   ] });
 };
 var PartRenderer = ({ part }) => {
   switch (part.type) {
     case "text":
-      return /* @__PURE__ */ jsx32("div", { className: "whitespace-pre-wrap break-words text-foreground", children: part.text });
+      return /* @__PURE__ */ jsx32("div", { className: "whitespace-pre-wrap break-words text-foreground text-sm leading-relaxed", children: part.text });
     case "tool_call":
-      return /* @__PURE__ */ jsxs19("div", { className: "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 my-2", children: [
+      return /* @__PURE__ */ jsxs19("div", { className: "bg-blue-500/10 border border-blue-500/20 rounded-md p-3 my-2", children: [
         /* @__PURE__ */ jsxs19("div", { className: "flex items-center gap-2 mb-2", children: [
-          /* @__PURE__ */ jsx32(Wrench2, { className: "w-4 h-4 text-blue-600" }),
-          /* @__PURE__ */ jsxs19("span", { className: "font-medium text-blue-800 dark:text-blue-200", children: [
+          /* @__PURE__ */ jsx32(Wrench2, { className: "w-3 h-3 text-blue-500" }),
+          /* @__PURE__ */ jsxs19("span", { className: "font-medium text-blue-600 text-xs", children: [
             "Tool Call: ",
             part.tool_call.tool_name
           ] })
         ] }),
-        /* @__PURE__ */ jsxs19("div", { className: "text-sm text-gray-600 dark:text-gray-300", children: [
+        /* @__PURE__ */ jsxs19("div", { className: "text-xs text-muted-foreground", children: [
           /* @__PURE__ */ jsx32("strong", { children: "Input:" }),
-          /* @__PURE__ */ jsx32("pre", { className: "mt-1 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto", children: JSON.stringify(part.tool_call.input, null, 2) })
+          /* @__PURE__ */ jsx32("pre", { className: "mt-1 bg-muted p-2 rounded text-xs overflow-x-auto", children: JSON.stringify(part.tool_call.input, null, 2) })
         ] })
       ] });
     case "tool_result":
-      return /* @__PURE__ */ jsxs19("div", { className: "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 my-2", children: [
+      return /* @__PURE__ */ jsxs19("div", { className: "bg-green-500/10 border border-green-500/20 rounded-md p-3 my-2", children: [
         /* @__PURE__ */ jsxs19("div", { className: "flex items-center gap-2 mb-2", children: [
-          /* @__PURE__ */ jsx32(Check2, { className: "w-4 h-4 text-green-600" }),
-          /* @__PURE__ */ jsx32("span", { className: "font-medium text-green-800 dark:text-green-200", children: "Tool Result" })
+          /* @__PURE__ */ jsx32(Check2, { className: "w-3 h-3 text-green-500" }),
+          /* @__PURE__ */ jsx32("span", { className: "font-medium text-green-600 text-xs", children: "Tool Result" })
         ] }),
-        /* @__PURE__ */ jsx32("div", { className: "text-sm text-gray-600 dark:text-gray-300", children: /* @__PURE__ */ jsx32("pre", { className: "bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto", children: typeof part.tool_result.result === "string" ? part.tool_result.result : JSON.stringify(part.tool_result.result, null, 2) }) })
+        /* @__PURE__ */ jsxs19("div", { className: "text-xs text-muted-foreground", children: [
+          /* @__PURE__ */ jsx32("strong", { children: "Result:" }),
+          /* @__PURE__ */ jsx32("pre", { className: "mt-1 bg-muted p-2 rounded text-xs overflow-x-auto", children: JSON.stringify(part.tool_result.result, null, 2) })
+        ] })
       ] });
     case "plan":
-      return /* @__PURE__ */ jsxs19("div", { className: "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 my-2", children: [
+      return /* @__PURE__ */ jsxs19("div", { className: "bg-purple-500/10 border border-purple-500/20 rounded-md p-3 my-2", children: [
         /* @__PURE__ */ jsxs19("div", { className: "flex items-center gap-2 mb-2", children: [
-          /* @__PURE__ */ jsx32(Brain2, { className: "w-4 h-4 text-purple-600" }),
-          /* @__PURE__ */ jsx32("span", { className: "font-medium text-purple-800 dark:text-purple-200", children: "Plan" })
+          /* @__PURE__ */ jsx32(Brain2, { className: "w-3 h-3 text-purple-500" }),
+          /* @__PURE__ */ jsx32("span", { className: "font-medium text-purple-600 text-xs", children: "Plan" })
         ] }),
-        /* @__PURE__ */ jsx32("div", { className: "text-sm whitespace-pre-wrap", children: part.plan })
+        /* @__PURE__ */ jsx32("div", { className: "text-xs whitespace-pre-wrap text-muted-foreground", children: part.plan })
       ] });
     case "code_observation":
-      return /* @__PURE__ */ jsxs19("div", { className: "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 my-2", children: [
+      return /* @__PURE__ */ jsxs19("div", { className: "bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3 my-2", children: [
         /* @__PURE__ */ jsxs19("div", { className: "flex items-center gap-2 mb-2", children: [
-          /* @__PURE__ */ jsx32(FileText, { className: "w-4 h-4 text-yellow-600" }),
-          /* @__PURE__ */ jsx32("span", { className: "font-medium text-yellow-800 dark:text-yellow-200", children: "Code Observation" })
+          /* @__PURE__ */ jsx32(FileText, { className: "w-3 h-3 text-yellow-500" }),
+          /* @__PURE__ */ jsx32("span", { className: "font-medium text-yellow-600 text-xs", children: "Code Observation" })
         ] }),
-        part.thought && /* @__PURE__ */ jsxs19("div", { className: "text-sm text-gray-600 dark:text-gray-300 mb-2", children: [
+        part.thought && /* @__PURE__ */ jsxs19("div", { className: "text-xs text-muted-foreground mb-2", children: [
           /* @__PURE__ */ jsx32("strong", { children: "Thought:" }),
           " ",
           part.thought
@@ -3315,7 +3075,7 @@ var PartRenderer = ({ part }) => {
         {
           src: part.image.url,
           alt: part.image.name || "Image",
-          className: "max-w-full h-auto rounded-lg border"
+          className: "max-w-full h-auto rounded-md border"
         }
       ) });
     case "image_bytes":
@@ -3324,11 +3084,11 @@ var PartRenderer = ({ part }) => {
         {
           src: `data:${part.image.mime_type};base64,${part.image.data}`,
           alt: part.image.name || "Image",
-          className: "max-w-full h-auto rounded-lg border"
+          className: "max-w-full h-auto rounded-md border"
         }
       ) });
     default:
-      return /* @__PURE__ */ jsx32("div", { className: "bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm", children: /* @__PURE__ */ jsx32("pre", { children: JSON.stringify(part, null, 2) }) });
+      return /* @__PURE__ */ jsx32("div", { className: "bg-muted p-2 rounded text-xs", children: /* @__PURE__ */ jsx32("pre", { className: "text-muted-foreground", children: JSON.stringify(part, null, 2) }) });
   }
 };
 var MessageRenderer = ({
@@ -3397,10 +3157,10 @@ var MessageRenderer_default = MessageRenderer;
 import { ChevronDown as ChevronDown4, ChevronRight as ChevronRight3, Loader2 as Loader24, CheckCircle as CheckCircle8, XCircle as XCircle6, Clock as Clock6 } from "lucide-react";
 import { jsx as jsx33, jsxs as jsxs20 } from "react/jsx-runtime";
 function Planning() {
-  return /* @__PURE__ */ jsxs20("div", { className: "flex items-start space-x-2 mb-4", children: [
-    /* @__PURE__ */ jsx33("div", { className: "w-6 h-6 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0 mt-1", children: /* @__PURE__ */ jsx33(Loader24, { className: "w-3 h-3 text-yellow-600 animate-spin" }) }),
-    /* @__PURE__ */ jsx33("div", { className: "flex-1", children: /* @__PURE__ */ jsx33("p", { className: "text-sm text-gray-600", children: "Planning..." }) })
-  ] });
+  return /* @__PURE__ */ jsx33("div", { className: "flex items-center justify-between p-2 bg-muted/30 rounded-md text-xs text-muted-foreground mb-4", children: /* @__PURE__ */ jsxs20("div", { className: "flex items-center space-x-2", children: [
+    /* @__PURE__ */ jsx33("div", { className: "w-3 h-3 rounded-full bg-blue-500/20 flex items-center justify-center", children: /* @__PURE__ */ jsx33(Loader24, { className: "w-2 h-2 text-blue-500 animate-spin" }) }),
+    /* @__PURE__ */ jsx33("span", { children: "Planning..." })
+  ] }) });
 }
 function ToolExecution({
   toolCall,
@@ -3410,13 +3170,13 @@ function ToolExecution({
   const getStatusIcon = () => {
     switch (toolCall.status) {
       case "running":
-        return /* @__PURE__ */ jsx33(Loader24, { className: "w-4 h-4 animate-spin text-blue-500" });
+        return /* @__PURE__ */ jsx33(Loader24, { className: "w-3 h-3 animate-spin text-blue-500" });
       case "completed":
-        return /* @__PURE__ */ jsx33(CheckCircle8, { className: "w-4 h-4 text-green-500" });
-      case "failed":
-        return /* @__PURE__ */ jsx33(XCircle6, { className: "w-4 h-4 text-red-500" });
+        return /* @__PURE__ */ jsx33(CheckCircle8, { className: "w-3 h-3 text-green-500" });
+      case "error":
+        return /* @__PURE__ */ jsx33(XCircle6, { className: "w-3 h-3 text-red-500" });
       default:
-        return /* @__PURE__ */ jsx33(Clock6, { className: "w-4 h-4 text-gray-500" });
+        return /* @__PURE__ */ jsx33(Clock6, { className: "w-3 h-3 text-muted-foreground" });
     }
   };
   const getStatusText = () => {
@@ -3425,48 +3185,101 @@ function ToolExecution({
         return "Running";
       case "completed":
         return "Completed";
-      case "failed":
+      case "error":
         return "Failed";
       default:
         return "Pending";
     }
   };
-  return /* @__PURE__ */ jsxs20("div", { className: "mb-4", children: [
-    /* @__PURE__ */ jsxs20("div", { className: "flex items-center justify-between p-3 bg-gray-50 rounded-lg", children: [
+  return /* @__PURE__ */ jsxs20("div", { className: "mb-3", children: [
+    /* @__PURE__ */ jsxs20("div", { className: "flex items-center justify-between p-2 bg-muted/50 rounded-md text-xs", children: [
       /* @__PURE__ */ jsxs20("div", { className: "flex items-center space-x-2", children: [
         getStatusIcon(),
-        /* @__PURE__ */ jsx33("span", { className: "text-sm font-medium", children: toolCall.tool_name }),
-        /* @__PURE__ */ jsx33(Badge, { variant: "secondary", className: "text-xs", children: getStatusText() })
+        /* @__PURE__ */ jsx33("span", { className: "font-medium", children: toolCall.tool_name }),
+        /* @__PURE__ */ jsx33(Badge, { variant: "secondary", className: "text-xs px-1 py-0 h-4", children: getStatusText() })
       ] }),
       (toolCall.result || toolCall.error) && /* @__PURE__ */ jsx33(
         Button,
         {
           variant: "ghost",
           size: "sm",
-          onClick: onToggle,
-          className: "p-1 h-6 w-6",
-          children: isExpanded ? /* @__PURE__ */ jsx33(ChevronDown4, { className: "w-4 h-4" }) : /* @__PURE__ */ jsx33(ChevronRight3, { className: "w-4 h-4" })
+          onClick: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle();
+          },
+          className: "p-1 h-5 w-5 text-xs",
+          children: isExpanded ? /* @__PURE__ */ jsx33(ChevronDown4, { className: "w-3 h-3" }) : /* @__PURE__ */ jsx33(ChevronRight3, { className: "w-3 h-3" })
         }
       )
     ] }),
-    isExpanded && (toolCall.result || toolCall.error) && /* @__PURE__ */ jsx33(Card, { className: "mt-2", children: /* @__PURE__ */ jsx33(CardContent, { className: "p-3", children: toolCall.error ? /* @__PURE__ */ jsxs20("div", { className: "text-sm text-red-600", children: [
+    isExpanded && (toolCall.result || toolCall.error) && /* @__PURE__ */ jsx33(Card, { className: "mt-2", children: /* @__PURE__ */ jsx33(CardContent, { className: "p-2", children: toolCall.error ? /* @__PURE__ */ jsxs20("div", { className: "text-xs text-destructive", children: [
       /* @__PURE__ */ jsx33("strong", { children: "Error:" }),
       " ",
       toolCall.error
-    ] }) : /* @__PURE__ */ jsxs20("div", { className: "text-sm", children: [
+    ] }) : /* @__PURE__ */ jsxs20("div", { className: "text-xs", children: [
       /* @__PURE__ */ jsx33("strong", { children: "Result:" }),
-      /* @__PURE__ */ jsx33("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof toolCall.result === "string" ? toolCall.result : JSON.stringify(toolCall.result, null, 2) })
+      /* @__PURE__ */ jsx33("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof toolCall.result === "string" ? toolCall.result : JSON.stringify(toolCall.result, null, 2) })
     ] }) }) })
   ] });
 }
 function StreamingMessage({ content, isStreaming }) {
-  return /* @__PURE__ */ jsxs20("div", { className: "flex items-start space-x-2 mb-4", children: [
-    /* @__PURE__ */ jsx33("div", { className: "w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-1", children: /* @__PURE__ */ jsx33("div", { className: "w-3 h-3 text-green-600", children: "A" }) }),
-    /* @__PURE__ */ jsx33("div", { className: "flex-1", children: /* @__PURE__ */ jsxs20("div", { className: "prose prose-sm max-w-none", children: [
-      /* @__PURE__ */ jsx33("p", { children: content }),
-      isStreaming && /* @__PURE__ */ jsx33("span", { className: "inline-block w-2 h-4 bg-green-500 animate-pulse ml-1" })
+  return /* @__PURE__ */ jsxs20("div", { className: "flex items-center space-x-2 mb-4", children: [
+    /* @__PURE__ */ jsx33("div", { className: "w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0", children: /* @__PURE__ */ jsx33("div", { className: "w-2.5 h-2.5 text-green-500 font-bold text-xs", children: "A" }) }),
+    /* @__PURE__ */ jsx33("div", { className: "flex-1", children: /* @__PURE__ */ jsxs20("div", { className: "prose prose-sm max-w-none dark:prose-invert", children: [
+      /* @__PURE__ */ jsx33("p", { className: "text-sm leading-relaxed", children: content }),
+      isStreaming && /* @__PURE__ */ jsx33("span", { className: "inline-block w-1 h-3 bg-green-500 animate-pulse ml-1" })
     ] }) })
   ] });
+}
+function GeneratingStatus({ onStop }) {
+  return /* @__PURE__ */ jsxs20("div", { className: "flex items-center justify-between p-2 bg-muted/30 rounded-md text-xs text-muted-foreground mb-4", children: [
+    /* @__PURE__ */ jsxs20("div", { className: "flex items-center space-x-2", children: [
+      /* @__PURE__ */ jsx33("div", { className: "w-3 h-3 rounded-full bg-blue-500/20 flex items-center justify-center", children: /* @__PURE__ */ jsx33(Loader24, { className: "w-2 h-2 text-blue-500 animate-spin" }) }),
+      /* @__PURE__ */ jsx33("span", { children: "Generating" })
+    ] }),
+    /* @__PURE__ */ jsx33(
+      Button,
+      {
+        variant: "ghost",
+        size: "sm",
+        onClick: onStop,
+        className: "p-1 h-5 text-xs text-muted-foreground hover:text-foreground",
+        children: "Stop"
+      }
+    )
+  ] });
+}
+function useChatState() {
+  const messages = useChatStateStore((state) => state.messages);
+  const isStreaming = useChatStateStore((state) => state.isStreaming);
+  const isLoading = useChatStateStore((state) => state.isLoading);
+  const error = useChatStateStore((state) => state.error);
+  const toolCalls = useChatStateStore((state) => state.toolCalls);
+  const currentTaskId = useChatStateStore((state) => state.currentTaskId);
+  const currentPlanId = useChatStateStore((state) => state.currentPlanId);
+  const tasks = useChatStateStore((state) => state.tasks);
+  const plans = useChatStateStore((state) => state.plans);
+  const currentTask = currentTaskId ? tasks.get(currentTaskId) || null : null;
+  const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
+  const pendingToolCalls = Array.from(toolCalls.values()).filter(
+    (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
+  );
+  const completedToolCalls = Array.from(toolCalls.values()).filter(
+    (toolCall) => toolCall.status === "completed" || toolCall.status === "error"
+  );
+  const hasPendingToolCalls = pendingToolCalls.length > 0;
+  return {
+    messages,
+    isStreaming,
+    isLoading,
+    error,
+    currentTask,
+    currentPlan,
+    pendingToolCalls,
+    completedToolCalls,
+    hasPendingToolCalls
+  };
 }
 function Chat({
   threadId,
@@ -3476,24 +3289,14 @@ function Chat({
   getMetadata,
   onMessagesUpdate,
   tools,
-  TaskRenderer: CustomTaskRenderer,
-  ArtifactRenderer: CustomArtifactRenderer,
-  PlanRenderer: CustomPlanRenderer,
   MessageRenderer: CustomMessageRenderer,
-  ToolCallRenderer: CustomToolCallRenderer,
-  onToolResult,
   theme = "auto"
 }) {
-  const [input, setInput] = useState13("");
-  const [expandedTools, setExpandedTools] = useState13(/* @__PURE__ */ new Set());
+  const [input, setInput] = useState11("");
+  const [expandedTools, setExpandedTools] = useState11(/* @__PURE__ */ new Set());
   const messagesEndRef = useRef5(null);
   const {
-    messages,
-    isStreaming,
     sendMessage,
-    isLoading,
-    error,
-    hasPendingToolCalls,
     stopStreaming,
     chatState
   } = useChat({
@@ -3505,15 +3308,26 @@ function Chat({
     onMessagesUpdate,
     tools
   });
-  const handleSendMessage = useCallback7(async (content) => {
+  const {
+    messages,
+    isStreaming,
+    isLoading,
+    error,
+    currentTask,
+    currentPlan,
+    pendingToolCalls,
+    completedToolCalls,
+    hasPendingToolCalls
+  } = useChatState();
+  const handleSendMessage = useCallback6(async (content) => {
     if (!content.trim()) return;
     setInput("");
     await sendMessage(content);
   }, [sendMessage]);
-  const handleStopStreaming = useCallback7(() => {
+  const handleStopStreaming = useCallback6(() => {
     stopStreaming();
   }, [stopStreaming]);
-  const toggleToolExpansion = useCallback7((toolId) => {
+  const toggleToolExpansion = useCallback6((toolId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(toolId)) {
@@ -3527,16 +3341,12 @@ function Chat({
   useEffect10(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-  const currentTask = chatState.getCurrentTask();
-  const currentPlan = chatState.getCurrentPlan();
-  const currentTasks = chatState.getCurrentTasks();
-  const pendingToolCalls = chatState.getPendingToolCalls();
-  const completedToolCalls = chatState.getCompletedToolCalls();
-  const TaskRendererComponent = CustomTaskRenderer || TaskRenderer;
-  const ArtifactRendererComponent = CustomArtifactRenderer || ArtifactRenderer;
-  const PlanRendererComponent = CustomPlanRenderer || PlanRenderer;
   const MessageRendererComponent = CustomMessageRenderer || MessageRenderer_default;
-  const ToolCallRendererComponent = CustomToolCallRenderer || ToolExecution;
+  const getThemeClasses = () => {
+    if (theme === "dark") return "dark";
+    if (theme === "light") return "";
+    return "";
+  };
   const renderMessages = () => {
     const elements = [];
     messages.forEach((message, index) => {
@@ -3544,95 +3354,39 @@ function Chat({
         const distriMessage = message;
         if (distriMessage.role === "user") {
           elements.push(
-            /* @__PURE__ */ jsxs20("div", { className: "flex items-start space-x-2 mb-4", children: [
-              /* @__PURE__ */ jsx33("div", { className: "w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-1", children: /* @__PURE__ */ jsx33("div", { className: "w-3 h-3 text-blue-600", children: "U" }) }),
-              /* @__PURE__ */ jsx33("div", { className: "flex-1", children: /* @__PURE__ */ jsx33("p", { className: "text-sm", children: distriMessage.parts.find((p) => p.type === "text")?.text || "User message" }) })
+            /* @__PURE__ */ jsxs20("div", { className: "flex items-center space-x-2 mb-4", children: [
+              /* @__PURE__ */ jsx33("div", { className: "w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0", children: /* @__PURE__ */ jsx33("div", { className: "w-2.5 h-2.5 text-blue-500 font-bold text-xs", children: "U" }) }),
+              /* @__PURE__ */ jsx33("div", { className: "flex-1", children: /* @__PURE__ */ jsx33("p", { className: "text-sm leading-relaxed", children: distriMessage.parts.find((p) => p.type === "text")?.text || "User message" }) })
             ] }, `user-${index}`)
           );
         }
         if (distriMessage.role === "assistant") {
           elements.push(
-            /* @__PURE__ */ jsx33(
+            /* @__PURE__ */ jsx33("div", { className: "flex justify-center mb-4", children: /* @__PURE__ */ jsx33("div", { className: "max-w-3xl w-full", children: /* @__PURE__ */ jsx33(
               MessageRendererComponent,
               {
                 message: distriMessage
-              },
-              `message-${index}`
-            )
+              }
+            ) }) }, `message-${index}`)
           );
         }
-      }
-      if (isDistriArtifact3(message)) {
-        elements.push(
-          /* @__PURE__ */ jsx33(
-            ArtifactRendererComponent,
-            {
-              artifact: message,
-              toolCallStates: chatState.toolCalls
-            },
-            `artifact-${index}`
-          )
-        );
       }
     });
     if (currentPlan?.status === "running") {
       elements.push(/* @__PURE__ */ jsx33(Planning, {}, "planning"));
     }
-    if (currentPlan?.status === "completed" && currentPlan.steps.length > 0) {
+    const allToolCalls = [...pendingToolCalls, ...completedToolCalls];
+    allToolCalls.forEach((toolCall) => {
       elements.push(
-        /* @__PURE__ */ jsx33("div", { className: "mb-4", children: /* @__PURE__ */ jsx33(
-          PlanRendererComponent,
+        /* @__PURE__ */ jsx33("div", { className: "flex justify-center mb-3", children: /* @__PURE__ */ jsx33("div", { className: "max-w-3xl w-full", children: /* @__PURE__ */ jsx33(
+          ToolExecution,
           {
-            plan: {
-              type: "plan",
-              timestamp: Date.now(),
-              steps: currentPlan.steps,
-              id: currentPlan.id
-            }
+            toolCall,
+            isExpanded: expandedTools.has(toolCall.tool_call_id),
+            onToggle: () => toggleToolExpansion(toolCall.tool_call_id)
           }
-        ) }, "plan")
+        ) }) }, `tool-${toolCall.tool_call_id}`)
       );
-    }
-    pendingToolCalls.forEach((toolCall) => {
-      elements.push(
-        /* @__PURE__ */ jsx33(
-          ToolCallRendererComponent,
-          {
-            toolCall,
-            isExpanded: expandedTools.has(toolCall.tool_call_id),
-            onToggle: () => toggleToolExpansion(toolCall.tool_call_id)
-          },
-          `tool-${toolCall.tool_call_id}`
-        )
-      );
-    });
-    completedToolCalls.forEach((toolCall) => {
-      elements.push(
-        /* @__PURE__ */ jsx33(
-          ToolCallRendererComponent,
-          {
-            toolCall,
-            isExpanded: expandedTools.has(toolCall.tool_call_id),
-            onToggle: () => toggleToolExpansion(toolCall.tool_call_id)
-          },
-          `tool-${toolCall.tool_call_id}`
-        )
-      );
-    });
-    currentTasks.forEach((task) => {
-      if (TaskRendererComponent) {
-        elements.push(
-          /* @__PURE__ */ jsx33(
-            TaskRendererComponent,
-            {
-              task,
-              toolCallStates: chatState.toolCalls,
-              onToolResult
-            },
-            `task-${task.id}`
-          )
-        );
-      }
     });
     if (isStreaming) {
       const lastMessage = messages[messages.length - 1];
@@ -3640,57 +3394,27 @@ function Chat({
         const textContent = lastMessage.parts.filter((p) => p.type === "text").map((p) => p.text).join("");
         if (textContent) {
           elements.push(
-            /* @__PURE__ */ jsx33(
+            /* @__PURE__ */ jsx33("div", { className: "flex justify-center mb-4", children: /* @__PURE__ */ jsx33("div", { className: "max-w-3xl w-full", children: /* @__PURE__ */ jsx33(
               StreamingMessage,
               {
                 content: textContent,
                 isStreaming: true
-              },
-              "streaming"
-            )
+              }
+            ) }) }, "streaming")
           );
         }
       }
     }
     return elements;
   };
-  return /* @__PURE__ */ jsxs20("div", { className: `flex flex-col h-full ${theme === "dark" ? "dark" : ""}`, children: [
-    /* @__PURE__ */ jsxs20("div", { className: "flex-1 overflow-y-auto p-4 space-y-4", children: [
+  return /* @__PURE__ */ jsxs20("div", { className: `flex flex-col h-full ${getThemeClasses()}`, children: [
+    /* @__PURE__ */ jsxs20("div", { className: "flex-1 overflow-y-auto p-4 space-y-3 bg-background text-foreground", children: [
       renderMessages(),
-      process.env.NODE_ENV === "development" && /* @__PURE__ */ jsxs20("div", { className: "mt-8 p-4 bg-gray-100 rounded-lg text-xs", children: [
-        /* @__PURE__ */ jsx33("h4", { className: "font-bold mb-2", children: "Debug Info:" }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Current Run: ",
-          currentTask?.id || "None"
-        ] }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Current Plan: ",
-          currentPlan?.id || "None"
-        ] }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Tasks: ",
-          currentTasks.length
-        ] }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Pending Tool Calls: ",
-          pendingToolCalls.length
-        ] }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Completed Tool Calls: ",
-          completedToolCalls.length
-        ] }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Total Tool Calls: ",
-          chatState.toolCalls.size
-        ] }),
-        /* @__PURE__ */ jsxs20("div", { children: [
-          "Messages: ",
-          messages.length
-        ] })
-      ] }),
+      isStreaming && /* @__PURE__ */ jsx33(GeneratingStatus, { onStop: handleStopStreaming }),
+      process.env.NODE_ENV === "development" && false,
       /* @__PURE__ */ jsx33("div", { ref: messagesEndRef })
     ] }),
-    /* @__PURE__ */ jsx33("div", { className: "border-t p-4", children: /* @__PURE__ */ jsx33(
+    /* @__PURE__ */ jsx33("div", { className: "border-t border-border p-4 bg-background", children: /* @__PURE__ */ jsx33(
       ChatInput,
       {
         value: input,
@@ -3698,11 +3422,11 @@ function Chat({
         onSend: () => handleSendMessage(input),
         onStop: handleStopStreaming,
         placeholder: "Type your message...",
-        disabled: isLoading || hasPendingToolCalls(),
+        disabled: isLoading || hasPendingToolCalls,
         isStreaming
       }
     ) }),
-    error && /* @__PURE__ */ jsx33("div", { className: "p-4 bg-red-50 border-l-4 border-red-400", children: /* @__PURE__ */ jsxs20("div", { className: "text-red-700", children: [
+    error && /* @__PURE__ */ jsx33("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs20("div", { className: "text-destructive text-xs", children: [
       /* @__PURE__ */ jsx33("strong", { children: "Error:" }),
       " ",
       error.message
@@ -3711,7 +3435,7 @@ function Chat({
 }
 
 // src/utils/messageUtils.ts
-import { isDistriMessage as isDistriMessage5, isDistriArtifact as isDistriArtifact4 } from "@distri/core";
+import { isDistriMessage as isDistriMessage5, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
 var extractTextFromMessage = (message) => {
   if (isDistriMessage5(message)) {
     if (!message?.parts || !Array.isArray(message.parts)) {
@@ -3725,7 +3449,7 @@ var extractTextFromMessage = (message) => {
 };
 var shouldDisplayMessage = (message, showDebugMessages = false) => {
   if (!message) return false;
-  if (isDistriArtifact4(message)) {
+  if (isDistriArtifact3(message)) {
     return true;
   }
   if (isDistriMessage5(message)) {
@@ -3756,6 +3480,5 @@ export {
   useChat,
   useDistri,
   useTheme,
-  useThreads,
-  useToolCallState
+  useThreads
 };

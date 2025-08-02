@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { DistriEvent, DistriMessage, DistriArtifact, isDistriEvent, isDistriArtifact } from '@distri/core';
+import { DistriEvent, DistriMessage, DistriArtifact, isDistriEvent, isDistriArtifact, Agent, ToolCall, ToolResult } from '@distri/core';
+import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 
 // State types
 export interface TaskState {
@@ -29,33 +30,60 @@ export interface ToolCallState {
   tool_call_id: string;
   tool_name: string;
   input: any;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: ToolCallStatus;
   result?: any;
   error?: string;
   startTime?: number;
   endTime?: number;
+  component?: React.ReactNode;
+  startedAt?: Date;
+  completedAt?: Date;
+  isExternal?: boolean; // Flag to distinguish external tool calls
 }
 
 export interface ChatState {
+  // Messages state
+  messages: (DistriEvent | DistriMessage | DistriArtifact)[];
+  isStreaming: boolean;
+  isLoading: boolean;
+  error: Error | null;
+
+  // Task/Plan state
   tasks: Map<string, TaskState>;
   plans: Map<string, PlanState>;
   toolCalls: Map<string, ToolCallState>;
   currentTaskId?: string;
   currentPlanId?: string;
+
+  // Tool execution state
+  agent?: Agent;
+  tools?: DistriAnyTool[];
+  onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
 }
 
 interface ChatStateStore extends ChatState {
-  // Actions
+  // Message actions
+  addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+  clearMessages: () => void;
+  setStreaming: (isStreaming: boolean) => void;
+  setLoading: (isLoading: boolean) => void;
+  setError: (error: Error | null) => void;
+
+  // State actions
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
   clearAllStates: () => void;
   clearTask: (taskId: string) => void;
 
   // Tool call management
-  initToolCall: (toolCall: any, timestamp?: number) => void;
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean) => void;
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
   getToolCallById: (toolCallId: string) => ToolCallState | null;
   getPendingToolCalls: () => ToolCallState[];
   getCompletedToolCalls: () => ToolCallState[];
+  executeTool: (toolCall: ToolCall) => Promise<void>;
+  hasPendingToolCalls: () => boolean;
+  clearToolResults: () => void;
+  getExternalToolResponses: () => ToolResult[];
 
   // Getters
   getCurrentTask: () => TaskState | null;
@@ -67,15 +95,46 @@ interface ChatStateStore extends ChatState {
   // Updates
   updateTask: (taskId: string, updates: Partial<TaskState>) => void;
   updatePlan: (planId: string, updates: Partial<PlanState>) => void;
+
+  // Setup
+  setAgent: (agent: Agent) => void;
+  setTools: (tools: DistriAnyTool[]) => void;
+  setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => void;
 }
 
 export const useChatStateStore = create<ChatStateStore>((set, get) => ({
+  messages: [],
+  isStreaming: false,
+  isLoading: false,
+  error: null,
   tasks: new Map(),
   plans: new Map(),
   toolCalls: new Map(),
   currentTaskId: undefined,
   currentPlanId: undefined,
 
+  // Message actions
+  addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
+    set((state: ChatState) => {
+      const newState = { ...state };
+      newState.messages.push(message);
+      return newState;
+    });
+  },
+  clearMessages: () => {
+    set({ messages: [] });
+  },
+  setStreaming: (isStreaming: boolean) => {
+    set({ isStreaming });
+  },
+  setLoading: (isLoading: boolean) => {
+    set({ isLoading });
+  },
+  setError: (error: Error | null) => {
+    set({ error });
+  },
+
+  // State actions
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
     const timestamp = Date.now(); // Default fallback
 
@@ -196,7 +255,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             if (message.results && Array.isArray(message.results)) {
               message.results.forEach(result => {
                 get().updateToolCallStatus(result.tool_call_id, {
-                  status: message.success ? 'completed' : 'failed',
+                  status: message.success ? 'completed' : 'error',
                   result: result.result,
                   error: message.reason || undefined,
                   endTime: message.timestamp || timestamp,
@@ -220,15 +279,25 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     }
   },
 
-  initToolCall: (toolCall: any, timestamp?: number) => {
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean) => {
     set((state: ChatState) => {
       const newState = { ...state };
+
+      // Determine if tool is external (only if explicitly registered in tools array)
+      let toolIsExternal = isExternal;
+      if (toolIsExternal === undefined) {
+        // Only tools explicitly registered in the tools array are considered external
+        const distriTool = state.tools?.find(t => t.name === toolCall.tool_name);
+        toolIsExternal = !!distriTool; // Only true if found in tools array
+      }
+
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || 'Unknown Tool',
         input: toolCall.input || {},
         status: 'pending',
         startTime: timestamp || Date.now(),
+        isExternal: toolIsExternal,
       });
       return newState;
     });
@@ -242,11 +311,106 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         newState.toolCalls.set(toolCallId, {
           ...existingToolCall,
           ...status,
-          endTime: status.status === 'completed' || status.status === 'failed' ? Date.now() : existingToolCall.endTime,
+          endTime: status.status === 'completed' || status.status === 'error' ? Date.now() : existingToolCall.endTime,
         });
       }
       return newState;
     });
+  },
+
+  executeTool: async (toolCall: ToolCall) => {
+    const state = get();
+    const distriTool = state.tools?.find(t => t.name === toolCall.tool_name);
+
+    // Only execute tools that are explicitly registered in the tools array
+    if (!distriTool) {
+      console.log(`Tool ${toolCall.tool_name} not found in registered tools - skipping execution`);
+      // Mark as not external and skip execution
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        isExternal: false,
+        status: 'pending',
+        startedAt: new Date()
+      });
+      return;
+    }
+
+    if (distriTool?.type === 'ui') {
+      const uiTool = distriTool as DistriUiTool;
+      const component = uiTool.component({
+        toolCall,
+        toolCallState: state.toolCalls.get(toolCall.tool_call_id),
+        completeTool: (result: ToolResult) => {
+          get().updateToolCallStatus(toolCall.tool_call_id, {
+            status: 'completed',
+            result,
+            completedAt: new Date(),
+            isExternal: true // UI tools are external
+          });
+        }
+      });
+
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+        component,
+        status: 'running',
+        startedAt: new Date(),
+        isExternal: true // UI tools are external
+      });
+    } else {
+      try {
+        const result = await (distriTool as any).handler(toolCall.input);
+        get().updateToolCallStatus(toolCall.tool_call_id, {
+          status: 'completed',
+          result: JSON.stringify(result),
+          completedAt: new Date(),
+          isExternal: true // Function tools are external
+        });
+      } catch (error) {
+        get().updateToolCallStatus(toolCall.tool_call_id, {
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error),
+          completedAt: new Date(),
+          isExternal: true // Function tools are external
+        });
+      }
+    }
+  },
+
+  hasPendingToolCalls: () => {
+    const state = get();
+    return Array.from(state.toolCalls.values()).some(toolCall =>
+      toolCall.status === 'pending' || toolCall.status === 'running'
+    );
+  },
+
+  clearToolResults: () => {
+    set((state: ChatState) => {
+      const newState = { ...state };
+      newState.toolCalls.forEach(toolCall => {
+        if (toolCall.status === 'completed' || toolCall.status === 'error') {
+          newState.toolCalls.delete(toolCall.tool_call_id);
+        }
+      });
+      return newState;
+    });
+  },
+
+  getExternalToolResponses: () => {
+    const state = get();
+    const completedToolCalls = Array.from(state.toolCalls.values()).filter(toolCall =>
+      (toolCall.status === 'completed' || toolCall.status === 'error') &&
+      toolCall.isExternal &&
+      toolCall.result !== undefined // Only return if there's actually a result
+    );
+
+    return completedToolCalls.map(toolCall => ({
+      tool_call_id: toolCall.tool_call_id,
+      tool_name: toolCall.tool_name,
+      result: toolCall.result,
+      success: toolCall.status === 'completed',
+      error: toolCall.error
+    }));
   },
 
   getToolCallById: (toolCallId: string) => {
@@ -264,12 +428,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   getCompletedToolCalls: () => {
     const state = get();
     return Array.from(state.toolCalls.values()).filter(toolCall =>
-      toolCall.status === 'completed' || toolCall.status === 'failed'
+      toolCall.status === 'completed' || toolCall.status === 'error'
     );
   },
 
   clearAllStates: () => {
     set({
+      messages: [],
       tasks: new Map(),
       plans: new Map(),
       toolCalls: new Map(),
@@ -341,5 +506,16 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       }
       return newState;
     });
+  },
+
+  // Setup
+  setAgent: (agent: Agent) => {
+    set({ agent });
+  },
+  setTools: (tools: DistriAnyTool[]) => {
+    set({ tools });
+  },
+  setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => {
+    set({ onAllToolsCompleted: callback });
   },
 })); 

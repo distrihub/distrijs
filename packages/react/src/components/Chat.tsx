@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriArtifact } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
-import { TaskRenderer, ArtifactRenderer, PlanRenderer, MessageRenderer } from './renderers';
+import { MessageRenderer } from './renderers';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useChatStateStore } from '../stores/chatStateStore';
 
 export interface ChatProps {
   threadId: string;
@@ -18,16 +19,7 @@ export interface ChatProps {
   tools?: any[];
 
   // Custom renderers
-  TaskRenderer?: React.ComponentType<any>;
-  ArtifactRenderer?: React.ComponentType<any>;
-  PlanRenderer?: React.ComponentType<any>;
   MessageRenderer?: React.ComponentType<any>;
-
-  // Custom tool call renderers
-  ToolCallRenderer?: React.ComponentType<any>;
-
-  // Callbacks
-  onToolResult?: (toolCallId: string, result: any) => void;
 
   // Theme
   theme?: 'light' | 'dark' | 'auto';
@@ -36,12 +28,12 @@ export interface ChatProps {
 // Planning component for "Planning..."
 function Planning() {
   return (
-    <div className="flex items-start space-x-2 mb-4">
-      <div className="w-6 h-6 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0 mt-1">
-        <Loader2 className="w-3 h-3 text-yellow-600 animate-spin" />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm text-gray-600">Planning...</p>
+    <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-xs text-muted-foreground mb-4">
+      <div className="flex items-center space-x-2">
+        <div className="w-3 h-3 rounded-full bg-blue-500/20 flex items-center justify-center">
+          <Loader2 className="w-2 h-2 text-blue-500 animate-spin" />
+        </div>
+        <span>Planning...</span>
       </div>
     </div>
   );
@@ -60,13 +52,13 @@ function ToolExecution({
   const getStatusIcon = () => {
     switch (toolCall.status) {
       case 'running':
-        return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />;
+        return <Loader2 className="w-3 h-3 animate-spin text-blue-500" />;
       case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'failed':
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <CheckCircle className="w-3 h-3 text-green-500" />;
+      case 'error':
+        return <XCircle className="w-3 h-3 text-red-500" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-500" />;
+        return <Clock className="w-3 h-3 text-muted-foreground" />;
     }
   };
 
@@ -76,7 +68,7 @@ function ToolExecution({
         return 'Running';
       case 'completed':
         return 'Completed';
-      case 'failed':
+      case 'error':
         return 'Failed';
       default:
         return 'Pending';
@@ -84,12 +76,12 @@ function ToolExecution({
   };
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+    <div className="mb-3">
+      <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-xs">
         <div className="flex items-center space-x-2">
           {getStatusIcon()}
-          <span className="text-sm font-medium">{toolCall.tool_name}</span>
-          <Badge variant="secondary" className="text-xs">
+          <span className="font-medium">{toolCall.tool_name}</span>
+          <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
             {getStatusText()}
           </Badge>
         </div>
@@ -97,13 +89,17 @@ function ToolExecution({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onToggle}
-            className="p-1 h-6 w-6"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="p-1 h-5 w-5 text-xs"
           >
             {isExpanded ? (
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-3 h-3" />
             ) : (
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3" />
             )}
           </Button>
         )}
@@ -111,15 +107,15 @@ function ToolExecution({
 
       {isExpanded && (toolCall.result || toolCall.error) && (
         <Card className="mt-2">
-          <CardContent className="p-3">
+          <CardContent className="p-2">
             {toolCall.error ? (
-              <div className="text-sm text-red-600">
+              <div className="text-xs text-destructive">
                 <strong>Error:</strong> {toolCall.error}
               </div>
             ) : (
-              <div className="text-sm">
+              <div className="text-xs">
                 <strong>Result:</strong>
-                <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
+                <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
                   {typeof toolCall.result === 'string' ? toolCall.result : JSON.stringify(toolCall.result, null, 2)}
                 </pre>
               </div>
@@ -134,20 +130,78 @@ function ToolExecution({
 // Streaming message component
 function StreamingMessage({ content, isStreaming }: { content: string; isStreaming: boolean }) {
   return (
-    <div className="flex items-start space-x-2 mb-4">
-      <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-1">
-        <div className="w-3 h-3 text-green-600">A</div>
+    <div className="flex items-center space-x-2 mb-4">
+      <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+        <div className="w-2.5 h-2.5 text-green-500 font-bold text-xs">A</div>
       </div>
       <div className="flex-1">
-        <div className="prose prose-sm max-w-none">
-          <p>{content}</p>
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <p className="text-sm leading-relaxed">{content}</p>
           {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-green-500 animate-pulse ml-1"></span>
+            <span className="inline-block w-1 h-3 bg-green-500 animate-pulse ml-1"></span>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+// Generating status component (like Cursor)
+function GeneratingStatus({ onStop }: { onStop: () => void }) {
+  return (
+    <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md text-xs text-muted-foreground mb-4">
+      <div className="flex items-center space-x-2">
+        <div className="w-3 h-3 rounded-full bg-blue-500/20 flex items-center justify-center">
+          <Loader2 className="w-2 h-2 text-blue-500 animate-spin" />
+        </div>
+        <span>Generating</span>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onStop}
+        className="p-1 h-5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        Stop
+      </Button>
+    </div>
+  );
+}
+
+// Custom hook to get store state without infinite loops
+function useChatState() {
+  const messages = useChatStateStore(state => state.messages);
+  const isStreaming = useChatStateStore(state => state.isStreaming);
+  const isLoading = useChatStateStore(state => state.isLoading);
+  const error = useChatStateStore(state => state.error);
+  const toolCalls = useChatStateStore(state => state.toolCalls);
+  const currentTaskId = useChatStateStore(state => state.currentTaskId);
+  const currentPlanId = useChatStateStore(state => state.currentPlanId);
+  const tasks = useChatStateStore(state => state.tasks);
+  const plans = useChatStateStore(state => state.plans);
+
+  // Compute values from basic state
+  const currentTask = currentTaskId ? tasks.get(currentTaskId) || null : null;
+  const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
+  const pendingToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
+    toolCall.status === 'pending' || toolCall.status === 'running'
+  );
+  const completedToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
+    toolCall.status === 'completed' || toolCall.status === 'error'
+  );
+  const hasPendingToolCalls = pendingToolCalls.length > 0;
+
+  return {
+    messages,
+    isStreaming,
+    isLoading,
+    error,
+    currentTask,
+    currentPlan,
+    pendingToolCalls,
+    completedToolCalls,
+    hasPendingToolCalls
+  };
 }
 
 export function Chat({
@@ -158,12 +212,7 @@ export function Chat({
   getMetadata,
   onMessagesUpdate,
   tools,
-  TaskRenderer: CustomTaskRenderer,
-  ArtifactRenderer: CustomArtifactRenderer,
-  PlanRenderer: CustomPlanRenderer,
   MessageRenderer: CustomMessageRenderer,
-  ToolCallRenderer: CustomToolCallRenderer,
-  onToolResult,
   theme = 'auto',
 }: ChatProps) {
   const [input, setInput] = useState('');
@@ -171,12 +220,7 @@ export function Chat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
-    messages,
-    isStreaming,
     sendMessage,
-    isLoading,
-    error,
-    hasPendingToolCalls,
     stopStreaming,
     chatState,
   } = useChat({
@@ -188,6 +232,19 @@ export function Chat({
     onMessagesUpdate,
     tools,
   });
+
+  // Use custom hook to get store state
+  const {
+    messages,
+    isStreaming,
+    isLoading,
+    error,
+    currentTask,
+    currentPlan,
+    pendingToolCalls,
+    completedToolCalls,
+    hasPendingToolCalls
+  } = useChatState();
 
   const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
@@ -216,63 +273,52 @@ export function Chat({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Get current state from Zustand store
-  const currentTask = chatState.getCurrentTask();
-  const currentPlan = chatState.getCurrentPlan();
-  const currentTasks = chatState.getCurrentTasks();
-  const pendingToolCalls = chatState.getPendingToolCalls();
-  const completedToolCalls = chatState.getCompletedToolCalls();
-
   // Use custom renderers or fall back to defaults
-  const TaskRendererComponent = CustomTaskRenderer || TaskRenderer;
-  const ArtifactRendererComponent = CustomArtifactRenderer || ArtifactRenderer;
-  const PlanRendererComponent = CustomPlanRenderer || PlanRenderer;
   const MessageRendererComponent = CustomMessageRenderer || MessageRenderer;
-  const ToolCallRendererComponent = CustomToolCallRenderer || ToolExecution;
+
+  // Determine theme classes
+  const getThemeClasses = () => {
+    if (theme === 'dark') return 'dark';
+    if (theme === 'light') return '';
+    // For 'auto', we'll let the system handle it
+    return '';
+  };
 
   // Render all messages and state
   const renderMessages = () => {
     const elements: React.ReactNode[] = [];
 
     // Render all messages first
-    messages.forEach((message, index) => {
+    messages.forEach((message: any, index: number) => {
       if (isDistriMessage(message)) {
         const distriMessage = message as DistriMessage;
 
         // User message
         if (distriMessage.role === 'user') {
           elements.push(
-            <div key={`user-${index}`} className="flex items-start space-x-2 mb-4">
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-1">
-                <div className="w-3 h-3 text-blue-600">U</div>
+            <div key={`user-${index}`} className="flex items-center space-x-2 mb-4">
+              <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-2.5 h-2.5 text-blue-500 font-bold text-xs">U</div>
               </div>
               <div className="flex-1">
-                <p className="text-sm">{distriMessage.parts.find(p => p.type === 'text')?.text || 'User message'}</p>
+                <p className="text-sm leading-relaxed">{distriMessage.parts.find(p => p.type === 'text')?.text || 'User message'}</p>
               </div>
             </div>
           );
         }
 
-        // Assistant message
+        // Assistant message - centered like ChatGPT
         if (distriMessage.role === 'assistant') {
           elements.push(
-            <MessageRendererComponent
-              key={`message-${index}`}
-              message={distriMessage}
-            />
+            <div key={`message-${index}`} className="flex justify-center mb-4">
+              <div className="max-w-3xl w-full">
+                <MessageRendererComponent
+                  message={distriMessage}
+                />
+              </div>
+            </div>
           );
         }
-      }
-
-      // Render artifacts
-      if (isDistriArtifact(message)) {
-        elements.push(
-          <ArtifactRendererComponent
-            key={`artifact-${index}`}
-            artifact={message as DistriArtifact}
-            toolCallStates={chatState.toolCalls}
-          />
-        );
       }
     });
 
@@ -281,58 +327,20 @@ export function Chat({
       elements.push(<Planning key="planning" />);
     }
 
-    // Render plan if completed
-    if (currentPlan?.status === 'completed' && currentPlan.steps.length > 0) {
+    // Render tool calls (both pending and completed)
+    const allToolCalls = [...pendingToolCalls, ...completedToolCalls];
+    allToolCalls.forEach((toolCall) => {
       elements.push(
-        <div key="plan" className="mb-4">
-          <PlanRendererComponent
-            plan={{
-              type: 'plan',
-              timestamp: Date.now(),
-              steps: currentPlan.steps,
-              id: currentPlan.id,
-            }}
-          />
+        <div key={`tool-${toolCall.tool_call_id}`} className="flex justify-center mb-3">
+          <div className="max-w-3xl w-full">
+            <ToolExecution
+              toolCall={toolCall}
+              isExpanded={expandedTools.has(toolCall.tool_call_id)}
+              onToggle={() => toggleToolExpansion(toolCall.tool_call_id)}
+            />
+          </div>
         </div>
       );
-    }
-
-    // Render pending tool calls
-    pendingToolCalls.forEach((toolCall) => {
-      elements.push(
-        <ToolCallRendererComponent
-          key={`tool-${toolCall.tool_call_id}`}
-          toolCall={toolCall}
-          isExpanded={expandedTools.has(toolCall.tool_call_id)}
-          onToggle={() => toggleToolExpansion(toolCall.tool_call_id)}
-        />
-      );
-    });
-
-    // Render completed tool calls
-    completedToolCalls.forEach((toolCall) => {
-      elements.push(
-        <ToolCallRendererComponent
-          key={`tool-${toolCall.tool_call_id}`}
-          toolCall={toolCall}
-          isExpanded={expandedTools.has(toolCall.tool_call_id)}
-          onToggle={() => toggleToolExpansion(toolCall.tool_call_id)}
-        />
-      );
-    });
-
-    // Render current tasks
-    currentTasks.forEach((task) => {
-      if (TaskRendererComponent) {
-        elements.push(
-          <TaskRendererComponent
-            key={`task-${task.id}`}
-            task={task}
-            toolCallStates={chatState.toolCalls}
-            onToolResult={onToolResult}
-          />
-        );
-      }
     });
 
     // Render streaming message if currently streaming
@@ -346,11 +354,14 @@ export function Chat({
 
         if (textContent) {
           elements.push(
-            <StreamingMessage
-              key="streaming"
-              content={textContent}
-              isStreaming={true}
-            />
+            <div key="streaming" className="flex justify-center mb-4">
+              <div className="max-w-3xl w-full">
+                <StreamingMessage
+                  content={textContent}
+                  isStreaming={true}
+                />
+              </div>
+            </div>
           );
         }
       }
@@ -360,18 +371,22 @@ export function Chat({
   };
 
   return (
-    <div className={`flex flex-col h-full ${theme === 'dark' ? 'dark' : ''}`}>
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className={`flex flex-col h-full ${getThemeClasses()}`}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-background text-foreground">
         {/* All messages and state */}
         {renderMessages()}
 
-        {/* Debug info */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg text-xs">
+        {/* Generating status when streaming */}
+        {isStreaming && (
+          <GeneratingStatus onStop={handleStopStreaming} />
+        )}
+
+        {/* Debug info - hidden by default */}
+        {process.env.NODE_ENV === 'development' && false && (
+          <div className="mt-8 p-4 bg-muted rounded-lg text-xs">
             <h4 className="font-bold mb-2">Debug Info:</h4>
-            <div>Current Run: {currentTask?.id || 'None'}</div>
+            <div>Current Task: {currentTask?.id || 'None'}</div>
             <div>Current Plan: {currentPlan?.id || 'None'}</div>
-            <div>Tasks: {currentTasks.length}</div>
             <div>Pending Tool Calls: {pendingToolCalls.length}</div>
             <div>Completed Tool Calls: {completedToolCalls.length}</div>
             <div>Total Tool Calls: {chatState.toolCalls.size}</div>
@@ -382,21 +397,21 @@ export function Chat({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t p-4">
+      <div className="border-t border-border p-4 bg-background">
         <ChatInput
           value={input}
           onChange={setInput}
           onSend={() => handleSendMessage(input)}
           onStop={handleStopStreaming}
           placeholder="Type your message..."
-          disabled={isLoading || hasPendingToolCalls()}
+          disabled={isLoading || hasPendingToolCalls}
           isStreaming={isStreaming}
         />
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border-l-4 border-red-400">
-          <div className="text-red-700">
+        <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
+          <div className="text-destructive text-xs">
             <strong>Error:</strong> {error.message}
           </div>
         </div>

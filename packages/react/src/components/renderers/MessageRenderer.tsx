@@ -30,30 +30,30 @@ const CodeBlock: React.FC<{
   };
 
   return (
-    <div className={`relative my-4 ${className}`}>
-      <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-t-md border-b">
-        <span className="text-sm text-gray-600 dark:text-gray-300 font-mono">
+    <div className={`relative my-3 ${className}`}>
+      <div className="flex justify-between items-center bg-muted px-3 py-1.5 rounded-t-md border-b text-xs">
+        <span className="text-muted-foreground font-mono">
           {language || 'text'}
         </span>
         <button
           onClick={copyToClipboard}
-          className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           {copied ? (
             <>
-              <Check className="w-4 h-4" />
+              <Check className="w-3 h-3" />
               Copied
             </>
           ) : (
             <>
-              <Copy className="w-4 h-4" />
+              <Copy className="w-3 h-3" />
               Copy
             </>
           )}
         </button>
       </div>
-      <div className="bg-gray-50 dark:bg-gray-900 rounded-b-md overflow-hidden">
-        <pre className="p-4 overflow-x-auto text-sm">
+      <div className="bg-muted/50 rounded-b-md overflow-hidden">
+        <pre className="p-3 overflow-x-auto text-xs">
           <code className="font-mono whitespace-pre-wrap break-words">
             {code}
           </code>
@@ -70,22 +70,22 @@ const PartRenderer: React.FC<{
   switch (part.type) {
     case 'text':
       return (
-        <div className="whitespace-pre-wrap break-words text-foreground">
+        <div className="whitespace-pre-wrap break-words text-foreground text-sm leading-relaxed">
           {part.text}
         </div>
       );
     case 'tool_call':
       return (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 my-2">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3 my-2">
           <div className="flex items-center gap-2 mb-2">
-            <Wrench className="w-4 h-4 text-blue-600" />
-            <span className="font-medium text-blue-800 dark:text-blue-200">
+            <Wrench className="w-3 h-3 text-blue-500" />
+            <span className="font-medium text-blue-600 text-xs">
               Tool Call: {part.tool_call.tool_name}
             </span>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">
+          <div className="text-xs text-muted-foreground">
             <strong>Input:</strong>
-            <pre className="mt-1 bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto">
+            <pre className="mt-1 bg-muted p-2 rounded text-xs overflow-x-auto">
               {JSON.stringify(part.tool_call.input, null, 2)}
             </pre>
           </div>
@@ -93,47 +93,46 @@ const PartRenderer: React.FC<{
       );
     case 'tool_result':
       return (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 my-2">
+        <div className="bg-green-500/10 border border-green-500/20 rounded-md p-3 my-2">
           <div className="flex items-center gap-2 mb-2">
-            <Check className="w-4 h-4 text-green-600" />
-            <span className="font-medium text-green-800 dark:text-green-200">
+            <Check className="w-3 h-3 text-green-500" />
+            <span className="font-medium text-green-600 text-xs">
               Tool Result
             </span>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">
-            <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto">
-              {typeof part.tool_result.result === 'string'
-                ? part.tool_result.result
-                : JSON.stringify(part.tool_result.result, null, 2)}
+          <div className="text-xs text-muted-foreground">
+            <strong>Result:</strong>
+            <pre className="mt-1 bg-muted p-2 rounded text-xs overflow-x-auto">
+              {JSON.stringify(part.tool_result.result, null, 2)}
             </pre>
           </div>
         </div>
       );
     case 'plan':
       return (
-        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 my-2">
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-md p-3 my-2">
           <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-4 h-4 text-purple-600" />
-            <span className="font-medium text-purple-800 dark:text-purple-200">
+            <Brain className="w-3 h-3 text-purple-500" />
+            <span className="font-medium text-purple-600 text-xs">
               Plan
             </span>
           </div>
-          <div className="text-sm whitespace-pre-wrap">
+          <div className="text-xs whitespace-pre-wrap text-muted-foreground">
             {part.plan}
           </div>
         </div>
       );
     case 'code_observation':
       return (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 my-2">
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3 my-2">
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-4 h-4 text-yellow-600" />
-            <span className="font-medium text-yellow-800 dark:text-yellow-200">
+            <FileText className="w-3 h-3 text-yellow-500" />
+            <span className="font-medium text-yellow-600 text-xs">
               Code Observation
             </span>
           </div>
           {part.thought && (
-            <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+            <div className="text-xs text-muted-foreground mb-2">
               <strong>Thought:</strong> {part.thought}
             </div>
           )}
@@ -146,7 +145,7 @@ const PartRenderer: React.FC<{
           <img
             src={part.image.url}
             alt={part.image.name || 'Image'}
-            className="max-w-full h-auto rounded-lg border"
+            className="max-w-full h-auto rounded-md border"
           />
         </div>
       );
@@ -156,14 +155,14 @@ const PartRenderer: React.FC<{
           <img
             src={`data:${part.image.mime_type};base64,${part.image.data}`}
             alt={part.image.name || 'Image'}
-            className="max-w-full h-auto rounded-lg border"
+            className="max-w-full h-auto rounded-md border"
           />
         </div>
       );
     default:
       return (
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm">
-          <pre>{JSON.stringify(part, null, 2)}</pre>
+        <div className="bg-muted p-2 rounded text-xs">
+          <pre className="text-muted-foreground">{JSON.stringify(part, null, 2)}</pre>
         </div>
       );
   }
