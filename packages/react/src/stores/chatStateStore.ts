@@ -62,7 +62,7 @@ export interface ChatState {
   onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
 }
 
-interface ChatStateStore extends ChatState {
+export interface ChatStateStore extends ChatState {
   // Message actions
   addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
   clearMessages: () => void;
@@ -139,7 +139,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
     const timestamp = Date.now(); // Default fallback
 
-    // Process events
+    // Process events based on interaction design
     if (isDistriEvent(message)) {
       switch (message.type) {
         case 'run_started':
@@ -160,6 +160,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             get().updateTask(currentTaskId, {
               status: 'completed',
               endTime: timestamp,
+            });
+          }
+          break;
+
+        case 'run_error':
+          const errorTaskId = get().currentTaskId;
+          if (errorTaskId) {
+            get().updateTask(errorTaskId, {
+              status: 'failed',
+              endTime: timestamp,
+              error: message.data?.message || 'Unknown error',
             });
           }
           break;
@@ -214,6 +225,26 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          break;
+
+        case 'text_message_start':
+          // Handle text message start - could be used for typing indicators
+          break;
+
+        case 'text_message_content':
+          // Handle streaming content - could be used for real-time updates
+          break;
+
+        case 'text_message_end':
+          // Handle text message completion
+          break;
+
+        case 'agent_handover':
+          // Handle agent handover events
+          break;
+
+        default:
+          // Handle any other events
           break;
       }
     }

@@ -1,32 +1,48 @@
-// Core hooks
-export { useDistri, DistriProvider } from './DistriProvider';
+// Core components
+export { Chat, type ChatProps } from './components/Chat';
+export { DistriProvider } from './DistriProvider';
+export { ThemeProvider } from './components/ThemeProvider';
+export { ThemeToggle } from './components/ThemeToggle';
+export { useTheme } from './components/ThemeProvider';
+
+// Agent components
+export { default as AgentList } from './components/AgentList';
+export { AgentSelect } from './components/AgentSelect';
+export { default as AgentsPage } from './components/AgentsPage';
+
+// Execution components
+export { ExecutionSteps } from './components/ExecutionSteps';
+export { TaskExecutionRenderer } from './components/TaskExecutionRenderer';
+
+// Renderers
+export {
+  UserMessageRenderer,
+  AssistantMessageRenderer,
+  ThinkingRenderer,
+  ToolCallRenderer,
+  PlanRenderer,
+  ToolMessageRenderer,
+  DebugRenderer,
+  ArtifactRenderer,
+} from './components/renderers';
+
+// Hooks
+export { useChat } from './useChat';
 export { useAgent } from './useAgent';
 export { useAgentDefinitions } from './useAgentDefinitions';
-export { useChat } from './useChat';
 export { useThreads } from './useThreads';
-export { registerTools } from './hooks/registerTools';
+export { useChatConfig } from './components/ChatContext';
 
-// Components
-export { Chat, type ChatProps } from './components/Chat';
-export { AgentSelect } from './components/AgentSelect';
-export { ChatInput } from './components/ChatInput';
-export { ThemeProvider, useTheme } from './components/ThemeProvider';
-export { ThemeToggle } from './components/ThemeToggle';
+// Store
+export { useChatStateStore } from './stores/chatStateStore';
 
-// Message components
-export {
-  UserMessage,
-  AssistantMessage,
-  AssistantWithToolCalls,
-  PlanMessage,
-  DebugMessage
-} from './components/Components';
+// UI components
+export * from './components/ui';
 
 // Tool call components
 export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
 
 // Utilities
 export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
-
 
 export type { DistriAnyTool } from './types';

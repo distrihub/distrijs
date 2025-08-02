@@ -1,100 +1,119 @@
 import React from 'react';
 import { DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact } from '@distri/core';
-import { AssistantWithToolCalls as AssistantWithToolCallsComponent } from '../Components';
+import { extractContent, renderTextContent } from './utils';
 
-interface ArtifactRendererProps {
-  artifact: DistriArtifact;
-  toolCallStates: Map<string, any>;
+export interface ArtifactRendererProps {
+  message: DistriArtifact;
+  chatState: any;
+  className?: string;
+  avatar?: React.ReactNode;
 }
 
-export function ArtifactRenderer({ artifact, toolCallStates }: ArtifactRendererProps) {
-  switch (artifact.type) {
+export function ArtifactRenderer({ message, chatState: _chatState, className = '', avatar }: ArtifactRendererProps) {
+  switch (message.type) {
     case 'llm_response':
-      return renderLLMResponse(artifact as AssistantWithToolCalls, toolCallStates);
+      return renderLLMResponse(message as AssistantWithToolCalls, _chatState, className, avatar);
     case 'tool_results':
-      return renderToolResults(artifact as ToolResults);
+      return renderToolResults(message as ToolResults, _chatState, className, avatar);
     case 'artifact':
-      return renderGenericArtifact(artifact as GenericArtifact);
+      return renderGenericArtifact(message as GenericArtifact, _chatState, className, avatar);
     default:
       return null;
   }
 }
 
-function renderLLMResponse(llmArtifact: AssistantWithToolCalls, toolCallStates: Map<string, any>) {
-  // Convert Map to array for the component
-  const toolCallStatesArray = Array.from(toolCallStates.values()).filter(Boolean);
+function renderLLMResponse(llmArtifact: AssistantWithToolCalls, _chatState: any, className: string, avatar?: React.ReactNode) {
+  const content = extractContent(llmArtifact as any);
 
   return (
-    <div className="space-y-2">
-      {/* Text content if present */}
-      {llmArtifact.content && (
-        <div className="prose prose-sm max-w-none">
-          <p>{llmArtifact.content}</p>
-        </div>
-      )}
+    <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
+      {avatar && <div className="flex-shrink-0">{avatar}</div>}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-foreground mb-2">Assistant</div>
 
-      {/* Tool calls */}
-      {llmArtifact.tool_calls && llmArtifact.tool_calls.length > 0 && (
-        <AssistantWithToolCallsComponent
-          message={{
-            id: llmArtifact.id,
-            role: 'assistant',
-            parts: llmArtifact.tool_calls.map(toolCall => ({
-              type: 'tool_call',
-              tool_call: toolCall
-            }))
-          }}
-          toolCallStates={toolCallStatesArray}
-          timestamp={new Date(llmArtifact.timestamp)}
-          isStreaming={false}
-        />
-      )}
+        {/* Text content if present */}
+        {content.text && (
+          <div className="prose prose-sm max-w-none text-foreground mb-3">
+            {renderTextContent(content)}
+          </div>
+        )}
+
+        {/* Tool calls */}
+        {llmArtifact.tool_calls && llmArtifact.tool_calls.length > 0 && (
+          <div className="space-y-2">
+            {llmArtifact.tool_calls.map((toolCall, index) => (
+              <div key={toolCall.tool_call_id || index} className="border rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{toolCall.tool_name}</span>
+                  <span className="text-xs text-green-600">Success</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <strong>Input:</strong>
+                  <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1">
+                    {JSON.stringify(toolCall.input, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function renderToolResults(toolResultsArtifact: ToolResults) {
+function renderToolResults(toolResultsArtifact: ToolResults, _chatState: any, className: string, avatar?: React.ReactNode) {
   return (
-    <div className="space-y-2">
-      {/* Text observation */}
-      <div className="prose prose-sm max-w-none">
-        <p>Tool execution completed with {toolResultsArtifact.results.length} result(s).</p>
-      </div>
+    <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
+      {avatar && <div className="flex-shrink-0">{avatar}</div>}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-foreground mb-2">Tool Results</div>
 
-      {/* Tool results */}
-      {toolResultsArtifact.results.map((result, index) => (
-        <div key={result.tool_call_id || index} className="border rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">{result.tool_name}</span>
-            <span className="text-xs text-green-600">Success</span>
+        {/* Text observation */}
+        <div className="prose prose-sm max-w-none text-foreground mb-3">
+          <p>Tool execution completed with {toolResultsArtifact.results.length} result(s).</p>
+        </div>
+
+        {/* Tool results */}
+        {toolResultsArtifact.results.map((result, index) => (
+          <div key={result.tool_call_id || index} className="border rounded-lg p-3 mb-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">{result.tool_name}</span>
+              <span className="text-xs text-green-600">Success</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              <strong>Result:</strong>
+              <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
+                {typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)}
+              </pre>
+            </div>
           </div>
-          <div className="text-sm text-gray-600">
-            <strong>Result:</strong>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderGenericArtifact(genericArtifact: GenericArtifact, _chatState: any, className: string, avatar?: React.ReactNode) {
+  return (
+    <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
+      {avatar && <div className="flex-shrink-0">{avatar}</div>}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-foreground mb-2">Artifact</div>
+
+        {/* Text observation */}
+        <div className="prose prose-sm max-w-none text-foreground mb-3">
+          <p>Artifact processed: {genericArtifact.name}</p>
+        </div>
+
+        {/* Artifact data */}
+        <div className="border rounded-lg p-3">
+          <div className="text-sm">
+            <strong>Data:</strong>
             <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
-              {typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)}
+              {JSON.stringify(genericArtifact.data, null, 2)}
             </pre>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function renderGenericArtifact(genericArtifact: GenericArtifact) {
-  return (
-    <div className="space-y-2">
-      {/* Text observation */}
-      <div className="prose prose-sm max-w-none">
-        <p>Artifact processed: {genericArtifact.name}</p>
-      </div>
-
-      {/* Artifact data */}
-      <div className="border rounded-lg p-3">
-        <div className="text-sm">
-          <strong>Data:</strong>
-          <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
-            {JSON.stringify(genericArtifact.data, null, 2)}
-          </pre>
         </div>
       </div>
     </div>

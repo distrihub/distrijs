@@ -1,264 +1,252 @@
-import React, { useMemo } from 'react';
-import { Copy, Check, Brain, Wrench, FileText } from 'lucide-react';
-import { DistriMessage, DistriPart, DistriStreamEvent, isDistriMessage } from '@distri/core';
-import { ExecutionSteps } from '../ExecutionSteps';
+import React from 'react';
+import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact } from '@distri/core';
+import { ChatStateStore } from '../../stores/chatStateStore';
+import { UserMessageRenderer } from './UserMessageRenderer';
+import { AssistantMessageRenderer } from './AssistantMessageRenderer';
+import { ToolMessageRenderer } from './ToolMessageRenderer';
+import { ThinkingRenderer } from './ThinkingRenderer';
+import { PlanRenderer } from './PlanRenderer';
+import { ToolCallRenderer } from './ToolCallRenderer';
+import { ToolResultRenderer } from './ToolResultRenderer';
+import { DebugRenderer } from './DebugRenderer';
+import { ArtifactRenderer } from './ArtifactRenderer';
 
-interface MessageRendererProps {
-  content?: string;
-  message?: DistriStreamEvent;
-  className?: string;
-  metadata?: any;
-  messages?: DistriStreamEvent[]; // Add this prop to detect execution sequences
+export interface MessageRendererProps {
+  message: DistriEvent | DistriMessage | DistriArtifact;
+  index: number;
+  chatState: ChatStateStore;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
-// Enhanced Code Block Component with better overflow handling
-const CodeBlock: React.FC<{
-  code: string;
-  language?: string;
-  className?: string;
-}> = ({ code, language = 'text', className = '' }) => {
-  const [copied, setCopied] = React.useState(false);
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
-
-  return (
-    <div className={`relative my-3 ${className}`}>
-      <div className="flex justify-between items-center bg-muted px-3 py-1.5 rounded-t-md border-b text-xs">
-        <span className="text-muted-foreground font-mono">
-          {language || 'text'}
-        </span>
-        <button
-          onClick={copyToClipboard}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3 h-3" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="w-3 h-3" />
-              Copy
-            </>
-          )}
-        </button>
-      </div>
-      <div className="bg-muted/50 rounded-b-md overflow-hidden">
-        <pre className="p-3 overflow-x-auto text-xs">
-          <code className="font-mono whitespace-pre-wrap break-words">
-            {code}
-          </code>
-        </pre>
-      </div>
-    </div>
-  );
-};
-
-// Part Renderer Component
-const PartRenderer: React.FC<{
-  part: DistriPart;
-}> = ({ part }) => {
-  switch (part.type) {
-    case 'text':
-      return (
-        <div className="whitespace-pre-wrap break-words text-foreground text-sm leading-relaxed">
-          {part.text}
-        </div>
-      );
-    case 'tool_call':
-      return (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3 my-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Wrench className="w-3 h-3 text-blue-500" />
-            <span className="font-medium text-blue-600 text-xs">
-              Tool Call: {part.tool_call.tool_name}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            <strong>Input:</strong>
-            <pre className="mt-1 bg-muted p-2 rounded text-xs overflow-x-auto">
-              {JSON.stringify(part.tool_call.input, null, 2)}
-            </pre>
-          </div>
-        </div>
-      );
-    case 'tool_result':
-      return (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-md p-3 my-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Check className="w-3 h-3 text-green-500" />
-            <span className="font-medium text-green-600 text-xs">
-              Tool Result
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            <strong>Result:</strong>
-            <pre className="mt-1 bg-muted p-2 rounded text-xs overflow-x-auto">
-              {JSON.stringify(part.tool_result.result, null, 2)}
-            </pre>
-          </div>
-        </div>
-      );
-    case 'plan':
-      return (
-        <div className="bg-purple-500/10 border border-purple-500/20 rounded-md p-3 my-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-3 h-3 text-purple-500" />
-            <span className="font-medium text-purple-600 text-xs">
-              Plan
-            </span>
-          </div>
-          <div className="text-xs whitespace-pre-wrap text-muted-foreground">
-            {part.plan}
-          </div>
-        </div>
-      );
-    case 'code_observation':
-      return (
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3 my-2">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-3 h-3 text-yellow-500" />
-            <span className="font-medium text-yellow-600 text-xs">
-              Code Observation
-            </span>
-          </div>
-          {part.thought && (
-            <div className="text-xs text-muted-foreground mb-2">
-              <strong>Thought:</strong> {part.thought}
-            </div>
-          )}
-          <CodeBlock code={part.code} language="text" />
-        </div>
-      );
-    case 'image_url':
-      return (
-        <div className="my-2">
-          <img
-            src={part.image.url}
-            alt={part.image.name || 'Image'}
-            className="max-w-full h-auto rounded-md border"
-          />
-        </div>
-      );
-    case 'image_bytes':
-      return (
-        <div className="my-2">
-          <img
-            src={`data:${part.image.mime_type};base64,${part.image.data}`}
-            alt={part.image.name || 'Image'}
-            className="max-w-full h-auto rounded-md border"
-          />
-        </div>
-      );
-    default:
-      return (
-        <div className="bg-muted p-2 rounded text-xs">
-          <pre className="text-muted-foreground">{JSON.stringify(part, null, 2)}</pre>
-        </div>
-      );
-  }
-};
-
-const MessageRenderer: React.FC<MessageRendererProps> = ({
-  content,
+export function MessageRenderer({
   message,
-  className = "",
-  metadata: _metadata,
-  messages, // Add this prop to detect execution sequences
-}) => {
-  // Check if this is part of an execution sequence (multiple messages with tool calls)
-  const isExecutionSequence = useMemo(() => {
-    if (!messages || messages.length <= 1) return false;
+  index,
+  chatState,
+  isExpanded = false,
+  onToggle = () => { }
+}: MessageRendererProps): React.ReactNode {
+  // Handle DistriMessage types
+  if (isDistriMessage(message)) {
+    const distriMessage = message as DistriMessage;
 
-    return messages.some(msg =>
-      isDistriMessage(msg) &&
-      msg.parts.some(part => part.type === 'tool_call' || part.type === 'tool_result')
-    );
-  }, [messages]);
+    switch (distriMessage.role) {
+      case 'user':
+        return (
+          <UserMessageRenderer
+            key={`user-${index}`}
+            message={distriMessage}
+            chatState={chatState}
+          />
+        );
 
-  // If this is an execution sequence, render with ExecutionSteps
-  if (isExecutionSequence && messages) {
-    const distriMessages = messages.filter(isDistriMessage) as DistriMessage[];
-    return (
-      <div className={`space-y-4 ${className}`}>
-        <ExecutionSteps messages={distriMessages} />
-      </div>
-    );
+      case 'assistant':
+        return (
+          <AssistantMessageRenderer
+            key={`assistant-${index}`}
+            message={distriMessage}
+            chatState={chatState}
+          />
+        );
+
+      case 'tool':
+        return (
+          <ToolMessageRenderer
+            key={`tool-${index}`}
+            message={distriMessage}
+            chatState={chatState}
+          />
+        );
+
+      default:
+        return null;
+    }
   }
 
-  // If we have a DistriMessage, render its parts
-  if (message && isDistriMessage(message)) {
-    // Filter out tool_result parts if this message has tool_calls (they'll be handled by AssistantWithToolCalls)
-    const hasToolCalls = message.parts.some(part => part.type === 'tool_call');
-    const filteredParts = hasToolCalls
-      ? message.parts.filter(part => part.type !== 'tool_result')
-      : message.parts;
+  // Handle DistriEvent types based on interaction design
+  if (isDistriEvent(message)) {
+    const event = message as DistriEvent;
 
-    // Group consecutive text parts for concatenation
-    const groupedParts: DistriPart[][] = [];
-    let currentTextGroup: DistriPart[] = [];
+    switch (event.type) {
+      case 'run_started':
+        return (
+          <ThinkingRenderer
+            key={`run-started-${index}`}
+            type="thinking"
+          />
+        );
 
-    for (const part of filteredParts) {
-      if (part.type === 'text') {
-        currentTextGroup.push(part);
-      } else {
-        if (currentTextGroup.length > 0) {
-          groupedParts.push([...currentTextGroup]);
-          currentTextGroup = [];
+      case 'plan_started':
+        return (
+          <ThinkingRenderer
+            key={`plan-started-${index}`}
+            type="planning"
+          />
+        );
+
+      case 'plan_finished':
+        return (
+          <div key={`plan-finished-${index}`} className="p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="text-sm text-blue-800">
+              <strong>Plan ready:</strong> {event.data?.total_steps || 0} steps
+            </div>
+          </div>
+        );
+
+      case 'text_message_start':
+        return (
+          <ThinkingRenderer
+            key={`text-start-${index}`}
+            type="generating"
+          />
+        );
+
+      case 'text_message_content':
+        // This is handled by the assistant message renderer
+        return null;
+
+      case 'text_message_end':
+        // This is handled by the assistant message renderer
+        return null;
+
+      case 'tool_call_start':
+        return (
+          <div key={`tool-call-start-${index}`} className="flex items-center space-x-2 p-2 bg-muted rounded">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            <span className="text-sm">
+              Calling tool: {event.data?.tool_call_name || 'unknown'} ⏳
+            </span>
+          </div>
+        );
+
+      case 'tool_call_end':
+        return (
+          <div key={`tool-call-end-${index}`} className="flex items-center space-x-2 p-2 bg-muted rounded">
+            <span className="text-green-500">✅</span>
+            <span className="text-sm">Tool complete</span>
+          </div>
+        );
+
+      case 'tool_call_result':
+        return (
+          <div key={`tool-call-result-${index}`} className="p-3 bg-green-50 border border-green-200 rounded">
+            <div className="text-sm text-green-800">
+              <strong>Tool result:</strong>
+              <pre className="mt-1 text-xs overflow-x-auto">
+                {event.data?.result || 'No result'}
+              </pre>
+            </div>
+          </div>
+        );
+
+      case 'agent_handover':
+        return (
+          <div key={`handover-${index}`} className="p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="text-sm text-blue-800">
+              <strong>Handover to:</strong> {event.data?.to_agent || 'unknown agent'}
+            </div>
+          </div>
+        );
+
+      case 'run_finished':
+        return (
+          <div key={`run-finished-${index}`} className="flex items-center space-x-2 p-2 bg-green-50 rounded">
+            <span className="text-green-500">✅</span>
+            <span className="text-sm font-medium">Done</span>
+          </div>
+        );
+
+      case 'run_error':
+        return (
+          <div key={`run-error-${index}`} className="p-3 bg-red-50 border border-red-200 rounded">
+            <div className="text-sm text-red-800">
+              <strong>Error:</strong> {event.data?.message || 'Unknown error occurred'}
+            </div>
+            <button className="mt-2 text-xs text-red-600 underline">Retry</button>
+          </div>
+        );
+
+      default:
+        // Debug events in development
+        if (process.env.NODE_ENV === 'development') {
+          return (
+            <DebugRenderer
+              key={`event-${index}`}
+              message={event}
+              chatState={chatState}
+            />
+          );
         }
-        groupedParts.push([part]);
-      }
+        return null;
     }
+  }
 
-    // Don't forget the last text group
-    if (currentTextGroup.length > 0) {
-      groupedParts.push(currentTextGroup);
-    }
+  // Handle DistriArtifact types
+  if (isDistriArtifact(message)) {
+    const artifact = message as DistriArtifact;
 
-    return (
-      <div className={`space-y-2 ${className}`}>
-        {groupedParts.map((group, groupIndex) => {
-          if (group.length > 1 && group.every(part => part.type === 'text')) {
-            // Concatenate consecutive text parts
-            const concatenatedText = group.map(part => part.type === 'text' ? part.text : '').join('');
+    switch (artifact.type) {
+      case 'plan':
+        return (
+          <PlanRenderer
+            key={`plan-${index}`}
+            message={artifact}
+            chatState={chatState}
+          />
+        );
+
+      case 'llm_response':
+        // Handle tool calls from LLM response
+        if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
+          return artifact.tool_calls.map((toolCall, toolIndex) => {
+            // Get tool call state from chat state
+            const toolCallState = chatState.getToolCallById(toolCall.tool_call_id);
+            if (!toolCallState) return null;
+
             return (
-              <MessageRenderer
-                key={groupIndex}
-                content={concatenatedText}
-                className={className}
+              <ToolCallRenderer
+                key={`tool-call-${index}-${toolIndex}`}
+                toolCall={toolCallState}
+                chatState={chatState}
+                isExpanded={isExpanded}
+                onToggle={onToggle}
               />
             );
-          } else {
-            // Render individual part
-            const part = group[0];
-            return <PartRenderer key={groupIndex} part={part} />;
-          }
-        })}
-      </div>
-    );
-  } else if (message) {
-    return <div className={`whitespace-pre-wrap break-words text-foreground ${className}`}>{JSON.stringify(message, null, 2)}</div>;
+          }).filter(Boolean);
+        }
+        return null;
+
+      case 'tool_results':
+        // Handle tool results
+        if (artifact.results && Array.isArray(artifact.results)) {
+          return artifact.results.map((result, resultIndex) => (
+            <ToolResultRenderer
+              key={`tool-result-${index}-${resultIndex}`}
+              toolCallId={result.tool_call_id}
+              toolName={result.tool_name || 'Unknown Tool'}
+              result={result.result}
+              success={result.success}
+              error={result.error}
+            />
+          ));
+        }
+        return null;
+
+      default:
+        // Debug artifacts in development
+        if (process.env.NODE_ENV === 'development') {
+          return (
+            <DebugRenderer
+              key={`artifact-${index}`}
+              message={artifact}
+              chatState={chatState}
+            />
+          );
+        }
+        return null;
+    }
   }
 
-  // If we don't have a message but have content, render the content
-  else if (!message && content) {
-    return (
-      <div className={`whitespace-pre-wrap break-words text-foreground ${className}`}>
-        {content}
-      </div>
-    );
-  }
-
+  // Fallback - should never reach here
   return null;
-};
-
-export default MessageRenderer;
+}

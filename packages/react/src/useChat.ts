@@ -13,7 +13,7 @@ import {
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
 import { isDistriMessage, isDistriArtifact } from '../../core/src/types';
 import { registerTools } from './hooks/registerTools';
-import { useChatStateStore } from './stores/chatStateStore';
+import { ChatStateStore, useChatStateStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
 
 export interface UseChatOptions {
@@ -26,6 +26,7 @@ export interface UseChatOptions {
   onMessagesUpdate?: () => void;
   messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
   tools?: DistriAnyTool[];
+  overrideChatState?: ChatStateStore;
 }
 
 export interface UseChatReturn {
@@ -38,9 +39,8 @@ export interface UseChatReturn {
   clearMessages: () => void;
   agent: Agent | undefined;
   hasPendingToolCalls: () => boolean;
+
   stopStreaming: () => void;
-  // Chat state management
-  chatState: ReturnType<typeof useChatStateStore.getState>;
 }
 
 export function useChat({
@@ -51,6 +51,7 @@ export function useChat({
   onMessagesUpdate,
   agent,
   tools,
+  overrideChatState,
   messageFilter,
 }: UseChatOptions): UseChatReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -65,9 +66,8 @@ export function useChat({
   // Register tools with agent
   registerTools({ agent, tools });
 
-  // Chat state management with Zustand
-  const chatState = useChatStateStore.getState();
-  console.log('chatState', chatState);
+  // Chat state management with Zustand - use override if provided
+  const chatState = overrideChatState || useChatStateStore.getState();
 
   // Set up the agent and tools in the store
   useEffect(() => {
@@ -457,7 +457,5 @@ export function useChat({
     agent: agent || undefined,
     hasPendingToolCalls: chatState.hasPendingToolCalls,
     stopStreaming,
-    // Chat state management
-    chatState,
   };
 } 
