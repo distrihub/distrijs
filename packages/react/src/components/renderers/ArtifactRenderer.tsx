@@ -45,11 +45,11 @@ function renderLLMResponse(llmArtifact: AssistantWithToolCalls, _chatState: any,
               <div key={toolCall.tool_call_id || index} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">{toolCall.tool_name}</span>
-                  <span className="text-xs text-green-600">Success</span>
+                  <span className="text-xs text-primary">Success</span>
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <strong>Input:</strong>
-                  <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1">
+                  <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1">
                     {JSON.stringify(toolCall.input, null, 2)}
                   </pre>
                 </div>
@@ -79,11 +79,11 @@ function renderToolResults(toolResultsArtifact: ToolResults, _chatState: any, cl
           <div key={result.tool_call_id || index} className="border rounded-lg p-3 mb-2">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">{result.tool_name}</span>
-              <span className="text-xs text-green-600">Success</span>
+              <span className="text-xs text-primary">Success</span>
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               <strong>Result:</strong>
-              <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
                 {typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)}
               </pre>
             </div>
@@ -110,7 +110,7 @@ function renderGenericArtifact(genericArtifact: GenericArtifact, _chatState: any
         <div className="border rounded-lg p-3">
           <div className="text-sm">
             <strong>Data:</strong>
-            <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
+            <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
               {JSON.stringify(genericArtifact.data, null, 2)}
             </pre>
           </div>

@@ -25,7 +25,7 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       <Avatar className="h-8 w-8">
-        <AvatarFallback className="bg-blue-100 text-blue-600">
+        <AvatarFallback className="bg-primary/10 text-primary">
           {avatar || <Bot className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>

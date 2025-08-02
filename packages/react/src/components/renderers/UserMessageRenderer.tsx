@@ -22,7 +22,7 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       <Avatar className="h-8 w-8">
-        <AvatarFallback className="bg-green-100 text-green-600">
+        <AvatarFallback className="bg-secondary text-secondary-foreground">
           {avatar || <User className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>

@@ -33,6 +33,13 @@ export interface PlanFinishedEvent {
   };
 }
 
+export interface PlanPrunedEvent {
+  type: 'plan_pruned';
+  data: {
+    removed_steps?: any;
+  };
+}
+
 export interface TextMessageStartEvent {
   type: 'text_message_start';
   data: {
@@ -89,6 +96,14 @@ export interface ToolCallResultEvent {
   };
 }
 
+export interface ToolRejectedEvent {
+  type: 'tool_rejected';
+  data: {
+    reason?: string;
+    tool_call_id?: string;
+  };
+}
+
 export interface TaskArtifactEvent {
   type: 'task_artifact';
   data: {
@@ -108,6 +123,13 @@ export interface AgentHandoverEvent {
   };
 }
 
+export interface FeedbackReceivedEvent {
+  type: 'feedback_received';
+  data: {
+    feedback: string;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -115,6 +137,7 @@ export type DistriEvent =
   | RunErrorEvent
   | PlanStartedEvent
   | PlanFinishedEvent
+  | PlanPrunedEvent
   | TextMessageStartEvent
   | TextMessageContentEvent
   | TextMessageEndEvent
@@ -122,5 +145,7 @@ export type DistriEvent =
   | ToolCallArgsEvent
   | ToolCallEndEvent
   | ToolCallResultEvent
+  | ToolRejectedEvent
   | TaskArtifactEvent
-  | AgentHandoverEvent;
+  | AgentHandoverEvent
+  | FeedbackReceivedEvent;
