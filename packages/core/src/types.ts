@@ -320,7 +320,7 @@ export function isDistriMessage(event: DistriStreamEvent): event is DistriMessag
 }
 
 export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
-  return 'type' in event && 'metadata' in event;
+  return 'type' in event && 'data' in event;
 }
 
 export function isDistriPlan(event: DistriStreamEvent): event is DistriPlan {

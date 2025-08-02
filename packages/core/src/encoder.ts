@@ -59,22 +59,23 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
 
     case 'step_started':
       return {
-        type: 'tool_call_start',
+        type: 'step_started',
         data: {
-          tool_call_id: metadata.step_id,
-          tool_call_name: metadata.step_title || 'Processing',
-          parent_message_id: statusUpdate.taskId,
-          is_external: false
+          step_id: metadata.step_id,
+          step_title: metadata.step_title || 'Processing',
+          step_index: metadata.step_index || 0
         }
-      } as ToolCallStartEvent;
+      } as any;
 
     case 'step_completed':
       return {
-        type: 'tool_call_end',
+        type: 'step_completed',
         data: {
-          tool_call_id: metadata.step_id
+          step_id: metadata.step_id,
+          step_title: metadata.step_title || 'Processing',
+          step_index: metadata.step_index || 0
         }
-      } as ToolCallEndEvent;
+      } as any;
 
     case 'tool_execution_start':
       return {

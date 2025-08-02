@@ -1,5 +1,16 @@
 import { create } from 'zustand';
-import { DistriEvent, DistriMessage, DistriArtifact, isDistriEvent, isDistriArtifact, Agent, ToolCall, ToolResult } from '@distri/core';
+import {
+  DistriEvent,
+  DistriMessage,
+  DistriArtifact,
+  isDistriEvent,
+  isDistriArtifact,
+  isDistriMessage,
+  Agent,
+  ToolCall,
+  ToolResult,
+  Role,
+} from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 
 // State types
@@ -22,6 +33,15 @@ export interface PlanState {
   runId?: string;
   steps: string[];
   status: 'pending' | 'running' | 'completed' | 'failed';
+  startTime?: number;
+  endTime?: number;
+}
+
+export interface StepState {
+  id: string;
+  title: string;
+  index: number;
+  status: 'running' | 'completed' | 'failed';
   startTime?: number;
   endTime?: number;
 }
@@ -49,12 +69,16 @@ export interface ChatState {
   isLoading: boolean;
   error: Error | null;
 
-  // Task/Plan state
+  // Task/Plan/Step state
   tasks: Map<string, TaskState>;
   plans: Map<string, PlanState>;
+  steps: Map<string, StepState>;
   toolCalls: Map<string, ToolCallState>;
   currentTaskId?: string;
   currentPlanId?: string;
+
+  // Streaming indicator state
+  streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
 
   // Tool execution state
   agent?: Agent;
@@ -69,6 +93,10 @@ export interface ChatStateStore extends ChatState {
   setStreaming: (isStreaming: boolean) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
+  appendToMessage: (messageId: string, role: Role, delta: string) => void;
+
+  // Streaming indicator actions
+  setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
 
   // State actions
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
@@ -96,6 +124,7 @@ export interface ChatStateStore extends ChatState {
   // Updates
   updateTask: (taskId: string, updates: Partial<TaskState>) => void;
   updatePlan: (planId: string, updates: Partial<PlanState>) => void;
+  updateStep: (stepId: string, updates: Partial<StepState>) => void;
 
   // Setup
   setAgent: (agent: Agent) => void;
@@ -110,9 +139,11 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   error: null,
   tasks: new Map(),
   plans: new Map(),
+  steps: new Map(),
   toolCalls: new Map(),
   currentTaskId: undefined,
   currentPlanId: undefined,
+  streamingIndicator: undefined,
 
   // Message actions
   addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
@@ -135,15 +166,49 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set({ error });
   },
 
+  setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => {
+    set({ streamingIndicator: indicator });
+  },
+
+  appendToMessage: (messageId: string, role: Role, delta: string) => {
+    set((state: ChatState) => {
+      const newState = { ...state };
+      const index = newState.messages.findIndex(
+        m => isDistriMessage(m) && (m as DistriMessage).id === messageId
+      );
+
+      if (index >= 0) {
+        const existing = newState.messages[index] as DistriMessage;
+        let textPart = existing.parts.find(p => p.type === 'text') as any;
+        if (!textPart) {
+          textPart = { type: 'text', text: '' };
+          existing.parts.push(textPart as any);
+        }
+        (textPart as any).text += delta;
+      } else {
+        const newMessage: DistriMessage = {
+          id: messageId,
+          role,
+          parts: delta ? [{ type: 'text', text: delta }] : [],
+        };
+        newState.messages.push(newMessage);
+      }
+
+      return newState;
+    });
+  },
+
   // State actions
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
     const timestamp = Date.now(); // Default fallback
 
+    // console.log('processMessage', isDistriEvent(message) ? message.type : 'non-event', 'isDistriEvent:', isDistriEvent(message));
     // Process events based on interaction design
     if (isDistriEvent(message)) {
       switch (message.type) {
         case 'run_started':
           const taskId = `task_${Date.now()}`;
+          // console.log('Processing run_started event, creating task:', taskId);
           get().updateTask(taskId, {
             id: taskId,
             title: 'Agent Run',
@@ -152,6 +217,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             metadata: message.data,
           });
           set({ currentTaskId: taskId });
+          // Show "Agent is starting..." indicator
+          get().setStreamingIndicator('agent_starting');
+          // console.log('Set streamingIndicator to agent_starting');
           break;
 
         case 'run_finished':
@@ -162,6 +230,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          // Clear all indicators and stop loading when run is finished
+          get().setStreamingIndicator(undefined);
+          set({ isLoading: false });
           break;
 
         case 'run_error':
@@ -173,10 +244,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               error: message.data?.message || 'Unknown error',
             });
           }
+          // Clear all indicators and stop loading when run errors
+          get().setStreamingIndicator(undefined);
+          set({ isLoading: false, isStreaming: false });
           break;
 
         case 'plan_started':
           const planId = `plan_${Date.now()}`;
+          // console.log('Processing plan_started event, creating plan:', planId);
           get().updatePlan(planId, {
             id: planId,
             runId: get().currentTaskId,
@@ -185,6 +260,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             startTime: timestamp,
           });
           set({ currentPlanId: planId });
+          // Switch to planning indicator and stop streaming
+          get().setStreamingIndicator('planning');
+          console.log('Set streamingIndicator to planning');
+          set({ isStreaming: false });
           break;
 
         case 'plan_finished':
@@ -195,6 +274,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          // Clear planning indicator and stop loading when plan is finished
+          get().setStreamingIndicator(undefined);
+          set({ isLoading: false });
           break;
 
         case 'tool_call_start':
@@ -215,6 +297,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               startTime: timestamp,
             });
           }
+          // Stop streaming when tool calls start - the agent is now executing tools, not generating text
+          set({ isStreaming: false });
           break;
 
         case 'tool_call_end':
@@ -225,18 +309,49 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          // Check if all tool calls are completed
+          const pendingToolCalls = get().getPendingToolCalls();
+          if (pendingToolCalls.length === 0) {
+            // All tool calls completed, agent can continue
+            set({ isLoading: false });
+          }
           break;
 
         case 'text_message_start':
-          // Handle text message start - could be used for typing indicators
+          get().appendToMessage(message.data.message_id, message.data.role, '');
+          // Start generating response indicator and streaming
+          set({ isStreaming: true });
           break;
 
         case 'text_message_content':
-          // Handle streaming content - could be used for real-time updates
+          get().appendToMessage(message.data.message_id, 'assistant', message.data.delta);
+
+          get().setStreamingIndicator(undefined);
+
           break;
 
         case 'text_message_end':
-          // Handle text message completion
+          // Stop generating response indicator and streaming when text message generation ends
+          set({ isStreaming: false });
+          break;
+
+        case 'step_started':
+          const stepId = message.data.step_id;
+          get().updateStep(stepId, {
+            id: stepId,
+            title: message.data.step_title,
+            index: message.data.step_index,
+            status: 'running',
+            startTime: timestamp,
+          });
+          break;
+
+        case 'step_completed':
+          const completedStepId = message.data.step_id;
+          get().updateStep(completedStepId, {
+            status: 'completed',
+            endTime: timestamp,
+          });
           break;
 
         case 'agent_handover':
@@ -272,6 +387,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               });
             }
           }
+          // Stop streaming when LLM response is received (agent is now executing tools)
+          set({ isStreaming: false });
           break;
 
         case 'tool_results':
@@ -294,6 +411,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                 });
               });
             }
+          }
+          // Check if all tool calls are completed after results
+          const pendingToolCalls = get().getPendingToolCalls();
+          if (pendingToolCalls.length === 0) {
+            // All tool calls completed, agent can continue
+            set({ isLoading: false });
           }
           break;
 
@@ -470,9 +593,11 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       messages: [],
       tasks: new Map(),
       plans: new Map(),
+      steps: new Map(),
       toolCalls: new Map(),
       currentTaskId: undefined,
       currentPlanId: undefined,
+      streamingIndicator: undefined,
     });
   },
 
@@ -495,7 +620,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   getCurrentTask: () => {
     const state = get();
     if (!state.currentTaskId) return null;
-    return state.tasks.get(state.currentTaskId) || null;
+    const task = state.tasks.get(state.currentTaskId);
+    return task || null;
   },
 
   getCurrentPlan: () => {
@@ -523,9 +649,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set((state: ChatState) => {
       const newState = { ...state };
       const existingTask = newState.tasks.get(taskId);
-      if (existingTask) {
-        newState.tasks.set(taskId, { ...existingTask, ...updates });
-      }
+      const taskToUpdate = existingTask || ({ id: taskId } as TaskState);
+      newState.tasks.set(taskId, { ...taskToUpdate, ...updates });
       return newState;
     });
   },
@@ -533,9 +658,18 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   updatePlan: (planId: string, updates: Partial<PlanState>) => {
     set((state: ChatState) => {
       const newState = { ...state };
-      const existingPlan = newState.plans.get(planId);
-      if (existingPlan) {
-        newState.plans.set(planId, { ...existingPlan, ...updates });
+      const existingPlan = newState.plans.get(planId) || ({ id: planId, steps: [], status: 'pending' } as PlanState);
+      newState.plans.set(planId, { ...existingPlan, ...updates });
+      return newState;
+    });
+  },
+
+  updateStep: (stepId: string, updates: Partial<StepState>) => {
+    set((state: ChatState) => {
+      const newState = { ...state };
+      const existingStep = newState.steps.get(stepId);
+      if (existingStep) {
+        newState.steps.set(stepId, { ...existingStep, ...updates });
       }
       return newState;
     });

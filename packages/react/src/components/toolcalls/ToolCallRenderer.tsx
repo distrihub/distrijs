@@ -1,4 +1,3 @@
-import React from 'react';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Clock, CheckCircle, XCircle, Play } from 'lucide-react';
@@ -11,18 +10,18 @@ interface ToolCallRendererProps {
 export function ToolCallRenderer({ toolCall, toolCallState }: ToolCallRendererProps) {
   const getStatusIcon = () => {
     if (!toolCallState) {
-      return <Clock className="w-4 h-4 text-yellow-500" />;
+      return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
 
     switch (toolCallState.status) {
       case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-primary" />;
       case 'error':
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-destructive" />;
       case 'running':
-        return <Play className="w-4 h-4 text-blue-500" />;
+        return <Play className="w-4 h-4 text-primary" />;
       default:
-        return <Clock className="w-4 h-4 text-yellow-500" />;
+        return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -45,18 +44,18 @@ export function ToolCallRenderer({ toolCall, toolCallState }: ToolCallRendererPr
 
   const getStatusColor = () => {
     if (!toolCallState) {
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-muted text-muted-foreground';
     }
 
     switch (toolCallState.status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-primary/10 text-primary';
       case 'error':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive/10 text-destructive';
       case 'running':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -71,7 +70,7 @@ export function ToolCallRenderer({ toolCall, toolCallState }: ToolCallRendererPr
               {getStatusText()}
             </Badge>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             ID: {toolCall.tool_call_id}
           </div>
         </div>

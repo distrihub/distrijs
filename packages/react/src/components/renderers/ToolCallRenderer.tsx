@@ -19,19 +19,17 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
   isExpanded,
   onToggle,
   className = '',
-  avatar,
-  name = "Assistant"
 }) => {
   const getStatusIcon = () => {
     switch (toolCall.status) {
       case 'pending':
-        return <Clock className="h-3 w-3 text-yellow-500" />;
+        return <Clock className="h-3 w-3 text-muted-foreground" />;
       case 'running':
-        return <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />;
+        return <Loader2 className="h-3 w-3 text-primary animate-spin" />;
       case 'completed':
-        return <CheckCircle className="h-3 w-3 text-green-500" />;
+        return <CheckCircle className="h-3 w-3 text-primary" />;
       case 'error':
-        return <XCircle className="h-3 w-3 text-red-500" />;
+        return <XCircle className="h-3 w-3 text-destructive" />;
       default:
         return <Clock className="h-3 w-3 text-muted-foreground" />;
     }
@@ -56,15 +54,8 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
     toolCall.status === 'completed' || toolCall.status === 'error';
 
   return (
-    <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
-      <Avatar className="h-8 w-8">
-        <AvatarFallback className="bg-blue-100 text-blue-600">
-          {avatar || <Bot className="h-4 w-4" />}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-foreground mb-2">{name}</div>
-
+    <div className={`flex items-start gap-4 py-6 ${className}`}>
+      <div className="flex-1 min-w-0 max-w-3xl">
         <div className="border rounded-lg bg-background overflow-hidden">
           {/* Tool Call Header */}
           <div className="p-3 border-b border-border">
@@ -85,7 +76,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
                     <div className="h-3 w-3" />
                   )}
                 </button>
-                <Wrench className="h-4 w-4 text-green-500" />
+                <Wrench className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">
                   {toolCall.tool_name}
                 </span>
@@ -119,8 +110,8 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
             <div className="p-3 bg-muted/30">
               {toolCall.error && (
                 <div className="mb-3">
-                  <div className="text-xs text-red-600 font-medium mb-1">Error:</div>
-                  <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                  <div className="text-xs text-destructive font-medium mb-1">Error:</div>
+                  <div className="text-xs text-destructive bg-destructive/10 p-2 rounded border border-destructive/20">
                     {toolCall.error}
                   </div>
                 </div>

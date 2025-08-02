@@ -13,32 +13,32 @@ interface TaskRendererProps {
   onToolResult?: (toolCallId: string, result: any) => void;
 }
 
-export function TaskRenderer({ task, toolCallStates, className = '', onToolResult }: TaskRendererProps) {
+export function TaskRenderer({ task, toolCallStates, className = '', onToolResult: _onToolResult }: TaskRendererProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getStatusIcon = () => {
     switch (task.status) {
       case 'running':
-        return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />;
+        return <Loader2 className="w-4 h-4 animate-spin text-primary" />;
       case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-primary" />;
       case 'failed':
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-destructive" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-500" />;
+        return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
   const getStatusColor = () => {
     switch (task.status) {
       case 'running':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-primary/10 text-primary';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive/10 text-destructive';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -71,7 +71,7 @@ export function TaskRenderer({ task, toolCallStates, className = '', onToolResul
               </Button>
             )}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {task.startTime && new Date(task.startTime).toLocaleTimeString()}
           </div>
         </div>
@@ -108,9 +108,9 @@ export function TaskRenderer({ task, toolCallStates, className = '', onToolResul
                         Success
                       </Badge>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       <strong>Result:</strong>
-                      <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
                         {typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)}
                       </pre>
                     </div>
@@ -122,8 +122,8 @@ export function TaskRenderer({ task, toolCallStates, className = '', onToolResul
 
           {/* Error */}
           {task.error && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded">
-              <span className="text-xs text-red-600">{task.error}</span>
+            <div className="p-2 bg-destructive/10 border border-destructive/20 rounded">
+              <span className="text-xs text-destructive">{task.error}</span>
             </div>
           )}
         </CardContent>

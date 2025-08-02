@@ -11,7 +11,7 @@ import {
   convertDistriMessageToA2A,
 } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
-import { isDistriMessage, isDistriArtifact } from '../../core/src/types';
+import { isDistriMessage, isDistriArtifact, isDistriEvent } from '../../core/src/types';
 import { registerTools } from './hooks/registerTools';
 import { ChatStateStore, useChatStateStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
@@ -171,13 +171,18 @@ export function useChat({
   }, [threadId, agent?.id]);
 
   const handleStreamEvent = useCallback((event: DistriEvent | DistriMessage | DistriArtifact) => {
-    // Add message to ref and state
+    // Add event to ref
     allMessagesRef.current = [...allMessagesRef.current, event];
 
-    // Only add to chat state if it passes the filter
+    // Only process if it passes the filter
     if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
-      chatState.addMessage(event);
-      chatState.processMessage(event);
+      if (isDistriEvent(event) &&
+        (event.type === 'text_message_start' || event.type === 'text_message_content' || event.type === 'text_message_end')) {
+        chatState.processMessage(event);
+      } else {
+        chatState.addMessage(event);
+        chatState.processMessage(event);
+      }
     }
 
     // Handle tool calls and results automatically from artifacts
@@ -276,6 +281,7 @@ export function useChat({
     chatState.setLoading(true);
     chatState.setStreaming(true);
     chatState.setError(null);
+    chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -331,6 +337,7 @@ export function useChat({
     chatState.setLoading(true);
     chatState.setStreaming(true);
     chatState.setError(null);
+    chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -374,7 +381,10 @@ export function useChat({
       chatState.setError(error);
       onError?.(error);
     } finally {
-      chatState.setLoading(false);
+      // Only set loading to false if no pending tool calls
+      if (!chatState.hasPendingToolCalls()) {
+        chatState.setLoading(false);
+      }
       chatState.setStreaming(false);
       abortControllerRef.current = null;
     }
@@ -444,6 +454,7 @@ export function useChat({
   const clearMessages = useCallback(() => {
     allMessagesRef.current = [];
     chatState.clearMessages();
+    chatState.setStreamingIndicator(undefined);
   }, [chatState]);
 
   return {
