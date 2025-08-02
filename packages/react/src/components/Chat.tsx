@@ -3,6 +3,7 @@ import { DistriMessage, DistriEvent, DistriArtifact, isDistriEvent } from '@dist
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
+import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { useChatStateStore } from '../stores/chatStateStore';
 
 export interface ChatProps {
@@ -158,42 +159,42 @@ export function Chat({
     });
 
     const hasPlanStarted = messages.some(m => isDistriEvent(m) && m.type === 'plan_started');
-    if (currentPlan?.status === 'running' && !hasPlanStarted) {
+    const hasPlanFinished = messages.some(m => isDistriEvent(m) && m.type === 'plan_finished');
+    if (currentPlan?.status === 'running' && hasPlanStarted && !hasPlanFinished) {
       elements.push(
-        <MessageRenderer
+        <ThinkingRenderer
           key="planning"
-          message={{ type: 'plan_started', data: {} } as any}
-          index={messages.length}
-          chatState={chatState}
+          event={{ type: 'plan_started', data: {} } as DistriEvent}
         />
       );
     }
 
+    // Add thinking indicators at the end based on current state
     const hasRunStarted = messages.some(m => isDistriEvent(m) && m.type === 'run_started');
-    if (currentTask?.status === 'running' && !hasRunStarted) {
+    const hasRunFinished = messages.some(m => isDistriEvent(m) && m.type === 'run_finished');
+    const hasTextEnd = messages.some(m => isDistriEvent(m) && m.type === 'text_message_end');
+
+    // Show "Agent is starting..." when task is running and we have run_started but no run_finished
+    if (currentTask?.status === 'running' && hasRunStarted && !hasRunFinished && pendingToolCalls.length === 0) {
       elements.push(
-        <MessageRenderer
+        <ThinkingRenderer
           key="thinking-after-run"
-          message={{ type: 'run_started', data: {} } as any}
-          index={messages.length + 1}
-          chatState={chatState}
+          event={{ type: 'run_started', data: {} } as DistriEvent}
         />
       );
     }
 
-    const hasTextStart = messages.some(m => isDistriEvent(m) && m.type === 'text_message_start');
-    const shouldShowStreamingIndicator = (isStreaming || isLoading) &&
+    // Show "Generating response..." when streaming and no text end, and no plan running, and no pending tool calls
+    const shouldShowStreamingIndicator = isStreaming &&
+      !hasTextEnd &&
       (!currentPlan || currentPlan.status !== 'running') &&
-      pendingToolCalls.length === 0 &&
-      !hasTextStart;
+      pendingToolCalls.length === 0;
 
     if (shouldShowStreamingIndicator) {
       elements.push(
-        <MessageRenderer
+        <ThinkingRenderer
           key="generating"
-          message={{ type: 'text_message_start', data: { message_id: 'streaming', role: 'assistant' } } as any}
-          index={messages.length + 2}
-          chatState={chatState}
+          event={{ type: 'text_message_start', data: { message_id: 'streaming', role: 'assistant' } } as DistriEvent}
         />
       );
     }
@@ -203,27 +204,29 @@ export function Chat({
 
   return (
     <div className={`flex flex-col h-full ${getThemeClasses()}`}>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-background text-foreground">
-        {/* Render all messages and state */}
-        {renderMessages()}
+      <div className="flex-1 overflow-y-auto bg-background text-foreground">
+        {/* Center container with max width and padding like ChatGPT */}
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          {/* Render all messages and state */}
+          {renderMessages()}
 
-        {/* Debug info - hidden by default */}
-        {process.env.NODE_ENV === 'development' && false && (
-          <div className="mt-8 p-4 bg-muted rounded-lg text-xs">
-            <h4 className="font-bold mb-2">Debug Info:</h4>
-            <div>Messages: {messages.length}</div>
-            <div>Tool Calls: {toolCalls.size}</div>
-            <div>Is Streaming: {isStreaming ? 'Yes' : 'No'}</div>
-            <div>Is Loading: {isLoading ? 'Yes' : 'No'}</div>
-            <div>Has Pending Tool Calls: {hasPendingToolCalls() ? 'Yes' : 'No'}</div>
-            <div>Current Plan: {currentPlan?.status || 'None'}</div>
-            <div>Pending Tool Calls: {pendingToolCalls.length}</div>
+          {/* Debug info - hidden by default */}
+          {process.env.NODE_ENV === 'development' && false && (
+            <div className="mt-8 p-4 bg-muted rounded-lg text-xs">
+              <h4 className="font-bold mb-2">Debug Info:</h4>
+              <div>Messages: {messages.length}</div>
+              <div>Tool Calls: {toolCalls.size}</div>
+              <div>Is Streaming: {isStreaming ? 'Yes' : 'No'}</div>
+              <div>Is Loading: {isLoading ? 'Yes' : 'No'}</div>
+              <div>Has Pending Tool Calls: {hasPendingToolCalls() ? 'Yes' : 'No'}</div>
+              <div>Current Plan: {currentPlan?.status || 'None'}</div>
+              <div>Pending Tool Calls: {pendingToolCalls.length}</div>
 
-            {/* Example of how to access chat state for debugging */}
-            <div className="mt-4 p-2 bg-background rounded border">
-              <h5 className="font-bold mb-1">Chat State Access Example:</h5>
-              <pre className="text-xs">
-                {`// Access state directly from store (reactive):
+              {/* Example of how to access chat state for debugging */}
+              <div className="mt-4 p-2 bg-background rounded border">
+                <h5 className="font-bold mb-1">Chat State Access Example:</h5>
+                <pre className="text-xs">
+                  {`// Access state directly from store (reactive):
 const messages = useChatStateStore(state => state.messages);
 const toolCalls = useChatStateStore(state => state.toolCalls);
 const currentPlan = useChatStateStore(state => {
@@ -233,24 +236,27 @@ const currentPlan = useChatStateStore(state => {
 
 // For debugging, you can log the full state:
 console.log('Full chat state:', useChatStateStore.getState());`}
-              </pre>
+                </pre>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      <div className="border-t border-border p-4 bg-background">
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSend={() => handleSendMessage(input)}
-          onStop={handleStopStreaming}
-          placeholder="Type your message..."
-          disabled={isLoading || hasPendingToolCalls()}
-          isStreaming={isStreaming}
-        />
+      <div className="border-t border-border bg-background">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={() => handleSendMessage(input)}
+            onStop={handleStopStreaming}
+            placeholder="Type your message..."
+            disabled={isLoading || hasPendingToolCalls()}
+            isStreaming={isStreaming}
+          />
+        </div>
       </div>
 
       {error && (

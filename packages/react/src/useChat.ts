@@ -379,7 +379,10 @@ export function useChat({
       chatState.setError(error);
       onError?.(error);
     } finally {
-      chatState.setLoading(false);
+      // Only set loading to false if no pending tool calls
+      if (!chatState.hasPendingToolCalls()) {
+        chatState.setLoading(false);
+      }
       chatState.setStreaming(false);
       abortControllerRef.current = null;
     }

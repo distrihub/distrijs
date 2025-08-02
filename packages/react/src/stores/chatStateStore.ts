@@ -179,11 +179,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
     const timestamp = Date.now(); // Default fallback
 
+    console.log('processMessage', message, 'isDistriEvent:', isDistriEvent(message));
     // Process events based on interaction design
     if (isDistriEvent(message)) {
       switch (message.type) {
         case 'run_started':
           const taskId = `task_${Date.now()}`;
+          console.log('Processing run_started event, creating task:', taskId);
           get().updateTask(taskId, {
             id: taskId,
             title: 'Agent Run',
@@ -192,6 +194,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             metadata: message.data,
           });
           set({ currentTaskId: taskId });
+          console.log('Set currentTaskId to:', taskId);
           break;
 
         case 'run_finished':
@@ -202,6 +205,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          // Stop loading when run is finished
+          set({ isLoading: false });
           break;
 
         case 'run_error':
@@ -213,6 +218,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               error: message.data?.message || 'Unknown error',
             });
           }
+          // Stop loading when run errors
+          set({ isLoading: false, isStreaming: false });
           break;
 
         case 'plan_started':
@@ -225,6 +232,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             startTime: timestamp,
           });
           set({ currentPlanId: planId });
+          // Stop streaming when planning starts - the agent is now planning, not generating text
+          set({ isStreaming: false });
           break;
 
         case 'plan_finished':
@@ -235,6 +244,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          // Stop loading when plan is finished
+          set({ isLoading: false });
           break;
 
         case 'tool_call_start':
@@ -255,6 +266,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               startTime: timestamp,
             });
           }
+          // Stop streaming when tool calls start - the agent is now executing tools, not generating text
+          set({ isStreaming: false });
           break;
 
         case 'tool_call_end':
@@ -265,10 +278,18 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          // Check if all tool calls are completed
+          const pendingToolCalls = get().getPendingToolCalls();
+          if (pendingToolCalls.length === 0) {
+            // All tool calls completed, agent can continue
+            set({ isLoading: false });
+          }
           break;
 
         case 'text_message_start':
           get().appendToMessage(message.data.message_id, message.data.role, '');
+          // Start streaming when text message generation starts
+          set({ isStreaming: true });
           break;
 
         case 'text_message_content':
@@ -276,7 +297,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
 
         case 'text_message_end':
-          // Final text message event - nothing additional needed
+          // Stop streaming when text message generation ends
+          set({ isStreaming: false });
           break;
 
         case 'agent_handover':
@@ -312,6 +334,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               });
             }
           }
+          // Stop streaming when LLM response is received (agent is now executing tools)
+          set({ isStreaming: false });
           break;
 
         case 'tool_results':
@@ -334,6 +358,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                 });
               });
             }
+          }
+          // Check if all tool calls are completed after results
+          const pendingToolCalls = get().getPendingToolCalls();
+          if (pendingToolCalls.length === 0) {
+            // All tool calls completed, agent can continue
+            set({ isLoading: false });
           }
           break;
 
@@ -535,7 +565,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   getCurrentTask: () => {
     const state = get();
     if (!state.currentTaskId) return null;
-    return state.tasks.get(state.currentTaskId) || null;
+    const task = state.tasks.get(state.currentTaskId);
+    return task || null;
   },
 
   getCurrentPlan: () => {
@@ -562,8 +593,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   updateTask: (taskId: string, updates: Partial<TaskState>) => {
     set((state: ChatState) => {
       const newState = { ...state };
-      const existingTask = newState.tasks.get(taskId) || ({ id: taskId } as TaskState);
-      newState.tasks.set(taskId, { ...existingTask, ...updates });
+      const existingTask = newState.tasks.get(taskId);
+      const taskToUpdate = existingTask || ({ id: taskId } as TaskState);
+      newState.tasks.set(taskId, { ...taskToUpdate, ...updates });
       return newState;
     });
   },

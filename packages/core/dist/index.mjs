@@ -34,7 +34,7 @@ function isDistriMessage(event) {
   return "id" in event && "role" in event && "parts" in event;
 }
 function isDistriEvent(event) {
-  return "type" in event && "metadata" in event;
+  return "type" in event && "data" in event;
 }
 function isDistriPlan(event) {
   return "steps" in event && Array.isArray(event.steps);

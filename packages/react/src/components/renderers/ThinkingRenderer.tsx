@@ -44,14 +44,14 @@ export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
   const { icon, text } = getIconAndText();
 
   return (
-    <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
-      <Avatar className="h-8 w-8">
+    <div className={`flex items-start gap-4 py-6 ${className}`}>
+      <Avatar className="h-8 w-8 flex-shrink-0">
         <AvatarFallback className="bg-primary/10 text-primary">
           {avatar || <Bot className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-foreground mb-2">{name}</div>
+      <div className="flex-1 min-w-0 max-w-3xl">
+        <div className="text-sm font-medium text-foreground mb-3">{name}</div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {icon}
           <span>{text}</span>
