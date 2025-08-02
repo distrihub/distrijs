@@ -1,11 +1,11 @@
 import React from 'react';
 import { RefreshCw, Play, Bot } from 'lucide-react';
-import { DistriAgent } from '@distri/core';
+import { AgentDefinition } from '@distri/core';
 
 interface AgentListProps {
-  agents: DistriAgent[];
+  agents: AgentDefinition[];
   onRefresh: () => Promise<void>;
-  onStartChat: (agent: DistriAgent) => void;
+  onStartChat: (agent: AgentDefinition) => void;
 }
 
 const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat }) => {
