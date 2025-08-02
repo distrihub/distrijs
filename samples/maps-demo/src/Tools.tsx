@@ -104,6 +104,27 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
     } as DistriFnTool,
 
     {
+      name: 'search_places_text',
+      description: 'Search for places using a text query and automatically center the map',
+      type: 'function',
+      input_schema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query such as "restaurants in Kovan"' }
+        },
+        required: ['query']
+      },
+      handler: async (input: string) => {
+        const { query } = JSON.parse(input);
+        if (!query) {
+          return "Invalid input";
+        }
+        const result = await mapManagerRef.searchPlacesByText({ query });
+        return JSON.stringify(result);
+      }
+    } as DistriFnTool,
+
+    {
       name: 'clear_map',
       description: 'Clear all markers and directions from the map',
       type: 'function',

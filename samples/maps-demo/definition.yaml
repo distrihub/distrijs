@@ -48,7 +48,11 @@ tools:
   - name: search_places
     description: "Search for places near a location"
     external: true
-    
+
+  - name: search_places_text
+    description: "Search for places using a text query and center the map"
+    external: true
+
   - name: clear_map
     description: "Clear all markers and directions from the map"
     external: true

@@ -11,6 +11,7 @@ An interactive Google Maps integration sample for the Distri Framework, showcasi
 - 🧭 **Navigation Tools** - Get directions with multiple travel modes (driving, walking, biking, transit)
 - 📍 **Location Search** - Find and mark places on the map
 - 🔍 **Place Discovery** - Search for restaurants, gas stations, hotels, and more
+- 🧠 **Text Search** - Find places using natural language queries and automatically center the map
 - 🎯 **Map Control** - Programmatically control map center and zoom
 - 🎨 **Modern UI** - Clean, responsive interface using Tailwind CSS
 
@@ -24,6 +25,7 @@ The AI assistant has access to these Google Maps tools:
 | `add_marker` | Add a marker with title and description | `latitude`, `longitude`, `title`, `description` (optional) |
 | `get_directions` | Get directions between two locations | `origin`, `destination`, `travel_mode` (optional) |
 | `search_places` | Search for places near a location | `query`, `latitude`, `longitude`, `radius` (optional) |
+| `search_places_text` | Search for places using a text query and auto-center the map | `query` |
 | `clear_map` | Clear all markers and directions | None |
 
 ## Prerequisites
