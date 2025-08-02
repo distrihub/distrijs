@@ -1,53 +1,75 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type ChatTheme = 'light' | 'dark' | 'auto';
-
-export interface ChatConfig {
-  theme: ChatTheme;
-  showDebug: boolean;
-  autoScroll: boolean;
-  showTimestamps: boolean;
-  enableMarkdown: boolean;
-  enableCodeHighlighting: boolean;
+// Simple state types for context-level management
+export interface PlanState {
+  id: string;
+  steps: string[];
+  status: 'pending' | 'running' | 'completed' | 'failed';
 }
 
-export interface ChatContextValue {
-  config: ChatConfig;
-  updateConfig: (updates: Partial<ChatConfig>) => void;
+export interface TaskState {
+  id: string;
+  title: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startTime?: number;
+  endTime?: number;
 }
 
-const defaultConfig: ChatConfig = {
-  theme: 'auto',
-  showDebug: false,
-  autoScroll: true,
-  showTimestamps: true,
-  enableMarkdown: true,
-  enableCodeHighlighting: true,
+export interface RunState {
+  id: string;
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  startTime?: number;
+  endTime?: number;
+}
+
+interface ChatContextType {
+  // State management
+  planState: PlanState | null;
+  taskState: TaskState | null;
+  runState: RunState | null;
+
+  // State setters
+  setPlanState: (state: PlanState | null) => void;
+  setTaskState: (state: TaskState | null) => void;
+  setRunState: (state: RunState | null) => void;
+
+  // Utility functions
+  clearAllStates: () => void;
+}
+
+const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
+export const useChatConfig = () => {
+  const context = useContext(ChatContext);
+  if (!context) {
+    throw new Error('useChatConfig must be used within a ChatProvider');
+  }
+  return context;
 };
 
-const ChatContext = createContext<ChatContextValue | null>(null);
-
-export interface ChatProviderProps {
+interface ChatProviderProps {
   children: ReactNode;
-  config?: Partial<ChatConfig>;
 }
 
-export const ChatProvider: React.FC<ChatProviderProps> = ({ 
-  children, 
-  config: initialConfig = {} 
-}) => {
-  const [config, setConfig] = React.useState<ChatConfig>({
-    ...defaultConfig,
-    ...initialConfig,
-  });
+export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+  const [planState, setPlanState] = useState<PlanState | null>(null);
+  const [taskState, setTaskState] = useState<TaskState | null>(null);
+  const [runState, setRunState] = useState<RunState | null>(null);
 
-  const updateConfig = React.useCallback((updates: Partial<ChatConfig>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
-  }, []);
+  const clearAllStates = () => {
+    setPlanState(null);
+    setTaskState(null);
+    setRunState(null);
+  };
 
-  const value: ChatContextValue = {
-    config,
-    updateConfig,
+  const value: ChatContextType = {
+    planState,
+    taskState,
+    runState,
+    setPlanState,
+    setTaskState,
+    setRunState,
+    clearAllStates,
   };
 
   return (
@@ -57,22 +79,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({
   );
 };
 
-export const useChatConfig = (): ChatContextValue => {
-  const context = useContext(ChatContext);
-  if (!context) {
-    // Return default values if used outside provider
-    return {
-      config: defaultConfig,
-      updateConfig: () => {},
-    };
-  }
-  return context;
-};
-
 /**
  * Utility function to get theme classes for components
  */
-export const getThemeClasses = (theme: ChatTheme): string => {
+export const getThemeClasses = (theme: 'light' | 'dark' | 'auto'): string => {
   switch (theme) {
     case 'dark':
       return 'dark';
@@ -81,8 +91,8 @@ export const getThemeClasses = (theme: ChatTheme): string => {
     case 'auto':
     default:
       // Use system preference
-      return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches 
-        ? 'dark' 
+      return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
         : '';
   }
 };

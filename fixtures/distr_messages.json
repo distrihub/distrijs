@@ -1,0 +1,1602 @@
+[
+  {
+    "id": "ded6eeee-2381-487c-9a1d-53f2d8c0e141",
+    "role": "user",
+    "parts": [
+      {
+        "type": "text",
+        "text": "how many founders  of langdb"
+      }
+    ]
+  },
+  {
+    "type": "run_started",
+    "data": {}
+  },
+  {
+    "type": "plan_started",
+    "data": {
+      "initial_plan": true
+    }
+  },
+  {
+    "type": "plan_finished",
+    "data": {
+      "total_steps": 1
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "1",
+      "tool_call_name": "Generating response ...",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "46109c87-c333-422f-adc0-4db9f1905a55",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "46109c87-c333-422f-adc0-4db9f1905a55"
+    }
+  },
+  {
+    "id": "05e3aa61-477f-425f-a16c-e74946036c78",
+    "type": "llm_response",
+    "timestamp": 1754150259204,
+    "content": "",
+    "tool_calls": [
+      {
+        "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+        "tool_name": "search",
+        "input": "{\"query\":\"founders of langdb\"}"
+      }
+    ],
+    "step_id": "1",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "05e3aa61-477f-425f-a16c-e74946036c78",
+          "created_at": 1754150259204,
+          "updated_at": 1754150259204,
+          "type": "llm_response",
+          "step_id": "1",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+              "tool_name": "search",
+              "input": "{\"query\":\"founders of langdb\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150259204
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "1"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4",
+      "tool_call_name": "Executing tools: search",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+      "tool_call_name": "search",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": true
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR"
+    }
+  },
+  {
+    "id": "3bf55d58-0477-474d-913f-c017ba32f159",
+    "type": "tool_results",
+    "timestamp": 1754150261400,
+    "results": [
+      {
+        "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+        "tool_name": "search",
+        "result": "{\"answer\":null,\"results\":[{\"title\":\"LangDB - 2025 Company Profile, Funding, Competitors & Financials\",\"url\":\"https://tracxn.com/d/companies/langdb/__KDg8pxnpT9DX8wWalj8qaQnuKq9scgX7FuoCCt3-Pn4\",\"content\":\"LangDB is a funded company based in Singapore (Singapore), founded in 2022 by Matteo Pelati and Vivek G .. It operates as an Unified API platform that enables develop and manage large language models. The company has 29 active competitors, including 16 funded and 1 that has exited.\",\"score\":0.8914433,\"raw_content\":null},{\"title\":\"Vivek G. - Co-Founder at LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/vivekgudapuri\",\"content\":\"Vivek G.\\nCo-Founder at LangDB\\nSingapore\\n2294 connections, 2907 followers\\n\\n\\nAbout\\nExperienced technology professional with a demonstrated history of building and scaling platforms from scratch to success. <br><br>An entrepreneur, technology and product leader with strong expertise in areas of data and platform engineering. He has helped in bringing two startups to scale and recently co-founded LangDB.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb)  \\nJuly 2022 - Present\\nSingapore, Singapore\\nThe Fastest Enterprise AI Gateway. Built in Rust and Open Source.\\n\\n\\nEducation\\nN/A\",\"score\":0.7587435,\"raw_content\":null},{\"title\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact ...\",\"url\":\"https://rocketreach.co/matteo-pelati-email_37107114\",\"content\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact Information Image 2: Matteo Pelati Email & Phone Number Matteo Pelati Email & Phone Number Preparing profile… View Matteo's Email & Phone Number (It's Free) ### Matteo Pelati Work ### Matteo Pelati Skills With a robust skill set that includes Java, JavaScript, AJAX, Web Development, .NET and more. Matteo Pelati has 2 emails and 3 mobile phone numbers on RocketReach. Matteo Pelati Emails Matteo Pelati Phone Numbers Preparing profile… View Matteo's Email & Phone Number (It's Free) Image 5: Goldman Sachs Employee Matteo Pelati's profile photo ### Matteo Pelati #### Global Head of Product Data Engineering and Apac Head of Data Engineering at Goldman Sachs None   View \",\"score\":0.5769478,\"raw_content\":null},{\"title\":\"LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/company/langdb\",\"content\":\"Overview:\\nGovern, Secure, and Optimize AI Traffic across 150+ LLMs using OpenAI-Compatible APIs. Fastest enterprise ready AI Gateway fully built in Rust.\\n\\nWebsite: https://langdb.ai/\\nCrunchbase Url: N/A\\nLinkedin Url: https://www.linkedin.com/company/langdb\\n\\nIndustry:\\nTechnology, Information and Internet\\n\\nCompany size:\\n11-50 employees\\n15 associated members (LinkedIn members who’ve listed LangDB as their current workplace on their profile)\\n\\nFounded:\\n2022\\n\\nFunding:\\nLast Round Date: N/A\\nLast Round Type: N/A\\nTotal Rounds: N/A\\nLast Round Raised: N/A\\n\\nInvestors:\\nN/A\",\"score\":0.31526196,\"raw_content\":null},{\"title\":\"About LangDB\",\"url\":\"https://langdb.ai/about/\",\"content\":\"Image 1: logoDark *   AI Gateway Image 2: Matteo Pelati Connect on LinkedIn Veteran software architect and data engineering leader with 20+ years of experience. Expert in building large-scale data analytics and ML platforms. Former Head of APAC Data Engineering @ Goldman Sachs Former Head of Data Platform @ DBS Bank Image 3: Vivek Gudapuri Connect on LinkedIn Expert in building innovative platforms in data, logistics, and fintech. Chief Technology Officer @ OpenFabric Chief Technology Officer @ Yojee We're always looking for talented individuals to join our mission of revolutionizing how businesses interact with their data through AI. Image 4: Sequoia Capital Image 5: Gradient Ventures Image 6: January Capital Image 7: logoDark LinkedIn Follow us on LinkedIn\",\"score\":0.30966055,\"raw_content\":null}]}"
+      }
+    ],
+    "step_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "3bf55d58-0477-474d-913f-c017ba32f159",
+          "created_at": 1754150261400,
+          "updated_at": 1754150261400,
+          "type": "tool_results",
+          "step_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4",
+          "results": [
+            {
+              "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+              "tool_name": "search",
+              "result": "{\"answer\":null,\"results\":[{\"title\":\"LangDB - 2025 Company Profile, Funding, Competitors & Financials\",\"url\":\"https://tracxn.com/d/companies/langdb/__KDg8pxnpT9DX8wWalj8qaQnuKq9scgX7FuoCCt3-Pn4\",\"content\":\"LangDB is a funded company based in Singapore (Singapore), founded in 2022 by Matteo Pelati and Vivek G .. It operates as an Unified API platform that enables develop and manage large language models. The company has 29 active competitors, including 16 funded and 1 that has exited.\",\"score\":0.8914433,\"raw_content\":null},{\"title\":\"Vivek G. - Co-Founder at LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/vivekgudapuri\",\"content\":\"Vivek G.\\nCo-Founder at LangDB\\nSingapore\\n2294 connections, 2907 followers\\n\\n\\nAbout\\nExperienced technology professional with a demonstrated history of building and scaling platforms from scratch to success. <br><br>An entrepreneur, technology and product leader with strong expertise in areas of data and platform engineering. He has helped in bringing two startups to scale and recently co-founded LangDB.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb)  \\nJuly 2022 - Present\\nSingapore, Singapore\\nThe Fastest Enterprise AI Gateway. Built in Rust and Open Source.\\n\\n\\nEducation\\nN/A\",\"score\":0.7587435,\"raw_content\":null},{\"title\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact ...\",\"url\":\"https://rocketreach.co/matteo-pelati-email_37107114\",\"content\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact Information Image 2: Matteo Pelati Email & Phone Number Matteo Pelati Email & Phone Number Preparing profile… View Matteo's Email & Phone Number (It's Free) ### Matteo Pelati Work ### Matteo Pelati Skills With a robust skill set that includes Java, JavaScript, AJAX, Web Development, .NET and more. Matteo Pelati has 2 emails and 3 mobile phone numbers on RocketReach. Matteo Pelati Emails Matteo Pelati Phone Numbers Preparing profile… View Matteo's Email & Phone Number (It's Free) Image 5: Goldman Sachs Employee Matteo Pelati's profile photo ### Matteo Pelati #### Global Head of Product Data Engineering and Apac Head of Data Engineering at Goldman Sachs None   View \",\"score\":0.5769478,\"raw_content\":null},{\"title\":\"LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/company/langdb\",\"content\":\"Overview:\\nGovern, Secure, and Optimize AI Traffic across 150+ LLMs using OpenAI-Compatible APIs. Fastest enterprise ready AI Gateway fully built in Rust.\\n\\nWebsite: https://langdb.ai/\\nCrunchbase Url: N/A\\nLinkedin Url: https://www.linkedin.com/company/langdb\\n\\nIndustry:\\nTechnology, Information and Internet\\n\\nCompany size:\\n11-50 employees\\n15 associated members (LinkedIn members who’ve listed LangDB as their current workplace on their profile)\\n\\nFounded:\\n2022\\n\\nFunding:\\nLast Round Date: N/A\\nLast Round Type: N/A\\nTotal Rounds: N/A\\nLast Round Raised: N/A\\n\\nInvestors:\\nN/A\",\"score\":0.31526196,\"raw_content\":null},{\"title\":\"About LangDB\",\"url\":\"https://langdb.ai/about/\",\"content\":\"Image 1: logoDark *   AI Gateway Image 2: Matteo Pelati Connect on LinkedIn Veteran software architect and data engineering leader with 20+ years of experience. Expert in building large-scale data analytics and ML platforms. Former Head of APAC Data Engineering @ Goldman Sachs Former Head of Data Platform @ DBS Bank Image 3: Vivek Gudapuri Connect on LinkedIn Expert in building innovative platforms in data, logistics, and fintech. Chief Technology Officer @ OpenFabric Chief Technology Officer @ Yojee We're always looking for talented individuals to join our mission of revolutionizing how businesses interact with their data through AI. Image 4: Sequoia Capital Image 5: Gradient Ventures Image 6: January Capital Image 7: logoDark LinkedIn Follow us on LinkedIn\",\"score\":0.30966055,\"raw_content\":null}]}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150261400
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f",
+      "tool_call_name": "Tools executed: search",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "d5a46e54-69b8-4cf8-8546-5e38a16d26e5",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "d5a46e54-69b8-4cf8-8546-5e38a16d26e5"
+    }
+  },
+  {
+    "id": "dfc5a43f-8851-4960-b361-814834c09a45",
+    "type": "llm_response",
+    "timestamp": 1754150264350,
+    "content": "",
+    "tool_calls": [
+      {
+        "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+        "tool_name": "final",
+        "input": "{\"result\":\"The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.\",\"summary\":\"Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.\"}"
+      }
+    ],
+    "step_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "dfc5a43f-8851-4960-b361-814834c09a45",
+          "created_at": 1754150264350,
+          "updated_at": 1754150264350,
+          "type": "llm_response",
+          "step_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+              "tool_name": "final",
+              "input": "{\"result\":\"The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.\",\"summary\":\"Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150264350
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "3d5ce3f0-74de-4313-9222-623954eb2b82",
+      "tool_call_name": "Executing tools: final",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+      "tool_call_name": "final",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": true
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj"
+    }
+  },
+  {
+    "id": "c07861e2-12fe-4503-9e67-18b2e0202468",
+    "type": "tool_results",
+    "timestamp": 1754150264350,
+    "results": [
+      {
+        "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+        "tool_name": "final",
+        "result": {
+          "status": "completed",
+          "result": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+          "summary": "Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.",
+          "message": "Task completed successfully"
+        }
+      }
+    ],
+    "step_id": "3d5ce3f0-74de-4313-9222-623954eb2b82",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "c07861e2-12fe-4503-9e67-18b2e0202468",
+          "created_at": 1754150264350,
+          "updated_at": 1754150264350,
+          "type": "tool_results",
+          "step_id": "3d5ce3f0-74de-4313-9222-623954eb2b82",
+          "results": [
+            {
+              "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+              "tool_name": "final",
+              "result": {
+                "status": "completed",
+                "result": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+                "summary": "Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.",
+                "message": "Task completed successfully"
+              }
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150264350
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "3d5ce3f0-74de-4313-9222-623954eb2b82"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "848b6c95-ec6f-4c05-8080-744b14362729",
+      "tool_call_name": "Tools executed: final",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "12a80ede-4b37-4f14-b642-6718bad2d6a0",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ""
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "The"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " founders"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " of"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Lang"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "DB"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " are"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Matteo"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Pel"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ati"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Vive"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "k"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " G"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "."
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " ("
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "V"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ive"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "k"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Gud"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ap"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "uri"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ")."
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Matteo"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Pel"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ati"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " is"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " a"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " veteran"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " software"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " architect"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " data"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " engineering"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " leader"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ","
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Vive"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "k"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Gud"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ap"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "uri"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " is"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " an"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " expert"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " in"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " building"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " innovative"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " platforms"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " in"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " data"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ","
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " logistics"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ","
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " fintech"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "."
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "12a80ede-4b37-4f14-b642-6718bad2d6a0"
+    }
+  },
+  {
+    "id": "929cb375-de83-42ea-8e2d-b485c08fc7ee",
+    "type": "llm_response",
+    "timestamp": 1754150267042,
+    "content": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+    "tool_calls": [],
+    "step_id": "848b6c95-ec6f-4c05-8080-744b14362729",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "929cb375-de83-42ea-8e2d-b485c08fc7ee",
+          "created_at": 1754150267042,
+          "updated_at": 1754150267042,
+          "type": "llm_response",
+          "step_id": "848b6c95-ec6f-4c05-8080-744b14362729",
+          "content": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+          "tool_calls": [],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150267042
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "848b6c95-ec6f-4c05-8080-744b14362729"
+    }
+  },
+  {
+    "type": "run_finished",
+    "data": {}
+  },
+  {
+    "id": "ded6eeee-2381-487c-9a1d-53f2d8c0e141",
+    "role": "user",
+    "parts": [
+      {
+        "type": "text",
+        "text": "how many founders  of langdb"
+      }
+    ]
+  },
+  {
+    "type": "run_started",
+    "data": {}
+  },
+  {
+    "type": "plan_started",
+    "data": {
+      "initial_plan": true
+    }
+  },
+  {
+    "type": "plan_finished",
+    "data": {
+      "total_steps": 1
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "1",
+      "tool_call_name": "Generating response ...",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "46109c87-c333-422f-adc0-4db9f1905a55",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "46109c87-c333-422f-adc0-4db9f1905a55"
+    }
+  },
+  {
+    "id": "05e3aa61-477f-425f-a16c-e74946036c78",
+    "type": "llm_response",
+    "timestamp": 1754150259204,
+    "content": "",
+    "tool_calls": [
+      {
+        "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+        "tool_name": "search",
+        "input": "{\"query\":\"founders of langdb\"}"
+      }
+    ],
+    "step_id": "1",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "05e3aa61-477f-425f-a16c-e74946036c78",
+          "created_at": 1754150259204,
+          "updated_at": 1754150259204,
+          "type": "llm_response",
+          "step_id": "1",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+              "tool_name": "search",
+              "input": "{\"query\":\"founders of langdb\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150259204
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "1"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4",
+      "tool_call_name": "Executing tools: search",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+      "tool_call_name": "search",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": true
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR"
+    }
+  },
+  {
+    "id": "3bf55d58-0477-474d-913f-c017ba32f159",
+    "type": "tool_results",
+    "timestamp": 1754150261400,
+    "results": [
+      {
+        "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+        "tool_name": "search",
+        "result": "{\"answer\":null,\"results\":[{\"title\":\"LangDB - 2025 Company Profile, Funding, Competitors & Financials\",\"url\":\"https://tracxn.com/d/companies/langdb/__KDg8pxnpT9DX8wWalj8qaQnuKq9scgX7FuoCCt3-Pn4\",\"content\":\"LangDB is a funded company based in Singapore (Singapore), founded in 2022 by Matteo Pelati and Vivek G .. It operates as an Unified API platform that enables develop and manage large language models. The company has 29 active competitors, including 16 funded and 1 that has exited.\",\"score\":0.8914433,\"raw_content\":null},{\"title\":\"Vivek G. - Co-Founder at LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/vivekgudapuri\",\"content\":\"Vivek G.\\nCo-Founder at LangDB\\nSingapore\\n2294 connections, 2907 followers\\n\\n\\nAbout\\nExperienced technology professional with a demonstrated history of building and scaling platforms from scratch to success. <br><br>An entrepreneur, technology and product leader with strong expertise in areas of data and platform engineering. He has helped in bringing two startups to scale and recently co-founded LangDB.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb)  \\nJuly 2022 - Present\\nSingapore, Singapore\\nThe Fastest Enterprise AI Gateway. Built in Rust and Open Source.\\n\\n\\nEducation\\nN/A\",\"score\":0.7587435,\"raw_content\":null},{\"title\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact ...\",\"url\":\"https://rocketreach.co/matteo-pelati-email_37107114\",\"content\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact Information Image 2: Matteo Pelati Email & Phone Number Matteo Pelati Email & Phone Number Preparing profile… View Matteo's Email & Phone Number (It's Free) ### Matteo Pelati Work ### Matteo Pelati Skills With a robust skill set that includes Java, JavaScript, AJAX, Web Development, .NET and more. Matteo Pelati has 2 emails and 3 mobile phone numbers on RocketReach. Matteo Pelati Emails Matteo Pelati Phone Numbers Preparing profile… View Matteo's Email & Phone Number (It's Free) Image 5: Goldman Sachs Employee Matteo Pelati's profile photo ### Matteo Pelati #### Global Head of Product Data Engineering and Apac Head of Data Engineering at Goldman Sachs None   View \",\"score\":0.5769478,\"raw_content\":null},{\"title\":\"LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/company/langdb\",\"content\":\"Overview:\\nGovern, Secure, and Optimize AI Traffic across 150+ LLMs using OpenAI-Compatible APIs. Fastest enterprise ready AI Gateway fully built in Rust.\\n\\nWebsite: https://langdb.ai/\\nCrunchbase Url: N/A\\nLinkedin Url: https://www.linkedin.com/company/langdb\\n\\nIndustry:\\nTechnology, Information and Internet\\n\\nCompany size:\\n11-50 employees\\n15 associated members (LinkedIn members who’ve listed LangDB as their current workplace on their profile)\\n\\nFounded:\\n2022\\n\\nFunding:\\nLast Round Date: N/A\\nLast Round Type: N/A\\nTotal Rounds: N/A\\nLast Round Raised: N/A\\n\\nInvestors:\\nN/A\",\"score\":0.31526196,\"raw_content\":null},{\"title\":\"About LangDB\",\"url\":\"https://langdb.ai/about/\",\"content\":\"Image 1: logoDark *   AI Gateway Image 2: Matteo Pelati Connect on LinkedIn Veteran software architect and data engineering leader with 20+ years of experience. Expert in building large-scale data analytics and ML platforms. Former Head of APAC Data Engineering @ Goldman Sachs Former Head of Data Platform @ DBS Bank Image 3: Vivek Gudapuri Connect on LinkedIn Expert in building innovative platforms in data, logistics, and fintech. Chief Technology Officer @ OpenFabric Chief Technology Officer @ Yojee We're always looking for talented individuals to join our mission of revolutionizing how businesses interact with their data through AI. Image 4: Sequoia Capital Image 5: Gradient Ventures Image 6: January Capital Image 7: logoDark LinkedIn Follow us on LinkedIn\",\"score\":0.30966055,\"raw_content\":null}]}"
+      }
+    ],
+    "step_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "3bf55d58-0477-474d-913f-c017ba32f159",
+          "created_at": 1754150261400,
+          "updated_at": 1754150261400,
+          "type": "tool_results",
+          "step_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4",
+          "results": [
+            {
+              "tool_call_id": "call_2AvlXskEFi7wcYGOfi494HWR",
+              "tool_name": "search",
+              "result": "{\"answer\":null,\"results\":[{\"title\":\"LangDB - 2025 Company Profile, Funding, Competitors & Financials\",\"url\":\"https://tracxn.com/d/companies/langdb/__KDg8pxnpT9DX8wWalj8qaQnuKq9scgX7FuoCCt3-Pn4\",\"content\":\"LangDB is a funded company based in Singapore (Singapore), founded in 2022 by Matteo Pelati and Vivek G .. It operates as an Unified API platform that enables develop and manage large language models. The company has 29 active competitors, including 16 funded and 1 that has exited.\",\"score\":0.8914433,\"raw_content\":null},{\"title\":\"Vivek G. - Co-Founder at LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/in/vivekgudapuri\",\"content\":\"Vivek G.\\nCo-Founder at LangDB\\nSingapore\\n2294 connections, 2907 followers\\n\\n\\nAbout\\nExperienced technology professional with a demonstrated history of building and scaling platforms from scratch to success. <br><br>An entrepreneur, technology and product leader with strong expertise in areas of data and platform engineering. He has helped in bringing two startups to scale and recently co-founded LangDB.\\n\\n\\nExperience\\nCo-Founder\\n[LangDB](https://www.linkedin.com/company/langdb)  \\nJuly 2022 - Present\\nSingapore, Singapore\\nThe Fastest Enterprise AI Gateway. Built in Rust and Open Source.\\n\\n\\nEducation\\nN/A\",\"score\":0.7587435,\"raw_content\":null},{\"title\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact ...\",\"url\":\"https://rocketreach.co/matteo-pelati-email_37107114\",\"content\":\"Matteo Pelati Email & Phone Number | LangDB Co-Founder Contact Information Image 2: Matteo Pelati Email & Phone Number Matteo Pelati Email & Phone Number Preparing profile… View Matteo's Email & Phone Number (It's Free) ### Matteo Pelati Work ### Matteo Pelati Skills With a robust skill set that includes Java, JavaScript, AJAX, Web Development, .NET and more. Matteo Pelati has 2 emails and 3 mobile phone numbers on RocketReach. Matteo Pelati Emails Matteo Pelati Phone Numbers Preparing profile… View Matteo's Email & Phone Number (It's Free) Image 5: Goldman Sachs Employee Matteo Pelati's profile photo ### Matteo Pelati #### Global Head of Product Data Engineering and Apac Head of Data Engineering at Goldman Sachs None   View \",\"score\":0.5769478,\"raw_content\":null},{\"title\":\"LangDB - LinkedIn Singapore\",\"url\":\"https://sg.linkedin.com/company/langdb\",\"content\":\"Overview:\\nGovern, Secure, and Optimize AI Traffic across 150+ LLMs using OpenAI-Compatible APIs. Fastest enterprise ready AI Gateway fully built in Rust.\\n\\nWebsite: https://langdb.ai/\\nCrunchbase Url: N/A\\nLinkedin Url: https://www.linkedin.com/company/langdb\\n\\nIndustry:\\nTechnology, Information and Internet\\n\\nCompany size:\\n11-50 employees\\n15 associated members (LinkedIn members who’ve listed LangDB as their current workplace on their profile)\\n\\nFounded:\\n2022\\n\\nFunding:\\nLast Round Date: N/A\\nLast Round Type: N/A\\nTotal Rounds: N/A\\nLast Round Raised: N/A\\n\\nInvestors:\\nN/A\",\"score\":0.31526196,\"raw_content\":null},{\"title\":\"About LangDB\",\"url\":\"https://langdb.ai/about/\",\"content\":\"Image 1: logoDark *   AI Gateway Image 2: Matteo Pelati Connect on LinkedIn Veteran software architect and data engineering leader with 20+ years of experience. Expert in building large-scale data analytics and ML platforms. Former Head of APAC Data Engineering @ Goldman Sachs Former Head of Data Platform @ DBS Bank Image 3: Vivek Gudapuri Connect on LinkedIn Expert in building innovative platforms in data, logistics, and fintech. Chief Technology Officer @ OpenFabric Chief Technology Officer @ Yojee We're always looking for talented individuals to join our mission of revolutionizing how businesses interact with their data through AI. Image 4: Sequoia Capital Image 5: Gradient Ventures Image 6: January Capital Image 7: logoDark LinkedIn Follow us on LinkedIn\",\"score\":0.30966055,\"raw_content\":null}]}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150261400
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "dd9a1b31-ec85-48cb-af8d-d2fb66034df4"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f",
+      "tool_call_name": "Tools executed: search",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "d5a46e54-69b8-4cf8-8546-5e38a16d26e5",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "d5a46e54-69b8-4cf8-8546-5e38a16d26e5"
+    }
+  },
+  {
+    "id": "dfc5a43f-8851-4960-b361-814834c09a45",
+    "type": "llm_response",
+    "timestamp": 1754150264350,
+    "content": "",
+    "tool_calls": [
+      {
+        "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+        "tool_name": "final",
+        "input": "{\"result\":\"The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.\",\"summary\":\"Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.\"}"
+      }
+    ],
+    "step_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "dfc5a43f-8851-4960-b361-814834c09a45",
+          "created_at": 1754150264350,
+          "updated_at": 1754150264350,
+          "type": "llm_response",
+          "step_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f",
+          "content": "",
+          "tool_calls": [
+            {
+              "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+              "tool_name": "final",
+              "input": "{\"result\":\"The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.\",\"summary\":\"Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.\"}"
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150264350
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "e47421d5-fa9e-45c2-9b13-00420f1ba46f"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "3d5ce3f0-74de-4313-9222-623954eb2b82",
+      "tool_call_name": "Executing tools: final",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+      "tool_call_name": "final",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": true
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj"
+    }
+  },
+  {
+    "id": "c07861e2-12fe-4503-9e67-18b2e0202468",
+    "type": "tool_results",
+    "timestamp": 1754150264350,
+    "results": [
+      {
+        "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+        "tool_name": "final",
+        "result": {
+          "status": "completed",
+          "result": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+          "summary": "Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.",
+          "message": "Task completed successfully"
+        }
+      }
+    ],
+    "step_id": "3d5ce3f0-74de-4313-9222-623954eb2b82",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "c07861e2-12fe-4503-9e67-18b2e0202468",
+          "created_at": 1754150264350,
+          "updated_at": 1754150264350,
+          "type": "tool_results",
+          "step_id": "3d5ce3f0-74de-4313-9222-623954eb2b82",
+          "results": [
+            {
+              "tool_call_id": "call_unfwlitoLFxwtGZy5RMf6Ntj",
+              "tool_name": "final",
+              "result": {
+                "status": "completed",
+                "result": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+                "summary": "Identified the founders of LangDB as Matteo Pelati and Vivek Gudapuri from multiple sources including the company's about page and LinkedIn profiles.",
+                "message": "Task completed successfully"
+              }
+            }
+          ],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150264350
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "3d5ce3f0-74de-4313-9222-623954eb2b82"
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "848b6c95-ec6f-4c05-8080-744b14362729",
+      "tool_call_name": "Tools executed: final",
+      "parent_message_id": "63f3f10f-c229-46d7-97c8-6e5b960fa3f5",
+      "is_external": false
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "12a80ede-4b37-4f14-b642-6718bad2d6a0",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ""
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "The"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " founders"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " of"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Lang"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "DB"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " are"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Matteo"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Pel"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ati"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Vive"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "k"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " G"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "."
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " ("
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "V"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ive"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "k"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Gud"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ap"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "uri"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ")."
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Matteo"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Pel"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ati"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " is"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " a"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " veteran"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " software"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " architect"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " data"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " engineering"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " leader"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ","
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Vive"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "k"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " Gud"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "ap"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "uri"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " is"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " an"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " expert"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " in"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " building"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " innovative"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " platforms"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " in"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " data"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ","
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " logistics"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": ","
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " and"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": " fintech"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06",
+      "delta": "."
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "131cb729-69f8-44af-b928-44dc13c89c06"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "12a80ede-4b37-4f14-b642-6718bad2d6a0"
+    }
+  },
+  {
+    "id": "929cb375-de83-42ea-8e2d-b485c08fc7ee",
+    "type": "llm_response",
+    "timestamp": 1754150267042,
+    "content": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+    "tool_calls": [],
+    "step_id": "848b6c95-ec6f-4c05-8080-744b14362729",
+    "success": true,
+    "rejected": false,
+    "reason": null
+  },
+  {
+    "type": "run_started",
+    "data": {
+      "metadata": {
+        "type": "artifact",
+        "artifact": {
+          "id": "929cb375-de83-42ea-8e2d-b485c08fc7ee",
+          "created_at": 1754150267042,
+          "updated_at": 1754150267042,
+          "type": "llm_response",
+          "step_id": "848b6c95-ec6f-4c05-8080-744b14362729",
+          "content": "The founders of LangDB are Matteo Pelati and Vivek G. (Vivek Gudapuri). Matteo Pelati is a veteran software architect and data engineering leader, and Vivek Gudapuri is an expert in building innovative platforms in data, logistics, and fintech.",
+          "tool_calls": [],
+          "success": true,
+          "rejected": false,
+          "reason": null,
+          "timestamp": 1754150267042
+        }
+      }
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "848b6c95-ec6f-4c05-8080-744b14362729"
+    }
+  },
+  {
+    "type": "run_finished",
+    "data": {}
+  }
+]

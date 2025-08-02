@@ -1,12 +1,13 @@
 import { DistriClient } from './distri-client';
 import {
-  DistriAgent,
+  AgentDefinition,
   DistriBaseTool,
-  DistriMessage
+  DistriMessage,
+  DistriArtifact
 } from './types';
-import { convertA2AMessageToDistri } from './encoder';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { DistriEvent } from './events';
+import { decodeA2AStreamEvent } from './encoder';
 
 /**
  * Configuration for Agent invoke method
@@ -37,10 +38,10 @@ export interface InvokeResult {
  */
 export class Agent {
   private client: DistriClient;
-  private agentDefinition: DistriAgent;
+  private agentDefinition: AgentDefinition;
   private tools: Map<string, DistriBaseTool> = new Map();
 
-  constructor(agentDefinition: DistriAgent, client: DistriClient) {
+  constructor(agentDefinition: AgentDefinition, client: DistriClient) {
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
@@ -120,7 +121,7 @@ export class Agent {
   /**
    * Streaming invoke
    */
-  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriEvent | DistriMessage>> {
+  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriEvent | DistriMessage | DistriArtifact>> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
     console.log('enhancedParams', enhancedParams);
@@ -128,18 +129,9 @@ export class Agent {
 
     return (async function* () {
       for await (const event of a2aStream) {
-
-        if (event.kind === 'message') {
-          yield convertA2AMessageToDistri(event as Message);
-        }
-        else if (event.kind === 'status-update') {
-          yield event as unknown as DistriEvent;
-        }
-        else if (event.kind === 'artifact-update') {
-          yield event as unknown as DistriEvent;
-        }
-        else {
-          yield event as unknown as DistriEvent;
+        const converted = decodeA2AStreamEvent(event);
+        if (converted) {
+          yield converted;
         }
       }
     })();
@@ -167,8 +159,8 @@ export class Agent {
   /**
    * Create an agent instance from an agent ID
    */
-  static async create(agentId: string, client: DistriClient): Promise<Agent> {
-    const agentDefinition = await client.getAgent(agentId);
+  static async create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent> {
+    const agentDefinition = typeof agentIdOrDef === 'string' ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
     return new Agent(agentDefinition, client);
   }
 

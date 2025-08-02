@@ -22,20 +22,72 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  A2AProtocolError: () => A2AProtocolError,
   Agent: () => Agent,
+  ApiError: () => ApiError,
+  ConnectionError: () => ConnectionError,
   DistriClient: () => DistriClient,
+  DistriError: () => DistriError,
+  convertA2AArtifactToDistri: () => convertA2AArtifactToDistri,
   convertA2AMessageToDistri: () => convertA2AMessageToDistri,
   convertA2APartToDistri: () => convertA2APartToDistri,
+  convertA2AStatusUpdateToDistri: () => convertA2AStatusUpdateToDistri,
   convertDistriMessageToA2A: () => convertDistriMessageToA2A,
   convertDistriPartToA2A: () => convertDistriPartToA2A,
+  decodeA2AStreamEvent: () => decodeA2AStreamEvent,
   extractTextFromDistriMessage: () => extractTextFromDistriMessage,
   extractToolCallsFromDistriMessage: () => extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage: () => extractToolResultsFromDistriMessage,
+  isDistriArtifact: () => isDistriArtifact,
   isDistriEvent: () => isDistriEvent,
   isDistriMessage: () => isDistriMessage,
+  isDistriPlan: () => isDistriPlan,
+  processA2AMessagesData: () => processA2AMessagesData,
+  processA2AStreamData: () => processA2AStreamData,
   uuidv4: () => uuidv4
 });
 module.exports = __toCommonJS(index_exports);
+
+// src/types.ts
+var DistriError = class extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "DistriError";
+  }
+};
+var A2AProtocolError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "A2A_PROTOCOL_ERROR", details);
+    this.name = "A2AProtocolError";
+  }
+};
+var ApiError = class extends DistriError {
+  constructor(message, statusCode, details) {
+    super(message, "API_ERROR", details);
+    this.statusCode = statusCode;
+    this.name = "ApiError";
+  }
+};
+var ConnectionError = class extends DistriError {
+  constructor(message, details) {
+    super(message, "CONNECTION_ERROR", details);
+    this.name = "ConnectionError";
+  }
+};
+function isDistriMessage(event) {
+  return "id" in event && "role" in event && "parts" in event;
+}
+function isDistriEvent(event) {
+  return "type" in event && "data" in event;
+}
+function isDistriPlan(event) {
+  return "steps" in event && Array.isArray(event.steps);
+}
+function isDistriArtifact(event) {
+  return "type" in event && "timestamp" in event && "id" in event;
+}
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
 var A2AClient = class {
@@ -407,35 +459,6 @@ var A2AClient = class {
   }
 };
 
-// src/types.ts
-var DistriError = class extends Error {
-  constructor(message, code, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "DistriError";
-  }
-};
-var A2AProtocolError = class extends DistriError {
-  constructor(message, details) {
-    super(message, "A2A_PROTOCOL_ERROR", details);
-    this.name = "A2AProtocolError";
-  }
-};
-var ApiError = class extends DistriError {
-  constructor(message, statusCode, details) {
-    super(message, "API_ERROR", details);
-    this.statusCode = statusCode;
-    this.name = "ApiError";
-  }
-};
-function isDistriMessage(event) {
-  return "id" in event && "role" in event && "parts" in event;
-}
-function isDistriEvent(event) {
-  return "type" in event && "metadata" in event;
-}
-
 // src/encoder.ts
 function convertA2AMessageToDistri(a2aMessage) {
   const role = a2aMessage.role === "agent" ? "assistant" : "user";
@@ -445,6 +468,187 @@ function convertA2AMessageToDistri(a2aMessage) {
     parts: a2aMessage.parts.map(convertA2APartToDistri),
     created_at: a2aMessage.createdAt
   };
+}
+function convertA2AStatusUpdateToDistri(statusUpdate) {
+  if (!statusUpdate.metadata || !statusUpdate.metadata.type) {
+    return null;
+  }
+  const metadata = statusUpdate.metadata;
+  switch (metadata.type) {
+    case "run_started":
+      return {
+        type: "run_started",
+        data: {}
+      };
+    case "run_finished":
+      return {
+        type: "run_finished",
+        data: {}
+      };
+    case "plan_started":
+      return {
+        type: "plan_started",
+        data: {
+          initial_plan: metadata.initial_plan
+        }
+      };
+    case "plan_finished":
+      return {
+        type: "plan_finished",
+        data: {
+          total_steps: metadata.total_steps
+        }
+      };
+    case "step_started":
+      return {
+        type: "step_started",
+        data: {
+          step_id: metadata.step_id,
+          step_title: metadata.step_title || "Processing",
+          step_index: metadata.step_index || 0
+        }
+      };
+    case "step_completed":
+      return {
+        type: "step_completed",
+        data: {
+          step_id: metadata.step_id,
+          step_title: metadata.step_title || "Processing",
+          step_index: metadata.step_index || 0
+        }
+      };
+    case "tool_execution_start":
+      return {
+        type: "tool_call_start",
+        data: {
+          tool_call_id: metadata.tool_call_id,
+          tool_call_name: metadata.tool_call_name || "Tool",
+          parent_message_id: statusUpdate.taskId,
+          is_external: true
+        }
+      };
+    case "tool_execution_end":
+      return {
+        type: "tool_call_end",
+        data: {
+          tool_call_id: metadata.tool_call_id
+        }
+      };
+    case "text_message_start":
+      return {
+        type: "text_message_start",
+        data: {
+          message_id: metadata.message_id,
+          role: metadata.role === "assistant" ? "assistant" : "user"
+        }
+      };
+    case "text_message_content":
+      return {
+        type: "text_message_content",
+        data: {
+          message_id: metadata.message_id,
+          delta: metadata.delta || ""
+        }
+      };
+    case "text_message_end":
+      return {
+        type: "text_message_end",
+        data: {
+          message_id: metadata.message_id
+        }
+      };
+    default:
+      console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
+      return {
+        type: "run_started",
+        data: { metadata }
+      };
+  }
+}
+function convertA2AArtifactToDistri(artifact) {
+  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
+    return null;
+  }
+  const part = artifact.parts[0];
+  if (!part || part.kind !== "data" || !part.data) {
+    return null;
+  }
+  const data = part.data;
+  if (data.type === "llm_response") {
+    const executionResult2 = {
+      id: data.id || artifact.artifactId,
+      type: "llm_response",
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      content: data.content || "",
+      tool_calls: data.tool_calls || [],
+      step_id: data.step_id,
+      success: data.success,
+      rejected: data.rejected,
+      reason: data.reason
+    };
+    return executionResult2;
+  }
+  if (data.type === "tool_results") {
+    const executionResult2 = {
+      id: data.id || artifact.artifactId,
+      type: "tool_results",
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      results: data.results || [],
+      step_id: data.step_id,
+      success: data.success,
+      rejected: data.rejected,
+      reason: data.reason
+    };
+    return executionResult2;
+  }
+  const executionResult = {
+    id: artifact.artifactId,
+    type: "artifact",
+    timestamp: Date.now(),
+    data,
+    artifactId: artifact.artifactId,
+    name: artifact.name || "",
+    description: artifact.description || null
+  };
+  return executionResult;
+}
+function decodeA2AStreamEvent(event) {
+  if (event.jsonrpc && event.result) {
+    return decodeA2AStreamEvent(event.result);
+  }
+  if (event.kind === "message") {
+    return convertA2AMessageToDistri(event);
+  }
+  if (event.kind === "status-update") {
+    return convertA2AStatusUpdateToDistri(event);
+  }
+  if (event.kind === "artifact-update") {
+    return convertA2AArtifactToDistri(event);
+  }
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
+  }
+  return null;
+}
+function processA2AStreamData(streamData) {
+  const results = [];
+  for (const item of streamData) {
+    const converted = decodeA2AStreamEvent(item);
+    if (converted) {
+      results.push(converted);
+    }
+  }
+  return results;
+}
+function processA2AMessagesData(data) {
+  const results = [];
+  for (const item of data) {
+    if (item.kind === "message") {
+      const distriMessage = convertA2AMessageToDistri(item);
+      results.push(distriMessage);
+    }
+  }
+  return results;
 }
 function convertA2APartToDistri(a2aPart) {
   switch (a2aPart.kind) {
@@ -944,14 +1148,9 @@ var Agent = class _Agent {
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
     return async function* () {
       for await (const event of a2aStream) {
-        if (event.kind === "message") {
-          yield convertA2AMessageToDistri(event);
-        } else if (event.kind === "status-update") {
-          yield event;
-        } else if (event.kind === "artifact-update") {
-          yield event;
-        } else {
-          yield event;
+        const converted = decodeA2AStreamEvent(event);
+        if (converted) {
+          yield converted;
         }
       }
     }();
@@ -976,8 +1175,8 @@ var Agent = class _Agent {
   /**
    * Create an agent instance from an agent ID
    */
-  static async create(agentId, client) {
-    const agentDefinition = await client.getAgent(agentId);
+  static async create(agentIdOrDef, client) {
+    const agentDefinition = typeof agentIdOrDef === "string" ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
     return new _Agent(agentDefinition, client);
   }
   /**
@@ -990,17 +1189,28 @@ var Agent = class _Agent {
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  A2AProtocolError,
   Agent,
+  ApiError,
+  ConnectionError,
   DistriClient,
+  DistriError,
+  convertA2AArtifactToDistri,
   convertA2AMessageToDistri,
   convertA2APartToDistri,
+  convertA2AStatusUpdateToDistri,
   convertDistriMessageToA2A,
   convertDistriPartToA2A,
+  decodeA2AStreamEvent,
   extractTextFromDistriMessage,
   extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage,
+  isDistriArtifact,
   isDistriEvent,
   isDistriMessage,
+  isDistriPlan,
+  processA2AMessagesData,
+  processA2AStreamData,
   uuidv4
 });
 //# sourceMappingURL=index.js.map
