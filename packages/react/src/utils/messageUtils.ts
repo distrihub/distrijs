@@ -1,6 +1,6 @@
 // Utility functions for message handling
 
-import { DistriStreamEvent, isDistriMessage } from "@distri/core";
+import { DistriStreamEvent, isDistriMessage, isDistriArtifact } from "@distri/core";
 
 /**
  * Utility function to extract text content from message parts
@@ -28,13 +28,12 @@ export const extractTextFromMessage = (message: DistriStreamEvent): string => {
 export const shouldDisplayMessage = (message: DistriStreamEvent, showDebugMessages: boolean = false): boolean => {
   if (!message) return false;
 
-  if (isDistriMessage(message)) {
-    // Always show user messages with content
-    if (message.role === 'user') {
-      const textContent = extractTextFromMessage(message);
-      return textContent.trim().length > 0;
-    }
+  // Always display artifacts
+  if (isDistriArtifact(message)) {
+    return true;
+  }
 
+  if (isDistriMessage(message)) {
     // Check if message has text content
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;

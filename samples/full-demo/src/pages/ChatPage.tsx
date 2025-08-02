@@ -1,4 +1,4 @@
-import { DistriAgent } from "@distri/react";
+import { AgentDefinition } from "@distri/react";
 import EnhancedChat from "../components/Chat";
 
 const EmptyAgent = () => {
@@ -20,7 +20,7 @@ export default function ChatPage({
   selectedThreadId,
   onThreadUpdate
 }: {
-  selectedAgent: DistriAgent | null;
+  selectedAgent: AgentDefinition | null;
   selectedThreadId: string;
   onThreadUpdate: (threadId: string) => void;
 }) {

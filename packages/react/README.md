@@ -180,7 +180,7 @@ Then add a custom renderer in `MessageComponents.tsx`:
 ## Hooks
 
 - `useAgent` - Manage a single agent
-- `useAgents` - List available agents  
+- `useAgentDefinitions` - List available agents  
 - `useChat` - Chat functionality with automatic tool call state management
 - `useThreads` - Thread management
 - `useTools` - Tool registration and management

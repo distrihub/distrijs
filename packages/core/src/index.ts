@@ -1,72 +1,21 @@
-// Core client
-export { DistriClient } from './distri-client';
-export { Agent } from './agent';
-export type { InvokeConfig, InvokeResult } from './agent';
-
-// All types
-export type {
-  // Core types
-  DistriAgent,
-  DistriBaseTool,
-  DistriFnTool,
-  ToolCall,
-  ToolResult,
-  ModelSettings,
-  McpDefinition,
-  McpServerType,
-  ModelProvider,
-  DistriThread,
-  Thread,
-  ChatProps,
-  ConnectionStatus,
-  DistriClientConfig,
-
-  // New Distri message types
-  DistriMessage,
-  DistriPart,
-  MessageRole,
-  CodeObservationPart,
-  ImagePart,
-  DataPart,
-  ToolCallPart,
-  ToolResultPart,
-  TextPart,
-  PlanPart,
-  FileType,
-  InvokeContext,
-  DistriStreamEvent,
-} from './types';
-
-export {
-  isDistriMessage,
-  isDistriEvent,
-} from './types';
-
-export type {
-  DistriEvent,
-  RunStartedEvent,
-  RunFinishedEvent,
-  RunErrorEvent,
-  TextMessageStartEvent,
-  TextMessageContentEvent,
-  TextMessageEndEvent,
-  ToolCallStartEvent,
-  ToolCallArgsEvent,
-  ToolCallEndEvent,
-  ToolCallResultEvent,
-  AgentHandoverEvent,
-} from './events';
-
-// Message converter utilities
+// Core exports
+export * from './types';
+export * from './events';
+export * from './distri-client';
+export * from './agent';
 export {
   convertA2AMessageToDistri,
-  convertDistriMessageToA2A,
+  convertA2AArtifactToDistri,
+  convertA2AStatusUpdateToDistri,
   convertA2APartToDistri,
+  convertDistriMessageToA2A,
   convertDistriPartToA2A,
   extractTextFromDistriMessage,
   extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage,
+  decodeA2AStreamEvent,
+  processA2AMessagesData,
+  processA2AStreamData,
 } from './encoder';
-
 
 export { uuidv4 } from './distri-client';
