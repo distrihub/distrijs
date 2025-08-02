@@ -9,7 +9,6 @@ import { PlanRenderer } from './PlanRenderer';
 import { ToolCallRenderer } from './ToolCallRenderer';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { DebugRenderer } from './DebugRenderer';
-import { ArtifactRenderer } from './ArtifactRenderer';
 
 export interface MessageRendererProps {
   message: DistriEvent | DistriMessage | DistriArtifact;
@@ -69,37 +68,33 @@ export function MessageRenderer({
 
     switch (event.type) {
       case 'run_started':
-        return (
-          <ThinkingRenderer
-            key={`run-started-${index}`}
-            type="thinking"
-          />
-        );
+        return <ThinkingRenderer key={`run-started-${index}`} event={event} />;
 
       case 'plan_started':
-        return (
-          <ThinkingRenderer
-            key={`plan-started-${index}`}
-            type="planning"
-          />
-        );
+        return event.data?.initial_plan ? (
+          <ThinkingRenderer key={`plan-started-${index}`} event={event} />
+        ) : null;
 
       case 'plan_finished':
         return (
-          <div key={`plan-finished-${index}`} className="p-3 bg-blue-50 border border-blue-200 rounded">
-            <div className="text-sm text-blue-800">
+          <div key={`plan-finished-${index}`} className="p-3 bg-primary/10 border border-primary/20 rounded">
+            <div className="text-sm text-primary">
               <strong>Plan ready:</strong> {event.data?.total_steps || 0} steps
             </div>
           </div>
         );
 
-      case 'text_message_start':
+      case 'plan_pruned':
         return (
-          <ThinkingRenderer
-            key={`text-start-${index}`}
-            type="generating"
-          />
+          <div key={`plan-pruned-${index}`} className="p-3 bg-muted rounded border">
+            <div className="text-sm text-muted-foreground">
+              Removed steps: {event.data?.removed_steps || '0'}
+            </div>
+          </div>
         );
+
+      case 'text_message_start':
+        return <ThinkingRenderer key={`text-start-${index}`} event={event} />;
 
       case 'text_message_content':
         // This is handled by the assistant message renderer
@@ -122,15 +117,15 @@ export function MessageRenderer({
       case 'tool_call_end':
         return (
           <div key={`tool-call-end-${index}`} className="flex items-center space-x-2 p-2 bg-muted rounded">
-            <span className="text-green-500">✅</span>
+            <span className="text-primary">✅</span>
             <span className="text-sm">Tool complete</span>
           </div>
         );
 
       case 'tool_call_result':
         return (
-          <div key={`tool-call-result-${index}`} className="p-3 bg-green-50 border border-green-200 rounded">
-            <div className="text-sm text-green-800">
+          <div key={`tool-call-result-${index}`} className="p-3 bg-primary/10 border border-primary/20 rounded">
+            <div className="text-sm text-primary">
               <strong>Tool result:</strong>
               <pre className="mt-1 text-xs overflow-x-auto">
                 {event.data?.result || 'No result'}
@@ -139,30 +134,48 @@ export function MessageRenderer({
           </div>
         );
 
+      case 'tool_rejected':
+        return (
+          <div key={`tool-rejected-${index}`} className="p-3 bg-destructive/10 border border-destructive/20 rounded">
+            <div className="text-sm text-destructive">
+              <strong>Tool rejected:</strong> {event.data?.reason || 'Unknown reason'}
+            </div>
+          </div>
+        );
+
       case 'agent_handover':
         return (
-          <div key={`handover-${index}`} className="p-3 bg-blue-50 border border-blue-200 rounded">
-            <div className="text-sm text-blue-800">
+          <div key={`handover-${index}`} className="p-3 bg-muted rounded border">
+            <div className="text-sm text-muted-foreground">
               <strong>Handover to:</strong> {event.data?.to_agent || 'unknown agent'}
+            </div>
+          </div>
+        );
+
+      case 'feedback_received':
+        return (
+          <div key={`feedback-${index}`} className="p-3 bg-muted rounded border">
+            <div className="text-sm text-muted-foreground">
+              You said: {event.data?.feedback || ''}
             </div>
           </div>
         );
 
       case 'run_finished':
         return (
-          <div key={`run-finished-${index}`} className="flex items-center space-x-2 p-2 bg-green-50 rounded">
-            <span className="text-green-500">✅</span>
+          <div key={`run-finished-${index}`} className="flex items-center space-x-2 p-2 bg-primary/10 rounded">
+            <span className="text-primary">✅</span>
             <span className="text-sm font-medium">Done</span>
           </div>
         );
 
       case 'run_error':
         return (
-          <div key={`run-error-${index}`} className="p-3 bg-red-50 border border-red-200 rounded">
-            <div className="text-sm text-red-800">
+          <div key={`run-error-${index}`} className="p-3 bg-destructive/10 border border-destructive/20 rounded">
+            <div className="text-sm text-destructive">
               <strong>Error:</strong> {event.data?.message || 'Unknown error occurred'}
             </div>
-            <button className="mt-2 text-xs text-red-600 underline">Retry</button>
+            <button className="mt-2 text-xs text-destructive underline">Retry</button>
           </div>
         );
 

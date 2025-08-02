@@ -24,17 +24,17 @@ export function ToolResultRenderer({
 }: ToolResultRendererProps) {
   const getStatusIcon = () => {
     if (success) {
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
+      return <CheckCircle className="w-4 h-4 text-primary" />;
     } else {
-      return <XCircle className="w-4 h-4 text-red-500" />;
+      return <XCircle className="w-4 h-4 text-destructive" />;
     }
   };
 
   const getStatusColor = () => {
     if (success) {
-      return 'bg-green-100 text-green-800';
+      return 'bg-primary/10 text-primary';
     } else {
-      return 'bg-red-100 text-red-800';
+      return 'bg-destructive/10 text-destructive';
     }
   };
 
@@ -55,7 +55,7 @@ export function ToolResultRenderer({
               {success ? 'Success' : 'Failed'}
             </Badge>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             ID: {toolCallId}
           </div>
         </div>
@@ -66,7 +66,7 @@ export function ToolResultRenderer({
         {result && (
           <div className="text-sm">
             <strong>Result:</strong>
-            <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto">
+            <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
               {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
             </pre>
           </div>
@@ -76,7 +76,7 @@ export function ToolResultRenderer({
         {error && (
           <div className="text-sm">
             <strong>Error:</strong>
-            <pre className="whitespace-pre-wrap text-xs bg-red-50 p-2 rounded mt-1 text-red-600">
+            <pre className="whitespace-pre-wrap text-xs bg-destructive/10 p-2 rounded mt-1 text-destructive">
               {error}
             </pre>
           </div>

@@ -1302,7 +1302,7 @@ var UserMessageRenderer = ({
 }) => {
   const content = extractContent(message);
   return /* @__PURE__ */ jsxs3("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx7(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx7(AvatarFallback, { className: "bg-green-100 text-green-600", children: avatar || /* @__PURE__ */ jsx7(User, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx7(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx7(AvatarFallback, { className: "bg-secondary text-secondary-foreground", children: avatar || /* @__PURE__ */ jsx7(User, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs3("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsx7("div", { className: "text-sm font-medium text-foreground mb-2", children: "You" }),
       /* @__PURE__ */ jsx7("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) })
@@ -1323,7 +1323,7 @@ var AssistantMessageRenderer = ({
   const content = extractContent(message);
   const isStreaming = chatState?.isStreaming || false;
   return /* @__PURE__ */ jsxs4("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx8(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx8(AvatarFallback, { className: "bg-blue-100 text-blue-600", children: avatar || /* @__PURE__ */ jsx8(Bot, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx8(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx8(AvatarFallback, { className: "bg-primary/10 text-primary", children: avatar || /* @__PURE__ */ jsx8(Bot, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs4("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsxs4("div", { className: "text-sm font-medium text-foreground mb-2 flex items-center gap-2", children: [
         name,
@@ -1349,7 +1349,7 @@ var ToolMessageRenderer = ({
 }) => {
   const content = extractContent(message);
   return /* @__PURE__ */ jsxs5("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx9(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx9(AvatarFallback, { className: "bg-orange-100 text-orange-600", children: avatar || /* @__PURE__ */ jsx9(Wrench, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx9(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx9(AvatarFallback, { className: "bg-accent text-accent-foreground", children: avatar || /* @__PURE__ */ jsx9(Wrench, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs5("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsx9("div", { className: "text-sm font-medium text-foreground mb-2", children: "Tool Response" }),
       /* @__PURE__ */ jsx9("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) })
@@ -1361,38 +1361,43 @@ var ToolMessageRenderer = ({
 import { Bot as Bot2, Brain, Sparkles, Loader2 } from "lucide-react";
 import { jsx as jsx10, jsxs as jsxs6 } from "react/jsx-runtime";
 var ThinkingRenderer = ({
-  type,
+  event,
   className = "",
   avatar,
   name = "Assistant"
 }) => {
-  const getIcon = () => {
-    switch (type) {
-      case "thinking":
-        return /* @__PURE__ */ jsx10(Brain, { className: "h-4 w-4 text-blue-500" });
-      case "planning":
-        return /* @__PURE__ */ jsx10(Sparkles, { className: "h-4 w-4 text-purple-500" });
-      case "generating":
-        return /* @__PURE__ */ jsx10(Loader2, { className: "h-4 w-4 text-green-500 animate-spin" });
+  const getIconAndText = () => {
+    switch (event.type) {
+      case "run_started":
+        return {
+          icon: /* @__PURE__ */ jsx10(Loader2, { className: "h-4 w-4 text-muted-foreground animate-spin" }),
+          text: "Agent is starting\u2026"
+        };
+      case "plan_started":
+        return {
+          icon: /* @__PURE__ */ jsx10(Sparkles, { className: "h-4 w-4 text-primary" }),
+          text: "Planning\u2026"
+        };
+      case "text_message_start":
+        return {
+          icon: /* @__PURE__ */ jsx10(Loader2, { className: "h-4 w-4 text-primary animate-spin" }),
+          text: "Generating response\u2026"
+        };
+      default:
+        return {
+          icon: /* @__PURE__ */ jsx10(Brain, { className: "h-4 w-4 text-muted-foreground" }),
+          text: "Thinking\u2026"
+        };
     }
   };
-  const getText = () => {
-    switch (type) {
-      case "thinking":
-        return "Thinking...";
-      case "planning":
-        return "Planning...";
-      case "generating":
-        return "Generating response...";
-    }
-  };
+  const { icon, text } = getIconAndText();
   return /* @__PURE__ */ jsxs6("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx10(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx10(AvatarFallback, { className: "bg-blue-100 text-blue-600", children: avatar || /* @__PURE__ */ jsx10(Bot2, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx10(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx10(AvatarFallback, { className: "bg-primary/10 text-primary", children: avatar || /* @__PURE__ */ jsx10(Bot2, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs6("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsx10("div", { className: "text-sm font-medium text-foreground mb-2", children: name }),
       /* @__PURE__ */ jsxs6("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
-        getIcon(),
-        /* @__PURE__ */ jsx10("span", { children: getText() })
+        icon,
+        /* @__PURE__ */ jsx10("span", { children: text })
       ] })
     ] })
   ] });
@@ -1409,7 +1414,7 @@ var PlanRenderer = ({
 }) => {
   const content = extractContent(message);
   return /* @__PURE__ */ jsxs7("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx11(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx11(AvatarFallback, { className: "bg-blue-100 text-blue-600", children: avatar || /* @__PURE__ */ jsx11(Brain2, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx11(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx11(AvatarFallback, { className: "bg-primary/10 text-primary", children: avatar || /* @__PURE__ */ jsx11(Brain2, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs7("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsx11("div", { className: "text-sm font-medium text-foreground mb-2", children: "Plan" }),
       /* @__PURE__ */ jsx11("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) })
@@ -1432,13 +1437,13 @@ var ToolCallRenderer = ({
   const getStatusIcon = () => {
     switch (toolCall.status) {
       case "pending":
-        return /* @__PURE__ */ jsx12(Clock, { className: "h-3 w-3 text-yellow-500" });
+        return /* @__PURE__ */ jsx12(Clock, { className: "h-3 w-3 text-muted-foreground" });
       case "running":
-        return /* @__PURE__ */ jsx12(Loader22, { className: "h-3 w-3 text-blue-500 animate-spin" });
+        return /* @__PURE__ */ jsx12(Loader22, { className: "h-3 w-3 text-primary animate-spin" });
       case "completed":
-        return /* @__PURE__ */ jsx12(CheckCircle2, { className: "h-3 w-3 text-green-500" });
+        return /* @__PURE__ */ jsx12(CheckCircle2, { className: "h-3 w-3 text-primary" });
       case "error":
-        return /* @__PURE__ */ jsx12(XCircle2, { className: "h-3 w-3 text-red-500" });
+        return /* @__PURE__ */ jsx12(XCircle2, { className: "h-3 w-3 text-destructive" });
       default:
         return /* @__PURE__ */ jsx12(Clock, { className: "h-3 w-3 text-muted-foreground" });
     }
@@ -1459,7 +1464,7 @@ var ToolCallRenderer = ({
   };
   const canCollapse = toolCall.result !== void 0 || toolCall.error !== void 0 || toolCall.status === "completed" || toolCall.status === "error";
   return /* @__PURE__ */ jsxs8("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx12(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx12(AvatarFallback, { className: "bg-blue-100 text-blue-600", children: avatar || /* @__PURE__ */ jsx12(Bot3, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx12(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx12(AvatarFallback, { className: "bg-primary/10 text-primary", children: avatar || /* @__PURE__ */ jsx12(Bot3, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs8("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsx12("div", { className: "text-sm font-medium text-foreground mb-2", children: name }),
       /* @__PURE__ */ jsxs8("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
@@ -1475,7 +1480,7 @@ var ToolCallRenderer = ({
                   children: canCollapse ? isExpanded ? /* @__PURE__ */ jsx12(ChevronDown, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ jsx12(ChevronRight, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ jsx12("div", { className: "h-3 w-3" })
                 }
               ),
-              /* @__PURE__ */ jsx12(Wrench2, { className: "h-4 w-4 text-green-500" }),
+              /* @__PURE__ */ jsx12(Wrench2, { className: "h-4 w-4 text-primary" }),
               /* @__PURE__ */ jsx12("span", { className: "text-sm font-medium text-foreground", children: toolCall.tool_name })
             ] }),
             /* @__PURE__ */ jsxs8("div", { className: "flex items-center gap-2", children: [
@@ -1491,8 +1496,8 @@ var ToolCallRenderer = ({
         ] }),
         canCollapse && isExpanded && /* @__PURE__ */ jsxs8("div", { className: "p-3 bg-muted/30", children: [
           toolCall.error && /* @__PURE__ */ jsxs8("div", { className: "mb-3", children: [
-            /* @__PURE__ */ jsx12("div", { className: "text-xs text-red-600 font-medium mb-1", children: "Error:" }),
-            /* @__PURE__ */ jsx12("div", { className: "text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200", children: toolCall.error })
+            /* @__PURE__ */ jsx12("div", { className: "text-xs text-destructive font-medium mb-1", children: "Error:" }),
+            /* @__PURE__ */ jsx12("div", { className: "text-xs text-destructive bg-destructive/10 p-2 rounded border border-destructive/20", children: toolCall.error })
           ] }),
           toolCall.result && /* @__PURE__ */ jsxs8("div", { children: [
             /* @__PURE__ */ jsx12("div", { className: "text-xs text-muted-foreground font-medium mb-1", children: "Result:" }),
@@ -1598,16 +1603,16 @@ function ToolResultRenderer({
 }) {
   const getStatusIcon = () => {
     if (success) {
-      return /* @__PURE__ */ jsx15(CheckCircle3, { className: "w-4 h-4 text-green-500" });
+      return /* @__PURE__ */ jsx15(CheckCircle3, { className: "w-4 h-4 text-primary" });
     } else {
-      return /* @__PURE__ */ jsx15(XCircle3, { className: "w-4 h-4 text-red-500" });
+      return /* @__PURE__ */ jsx15(XCircle3, { className: "w-4 h-4 text-destructive" });
     }
   };
   const getStatusColor = () => {
     if (success) {
-      return "bg-green-100 text-green-800";
+      return "bg-primary/10 text-primary";
     } else {
-      return "bg-red-100 text-red-800";
+      return "bg-destructive/10 text-destructive";
     }
   };
   const handleSendResponse = () => {
@@ -1622,7 +1627,7 @@ function ToolResultRenderer({
         /* @__PURE__ */ jsx15(CardTitle, { className: "text-sm font-medium", children: toolName }),
         /* @__PURE__ */ jsx15(Badge, { variant: "secondary", className: getStatusColor(), children: success ? "Success" : "Failed" })
       ] }),
-      /* @__PURE__ */ jsxs9("div", { className: "text-xs text-gray-500", children: [
+      /* @__PURE__ */ jsxs9("div", { className: "text-xs text-muted-foreground", children: [
         "ID: ",
         toolCallId
       ] })
@@ -1630,11 +1635,11 @@ function ToolResultRenderer({
     /* @__PURE__ */ jsxs9(CardContent, { className: "pt-0 space-y-3", children: [
       result && /* @__PURE__ */ jsxs9("div", { className: "text-sm", children: [
         /* @__PURE__ */ jsx15("strong", { children: "Result:" }),
-        /* @__PURE__ */ jsx15("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof result === "string" ? result : JSON.stringify(result, null, 2) })
+        /* @__PURE__ */ jsx15("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof result === "string" ? result : JSON.stringify(result, null, 2) })
       ] }),
       error && /* @__PURE__ */ jsxs9("div", { className: "text-sm", children: [
         /* @__PURE__ */ jsx15("strong", { children: "Error:" }),
-        /* @__PURE__ */ jsx15("pre", { className: "whitespace-pre-wrap text-xs bg-red-50 p-2 rounded mt-1 text-red-600", children: error })
+        /* @__PURE__ */ jsx15("pre", { className: "whitespace-pre-wrap text-xs bg-destructive/10 p-2 rounded mt-1 text-destructive", children: error })
       ] }),
       onSendResponse && success && /* @__PURE__ */ jsx15("div", { className: "flex justify-end", children: /* @__PURE__ */ jsxs9(
         Button,
@@ -1662,7 +1667,7 @@ var DebugRenderer = ({
   avatar
 }) => {
   return /* @__PURE__ */ jsxs10("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
-    /* @__PURE__ */ jsx16(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx16(AvatarFallback, { className: "bg-gray-100 text-gray-600", children: avatar || /* @__PURE__ */ jsx16(Bug, { className: "h-4 w-4" }) }) }),
+    /* @__PURE__ */ jsx16(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ jsx16(AvatarFallback, { className: "bg-muted text-muted-foreground", children: avatar || /* @__PURE__ */ jsx16(Bug, { className: "h-4 w-4" }) }) }),
     /* @__PURE__ */ jsxs10("div", { className: "flex-1 min-w-0", children: [
       /* @__PURE__ */ jsx16("div", { className: "text-sm font-medium text-foreground mb-2", children: "Debug" }),
       /* @__PURE__ */ jsx16("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ jsx16("pre", { className: "text-xs bg-muted p-2 rounded border overflow-auto", children: JSON.stringify(message, null, 2) }) })
@@ -1718,36 +1723,23 @@ function MessageRenderer({
     const event = message;
     switch (event.type) {
       case "run_started":
-        return /* @__PURE__ */ jsx17(
-          ThinkingRenderer,
-          {
-            type: "thinking"
-          },
-          `run-started-${index}`
-        );
+        return /* @__PURE__ */ jsx17(ThinkingRenderer, { event }, `run-started-${index}`);
       case "plan_started":
-        return /* @__PURE__ */ jsx17(
-          ThinkingRenderer,
-          {
-            type: "planning"
-          },
-          `plan-started-${index}`
-        );
+        return event.data?.initial_plan ? /* @__PURE__ */ jsx17(ThinkingRenderer, { event }, `plan-started-${index}`) : null;
       case "plan_finished":
-        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-blue-50 border border-blue-200 rounded", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-blue-800", children: [
+        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-primary", children: [
           /* @__PURE__ */ jsx17("strong", { children: "Plan ready:" }),
           " ",
           event.data?.total_steps || 0,
           " steps"
         ] }) }, `plan-finished-${index}`);
+      case "plan_pruned":
+        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-muted-foreground", children: [
+          "Removed steps: ",
+          event.data?.removed_steps || "0"
+        ] }) }, `plan-pruned-${index}`);
       case "text_message_start":
-        return /* @__PURE__ */ jsx17(
-          ThinkingRenderer,
-          {
-            type: "generating"
-          },
-          `text-start-${index}`
-        );
+        return /* @__PURE__ */ jsx17(ThinkingRenderer, { event }, `text-start-${index}`);
       case "text_message_content":
         return null;
       case "text_message_end":
@@ -1763,33 +1755,44 @@ function MessageRenderer({
         ] }, `tool-call-start-${index}`);
       case "tool_call_end":
         return /* @__PURE__ */ jsxs11("div", { className: "flex items-center space-x-2 p-2 bg-muted rounded", children: [
-          /* @__PURE__ */ jsx17("span", { className: "text-green-500", children: "\u2705" }),
+          /* @__PURE__ */ jsx17("span", { className: "text-primary", children: "\u2705" }),
           /* @__PURE__ */ jsx17("span", { className: "text-sm", children: "Tool complete" })
         ] }, `tool-call-end-${index}`);
       case "tool_call_result":
-        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-green-50 border border-green-200 rounded", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-green-800", children: [
+        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-primary", children: [
           /* @__PURE__ */ jsx17("strong", { children: "Tool result:" }),
           /* @__PURE__ */ jsx17("pre", { className: "mt-1 text-xs overflow-x-auto", children: event.data?.result || "No result" })
         ] }) }, `tool-call-result-${index}`);
+      case "tool_rejected":
+        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-destructive", children: [
+          /* @__PURE__ */ jsx17("strong", { children: "Tool rejected:" }),
+          " ",
+          event.data?.reason || "Unknown reason"
+        ] }) }, `tool-rejected-${index}`);
       case "agent_handover":
-        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-blue-50 border border-blue-200 rounded", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-blue-800", children: [
+        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-muted-foreground", children: [
           /* @__PURE__ */ jsx17("strong", { children: "Handover to:" }),
           " ",
           event.data?.to_agent || "unknown agent"
         ] }) }, `handover-${index}`);
+      case "feedback_received":
+        return /* @__PURE__ */ jsx17("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ jsxs11("div", { className: "text-sm text-muted-foreground", children: [
+          "You said: ",
+          event.data?.feedback || ""
+        ] }) }, `feedback-${index}`);
       case "run_finished":
-        return /* @__PURE__ */ jsxs11("div", { className: "flex items-center space-x-2 p-2 bg-green-50 rounded", children: [
-          /* @__PURE__ */ jsx17("span", { className: "text-green-500", children: "\u2705" }),
+        return /* @__PURE__ */ jsxs11("div", { className: "flex items-center space-x-2 p-2 bg-primary/10 rounded", children: [
+          /* @__PURE__ */ jsx17("span", { className: "text-primary", children: "\u2705" }),
           /* @__PURE__ */ jsx17("span", { className: "text-sm font-medium", children: "Done" })
         ] }, `run-finished-${index}`);
       case "run_error":
-        return /* @__PURE__ */ jsxs11("div", { className: "p-3 bg-red-50 border border-red-200 rounded", children: [
-          /* @__PURE__ */ jsxs11("div", { className: "text-sm text-red-800", children: [
+        return /* @__PURE__ */ jsxs11("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
+          /* @__PURE__ */ jsxs11("div", { className: "text-sm text-destructive", children: [
             /* @__PURE__ */ jsx17("strong", { children: "Error:" }),
             " ",
             event.data?.message || "Unknown error occurred"
           ] }),
-          /* @__PURE__ */ jsx17("button", { className: "mt-2 text-xs text-red-600 underline", children: "Retry" })
+          /* @__PURE__ */ jsx17("button", { className: "mt-2 text-xs text-destructive underline", children: "Retry" })
         ] }, `run-error-${index}`);
       default:
         if (process.env.NODE_ENV === "development") {
@@ -2877,11 +2880,11 @@ function renderLLMResponse(llmArtifact, _chatState, className, avatar) {
       llmArtifact.tool_calls && llmArtifact.tool_calls.length > 0 && /* @__PURE__ */ jsx28("div", { className: "space-y-2", children: llmArtifact.tool_calls.map((toolCall, index) => /* @__PURE__ */ jsxs20("div", { className: "border rounded-lg p-3", children: [
         /* @__PURE__ */ jsxs20("div", { className: "flex items-center justify-between mb-2", children: [
           /* @__PURE__ */ jsx28("span", { className: "text-sm font-medium", children: toolCall.tool_name }),
-          /* @__PURE__ */ jsx28("span", { className: "text-xs text-green-600", children: "Success" })
+          /* @__PURE__ */ jsx28("span", { className: "text-xs text-primary", children: "Success" })
         ] }),
-        /* @__PURE__ */ jsxs20("div", { className: "text-sm text-gray-600", children: [
+        /* @__PURE__ */ jsxs20("div", { className: "text-sm text-muted-foreground", children: [
           /* @__PURE__ */ jsx28("strong", { children: "Input:" }),
-          /* @__PURE__ */ jsx28("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1", children: JSON.stringify(toolCall.input, null, 2) })
+          /* @__PURE__ */ jsx28("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1", children: JSON.stringify(toolCall.input, null, 2) })
         ] })
       ] }, toolCall.tool_call_id || index)) })
     ] })
@@ -2900,11 +2903,11 @@ function renderToolResults(toolResultsArtifact, _chatState, className, avatar) {
       toolResultsArtifact.results.map((result, index) => /* @__PURE__ */ jsxs20("div", { className: "border rounded-lg p-3 mb-2", children: [
         /* @__PURE__ */ jsxs20("div", { className: "flex items-center justify-between mb-2", children: [
           /* @__PURE__ */ jsx28("span", { className: "text-sm font-medium", children: result.tool_name }),
-          /* @__PURE__ */ jsx28("span", { className: "text-xs text-green-600", children: "Success" })
+          /* @__PURE__ */ jsx28("span", { className: "text-xs text-primary", children: "Success" })
         ] }),
-        /* @__PURE__ */ jsxs20("div", { className: "text-sm text-gray-600", children: [
+        /* @__PURE__ */ jsxs20("div", { className: "text-sm text-muted-foreground", children: [
           /* @__PURE__ */ jsx28("strong", { children: "Result:" }),
-          /* @__PURE__ */ jsx28("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof result.result === "string" ? result.result : JSON.stringify(result.result, null, 2) })
+          /* @__PURE__ */ jsx28("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof result.result === "string" ? result.result : JSON.stringify(result.result, null, 2) })
         ] })
       ] }, result.tool_call_id || index))
     ] })
@@ -2921,7 +2924,7 @@ function renderGenericArtifact(genericArtifact, _chatState, className, avatar) {
       ] }) }),
       /* @__PURE__ */ jsx28("div", { className: "border rounded-lg p-3", children: /* @__PURE__ */ jsxs20("div", { className: "text-sm", children: [
         /* @__PURE__ */ jsx28("strong", { children: "Data:" }),
-        /* @__PURE__ */ jsx28("pre", { className: "whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-1 max-h-32 overflow-y-auto", children: JSON.stringify(genericArtifact.data, null, 2) })
+        /* @__PURE__ */ jsx28("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: JSON.stringify(genericArtifact.data, null, 2) })
       ] }) })
     ] })
   ] });

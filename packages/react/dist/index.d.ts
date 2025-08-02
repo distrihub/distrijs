@@ -102,7 +102,7 @@ interface AssistantMessageRendererProps {
 declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
 
 interface ThinkingRendererProps {
-    type: 'thinking' | 'planning' | 'generating';
+    event: DistriEvent;
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;

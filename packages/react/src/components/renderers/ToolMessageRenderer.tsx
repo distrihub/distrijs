@@ -22,7 +22,7 @@ export const ToolMessageRenderer: React.FC<ToolMessageRendererProps> = ({
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       <Avatar className="h-8 w-8">
-        <AvatarFallback className="bg-orange-100 text-orange-600">
+        <AvatarFallback className="bg-accent text-accent-foreground">
           {avatar || <Wrench className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>

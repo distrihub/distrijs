@@ -19,7 +19,7 @@ export const DebugRenderer: React.FC<DebugRendererProps> = ({
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       <Avatar className="h-8 w-8">
-        <AvatarFallback className="bg-gray-100 text-gray-600">
+        <AvatarFallback className="bg-muted text-muted-foreground">
           {avatar || <Bug className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>
