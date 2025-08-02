@@ -80,12 +80,12 @@ function ToolExecution({
       <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-xs">
         <div className="flex items-center space-x-2">
           {getStatusIcon()}
-          <span className="font-medium">{toolCall.tool_name}</span>
+          <span className="font-medium">{toolCall.step_title || toolCall.tool_name}</span>
           <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
             {getStatusText()}
           </Badge>
         </div>
-        {(toolCall.result || toolCall.error) && (
+        {(toolCall.result || toolCall.error || toolCall.input) && (
           <Button
             variant="ghost"
             size="sm"
@@ -105,16 +105,27 @@ function ToolExecution({
         )}
       </div>
 
-      {isExpanded && (toolCall.result || toolCall.error) && (
+      {isExpanded && (toolCall.result || toolCall.error || toolCall.input) && (
         <Card className="mt-2">
-          <CardContent className="p-2">
+          <CardContent className="p-2 space-y-2">
+            {/* Show input/arguments */}
+            {toolCall.input && (
+              <div className="text-xs">
+                <strong className="text-muted-foreground">Arguments:</strong>
+                <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
+                  {typeof toolCall.input === 'string' ? toolCall.input : JSON.stringify(toolCall.input, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Show error or result */}
             {toolCall.error ? (
               <div className="text-xs text-destructive">
                 <strong>Error:</strong> {toolCall.error}
               </div>
-            ) : (
+            ) : toolCall.result && (
               <div className="text-xs">
-                <strong>Result:</strong>
+                <strong className="text-muted-foreground">Result:</strong>
                 <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
                   {typeof toolCall.result === 'string' ? toolCall.result : JSON.stringify(toolCall.result, null, 2)}
                 </pre>

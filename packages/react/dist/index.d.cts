@@ -86,6 +86,7 @@ interface PlanState {
 interface ToolCallState {
     tool_call_id: string;
     tool_name: string;
+    step_title?: string;
     input: any;
     status: ToolCallStatus;
     result?: any;
@@ -120,7 +121,7 @@ interface ChatStateStore extends ChatState {
     processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
     clearAllStates: () => void;
     clearTask: (taskId: string) => void;
-    initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean) => void;
+    initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean, stepTitle?: string) => void;
     updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
     getToolCallById: (toolCallId: string) => ToolCallState | null;
     getPendingToolCalls: () => ToolCallState[];

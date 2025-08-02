@@ -29,6 +29,7 @@ export interface PlanState {
 export interface ToolCallState {
   tool_call_id: string;
   tool_name: string;
+  step_title?: string; // Step title for better display
   input: any;
   status: ToolCallStatus;
   result?: any;
@@ -75,7 +76,7 @@ interface ChatStateStore extends ChatState {
   clearTask: (taskId: string) => void;
 
   // Tool call management
-  initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean) => void;
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean, stepTitle?: string) => void;
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
   getToolCallById: (toolCallId: string) => ToolCallState | null;
   getPendingToolCalls: () => ToolCallState[];
@@ -279,7 +280,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     }
   },
 
-  initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean) => {
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean, stepTitle?: string) => {
     set((state: ChatState) => {
       const newState = { ...state };
 
@@ -294,6 +295,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || 'Unknown Tool',
+        step_title: stepTitle,
         input: toolCall.input || {},
         status: 'pending',
         startTime: timestamp || Date.now(),

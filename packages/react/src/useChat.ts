@@ -150,7 +150,10 @@ export function useChat({
             const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
             const isExternal = !!distriTool; // Only true if found in tools array
 
-            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal);
+            // Use step_id as step title if available
+            const stepTitle = llmArtifact.step_id || toolCall.tool_name;
+
+            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
           });
         }
       } else if (artifact.type === 'tool_results') {
@@ -195,7 +198,10 @@ export function useChat({
           const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
           const isExternal = !!distriTool; // Only true if found in tools array
 
-          chatState.initToolCall(toolCall, undefined, isExternal);
+          // Use tool name as step title for regular messages
+          const stepTitle = toolCall.tool_name;
+
+          chatState.initToolCall(toolCall, undefined, isExternal, stepTitle);
         });
       }
 

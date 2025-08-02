@@ -878,7 +878,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       }
     }
   },
-  initToolCall: (toolCall, timestamp, isExternal) => {
+  initToolCall: (toolCall, timestamp, isExternal, stepTitle) => {
     set((state) => {
       const newState = { ...state };
       let toolIsExternal = isExternal;
@@ -889,6 +889,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
+        step_title: stepTitle,
         input: toolCall.input || {},
         status: "pending",
         startTime: timestamp || Date.now(),
@@ -1169,7 +1170,8 @@ function useChat({
           llmArtifact.tool_calls.forEach((toolCall) => {
             const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
             const isExternal = !!distriTool;
-            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal);
+            const stepTitle = llmArtifact.step_id || toolCall.tool_name;
+            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
           });
         }
       } else if (artifact.type === "tool_results") {
@@ -1204,7 +1206,8 @@ function useChat({
         newToolCalls.forEach((toolCall) => {
           const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
           const isExternal = !!distriTool;
-          chatState.initToolCall(toolCall, void 0, isExternal);
+          const stepTitle = toolCall.tool_name;
+          chatState.initToolCall(toolCall, void 0, isExternal, stepTitle);
         });
       }
       const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
@@ -3247,10 +3250,10 @@ function ToolExecution({
     /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex items-center justify-between p-2 bg-muted/50 rounded-md text-xs", children: [
       /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex items-center space-x-2", children: [
         getStatusIcon(),
-        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "font-medium", children: toolCall.tool_name }),
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "font-medium", children: toolCall.step_title || toolCall.tool_name }),
         /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Badge, { variant: "secondary", className: "text-xs px-1 py-0 h-4", children: getStatusText() })
       ] }),
-      (toolCall.result || toolCall.error) && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(
+      (toolCall.result || toolCall.error || toolCall.input) && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(
         Button,
         {
           variant: "ghost",
@@ -3265,14 +3268,20 @@ function ToolExecution({
         }
       )
     ] }),
-    isExpanded && (toolCall.result || toolCall.error) && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Card, { className: "mt-2", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(CardContent, { className: "p-2", children: toolCall.error ? /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "text-xs text-destructive", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("strong", { children: "Error:" }),
-      " ",
-      toolCall.error
-    ] }) : /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "text-xs", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("strong", { children: "Result:" }),
-      /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof toolCall.result === "string" ? toolCall.result : JSON.stringify(toolCall.result, null, 2) })
-    ] }) }) })
+    isExpanded && (toolCall.result || toolCall.error || toolCall.input) && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Card, { className: "mt-2", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)(CardContent, { className: "p-2 space-y-2", children: [
+      toolCall.input && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "text-xs", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("strong", { className: "text-muted-foreground", children: "Arguments:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof toolCall.input === "string" ? toolCall.input : JSON.stringify(toolCall.input, null, 2) })
+      ] }),
+      toolCall.error ? /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "text-xs text-destructive", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("strong", { children: "Error:" }),
+        " ",
+        toolCall.error
+      ] }) : toolCall.result && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "text-xs", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("strong", { className: "text-muted-foreground", children: "Result:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: typeof toolCall.result === "string" ? toolCall.result : JSON.stringify(toolCall.result, null, 2) })
+      ] })
+    ] }) })
   ] });
 }
 function StreamingMessage({ content, isStreaming }) {
