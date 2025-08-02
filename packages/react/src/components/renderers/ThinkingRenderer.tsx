@@ -18,7 +18,7 @@ export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
       case 'agent_starting':
         return {
           icon: <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />,
-          text: 'Agent is starting…',
+          text: null,
         };
       case 'planning':
         return {

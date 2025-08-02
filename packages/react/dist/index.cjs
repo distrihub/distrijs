@@ -1632,9 +1632,7 @@ var ToolCallRenderer = ({
   chatState: _chatState,
   isExpanded,
   onToggle,
-  className = "",
-  avatar,
-  name = "Assistant"
+  className = ""
 }) => {
   const getStatusIcon = () => {
     switch (toolCall.status) {
@@ -1665,50 +1663,44 @@ var ToolCallRenderer = ({
     }
   };
   const canCollapse = toolCall.result !== void 0 || toolCall.error !== void 0 || toolCall.status === "completed" || toolCall.status === "error";
-  return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Avatar, { className: "h-8 w-8 flex-shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AvatarFallback, { className: "bg-primary/10 text-primary", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.Bot, { className: "h-4 w-4" }) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex-1 min-w-0 max-w-3xl", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-sm font-medium text-foreground mb-3", children: name }),
-      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "p-3 border-b border-border", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center justify-between", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center gap-2", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
-                "button",
-                {
-                  onClick: onToggle,
-                  className: "p-1 hover:bg-muted rounded transition-colors",
-                  disabled: !canCollapse,
-                  children: canCollapse ? isExpanded ? /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.ChevronDown, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.ChevronRight, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "h-3 w-3" })
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.Wrench, { className: "h-4 w-4 text-primary" }),
-              /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "text-sm font-medium text-foreground", children: toolCall.tool_name })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center gap-2", children: [
-              getStatusIcon(),
-              /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "text-xs text-muted-foreground", children: getStatusText() })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "mt-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-muted-foreground mb-1", children: "Input:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs font-mono bg-muted p-2 rounded border", children: JSON.stringify(toolCall.input, null, 2) })
-          ] }),
-          toolCall.component && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "mt-3", children: toolCall.component })
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "flex-1 min-w-0 max-w-3xl", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "p-3 border-b border-border", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center justify-between", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
+            "button",
+            {
+              onClick: onToggle,
+              className: "p-1 hover:bg-muted rounded transition-colors",
+              disabled: !canCollapse,
+              children: canCollapse ? isExpanded ? /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.ChevronDown, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.ChevronRight, { className: "h-3 w-3 text-muted-foreground" }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "h-3 w-3" })
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(import_lucide_react7.Wrench, { className: "h-4 w-4 text-primary" }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "text-sm font-medium text-foreground", children: toolCall.tool_name })
         ] }),
-        canCollapse && isExpanded && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "p-3 bg-muted/30", children: [
-          toolCall.error && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "mb-3", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-destructive font-medium mb-1", children: "Error:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-destructive bg-destructive/10 p-2 rounded border border-destructive/20", children: toolCall.error })
-          ] }),
-          toolCall.result && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-muted-foreground font-medium mb-1", children: "Result:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs font-mono bg-background p-2 rounded border", children: JSON.stringify(toolCall.result, null, 2) })
-          ] })
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center gap-2", children: [
+          getStatusIcon(),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "text-xs text-muted-foreground", children: getStatusText() })
         ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "mt-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-muted-foreground mb-1", children: "Input:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs font-mono bg-muted p-2 rounded border", children: JSON.stringify(toolCall.input, null, 2) })
+      ] }),
+      toolCall.component && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "mt-3", children: toolCall.component })
+    ] }),
+    canCollapse && isExpanded && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "p-3 bg-muted/30", children: [
+      toolCall.error && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "mb-3", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-destructive font-medium mb-1", children: "Error:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-destructive bg-destructive/10 p-2 rounded border border-destructive/20", children: toolCall.error })
+      ] }),
+      toolCall.result && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs text-muted-foreground font-medium mb-1", children: "Result:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "text-xs font-mono bg-background p-2 rounded border", children: JSON.stringify(toolCall.result, null, 2) })
       ] })
     ] })
-  ] });
+  ] }) }) });
 };
 
 // src/components/ui/badge.tsx
@@ -2123,7 +2115,7 @@ var ThinkingRenderer = ({
       case "agent_starting":
         return {
           icon: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(import_lucide_react10.Loader2, { className: "h-4 w-4 text-muted-foreground animate-spin" }),
-          text: "Agent is starting\u2026"
+          text: null
         };
       case "planning":
         return {
