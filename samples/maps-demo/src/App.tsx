@@ -77,7 +77,6 @@ function MapsChat() {
               tools={tools}
               theme="dark"
               threadId={selectedThreadId}
-              showDebug={true}
             />
           )}
         </div>

@@ -21,6 +21,7 @@ export interface GoogleMapsManagerRef {
   addMarker: (params: { latitude: number; longitude: number; title: string; description?: string }) => Promise<{ success: boolean; message: string; markerId: string }>;
   getDirections: (params: { origin: string; destination: string; travel_mode?: string }) => Promise<{ success: boolean; message: string; directions?: any }>;
   searchPlaces: (params: { query: string; latitude: number; longitude: number; radius?: number }) => Promise<{ success: boolean; message: string; places?: any[] }>;
+  searchPlacesByText: (params: { query: string }) => Promise<{ success: boolean; message: string; places?: any[] }>;
   clearMap: () => Promise<{ success: boolean; message: string }>;
 }
 
@@ -241,6 +242,78 @@ const MapController: React.FC<MapControllerProps> = ({
     }
   }, [placesLibrary, map, setMarkers]);
 
+  const searchPlacesByText = useCallback(async (params: { query: string }) => {
+    try {
+      if (!placesService) {
+        return {
+          success: false,
+          message: 'Places service not available',
+        };
+      }
+
+      const request = { query: params.query };
+
+      const results = await new Promise<google.maps.places.PlaceResult[]>((resolve, reject) => {
+        placesService.textSearch(request, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            resolve(results);
+          } else {
+            reject(new Error(`Places search failed: ${status}`));
+          }
+        });
+      });
+
+      if (results.length === 0) {
+        return {
+          success: false,
+          message: `No results for "${params.query}"`,
+        };
+      }
+
+      const first = results[0].geometry?.location;
+      if (first) {
+        const newCenter = { lat: first.lat(), lng: first.lng() };
+        setCenter(newCenter);
+        setZoom(15);
+        if (map) {
+          map.setCenter(newCenter);
+          map.setZoom(15);
+        }
+      }
+
+      const placeMarkers: MapMarker[] = results.slice(0, 10).map((place, index) => ({
+        id: `place-${Date.now()}-${index}`,
+        position: {
+          lat: place.geometry?.location?.lat() || 0,
+          lng: place.geometry?.location?.lng() || 0,
+        },
+        title: place.name || 'Unknown Place',
+        description: `${place.formatted_address || place.vicinity || ''} • Rating: ${place.rating || 'N/A'}`,
+      }));
+
+      setMarkers(prev => [...prev, ...placeMarkers]);
+
+      const placesInfo = results.slice(0, 5).map(place => ({
+        name: place.name,
+        address: place.formatted_address || place.vicinity,
+        rating: place.rating,
+        priceLevel: place.price_level,
+      }));
+
+      return {
+        success: true,
+        message: `Found ${results.length} places for "${params.query}". Added ${placeMarkers.length} markers.`,
+        places: placesInfo,
+      };
+    } catch (error) {
+      console.error('Error searching places by text:', error);
+      return {
+        success: false,
+        message: `Failed to search places: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }, [placesService, map, setMarkers, setCenter, setZoom]);
+
   const clearMap = useCallback(async () => {
     try {
       setMarkers([]);
@@ -272,6 +345,7 @@ const MapController: React.FC<MapControllerProps> = ({
         addMarker,
         getDirections,
         searchPlaces,
+        searchPlacesByText,
         clearMap
       };
       console.log('mapRef.current set:', mapRef.current);
