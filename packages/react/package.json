@@ -41,7 +41,8 @@
     "react-syntax-highlighter": "^15.5.0",
     "sonner": "^2.0.6",
     "tailwind-merge": "^2.0.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@distri/core": "workspace:*",
@@ -57,9 +58,9 @@
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
+    "@distri/core": "^0.2.3",
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0",
-    "@distri/core": "^0.2.3"
+    "react-dom": ">=18.0.0"
   },
   "publishConfig": {
     "access": "public"

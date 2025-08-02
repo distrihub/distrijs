@@ -19,6 +19,27 @@ export interface RunErrorEvent {
   };
 }
 
+export interface PlanStartedEvent {
+  type: 'plan_started';
+  data: {
+    initial_plan?: boolean;
+  };
+}
+
+export interface PlanFinishedEvent {
+  type: 'plan_finished';
+  data: {
+    total_steps?: number;
+  };
+}
+
+export interface PlanPrunedEvent {
+  type: 'plan_pruned';
+  data: {
+    removed_steps?: any;
+  };
+}
+
 export interface TextMessageStartEvent {
   type: 'text_message_start';
   data: {
@@ -75,6 +96,24 @@ export interface ToolCallResultEvent {
   };
 }
 
+export interface ToolRejectedEvent {
+  type: 'tool_rejected';
+  data: {
+    reason?: string;
+    tool_call_id?: string;
+  };
+}
+
+export interface TaskArtifactEvent {
+  type: 'task_artifact';
+  data: {
+    artifact_id: string;
+    artifact_type: string;
+    resolution?: any;
+    content?: any;
+  };
+}
+
 export interface AgentHandoverEvent {
   type: 'agent_handover';
   data: {
@@ -84,11 +123,39 @@ export interface AgentHandoverEvent {
   };
 }
 
+export interface StepStartedEvent {
+  type: 'step_started';
+  data: {
+    step_id: string;
+    step_title: string;
+    step_index: number;
+  };
+}
+
+export interface StepCompletedEvent {
+  type: 'step_completed';
+  data: {
+    step_id: string;
+    step_title: string;
+    step_index: number;
+  };
+}
+
+export interface FeedbackReceivedEvent {
+  type: 'feedback_received';
+  data: {
+    feedback: string;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
   | RunFinishedEvent
   | RunErrorEvent
+  | PlanStartedEvent
+  | PlanFinishedEvent
+  | PlanPrunedEvent
   | TextMessageStartEvent
   | TextMessageContentEvent
   | TextMessageEndEvent
@@ -96,4 +163,9 @@ export type DistriEvent =
   | ToolCallArgsEvent
   | ToolCallEndEvent
   | ToolCallResultEvent
-  | AgentHandoverEvent;
+  | ToolRejectedEvent
+  | StepStartedEvent
+  | StepCompletedEvent
+  | TaskArtifactEvent
+  | AgentHandoverEvent
+  | FeedbackReceivedEvent;

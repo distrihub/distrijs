@@ -1,18 +1,18 @@
 import React from 'react';
 import AgentList from './AgentList';
-import { useAgents } from '../useAgents';
-import { DistriAgent } from '@distri/core';
+import { useAgentDefinitions } from '../useAgentDefinitions';
+import { AgentDefinition } from '@distri/core';
 
 const AgentsPage: React.FC<{
-  onStartChat?: (agent: DistriAgent) => void;
+  onStartChat?: (agent: AgentDefinition) => void;
 }> = ({ onStartChat }) => {
-  const { agents, loading, refetch } = useAgents();
+  const { agents, loading, refetch } = useAgentDefinitions();
 
   const handleRefresh = async () => {
     await refetch();
   };
 
-  const handleStartChat = (agent: DistriAgent) => {
+  const handleStartChat = (agent: AgentDefinition) => {
     // This would typically navigate to chat or update the selected agent
     onStartChat?.(agent);
   };

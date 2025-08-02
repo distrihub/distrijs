@@ -1,32 +1,36 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Agent, DistriClient } from '@distri/core';
 import {
   DistriMessage,
   DistriPart,
   InvokeContext,
   DistriEvent,
+  DistriArtifact,
+  AssistantWithToolCalls,
+  ToolResults,
   convertDistriMessageToA2A,
-  ToolResult
 } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../core/src/encoder';
-import { DistriStreamEvent, isDistriMessage, ToolResultPart } from '../../core/src/types';
+import { isDistriMessage, isDistriArtifact, isDistriEvent } from '../../core/src/types';
 import { registerTools } from './hooks/registerTools';
-import { useToolCallState } from './hooks/useToolCallState';
-import { DistriAnyTool, ToolCallState } from './types';
+import { ChatStateStore, useChatStateStore } from './stores/chatStateStore';
+import { DistriAnyTool } from './types';
 
 export interface UseChatOptions {
   threadId: string;
   agent?: Agent;
-  onMessage?: (message: DistriStreamEvent) => void;
+  onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
   getMetadata?: () => Promise<any>;
   onMessagesUpdate?: () => void;
+  messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
   tools?: DistriAnyTool[];
+  overrideChatState?: ChatStateStore;
 }
 
 export interface UseChatReturn {
-  messages: DistriStreamEvent[];
+  messages: (DistriEvent | DistriMessage | DistriArtifact)[];
   isStreaming: boolean;
   sendMessage: (content: string | DistriPart[]) => Promise<void>;
   sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
@@ -34,8 +38,8 @@ export interface UseChatReturn {
   error: Error | null;
   clearMessages: () => void;
   agent: Agent | undefined;
-  toolCallStates: Map<string, ToolCallState>;
   hasPendingToolCalls: () => boolean;
+
   stopStreaming: () => void;
 }
 
@@ -47,11 +51,9 @@ export function useChat({
   onMessagesUpdate,
   agent,
   tools,
+  overrideChatState,
+  messageFilter,
 }: UseChatOptions): UseChatReturn {
-  const [messages, setMessages] = useState<(DistriMessage | DistriEvent)[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Create InvokeContext for message construction
@@ -64,15 +66,18 @@ export function useChat({
   // Register tools with agent
   registerTools({ agent, tools });
 
-  // Tool state management with auto-send when all completed  
-  const toolStateHandler = useToolCallState({
-    agent,
-    onAllToolsCompleted: (toolResults: ToolResult[]) => {
-      sendToolResultsToAgent(toolResults);
+  // Chat state management with Zustand - use override if provided
+  const chatState = overrideChatState || useChatStateStore.getState();
+
+  // Set up the agent and tools in the store
+  useEffect(() => {
+    if (agent) {
+      chatState.setAgent(agent);
     }
-  });
-
-
+    if (tools) {
+      chatState.setTools(tools);
+    }
+  }, [agent, tools, chatState]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
@@ -85,36 +90,78 @@ export function useChat({
 
   // Reset state when agent changes
   const agentIdRef = useRef<string | undefined>(undefined);
+  const messageFilterRef = useRef<((message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean) | undefined>(undefined);
+
+  // Store all messages in a ref to preserve them when filter changes
+  const allMessagesRef = useRef<(DistriEvent | DistriMessage | DistriArtifact)[]>([]);
+
+  // Function to reapply filter to all messages
+  const reapplyFilter = useCallback(() => {
+    const filteredMessages = allMessagesRef.current.filter(messageFilter || (() => true));
+
+    // Clear store and re-add filtered messages
+    chatState.clearMessages();
+    chatState.clearAllStates();
+    chatState.setError(null);
+
+    filteredMessages.forEach(message => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
+
   useEffect(() => {
     if (agent?.id !== agentIdRef.current) {
       // Agent changed, reset all state
-      setMessages([]);
-      toolStateHandler.clearAll();
-      setError(null);
+      allMessagesRef.current = [];
+      chatState.clearMessages();
+      chatState.clearAllStates();
+      chatState.setError(null);
       agentIdRef.current = agent?.id;
     }
-  }, [agent?.id, toolStateHandler]);
 
-  // Clear messages helper
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-    toolStateHandler.clearAll();
-  }, [toolStateHandler]);
+    if (messageFilter !== messageFilterRef.current) {
+      // Message filter changed, reapply filter to existing messages
+      messageFilterRef.current = messageFilter;
+      reapplyFilter();
+    }
+  }, [agent?.id, chatState, messageFilter, reapplyFilter]);
+
+  const addMessages = useCallback((messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => {
+    // Store all messages in ref
+    allMessagesRef.current = [...allMessagesRef.current, ...messages];
+
+    const filteredMessages = messages.filter(messageFilter || (() => true));
+    filteredMessages.forEach(message => {
+      chatState.addMessage(message);
+      chatState.processMessage(message);
+    });
+  }, [chatState, messageFilter]);
 
   const fetchMessages = useCallback(async () => {
     if (!agent) return;
 
     try {
+      chatState.setLoading(true);
       const a2aMessages = await agent.getThreadMessages(threadId);
-      const distriMessages = a2aMessages.map(decodeA2AStreamEvent) as (DistriMessage | DistriEvent)[];
-      setMessages(distriMessages);
+      const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean) as (DistriEvent | DistriMessage | DistriArtifact)[];
+
+      // Store all fetched messages in ref
+      allMessagesRef.current = distriMessages;
+
+      // Clear existing messages and add filtered ones
+      chatState.clearMessages();
+      addMessages(distriMessages);
+
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch messages');
-      setError(error);
+      chatState.setError(error);
       onError?.(error);
+    } finally {
+      chatState.setLoading(false);
     }
-  }, [threadId, agent?.id, onError, onMessagesUpdate]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState, addMessages]);
 
   // Fetch messages on mount and when threadId changes
   useEffect(() => {
@@ -123,37 +170,71 @@ export function useChat({
     }
   }, [threadId, agent?.id]);
 
-  const handleStreamEvent = useCallback((event: DistriStreamEvent) => {
-    // Handle DistriMessage (converted from A2A Message)
-    setMessages(prev => {
-      if (isDistriMessage(event)) {
-        const distriMessage = event as DistriMessage;
-        const existingMessageIndex = prev
-          .findIndex(msg => isDistriMessage(msg) && msg.id && msg.id === distriMessage.id);
+  const handleStreamEvent = useCallback((event: DistriEvent | DistriMessage | DistriArtifact) => {
+    // Add event to ref
+    allMessagesRef.current = [...allMessagesRef.current, event];
 
-        if (existingMessageIndex >= 0) {
-          // Update existing message by merging parts
-          const updatedMessages = [...prev];
-          const existingMessage = updatedMessages[existingMessageIndex] as DistriMessage;
-          // Merge parts from the new message into the existing one
-          const mergedParts = [...existingMessage.parts, ...distriMessage.parts];
-
-          updatedMessages[existingMessageIndex] = {
-            ...existingMessage,
-            parts: mergedParts,
-          };
-
-          return updatedMessages;
-        } else {
-          // Add new message
-          return [...prev, distriMessage];
-        }
+    // Only process if it passes the filter
+    if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
+      if (isDistriEvent(event) &&
+        (event.type === 'text_message_start' || event.type === 'text_message_content' || event.type === 'text_message_end')) {
+        chatState.processMessage(event);
       } else {
-        return [...prev, event];
+        chatState.addMessage(event);
+        chatState.processMessage(event);
       }
-    });
+    }
 
-    // Handle tool calls and results automatically
+    // Handle tool calls and results automatically from artifacts
+    if (isDistriArtifact(event)) {
+      const artifact = event as DistriArtifact;
+
+      if (artifact.type === 'llm_response') {
+        const llmArtifact = artifact as AssistantWithToolCalls;
+
+        // Process tool calls from LLM response
+        if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
+          llmArtifact.tool_calls.forEach(toolCall => {
+            // Check if tool is external (only if explicitly registered in tools array)
+            const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
+            const isExternal = !!distriTool; // Only true if found in tools array
+
+            // Use step_id as step title if available
+            const stepTitle = llmArtifact.step_id || toolCall.tool_name;
+
+            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
+          });
+        }
+      } else if (artifact.type === 'tool_results') {
+        const toolResultsArtifact = artifact as ToolResults;
+
+        // Process tool results
+        if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
+          toolResultsArtifact.results.forEach(result => {
+            let parsedResult = result.result;
+            if (typeof parsedResult === 'string') {
+              try {
+                parsedResult = JSON.parse(parsedResult);
+              } catch {
+                // Keep as string if not valid JSON
+              }
+            }
+
+            chatState.updateToolCallStatus(
+              result.tool_call_id,
+              {
+                status: toolResultsArtifact.success ? 'completed' : 'error',
+                result: parsedResult,
+                error: toolResultsArtifact.reason || undefined,
+                completedAt: new Date(toolResultsArtifact.timestamp)
+              }
+            );
+          });
+        }
+      }
+    }
+
+    // Handle tool calls and results from regular messages (for backward compatibility)
     if (isDistriMessage(event)) {
       const distriMessage = event as DistriMessage;
 
@@ -162,7 +243,14 @@ export function useChat({
       if (toolCallParts.length > 0) {
         const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
         newToolCalls.forEach(toolCall => {
-          toolStateHandler.initToolCall(toolCall);
+          // Check if tool is external (only if explicitly registered in tools array)
+          const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
+          const isExternal = !!distriTool; // Only true if found in tools array
+
+          // Use tool name as step title for regular messages
+          const stepTitle = toolCall.tool_name;
+
+          chatState.initToolCall(toolCall, undefined, isExternal, stepTitle);
         });
       }
 
@@ -171,7 +259,7 @@ export function useChat({
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map(part => (part as any).tool_result);
         newToolResults.forEach(toolResult => {
-          toolStateHandler.updateToolCallStatus(
+          chatState.updateToolCallStatus(
             toolResult.tool_call_id,
             {
               status: toolResult.success ? 'completed' : 'error',
@@ -185,14 +273,15 @@ export function useChat({
     }
 
     onMessage?.(event);
-  }, [onMessage, agent]);
+  }, [onMessage, agent, chatState, messageFilter]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
 
-    setIsLoading(true);
-    setIsStreaming(true);
-    setError(null);
+    chatState.setLoading(true);
+    chatState.setStreaming(true);
+    chatState.setError(null);
+    chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -210,8 +299,9 @@ export function useChat({
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
-      // Add user message to state immediately
-      setMessages(prev => [...prev, distriMessage]);
+      // Add user message to ref and state immediately
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
+      chatState.addMessage(distriMessage);
 
       const contextMetadata = await getMetadata?.() || {};
       // Start streaming
@@ -232,11 +322,11 @@ export function useChat({
         return;
       }
       const error = err instanceof Error ? err : new Error('Failed to send message');
-      setError(error);
+      chatState.setError(error);
       onError?.(error);
     } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
+      chatState.setLoading(false);
+      chatState.setStreaming(false);
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError]);
@@ -244,9 +334,10 @@ export function useChat({
   const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
     if (!agent) return;
 
-    setIsLoading(true);
-    setIsStreaming(true);
-    setError(null);
+    chatState.setLoading(true);
+    chatState.setStreaming(true);
+    chatState.setError(null);
+    chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -264,8 +355,9 @@ export function useChat({
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
-      // Add user message to state immediately
-      setMessages(prev => [...prev, distriMessage]);
+      // Add user message to ref and state immediately
+      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
+      chatState.addMessage(distriMessage);
 
       const contextMetadata = await getMetadata?.() || {};
       // Start streaming
@@ -286,39 +378,71 @@ export function useChat({
         return;
       }
       const error = err instanceof Error ? err : new Error('Failed to send message');
-      setError(error);
+      chatState.setError(error);
       onError?.(error);
     } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
+      // Only set loading to false if no pending tool calls
+      if (!chatState.hasPendingToolCalls()) {
+        chatState.setLoading(false);
+      }
+      chatState.setStreaming(false);
       abortControllerRef.current = null;
     }
   }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
 
-  // Auto-send tool results when all tools are completed (streaming)
-  // This reuses the existing sendMessageStream logic for consistency
-  const sendToolResultsToAgent = useCallback(async (toolResults: ToolResult[]) => {
-    if (agent && toolResults.length > 0) {
-      console.log('Sending tool results via streaming:', toolResults);
+  // Handle external tool responses
+  const handleExternalToolResponses = useCallback(async () => {
+    const externalResponses = chatState.getExternalToolResponses();
+    // Only send responses if there are actual external tool calls that need responses
+    // and we're not currently streaming
+    if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
+      console.log('Sending external tool responses:', externalResponses);
 
       try {
         // Construct tool result parts
-        const toolResultParts: DistriPart[] = toolResults.map(result => ({
+        const toolResultParts: DistriPart[] = externalResponses.map(result => ({
           type: 'tool_result',
-          tool_result: result
-        } as ToolResultPart));
+          tool_result: {
+            tool_call_id: result.tool_call_id,
+            result: result.result,
+            success: result.success,
+            error: result.error
+          }
+        }));
 
-        // Reuse existing streaming logic for consistency with regular messages
+        // Send tool results back to agent
         await sendMessageStream(toolResultParts, 'tool');
 
-        // Clear tool results after successful streaming
-        toolStateHandler.clearToolResults();
+        // Clear completed tool results
+        chatState.clearToolResults();
       } catch (err) {
-        console.error('Failed to send tool results:', err);
-        setError(err instanceof Error ? err : new Error('Failed to send tool results'));
+        console.error('Failed to send external tool responses:', err);
+        chatState.setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
       }
     }
-  }, [sendMessageStream, toolStateHandler]);
+  }, [chatState, sendMessageStream]);
+
+  // Check for external tool responses periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const externalResponses = chatState.getExternalToolResponses();
+      // Only process if there are responses and we're not currently streaming or loading
+      // AND only for external tools that have actually completed their handling
+      if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
+        // Additional check: only send if these are truly external tool responses
+        const hasExternalToolResponses = externalResponses.some(response => {
+          const toolCall = chatState.getToolCallById(response.tool_call_id);
+          return toolCall && toolCall.isExternal && toolCall.status === 'completed';
+        });
+
+        if (hasExternalToolResponses) {
+          handleExternalToolResponses();
+        }
+      }
+    }, 1000); // Check every second
+
+    return () => clearInterval(interval);
+  }, [chatState, handleExternalToolResponses]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
@@ -326,17 +450,23 @@ export function useChat({
     }
   }, []);
 
+  // Custom clearMessages that also clears the ref
+  const clearMessages = useCallback(() => {
+    allMessagesRef.current = [];
+    chatState.clearMessages();
+    chatState.setStreamingIndicator(undefined);
+  }, [chatState]);
+
   return {
-    messages,
-    isStreaming,
+    messages: allMessagesRef.current,
+    isStreaming: chatState.isStreaming,
     sendMessage,
     sendMessageStream,
-    isLoading,
-    error,
+    isLoading: chatState.isLoading,
+    error: chatState.error,
     clearMessages,
     agent: agent || undefined,
-    toolCallStates: toolStateHandler.toolCallStates,
-    hasPendingToolCalls: toolStateHandler.hasPendingToolCalls,
+    hasPendingToolCalls: chatState.hasPendingToolCalls,
     stopStreaming,
   };
 } 

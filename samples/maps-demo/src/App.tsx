@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useCallback } from 'react';
-import { DistriProvider, EmbeddableChat, useAgent, DistriAnyTool } from '@distri/react';
+import { DistriProvider, Chat, useAgent, DistriAnyTool } from '@distri/react';
 import { AlertCircle } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import GoogleMapsManager, { GoogleMapsManagerRef } from './components/GoogleMapsManager';
@@ -21,7 +21,7 @@ function getThreadId() {
 }
 
 function MapsChat() {
-  const { agent, loading } = useAgent({ agentId: 'maps-navigator', autoCreateAgent: true });
+  const { agent, loading } = useAgent({ agentIdOrDef: 'maps-navigator' });
   const [selectedThreadId] = useState<string>(getThreadId());
   const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
   const [tools, setTools] = useState<DistriAnyTool[]>([]);
@@ -72,7 +72,7 @@ function MapsChat() {
       <div className="w-96">
         <div className="h-full">
           {!loading && agent && tools.length > 0 && (
-            <EmbeddableChat
+            <Chat
               agent={agent}
               tools={tools}
               theme="dark"
