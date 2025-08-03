@@ -1,29 +1,36 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
+import { DistriChatMessage } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { useChatStateStore } from '../stores/chatStateStore';
+import { WrapToolOptions } from '../utils/toolWrapper';
 
 export interface ChatProps {
   threadId: string;
   agent?: any;
-  onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+  onMessage?: (message: DistriChatMessage) => void;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
-  onMessagesUpdate?: () => void;
   tools?: any[];
-
-  // Message filter to control what messages are displayed
-  messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
-
-  // Override chat state (for testing/debugging)
-  overrideChatState?: any;
-
+  // Tool wrapping options
+  wrapOptions?: WrapToolOptions;
+  // Initial messages to use instead of fetching
+  initialMessages?: (DistriChatMessage)[];
   // Theme
   theme?: 'light' | 'dark' | 'auto';
 }
+
+// Wrapper component to ensure consistent width and centering
+const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
+}) => (
+  <div className={`max-w-3xl mx-auto w-full ${className}`}>
+    {children}
+  </div>
+);
 
 export function Chat({
   threadId,
@@ -31,10 +38,9 @@ export function Chat({
   onMessage,
   onError,
   getMetadata,
-  onMessagesUpdate,
   tools,
-  messageFilter,
-  overrideChatState,
+  wrapOptions,
+  initialMessages,
   theme = 'auto',
 }: ChatProps) {
   const [input, setInput] = useState('');
@@ -44,26 +50,22 @@ export function Chat({
   const {
     sendMessage,
     stopStreaming,
+    isStreaming,
+    isLoading,
+    error,
+    messages,
   } = useChat({
     threadId,
     agent,
     onMessage,
     onError,
     getMetadata,
-    onMessagesUpdate,
-    messageFilter,
     tools,
-    overrideChatState,
+    wrapOptions,
+    initialMessages,
   });
 
-  // Get chat state - use override if provided, otherwise get from store
-  const chatState = overrideChatState || useChatStateStore.getState();
-
   // Get reactive state from store
-  const messages = useChatStateStore(state => state.messages);
-  const isStreaming = useChatStateStore(state => state.isStreaming);
-  const isLoading = useChatStateStore(state => state.isLoading);
-  const error = useChatStateStore(state => state.error);
   const toolCalls = useChatStateStore(state => state.toolCalls);
   const currentPlanId = useChatStateStore(state => state.currentPlanId);
   const plans = useChatStateStore(state => state.plans);
@@ -141,7 +143,6 @@ export function Chat({
           key={`message-${index}`}
           message={message}
           index={index}
-          chatState={chatState}
           isExpanded={expandedTools.has(message.id || `message-${index}`)}
           onToggle={() => {
             const messageId = message.id || `message-${index}`;
@@ -164,10 +165,11 @@ export function Chat({
     if (streamingIndicator) {
       console.log('Rendering thinking indicator:', streamingIndicator);
       return (
-        <ThinkingRenderer
-          key={`thinking-${streamingIndicator}`}
-          indicator={streamingIndicator}
-        />
+        <RendererWrapper key={`thinking-${streamingIndicator}`}>
+          <ThinkingRenderer
+            indicator={streamingIndicator}
+          />
+        </RendererWrapper>
       );
     }
     return null;

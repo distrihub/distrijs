@@ -1,5 +1,5 @@
 import { Artifact, Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact } from './types';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
@@ -149,20 +149,44 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
 
   // Handle different artifact types based on the data structure
   if (data.type === 'llm_response') {
-    // Convert to AssistantWithToolCalls for LLM responses
-    const executionResult: AssistantWithToolCalls = {
-      id: data.id || artifact.artifactId,
-      type: 'llm_response',
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      content: data.content || '',
-      tool_calls: data.tool_calls || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
+    // Check if there's content or tool calls to determine the return type
+    const hasContent = data.content && data.content.trim() !== '';
+    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
+    const isExternal = data.is_external;
 
-    return executionResult;
+    if (hasToolCalls) {
+      // If there are only tool calls (no content), return as AssistantWithToolCalls
+      const executionResult: AssistantWithToolCalls = {
+        id: data.id || artifact.artifactId,
+        type: 'llm_response',
+        timestamp: data.timestamp || data.created_at || Date.now(),
+        content: data.content?.trim() || '',
+        tool_calls: data.tool_calls,
+        step_id: data.step_id,
+        success: data.success,
+        rejected: data.rejected,
+        reason: data.reason,
+        is_external: isExternal
+      };
+
+      return executionResult;
+    } else {
+      // If there's content, return as DistriMessage
+      const parts: DistriPart[] = [];
+      // Add text part for content
+      if (hasContent) {
+        parts.push({ type: 'text', text: data.content });
+      }
+
+      const distriMessage: DistriMessage = {
+        id: artifact.artifactId,
+        role: 'assistant',
+        parts: parts,
+        created_at: data.timestamp || data.created_at || new Date().toISOString()
+      };
+      return distriMessage;
+    }
+
   }
 
   if (data.type === 'tool_results') {
@@ -179,6 +203,19 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
     };
 
     return executionResult;
+  }
+
+  if (data.type === 'plan') {
+    // Convert to DistriPlan for plan artifacts
+    const planResult: DistriPlan = {
+      id: data.id || artifact.artifactId,
+      type: 'plan',
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      reasoning: data.reasoning || '',
+      steps: data.steps || []
+    };
+
+    return planResult;
   }
 
   // For other artifact types, create a generic artifact
@@ -198,10 +235,11 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
 /**
  * Enhanced decoder for A2A stream events that properly handles all event types
  */
-export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | DistriArtifact | null {
-  // Handle JSONrpc wrapped events from stream.json
-  if (event.jsonrpc && event.result) {
-    return decodeA2AStreamEvent(event.result);
+export function decodeA2AStreamEvent(event: any): DistriChatMessage | null {
+
+  // Handle artifacts (without kind field)
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
   }
 
   // Handle regular messages
@@ -219,10 +257,7 @@ export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | 
     return convertA2AArtifactToDistri(event);
   }
 
-  // Handle artifacts (without kind field)
-  if (event.artifactId && event.parts) {
-    return convertA2AArtifactToDistri(event);
-  }
+
 
   return null;
 }
@@ -343,11 +378,11 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       let val = {
         kind: 'data', data: {
           tool_call_id: distriPart.tool_result.tool_call_id,
+          tool_name: distriPart.tool_result.tool_name,
           result: distriPart.tool_result.result,
           part_type: 'tool_result'
         }
       };
-      console.log('<> val', val);
       return val as Part;
     case 'code_observation':
       return { kind: 'data', data: { ...distriPart, part_type: 'code_observation' } };

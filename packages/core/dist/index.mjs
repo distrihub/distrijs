@@ -37,7 +37,7 @@ function isDistriEvent(event) {
   return "type" in event && "data" in event;
 }
 function isDistriPlan(event) {
-  return "steps" in event && Array.isArray(event.steps);
+  return "steps" in event && Array.isArray(event.steps) && "reasoning" in event;
 }
 function isDistriArtifact(event) {
   return "type" in event && "timestamp" in event && "id" in event;
@@ -529,18 +529,36 @@ function convertA2AArtifactToDistri(artifact) {
   }
   const data = part.data;
   if (data.type === "llm_response") {
-    const executionResult2 = {
-      id: data.id || artifact.artifactId,
-      type: "llm_response",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      content: data.content || "",
-      tool_calls: data.tool_calls || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-    return executionResult2;
+    const hasContent = data.content && data.content.trim() !== "";
+    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
+    const isExternal = data.is_external;
+    if (hasToolCalls) {
+      const executionResult2 = {
+        id: data.id || artifact.artifactId,
+        type: "llm_response",
+        timestamp: data.timestamp || data.created_at || Date.now(),
+        content: data.content?.trim() || "",
+        tool_calls: data.tool_calls,
+        step_id: data.step_id,
+        success: data.success,
+        rejected: data.rejected,
+        reason: data.reason,
+        is_external: isExternal
+      };
+      return executionResult2;
+    } else {
+      const parts = [];
+      if (hasContent) {
+        parts.push({ type: "text", text: data.content });
+      }
+      const distriMessage = {
+        id: artifact.artifactId,
+        role: "assistant",
+        parts,
+        created_at: data.timestamp || data.created_at || (/* @__PURE__ */ new Date()).toISOString()
+      };
+      return distriMessage;
+    }
   }
   if (data.type === "tool_results") {
     const executionResult2 = {
@@ -555,6 +573,16 @@ function convertA2AArtifactToDistri(artifact) {
     };
     return executionResult2;
   }
+  if (data.type === "plan") {
+    const planResult = {
+      id: data.id || artifact.artifactId,
+      type: "plan",
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      reasoning: data.reasoning || "",
+      steps: data.steps || []
+    };
+    return planResult;
+  }
   const executionResult = {
     id: artifact.artifactId,
     type: "artifact",
@@ -567,8 +595,8 @@ function convertA2AArtifactToDistri(artifact) {
   return executionResult;
 }
 function decodeA2AStreamEvent(event) {
-  if (event.jsonrpc && event.result) {
-    return decodeA2AStreamEvent(event.result);
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
   }
   if (event.kind === "message") {
     return convertA2AMessageToDistri(event);
@@ -577,9 +605,6 @@ function decodeA2AStreamEvent(event) {
     return convertA2AStatusUpdateToDistri(event);
   }
   if (event.kind === "artifact-update") {
-    return convertA2AArtifactToDistri(event);
-  }
-  if (event.artifactId && event.parts) {
     return convertA2AArtifactToDistri(event);
   }
   return null;
@@ -671,11 +696,11 @@ function convertDistriPartToA2A(distriPart) {
         kind: "data",
         data: {
           tool_call_id: distriPart.tool_result.tool_call_id,
+          tool_name: distriPart.tool_result.tool_name,
           result: distriPart.tool_result.result,
           part_type: "tool_result"
         }
       };
-      console.log("<> val", val);
       return val;
     case "code_observation":
       return { kind: "data", data: { ...distriPart, part_type: "code_observation" } };

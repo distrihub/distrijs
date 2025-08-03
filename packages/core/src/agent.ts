@@ -2,11 +2,9 @@ import { DistriClient } from './distri-client';
 import {
   AgentDefinition,
   DistriBaseTool,
-  DistriMessage,
-  DistriArtifact
+  DistriChatMessage
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
-import { DistriEvent } from './events';
 import { decodeA2AStreamEvent } from './encoder';
 
 /**
@@ -121,7 +119,7 @@ export class Agent {
   /**
    * Streaming invoke
    */
-  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriEvent | DistriMessage | DistriArtifact>> {
+  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriChatMessage>> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
     console.log('enhancedParams', enhancedParams);
