@@ -25,6 +25,7 @@ export interface UseChatOptions {
   getMetadata?: () => Promise<any>;
   onMessagesUpdate?: () => void;
   messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
+  processMessagesUntil?: number;
   tools?: DistriAnyTool[];
   overrideChatState?: ChatStateStore;
 }
@@ -53,6 +54,7 @@ export function useChat({
   tools,
   overrideChatState,
   messageFilter,
+  processMessagesUntil,
 }: UseChatOptions): UseChatReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -67,17 +69,32 @@ export function useChat({
   registerTools({ agent, tools });
 
   // Chat state management with Zustand - use override if provided
-  const chatState = overrideChatState || useChatStateStore.getState();
+  const chatState = overrideChatState || useChatStateStore();
+  const {
+    addMessage,
+    processMessage,
+    clearMessages: clearMessagesStore,
+    clearAllStates,
+    setError,
+    setLoading,
+    setStreaming,
+    setAgent,
+    setTools,
+    initToolCall,
+    updateToolCallStatus,
+    getExternalToolResponses,
+    hasPendingToolCalls,
+  } = chatState;
 
   // Set up the agent and tools in the store
   useEffect(() => {
     if (agent) {
-      chatState.setAgent(agent);
+      setAgent(agent);
     }
     if (tools) {
-      chatState.setTools(tools);
+      setTools(tools);
     }
-  }, [agent, tools, chatState]);
+  }, [agent, tools, setAgent, setTools]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
@@ -91,58 +108,74 @@ export function useChat({
   // Reset state when agent changes
   const agentIdRef = useRef<string | undefined>(undefined);
   const messageFilterRef = useRef<((message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean) | undefined>(undefined);
+  const processMessagesUntilRef = useRef<number | undefined>(processMessagesUntil);
 
   // Store all messages in a ref to preserve them when filter changes
   const allMessagesRef = useRef<(DistriEvent | DistriMessage | DistriArtifact)[]>([]);
 
   // Function to reapply filter to all messages
   const reapplyFilter = useCallback(() => {
-    const filteredMessages = allMessagesRef.current.filter(messageFilter || (() => true));
+    const limit = processMessagesUntilRef.current ?? Infinity;
+    const filteredMessages = allMessagesRef.current
+      .slice(0, limit)
+      .filter(messageFilter || (() => true));
 
     // Clear store and re-add filtered messages
-    chatState.clearMessages();
-    chatState.clearAllStates();
-    chatState.setError(null);
+    clearMessagesStore();
+    clearAllStates();
+    setError(null);
 
     filteredMessages.forEach(message => {
-      chatState.addMessage(message);
-      chatState.processMessage(message);
+      addMessage(message);
+      processMessage(message);
     });
-  }, [chatState, messageFilter]);
+  }, [addMessage, processMessage, clearMessagesStore, clearAllStates, setError, messageFilter]);
 
   useEffect(() => {
     if (agent?.id !== agentIdRef.current) {
       // Agent changed, reset all state
       allMessagesRef.current = [];
-      chatState.clearMessages();
-      chatState.clearAllStates();
-      chatState.setError(null);
+      clearMessagesStore();
+      clearAllStates();
+      setError(null);
       agentIdRef.current = agent?.id;
     }
 
-    if (messageFilter !== messageFilterRef.current) {
-      // Message filter changed, reapply filter to existing messages
+    if (
+      messageFilter !== messageFilterRef.current ||
+      processMessagesUntil !== processMessagesUntilRef.current
+    ) {
+      // Message filter or process limit changed, reapply filter to existing messages
       messageFilterRef.current = messageFilter;
+      processMessagesUntilRef.current = processMessagesUntil;
       reapplyFilter();
     }
-  }, [agent?.id, chatState, messageFilter, reapplyFilter]);
+  }, [agent?.id, messageFilter, processMessagesUntil, reapplyFilter, clearMessagesStore, clearAllStates, setError]);
 
-  const addMessages = useCallback((messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => {
-    // Store all messages in ref
-    allMessagesRef.current = [...allMessagesRef.current, ...messages];
+  const addMessages = useCallback(
+    (messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => {
+      const startIdx = allMessagesRef.current.length;
+      // Store all messages in ref
+      allMessagesRef.current = [...allMessagesRef.current, ...messages];
 
-    const filteredMessages = messages.filter(messageFilter || (() => true));
-    filteredMessages.forEach(message => {
-      chatState.addMessage(message);
-      chatState.processMessage(message);
-    });
-  }, [chatState, messageFilter]);
+      const limit = processMessagesUntilRef.current ?? Infinity;
+      messages.forEach((message, idx) => {
+        const globalIdx = startIdx + idx;
+        if (globalIdx >= limit) return;
+        if (!messageFilter || messageFilter(message, globalIdx)) {
+          addMessage(message);
+          processMessage(message);
+        }
+      });
+    },
+    [addMessage, processMessage, messageFilter]
+  );
 
   const fetchMessages = useCallback(async () => {
     if (!agent) return;
 
     try {
-      chatState.setLoading(true);
+      setLoading(true);
       const a2aMessages = await agent.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean) as (DistriEvent | DistriMessage | DistriArtifact)[];
 
@@ -150,18 +183,18 @@ export function useChat({
       allMessagesRef.current = distriMessages;
 
       // Clear existing messages and add filtered ones
-      chatState.clearMessages();
+      clearMessagesStore();
       addMessages(distriMessages);
 
       onMessagesUpdate?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch messages');
-      chatState.setError(error);
+      setError(error);
       onError?.(error);
     } finally {
-      chatState.setLoading(false);
+      setLoading(false);
     }
-  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState, addMessages]);
+  }, [threadId, agent?.id, onError, onMessagesUpdate, setLoading, setError, addMessages, clearMessagesStore]);
 
   // Fetch messages on mount and when threadId changes
   useEffect(() => {
@@ -170,20 +203,26 @@ export function useChat({
     }
   }, [threadId, agent?.id]);
 
-  const handleStreamEvent = useCallback((event: DistriEvent | DistriMessage | DistriArtifact) => {
-    // Add event to ref
-    allMessagesRef.current = [...allMessagesRef.current, event];
+  const handleStreamEvent = useCallback(
+    (event: DistriEvent | DistriMessage | DistriArtifact) => {
+      // Add event to ref
+      allMessagesRef.current = [...allMessagesRef.current, event];
+      const idx = allMessagesRef.current.length - 1;
+      const limit = processMessagesUntilRef.current ?? Infinity;
 
-    // Only process if it passes the filter
-    if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
-      if (isDistriEvent(event) &&
-        (event.type === 'text_message_start' || event.type === 'text_message_content' || event.type === 'text_message_end')) {
-        chatState.processMessage(event);
-      } else {
-        chatState.addMessage(event);
-        chatState.processMessage(event);
+      if (idx < limit && (!messageFilter || messageFilter(event, idx))) {
+        if (
+          isDistriEvent(event) &&
+          (event.type === 'text_message_start' ||
+            event.type === 'text_message_content' ||
+            event.type === 'text_message_end')
+        ) {
+          processMessage(event);
+        } else {
+          addMessage(event);
+          processMessage(event);
+        }
       }
-    }
 
     // Handle tool calls and results automatically from artifacts
     if (isDistriArtifact(event)) {
@@ -202,7 +241,7 @@ export function useChat({
             // Use step_id as step title if available
             const stepTitle = llmArtifact.step_id || toolCall.tool_name;
 
-            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
+            initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
           });
         }
       } else if (artifact.type === 'tool_results') {
@@ -220,7 +259,7 @@ export function useChat({
               }
             }
 
-            chatState.updateToolCallStatus(
+            updateToolCallStatus(
               result.tool_call_id,
               {
                 status: toolResultsArtifact.success ? 'completed' : 'error',
@@ -244,13 +283,13 @@ export function useChat({
         const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
         newToolCalls.forEach(toolCall => {
           // Check if tool is external (only if explicitly registered in tools array)
-          const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
+        const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
           const isExternal = !!distriTool; // Only true if found in tools array
 
           // Use tool name as step title for regular messages
           const stepTitle = toolCall.tool_name;
 
-          chatState.initToolCall(toolCall, undefined, isExternal, stepTitle);
+          initToolCall(toolCall, undefined, isExternal, stepTitle);
         });
       }
 
@@ -259,7 +298,7 @@ export function useChat({
       if (toolResultParts.length > 0) {
         const newToolResults = toolResultParts.map(part => (part as any).tool_result);
         newToolResults.forEach(toolResult => {
-          chatState.updateToolCallStatus(
+          updateToolCallStatus(
             toolResult.tool_call_id,
             {
               status: toolResult.success ? 'completed' : 'error',
@@ -273,14 +312,14 @@ export function useChat({
     }
 
     onMessage?.(event);
-  }, [onMessage, agent, chatState, messageFilter]);
+  }, [onMessage, messageFilter, chatState.tools, initToolCall, updateToolCallStatus, addMessage, processMessage, processMessagesUntil]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
 
-    chatState.setLoading(true);
-    chatState.setStreaming(true);
-    chatState.setError(null);
+    setLoading(true);
+    setStreaming(true);
+    setError(null);
     chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
@@ -301,7 +340,10 @@ export function useChat({
 
       // Add user message to ref and state immediately
       allMessagesRef.current = [...allMessagesRef.current, distriMessage];
-      chatState.addMessage(distriMessage);
+      const userIdx = allMessagesRef.current.length - 1;
+      if (userIdx < (processMessagesUntilRef.current ?? Infinity)) {
+        addMessage(distriMessage);
+      }
 
       const contextMetadata = await getMetadata?.() || {};
       // Start streaming
@@ -322,21 +364,21 @@ export function useChat({
         return;
       }
       const error = err instanceof Error ? err : new Error('Failed to send message');
-      chatState.setError(error);
+      setError(error);
       onError?.(error);
     } finally {
-      chatState.setLoading(false);
-      chatState.setStreaming(false);
+      setLoading(false);
+      setStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [agent, createInvokeContext, handleStreamEvent, onError]);
+  }, [agent, createInvokeContext, handleStreamEvent, onError, addMessage, setLoading, setStreaming, setError]);
 
   const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
     if (!agent) return;
 
-    chatState.setLoading(true);
-    chatState.setStreaming(true);
-    chatState.setError(null);
+    setLoading(true);
+    setStreaming(true);
+    setError(null);
     chatState.setStreamingIndicator(undefined);
 
     // Cancel any existing stream
@@ -355,9 +397,12 @@ export function useChat({
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
-      // Add user message to ref and state immediately
+      // Add user/tool message to ref and state immediately
       allMessagesRef.current = [...allMessagesRef.current, distriMessage];
-      chatState.addMessage(distriMessage);
+      const msgIdx = allMessagesRef.current.length - 1;
+      if (msgIdx < (processMessagesUntilRef.current ?? Infinity)) {
+        addMessage(distriMessage);
+      }
 
       const contextMetadata = await getMetadata?.() || {};
       // Start streaming
@@ -378,21 +423,21 @@ export function useChat({
         return;
       }
       const error = err instanceof Error ? err : new Error('Failed to send message');
-      chatState.setError(error);
+      setError(error);
       onError?.(error);
     } finally {
       // Only set loading to false if no pending tool calls
-      if (!chatState.hasPendingToolCalls()) {
-        chatState.setLoading(false);
+      if (!hasPendingToolCalls()) {
+        setLoading(false);
       }
-      chatState.setStreaming(false);
+      setStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
+  }, [agent, createInvokeContext, handleStreamEvent, onError, threadId, addMessage, setLoading, setStreaming, setError, hasPendingToolCalls]);
 
   // Handle external tool responses
   const handleExternalToolResponses = useCallback(async () => {
-    const externalResponses = chatState.getExternalToolResponses();
+    const externalResponses = getExternalToolResponses();
     // Only send responses if there are actual external tool calls that need responses
     // and we're not currently streaming
     if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
@@ -417,15 +462,15 @@ export function useChat({
         chatState.clearToolResults();
       } catch (err) {
         console.error('Failed to send external tool responses:', err);
-        chatState.setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
+        setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
       }
     }
-  }, [chatState, sendMessageStream]);
+  }, [chatState, sendMessageStream, getExternalToolResponses, setError]);
 
   // Check for external tool responses periodically
   useEffect(() => {
     const interval = setInterval(() => {
-      const externalResponses = chatState.getExternalToolResponses();
+      const externalResponses = getExternalToolResponses();
       // Only process if there are responses and we're not currently streaming or loading
       // AND only for external tools that have actually completed their handling
       if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
@@ -442,7 +487,7 @@ export function useChat({
     }, 1000); // Check every second
 
     return () => clearInterval(interval);
-  }, [chatState, handleExternalToolResponses]);
+  }, [chatState, handleExternalToolResponses, getExternalToolResponses]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
@@ -453,12 +498,12 @@ export function useChat({
   // Custom clearMessages that also clears the ref
   const clearMessages = useCallback(() => {
     allMessagesRef.current = [];
-    chatState.clearMessages();
+    clearMessagesStore();
     chatState.setStreamingIndicator(undefined);
-  }, [chatState]);
+  }, [clearMessagesStore, chatState]);
 
   return {
-    messages: allMessagesRef.current,
+    messages: chatState.messages,
     isStreaming: chatState.isStreaming,
     sendMessage,
     sendMessageStream,
@@ -466,7 +511,7 @@ export function useChat({
     error: chatState.error,
     clearMessages,
     agent: agent || undefined,
-    hasPendingToolCalls: chatState.hasPendingToolCalls,
+    hasPendingToolCalls,
     stopStreaming,
   };
-} 
+}

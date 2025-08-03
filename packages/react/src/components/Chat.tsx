@@ -18,6 +18,9 @@ export interface ChatProps {
   // Message filter to control what messages are displayed
   messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
 
+  // Limit processing to messages up to this index (for debugging/replay)
+  processMessagesUntil?: number;
+
   // Override chat state (for testing/debugging)
   overrideChatState?: any;
 
@@ -34,6 +37,7 @@ export function Chat({
   onMessagesUpdate,
   tools,
   messageFilter,
+  processMessagesUntil,
   overrideChatState,
   theme = 'auto',
 }: ChatProps) {
@@ -52,6 +56,7 @@ export function Chat({
     getMetadata,
     onMessagesUpdate,
     messageFilter,
+    processMessagesUntil,
     tools,
     overrideChatState,
   });
