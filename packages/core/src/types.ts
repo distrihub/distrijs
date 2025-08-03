@@ -26,6 +26,7 @@ export interface AssistantWithToolCalls {
   step_id?: string;
   success: boolean;
   rejected: boolean;
+  is_external: boolean;
   reason: string | null;
 }
 
@@ -54,8 +55,44 @@ export interface DistriPlan {
   id: string;
   type: 'plan';
   timestamp: number;
-  steps: string[];
+  reasoning: string;
+  steps: PlanStep[];
 }
+
+export interface BasePlanStep {
+  id: string;
+  title: string;
+}
+
+export interface LlmPlanStep extends BasePlanStep {
+  type: 'llm_call';
+  prompt: string;
+  context: any[]; // Vec<Message> in Rust
+}
+
+export interface BatchToolCallsStep extends BasePlanStep {
+  type: 'batch_tool_calls';
+  tool_calls: any[]; // Vec<ToolCall> in Rust
+}
+
+export interface ThoughtStep extends BasePlanStep {
+  type: 'thought';
+  message: string;
+}
+
+export interface ReactStep extends BasePlanStep {
+  type: 'react_step';
+  thought: string;
+  action: string;
+}
+
+export interface FinalResultStep extends BasePlanStep {
+  type: 'final_result';
+  content: string;
+  tool_calls: any[]; // Vec<ToolCall> in Rust
+}
+
+export type PlanStep = LlmPlanStep | BatchToolCallsStep | ThoughtStep | ReactStep | FinalResultStep;
 
 export type DistriArtifact = AssistantWithToolCalls | ToolResults | GenericArtifact | DistriPlan;
 
@@ -324,9 +361,11 @@ export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
 }
 
 export function isDistriPlan(event: DistriStreamEvent): event is DistriPlan {
-  return 'steps' in event && Array.isArray(event.steps);
+  return 'steps' in event && Array.isArray(event.steps) && 'reasoning' in event;
 }
 
 export function isDistriArtifact(event: DistriStreamEvent): event is DistriArtifact {
   return 'type' in event && 'timestamp' in event && 'id' in event;
 }
+
+export type DistriChatMessage = DistriEvent | DistriMessage | DistriArtifact;

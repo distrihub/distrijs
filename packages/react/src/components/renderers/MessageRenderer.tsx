@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact, ToolResults } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact, ToolResults, DistriChatMessage } from '@distri/core';
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { ToolMessageRenderer } from './ToolMessageRenderer';
@@ -11,7 +11,7 @@ import { DebugRenderer } from './DebugRenderer';
 import { useChatStateStore } from '../../stores/chatStateStore';
 
 export interface MessageRendererProps {
-  message: DistriEvent | DistriMessage | DistriArtifact;
+  message: DistriChatMessage;
   index: number;
   isExpanded?: boolean;
   onToggle?: () => void;
@@ -101,15 +101,7 @@ export function MessageRenderer({
         return null;
 
       case 'plan_finished':
-        return (
-          <RendererWrapper key={`plan-finished-${index}`} className="py-6">
-            <div className="p-3 bg-primary/10 border border-primary/20 rounded">
-              <div className="text-sm text-primary">
-                <strong>Plan ready:</strong> {event.data?.total_steps || 0} steps
-              </div>
-            </div>
-          </RendererWrapper>
-        );
+        return null;
 
       case 'plan_pruned':
         return (
@@ -237,16 +229,6 @@ export function MessageRenderer({
         );
 
       default:
-        // Debug events in development
-        if (process.env.NODE_ENV === 'development') {
-          return (
-            <RendererWrapper key={`event-${index}`}>
-              <DebugRenderer
-                message={event}
-              />
-            </RendererWrapper>
-          );
-        }
         return null;
     }
   }
@@ -277,13 +259,19 @@ export function MessageRenderer({
           );
         }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
+          console.log('artifact', artifact);
+          console.log('tool_calls', toolCalls);
           return artifact.tool_calls.map((toolCall, toolIndex) => {
             // Get tool call state from chat state
             const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
 
             const toolCallStartState = toolCalls.get(toolCall.tool_call_id);
-            if (toolCallStartState?.status === 'pending') {
+            console.log('toolCallStartState', toolCallStartState);
+            if (toolCallStartState?.component) {
+              return toolCallStartState.component;
+            }
+            else if (toolCallStartState?.status === 'pending') {
 
               return (
                 <RendererWrapper key={`tool-call-${index}-${toolIndex}`}>

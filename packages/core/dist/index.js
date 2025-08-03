@@ -83,7 +83,7 @@ function isDistriEvent(event) {
   return "type" in event && "data" in event;
 }
 function isDistriPlan(event) {
-  return "steps" in event && Array.isArray(event.steps);
+  return "steps" in event && Array.isArray(event.steps) && "reasoning" in event;
 }
 function isDistriArtifact(event) {
   return "type" in event && "timestamp" in event && "id" in event;
@@ -577,6 +577,7 @@ function convertA2AArtifactToDistri(artifact) {
   if (data.type === "llm_response") {
     const hasContent = data.content && data.content.trim() !== "";
     const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
+    const isExternal = data.is_external;
     if (hasToolCalls) {
       const executionResult2 = {
         id: data.id || artifact.artifactId,
@@ -587,7 +588,8 @@ function convertA2AArtifactToDistri(artifact) {
         step_id: data.step_id,
         success: data.success,
         rejected: data.rejected,
-        reason: data.reason
+        reason: data.reason,
+        is_external: isExternal
       };
       return executionResult2;
     } else {
@@ -616,6 +618,16 @@ function convertA2AArtifactToDistri(artifact) {
       reason: data.reason
     };
     return executionResult2;
+  }
+  if (data.type === "plan") {
+    const planResult = {
+      id: data.id || artifact.artifactId,
+      type: "plan",
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      reasoning: data.reasoning || "",
+      steps: data.steps || []
+    };
+    return planResult;
   }
   const executionResult = {
     id: artifact.artifactId,

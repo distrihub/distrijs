@@ -1,20 +1,23 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
+import { DistriChatMessage } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { useChatStateStore } from '../stores/chatStateStore';
+import { WrapToolOptions } from '../utils/toolWrapper';
 
 export interface ChatProps {
   threadId: string;
   agent?: any;
-  onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+  onMessage?: (message: DistriChatMessage) => void;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
   tools?: any[];
+  // Tool wrapping options
+  wrapOptions?: WrapToolOptions;
   // Initial messages to use instead of fetching
-  initialMessages?: (DistriEvent | DistriMessage | DistriArtifact)[];
+  initialMessages?: (DistriChatMessage)[];
   // Theme
   theme?: 'light' | 'dark' | 'auto';
 }
@@ -36,6 +39,7 @@ export function Chat({
   onError,
   getMetadata,
   tools,
+  wrapOptions,
   initialMessages,
   theme = 'auto',
 }: ChatProps) {
@@ -57,6 +61,7 @@ export function Chat({
     onError,
     getMetadata,
     tools,
+    wrapOptions,
     initialMessages,
   });
 

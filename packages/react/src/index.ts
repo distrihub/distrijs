@@ -1,48 +1,38 @@
-// Core components
-export { Chat, type ChatProps } from './components/Chat';
-export { DistriProvider } from './DistriProvider';
-export { ThemeProvider } from './components/ThemeProvider';
-export { ThemeToggle } from './components/ThemeToggle';
-export { useTheme } from './components/ThemeProvider';
+// Core exports
+export * from './useChat';
+export * from './useAgent';
+export * from './useAgentDefinitions';
+export * from './useThreads';
 
-// Agent components
-export { default as AgentList } from './components/AgentList';
-export { AgentSelect } from './components/AgentSelect';
-export { default as AgentsPage } from './components/AgentsPage';
+// Component exports
+export * from './components/Chat';
+export * from './components/AgentList';
+export * from './components/AgentSelect';
+export * from './components/AgentsPage';
+export * from './components/AppSidebar';
+export * from './components/ChatInput';
+export * from './components/TaskExecutionRenderer';
+export * from './components/ThemeProvider';
+export * from './components/ThemeToggle';
+export * from './components/Toast';
 
-// Execution components
-export { ExecutionSteps } from './components/ExecutionSteps';
-export { TaskExecutionRenderer } from './components/TaskExecutionRenderer';
+// Provider exports
+export * from './DistriProvider';
 
-// Renderers
-export {
-  UserMessageRenderer,
-  AssistantMessageRenderer,
-  ThinkingRenderer,
-  ToolCallRenderer,
-  PlanRenderer,
-  ToolMessageRenderer,
-  DebugRenderer,
-  ArtifactRenderer,
-} from './components/renderers';
+// Type exports
+export * from './types';
 
-// Hooks
-export { useChat } from './useChat';
-export { useChatMessages } from './hooks/useChatMessages';
-export { useAgent } from './useAgent';
-export { useAgentDefinitions } from './useAgentDefinitions';
-export { useThreads } from './useThreads';
-export { useChatConfig } from './components/ChatContext';
+// Hook exports
+export * from './hooks/useChatMessages';
 
-// Store
-export { useChatStateStore } from './stores/chatStateStore';
+// Utility exports
+export * from './utils/toolWrapper';
 
-// UI components
+// UI Component exports (for customization)
 export * from './components/ui';
 
-// Tool call components
-export { ApprovalToolCall, ToastToolCall } from './components/renderers/tools';
-// Utilities
-export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
+// Renderer exports (for customization)
+export * from './components/renderers';
 
-export type { DistriAnyTool } from './types';
+// Default styles
+import './globals.css';

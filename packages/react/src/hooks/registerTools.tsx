@@ -1,16 +1,19 @@
 import { useEffect, useRef } from 'react';
-import { Agent } from '@distri/core';
-import { DistriAnyTool, UiToolProps } from '@/types';
+import { Agent, DistriFnTool } from '@distri/core';
+import { DistriAnyTool, DistriUiTool, UiToolProps } from '@/types';
 import { ToastToolCall } from '@/components/renderers/tools';
-// import { ApprovalToolCall } from '@/components/toolcalls';
+import { wrapTools, WrapToolOptions } from '../utils/toolWrapper';
+import { useChatStateStore } from '../stores/chatStateStore';
 
 export interface UseToolsOptions {
   agent?: Agent;
   tools?: DistriAnyTool[];
+  wrapOptions?: WrapToolOptions;
 }
 
-export function registerTools({ agent, tools }: UseToolsOptions) {
+export function registerTools({ agent, tools, wrapOptions = {} }: UseToolsOptions) {
   const lastAgentIdRef = useRef<string | null>(null);
+  const setWrapOptions = useChatStateStore(state => state.setWrapOptions);
 
   useEffect(() => {
     if (!agent || !tools || tools.length === 0) {
@@ -22,19 +25,25 @@ export function registerTools({ agent, tools }: UseToolsOptions) {
       return;
     }
 
+    // Store wrap options in chat state for use in executeTool
+    setWrapOptions(wrapOptions);
+
+    // For DistriFnTools, register them as-is since DefaultToolActions will be created automatically in executeTool
+    // For DistriUiTools, keep them as-is
+    const toolsToRegister = [...defaultTools, ...tools];
+
     // Register each tool
-    [...defaultTools, ...tools].forEach(tool => {
+    toolsToRegister.forEach(tool => {
       agent.registerTool(tool);
-      console.log(`✓ Registered tool: ${tool.name}`);
+      console.log(`✓ Registered tool: ${tool.name} (type: ${tool.type})`);
     });
 
     lastAgentIdRef.current = agent.id;
     console.log(`Successfully registered ${tools.length} tools with agent`);
-  }, [agent?.id, tools]);
+  }, [agent?.id, tools, wrapOptions, setWrapOptions]);
 }
 
-
-export const defaultTools: DistriAnyTool[] = [
+export const defaultTools: DistriUiTool[] = [
   {
     name: 'toast',
     type: 'ui',
@@ -48,16 +57,4 @@ export const defaultTools: DistriAnyTool[] = [
     },
     component: (props: UiToolProps) => { return (<ToastToolCall {...props} />) },
   },
-  // {
-  //   name: 'approval_request',
-  //   type: 'ui',
-  //   description: 'Request approval from the user',
-  //   parameters: {
-  //     type: 'object',
-  //     properties: {
-  //       message: { type: 'string' }
-  //     }
-  //   },
-  //   component: (props: UiToolProps) => { return (<ApprovalToolCall {...props} />) },
-  // }
 ]

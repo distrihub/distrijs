@@ -1,31 +1,30 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriClient } from '@distri/core';
+import { Agent, DistriChatMessage, DistriClient } from '@distri/core';
 import {
-  DistriMessage,
   DistriPart,
   InvokeContext,
-  DistriEvent,
-  DistriArtifact,
   convertDistriMessageToA2A,
 } from '@distri/core';
 import { registerTools } from './hooks/registerTools';
 import { useChatStateStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
-import { useChatMessages } from './hooks/useChatMessages';
+
+import { WrapToolOptions } from './utils/toolWrapper';
 
 export interface UseChatOptions {
   threadId: string;
   agent?: Agent;
-  onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+  onMessage?: (message: DistriChatMessage) => void;
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
   getMetadata?: () => Promise<any>;
   tools?: DistriAnyTool[];
-  initialMessages?: (DistriEvent | DistriMessage | DistriArtifact)[];
+  wrapOptions?: WrapToolOptions;
+  initialMessages?: (DistriChatMessage)[];
 }
 
 export interface UseChatReturn {
-  messages: (DistriEvent | DistriMessage | DistriArtifact)[];
+  messages: (DistriChatMessage)[];
   isStreaming: boolean;
   sendMessage: (content: string | DistriPart[]) => Promise<void>;
   sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
@@ -33,7 +32,7 @@ export interface UseChatReturn {
   error: Error | null;
   hasPendingToolCalls: () => boolean;
   stopStreaming: () => void;
-  addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+  addMessage: (message: DistriChatMessage) => void;
 }
 
 export function useChat({
@@ -42,6 +41,7 @@ export function useChat({
   getMetadata,
   agent,
   tools,
+  wrapOptions,
   initialMessages,
 }: UseChatOptions): UseChatReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -66,7 +66,7 @@ export function useChat({
   }), [threadId]);
 
   // Register tools with agent
-  registerTools({ agent, tools });
+  registerTools({ agent, tools, wrapOptions });
 
   // Chat state management with Zustand - only for processing state
   const chatState = useChatStateStore();
@@ -82,41 +82,27 @@ export function useChat({
     setStreaming,
     setAgent,
     setTools,
-    initToolCall,
-    updateToolCallStatus,
     getExternalToolResponses,
     hasPendingToolCalls,
   } = chatState;
 
-  // Use the new useChatMessages hook for message management
-  const {
-    addMessage: addMessageToHook,
-    messages,
-  } = useChatMessages({
-    initialMessages,
-    agent,
-    threadId,
-    onError,
-    onMessageProcess: processMessage,
-    clearStoreState: clearAllStates,
-  });
-
-  // Store addMessageToHook in a ref to avoid circular dependencies
-  const addMessageToHookRef = useRef(addMessageToHook);
+  // Handle initial messages processing - static recalculation when initialMessages change
   useEffect(() => {
-    addMessageToHookRef.current = addMessageToHook;
-  }, [addMessageToHook]);
+    if (initialMessages && initialMessages.length > 0) {
+      // Clear state and process initial messages
+      console.log('recalculating messages', initialMessages.length);
 
-  // Wrap addMessage to also process the message
-  const addMessage = useCallback((message: DistriEvent | DistriMessage | DistriArtifact) => {
-    addMessageToHookRef.current(message);
-  }, []);
+      chatState.clearAllStates();
+      initialMessages.forEach(message => chatState.processMessage(message));
+    }
+  }, [initialMessages]); // Only depend on initialMessages for static behavior
 
-  // Store addMessage in a ref to avoid circular dependencies in handleStreamEvent
-  const addMessageRef = useRef(addMessage);
-  useEffect(() => {
-    addMessageRef.current = addMessage;
-  }, [addMessage]);
+  // Direct message processing
+  const addMessage = useCallback((message: DistriChatMessage) => {
+    processMessage(message);
+  }, [processMessage]);
+
+
 
   // Set up the agent and tools in the store
   useEffect(() => {
@@ -151,10 +137,10 @@ export function useChat({
 
 
   const handleStreamEvent = useCallback(
-    (event: DistriEvent | DistriMessage | DistriArtifact) => {
-      // Add event to messages (this will trigger onMessageAdded callback)
-      addMessageRef.current(event);
-    }, [chatState.tools, initToolCall, updateToolCallStatus]);
+    (event: DistriChatMessage) => {
+      // Process event directly
+      processMessage(event);
+    }, [processMessage]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
@@ -179,7 +165,7 @@ export function useChat({
       const distriMessage = DistriClient.initDistriMessage('user', parts);
 
       // Add user message immediately
-      addMessageRef.current(distriMessage);
+      processMessage(distriMessage);
 
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
@@ -235,7 +221,7 @@ export function useChat({
       const distriMessage = DistriClient.initDistriMessage(role, parts);
 
       // Add user/tool message immediately
-      addMessageRef.current(distriMessage);
+      processMessage(distriMessage);
 
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
@@ -301,13 +287,30 @@ export function useChat({
         setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
       }
     }
-  }, [chatState, sendMessageStream, getExternalToolResponses, setError]);
+  }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);
+
+  // Watch for completed external tool calls and automatically send responses
+  useEffect(() => {
+    const checkAndSendExternalResponses = async () => {
+      // Check if we have completed external tool calls and no pending ones
+      const externalResponses = getExternalToolResponses();
+      const pendingToolCalls = hasPendingToolCalls();
+
+      if (externalResponses.length > 0 && !pendingToolCalls && !isStreaming && !isLoading) {
+        await handleExternalToolResponses();
+      }
+    };
+
+    checkAndSendExternalResponses();
+  }, [chatState.toolCalls, isStreaming, isLoading, getExternalToolResponses, hasPendingToolCalls, handleExternalToolResponses]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
   }, []);
+
+  const messages = useChatStateStore(state => state.messages);
 
   return {
     isStreaming,

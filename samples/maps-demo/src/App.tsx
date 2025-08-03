@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState, useCallback } from 'react';
-import { DistriProvider, Chat, useAgent, DistriAnyTool, useThreads } from '@distri/react';
+import { DistriProvider, Chat, useAgent, DistriAnyTool, useThreads, useChatMessages } from '@distri/react';
 import { AlertCircle } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import GoogleMapsManager, { GoogleMapsManagerRef } from './components/GoogleMapsManager';
 import { ConversationsSidebar } from './components/ConversationsSidebar';
 import { getTools } from './Tools.tsx';
-import { uuidv4 } from '@distri/core';
+import { Agent, DistriArtifact, DistriChatMessage, DistriEvent, DistriMessage, uuidv4 } from '@distri/core';
 import { SidebarProvider, SidebarInset } from '@distri/components';
 
 // Environment variables validation
@@ -28,6 +28,13 @@ function MapsChat() {
   const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
   const [tools, setTools] = useState<DistriAnyTool[]>([]);
 
+  const { messages } = useChatMessages({
+    agent: agent as Agent,
+    threadId: selectedThreadId,
+    onError: (error) => {
+      console.error('Error fetching messages:', error);
+    }
+  });
   // Thread management
   const { threads, loading: threadsLoading, refetch, deleteThread } = useThreads();
 
@@ -41,6 +48,7 @@ function MapsChat() {
 
   // Thread management functions
   const handleThreadSelect = useCallback((threadId: string) => {
+    console.log('handleThreadSelect', threadId);
     setSelectedThreadId(threadId);
     localStorage.setItem('MapsDemo:threadId', threadId);
   }, []);
@@ -57,11 +65,6 @@ function MapsChat() {
       console.error('Failed to delete thread:', error);
     }
   }, [deleteThread, selectedThreadId]);
-
-  const handleThreadRename = useCallback((threadId: string, newTitle: string) => {
-    // This would typically update the thread title on the server
-    console.log('Rename thread:', threadId, 'to:', newTitle);
-  }, []);
 
   // New chat logic
   const handleNewChat = useCallback(() => {
@@ -146,6 +149,7 @@ function MapsChat() {
                   <Chat
                     agent={agent}
                     tools={tools}
+                    initialMessages={messages}
                     theme="dark"
                     threadId={selectedThreadId}
                   />

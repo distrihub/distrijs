@@ -1,5 +1,5 @@
 import { Artifact, Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact } from './types';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
@@ -152,6 +152,7 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
     // Check if there's content or tool calls to determine the return type
     const hasContent = data.content && data.content.trim() !== '';
     const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
+    const isExternal = data.is_external;
 
     if (hasToolCalls) {
       // If there are only tool calls (no content), return as AssistantWithToolCalls
@@ -164,7 +165,8 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
         step_id: data.step_id,
         success: data.success,
         rejected: data.rejected,
-        reason: data.reason
+        reason: data.reason,
+        is_external: isExternal
       };
 
       return executionResult;
@@ -203,6 +205,19 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
     return executionResult;
   }
 
+  if (data.type === 'plan') {
+    // Convert to DistriPlan for plan artifacts
+    const planResult: DistriPlan = {
+      id: data.id || artifact.artifactId,
+      type: 'plan',
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      reasoning: data.reasoning || '',
+      steps: data.steps || []
+    };
+
+    return planResult;
+  }
+
   // For other artifact types, create a generic artifact
   const executionResult: GenericArtifact = {
     id: artifact.artifactId,
@@ -220,7 +235,7 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
 /**
  * Enhanced decoder for A2A stream events that properly handles all event types
  */
-export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | DistriArtifact | null {
+export function decodeA2AStreamEvent(event: any): DistriChatMessage | null {
 
   // Handle artifacts (without kind field)
   if (event.artifactId && event.parts) {
