@@ -1,5 +1,5 @@
 import * as react_jsx_runtime from 'react/jsx-runtime';
-import { DistriEvent, DistriMessage, DistriArtifact, DistriClientConfig, AgentDefinition, DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, Role, DistriPart, DistriThread, DistriStreamEvent } from '@distri/core';
+import { DistriEvent, DistriMessage, DistriArtifact, DistriClientConfig, AgentDefinition, DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, DistriPart, DistriThread, DistriStreamEvent } from '@distri/core';
 import * as React$1 from 'react';
 import React__default, { ReactNode } from 'react';
 import * as zustand from 'zustand';
@@ -16,13 +16,11 @@ interface ChatProps {
     onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
-    onMessagesUpdate?: () => void;
     tools?: any[];
-    messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
-    overrideChatState?: any;
+    initialMessages?: (DistriEvent | DistriMessage | DistriArtifact)[];
     theme?: 'light' | 'dark' | 'auto';
 }
-declare function Chat({ threadId, agent, onMessage, onError, getMetadata, onMessagesUpdate, tools, messageFilter, overrideChatState, theme, }: ChatProps): react_jsx_runtime.JSX.Element;
+declare function Chat({ threadId, agent, onMessage, onError, getMetadata, tools, initialMessages, theme, }: ChatProps): react_jsx_runtime.JSX.Element;
 
 interface DistriProviderProps {
     config: DistriClientConfig;
@@ -86,7 +84,6 @@ declare const TaskExecutionRenderer: React__default.FC<TaskExecutionRendererProp
 
 interface UserMessageRendererProps {
     message: DistriMessage;
-    chatState: any;
     className?: string;
     avatar?: React__default.ReactNode;
 }
@@ -94,7 +91,6 @@ declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
 interface AssistantMessageRendererProps {
     message: DistriMessage;
-    chatState: any;
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;
@@ -134,7 +130,6 @@ type UiToolProps = {
 
 interface ToolCallRendererProps {
     toolCall: ToolCallState$1;
-    chatState: any;
     isExpanded: boolean;
     onToggle: () => void;
     className?: string;
@@ -145,7 +140,6 @@ declare const ToolCallRenderer: React__default.FC<ToolCallRendererProps>;
 
 interface PlanRendererProps {
     message: DistriArtifact;
-    chatState: any;
     className?: string;
     avatar?: React__default.ReactNode;
 }
@@ -153,7 +147,6 @@ declare const PlanRenderer: React__default.FC<PlanRendererProps>;
 
 interface ToolMessageRendererProps {
     message: DistriMessage;
-    chatState: any;
     className?: string;
     avatar?: React__default.ReactNode;
 }
@@ -161,7 +154,6 @@ declare const ToolMessageRenderer: React__default.FC<ToolMessageRendererProps>;
 
 interface DebugRendererProps {
     message: DistriEvent | DistriArtifact;
-    chatState: any;
     className?: string;
     avatar?: React__default.ReactNode;
 }
@@ -175,110 +167,14 @@ interface ArtifactRendererProps {
 }
 declare function ArtifactRenderer({ message, chatState: _chatState, className, avatar }: ArtifactRendererProps): react_jsx_runtime.JSX.Element | null;
 
-interface TaskState$1 {
-    id: string;
-    runId?: string;
-    planId?: string;
-    title: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
-    toolCalls?: any[];
-    results?: any[];
-    error?: string;
-    metadata?: any;
-}
-interface PlanState$1 {
-    id: string;
-    runId?: string;
-    steps: string[];
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
-}
-interface StepState {
-    id: string;
-    title: string;
-    index: number;
-    status: 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
-}
-interface ToolCallState {
-    tool_call_id: string;
-    tool_name: string;
-    step_title?: string;
-    input: any;
-    status: ToolCallStatus;
-    result?: any;
-    error?: string;
-    startTime?: number;
-    endTime?: number;
-    component?: React.ReactNode;
-    startedAt?: Date;
-    completedAt?: Date;
-    isExternal?: boolean;
-}
-interface ChatState {
-    messages: (DistriEvent | DistriMessage | DistriArtifact)[];
-    isStreaming: boolean;
-    isLoading: boolean;
-    error: Error | null;
-    tasks: Map<string, TaskState$1>;
-    plans: Map<string, PlanState$1>;
-    steps: Map<string, StepState>;
-    toolCalls: Map<string, ToolCallState>;
-    currentTaskId?: string;
-    currentPlanId?: string;
-    streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
-    agent?: Agent$1;
-    tools?: DistriAnyTool[];
-    onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
-}
-interface ChatStateStore extends ChatState {
-    addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-    clearMessages: () => void;
-    setStreaming: (isStreaming: boolean) => void;
-    setLoading: (isLoading: boolean) => void;
-    setError: (error: Error | null) => void;
-    appendToMessage: (messageId: string, role: Role, delta: string) => void;
-    setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
-    processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-    clearAllStates: () => void;
-    clearTask: (taskId: string) => void;
-    initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean, stepTitle?: string) => void;
-    updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
-    getToolCallById: (toolCallId: string) => ToolCallState | null;
-    getPendingToolCalls: () => ToolCallState[];
-    getCompletedToolCalls: () => ToolCallState[];
-    executeTool: (toolCall: ToolCall) => Promise<void>;
-    hasPendingToolCalls: () => boolean;
-    clearToolResults: () => void;
-    getExternalToolResponses: () => ToolResult[];
-    getCurrentTask: () => TaskState$1 | null;
-    getCurrentPlan: () => PlanState$1 | null;
-    getCurrentTasks: () => TaskState$1[];
-    getTaskById: (taskId: string) => TaskState$1 | null;
-    getPlanById: (planId: string) => PlanState$1 | null;
-    updateTask: (taskId: string, updates: Partial<TaskState$1>) => void;
-    updatePlan: (planId: string, updates: Partial<PlanState$1>) => void;
-    updateStep: (stepId: string, updates: Partial<StepState>) => void;
-    setAgent: (agent: Agent$1) => void;
-    setTools: (tools: DistriAnyTool[]) => void;
-    setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => void;
-}
-declare const useChatStateStore: zustand.UseBoundStore<zustand.StoreApi<ChatStateStore>>;
-
 interface UseChatOptions {
     threadId: string;
     agent?: Agent$1;
     onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
-    onMessagesUpdate?: () => void;
-    messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
     tools?: DistriAnyTool[];
-    overrideChatState?: ChatStateStore;
+    initialMessages?: (DistriEvent | DistriMessage | DistriArtifact)[];
 }
 interface UseChatReturn {
     messages: (DistriEvent | DistriMessage | DistriArtifact)[];
@@ -287,12 +183,30 @@ interface UseChatReturn {
     sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
     isLoading: boolean;
     error: Error | null;
-    clearMessages: () => void;
-    agent: Agent$1 | undefined;
     hasPendingToolCalls: () => boolean;
     stopStreaming: () => void;
+    addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
 }
-declare function useChat({ threadId, onMessage, onError, getMetadata, onMessagesUpdate, agent, tools, overrideChatState, messageFilter, }: UseChatOptions): UseChatReturn;
+declare function useChat({ threadId, onError, getMetadata, agent, tools, initialMessages, }: UseChatOptions): UseChatReturn;
+
+interface UseChatMessagesOptions {
+    initialMessages?: (DistriEvent | DistriMessage | DistriArtifact)[];
+    agent?: Agent$1;
+    threadId?: string;
+    onError?: (error: Error) => void;
+    onMessageProcess?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+    clearStoreState?: () => void;
+}
+interface UseChatMessagesReturn {
+    messages: (DistriEvent | DistriMessage | DistriArtifact)[];
+    addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+    addMessages: (messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => void;
+    clearMessages: () => void;
+    fetchMessages: () => Promise<void>;
+    isLoading: boolean;
+    error: Error | null;
+}
+declare function useChatMessages({ initialMessages, agent, threadId, onError, onMessageProcess, clearStoreState, }?: UseChatMessagesOptions): UseChatMessagesReturn;
 
 interface UseAgentOptions {
     agentIdOrDef: string | AgentDefinition;
@@ -328,12 +242,12 @@ interface UseThreadsResult {
 }
 declare function useThreads(): UseThreadsResult;
 
-interface PlanState {
+interface PlanState$1 {
     id: string;
     steps: string[];
     status: 'pending' | 'running' | 'completed' | 'failed';
 }
-interface TaskState {
+interface TaskState$1 {
     id: string;
     title: string;
     status: 'pending' | 'running' | 'completed' | 'failed';
@@ -347,15 +261,105 @@ interface RunState {
     endTime?: number;
 }
 interface ChatContextType {
-    planState: PlanState | null;
-    taskState: TaskState | null;
+    planState: PlanState$1 | null;
+    taskState: TaskState$1 | null;
     runState: RunState | null;
-    setPlanState: (state: PlanState | null) => void;
-    setTaskState: (state: TaskState | null) => void;
+    setPlanState: (state: PlanState$1 | null) => void;
+    setTaskState: (state: TaskState$1 | null) => void;
     setRunState: (state: RunState | null) => void;
     clearAllStates: () => void;
 }
 declare const useChatConfig: () => ChatContextType;
+
+interface TaskState {
+    id: string;
+    runId?: string;
+    planId?: string;
+    title: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    startTime?: number;
+    endTime?: number;
+    toolCalls?: any[];
+    results?: any[];
+    error?: string;
+    metadata?: any;
+}
+interface PlanState {
+    id: string;
+    runId?: string;
+    steps: string[];
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    startTime?: number;
+    endTime?: number;
+}
+interface StepState {
+    id: string;
+    title: string;
+    index: number;
+    status: 'running' | 'completed' | 'failed';
+    startTime?: number;
+    endTime?: number;
+}
+interface ToolCallState {
+    tool_call_id: string;
+    tool_name: string;
+    step_title?: string;
+    input: any;
+    status: ToolCallStatus;
+    result?: any;
+    error?: string;
+    startTime?: number;
+    endTime?: number;
+    component?: React.ReactNode;
+    startedAt?: Date;
+    completedAt?: Date;
+    isExternal?: boolean;
+}
+interface ChatState {
+    isStreaming: boolean;
+    isLoading: boolean;
+    error: Error | null;
+    tasks: Map<string, TaskState>;
+    plans: Map<string, PlanState>;
+    steps: Map<string, StepState>;
+    toolCalls: Map<string, ToolCallState>;
+    currentTaskId?: string;
+    currentPlanId?: string;
+    streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
+    agent?: Agent$1;
+    tools?: DistriAnyTool[];
+    onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
+}
+interface ChatStateStore extends ChatState {
+    setStreaming: (isStreaming: boolean) => void;
+    setLoading: (isLoading: boolean) => void;
+    setError: (error: Error | null) => void;
+    setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
+    processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+    clearAllStates: () => void;
+    clearTask: (taskId: string) => void;
+    initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean, stepTitle?: string) => void;
+    updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
+    getToolCallById: (toolCallId: string) => ToolCallState | null;
+    getPendingToolCalls: () => ToolCallState[];
+    getCompletedToolCalls: () => ToolCallState[];
+    executeTool: (toolCall: ToolCall) => Promise<void>;
+    hasPendingToolCalls: () => boolean;
+    clearToolResults: () => void;
+    getExternalToolResponses: () => ToolResult[];
+    getCurrentTask: () => TaskState | null;
+    getCurrentPlan: () => PlanState | null;
+    getCurrentTasks: () => TaskState[];
+    getTaskById: (taskId: string) => TaskState | null;
+    getPlanById: (planId: string) => PlanState | null;
+    updateTask: (taskId: string, updates: Partial<TaskState>) => void;
+    updatePlan: (planId: string, updates: Partial<PlanState>) => void;
+    updateStep: (stepId: string, updates: Partial<StepState>) => void;
+    setAgent: (agent: Agent$1) => void;
+    setTools: (tools: DistriAnyTool[]) => void;
+    setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => void;
+}
+declare const useChatStateStore: zustand.UseBoundStore<zustand.StoreApi<ChatStateStore>>;
 
 declare const buttonVariants: {
     variant: {
@@ -526,4 +530,4 @@ declare const extractTextFromMessage: (message: DistriStreamEvent) => string;
  */
 declare const shouldDisplayMessage: (message: DistriStreamEvent, showDebugMessages?: boolean) => boolean;
 
-export { AgentList, AgentSelect, AgentsPage, ApprovalToolCall, ArtifactRenderer, AssistantMessageRenderer, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, type ChatProps, DebugRenderer, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, ExecutionSteps, Input, PlanRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, ToastToolCall, ToolCallRenderer, ToolMessageRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, UserMessageRenderer, extractTextFromMessage, shouldDisplayMessage, useAgent, useAgentDefinitions, useChat, useChatConfig, useChatStateStore, useSidebar, useTheme, useThreads };
+export { AgentList, AgentSelect, AgentsPage, ApprovalToolCall, ArtifactRenderer, AssistantMessageRenderer, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, type ChatProps, DebugRenderer, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, ExecutionSteps, Input, PlanRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, ToastToolCall, ToolCallRenderer, ToolMessageRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, UserMessageRenderer, extractTextFromMessage, shouldDisplayMessage, useAgent, useAgentDefinitions, useChat, useChatConfig, useChatMessages, useChatStateStore, useSidebar, useTheme, useThreads };

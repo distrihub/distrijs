@@ -6,14 +6,12 @@ import { extractContent, renderTextContent } from './utils';
 
 export interface PlanRendererProps {
   message: DistriArtifact;
-  chatState: any;
   className?: string;
   avatar?: React.ReactNode;
 }
 
 export const PlanRenderer: React.FC<PlanRendererProps> = ({
   message,
-  chatState: _chatState,
   className = '',
   avatar
 }) => {

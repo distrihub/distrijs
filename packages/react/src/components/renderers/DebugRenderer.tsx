@@ -5,14 +5,12 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 
 export interface DebugRendererProps {
   message: DistriEvent | DistriArtifact;
-  chatState: any;
   className?: string;
   avatar?: React.ReactNode;
 }
 
 export const DebugRenderer: React.FC<DebugRendererProps> = ({
   message,
-  chatState: _chatState,
   className = '',
   avatar
 }) => {

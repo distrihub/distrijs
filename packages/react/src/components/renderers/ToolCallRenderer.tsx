@@ -4,7 +4,6 @@ import { ToolCallState } from '../../types';
 
 export interface ToolCallRendererProps {
   toolCall: ToolCallState;
-  chatState: any;
   isExpanded: boolean;
   onToggle: () => void;
   className?: string;
@@ -14,7 +13,6 @@ export interface ToolCallRendererProps {
 
 export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
   toolCall,
-  chatState: _chatState,
   isExpanded,
   onToggle,
   className = '',

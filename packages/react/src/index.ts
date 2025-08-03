@@ -28,6 +28,7 @@ export {
 
 // Hooks
 export { useChat } from './useChat';
+export { useChatMessages } from './hooks/useChatMessages';
 export { useAgent } from './useAgent';
 export { useAgentDefinitions } from './useAgentDefinitions';
 export { useThreads } from './useThreads';
@@ -41,7 +42,6 @@ export * from './components/ui';
 
 // Tool call components
 export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
-
 // Utilities
 export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
 

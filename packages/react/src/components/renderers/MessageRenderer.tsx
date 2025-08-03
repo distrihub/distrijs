@@ -1,6 +1,5 @@
 import React from 'react';
 import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact, ToolResults } from '@distri/core';
-import { ChatStateStore } from '../../stores/chatStateStore';
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { ToolMessageRenderer } from './ToolMessageRenderer';
@@ -9,11 +8,11 @@ import { StepRenderer } from './StepRenderer';
 import { ToolCallRenderer } from './ToolCallRenderer';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { DebugRenderer } from './DebugRenderer';
+import { useChatStateStore } from '../../stores/chatStateStore';
 
 export interface MessageRendererProps {
   message: DistriEvent | DistriMessage | DistriArtifact;
   index: number;
-  chatState: ChatStateStore;
   isExpanded?: boolean;
   onToggle?: () => void;
 }
@@ -21,10 +20,12 @@ export interface MessageRendererProps {
 export function MessageRenderer({
   message,
   index,
-  chatState,
   isExpanded = false,
   onToggle = () => { }
 }: MessageRendererProps): React.ReactNode {
+  const steps = useChatStateStore(state => state.steps);
+  const toolCalls = useChatStateStore(state => state.toolCalls);
+
   // Don't render messages with empty content
   if (isDistriMessage(message)) {
     const distriMessage = message as DistriMessage;
@@ -49,7 +50,6 @@ export function MessageRenderer({
           <UserMessageRenderer
             key={`user-${index}`}
             message={distriMessage}
-            chatState={chatState}
           />
         );
 
@@ -58,7 +58,6 @@ export function MessageRenderer({
           <AssistantMessageRenderer
             key={`assistant-${index}`}
             message={distriMessage}
-            chatState={chatState}
           />
         );
 
@@ -67,7 +66,6 @@ export function MessageRenderer({
           <ToolMessageRenderer
             key={`tool-${index}`}
             message={distriMessage}
-            chatState={chatState}
           />
         );
 
@@ -126,7 +124,7 @@ export function MessageRenderer({
       case 'step_started':
         // Get step from chat state
         const stepId = event.data.step_id;
-        const step = chatState.steps.get(stepId);
+        const step = steps.get(stepId);
         if (step) {
           return (
             <StepRenderer
@@ -140,7 +138,7 @@ export function MessageRenderer({
       case 'step_completed':
         // Get step from chat state
         const completedStepId = event.data.step_id;
-        const completedStep = chatState.steps.get(completedStepId);
+        const completedStep = steps.get(completedStepId);
         if (completedStep) {
           return (
             <StepRenderer
@@ -249,7 +247,6 @@ export function MessageRenderer({
             <DebugRenderer
               key={`event-${index}`}
               message={event}
-              chatState={chatState}
             />
           );
         }
@@ -267,7 +264,6 @@ export function MessageRenderer({
           <PlanRenderer
             key={`plan-${index}`}
             message={artifact}
-            chatState={chatState}
           />
         );
 
@@ -276,14 +272,13 @@ export function MessageRenderer({
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
           return artifact.tool_calls.map((toolCall, toolIndex) => {
             // Get tool call state from chat state
-            const toolCallState = chatState.getToolCallById(toolCall.tool_call_id);
+            const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
 
             return (
               <ToolCallRenderer
                 key={`tool-call-${index}-${toolIndex}`}
                 toolCall={toolCallState}
-                chatState={chatState}
                 isExpanded={isExpanded}
                 onToggle={onToggle}
               />
@@ -326,7 +321,6 @@ export function MessageRenderer({
             <DebugRenderer
               key={`artifact-${index}`}
               message={artifact}
-              chatState={chatState}
             />
           );
         }

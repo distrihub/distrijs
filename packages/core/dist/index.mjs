@@ -567,8 +567,8 @@ function convertA2AArtifactToDistri(artifact) {
   return executionResult;
 }
 function decodeA2AStreamEvent(event) {
-  if (event.jsonrpc && event.result) {
-    return decodeA2AStreamEvent(event.result);
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
   }
   if (event.kind === "message") {
     return convertA2AMessageToDistri(event);
@@ -577,9 +577,6 @@ function decodeA2AStreamEvent(event) {
     return convertA2AStatusUpdateToDistri(event);
   }
   if (event.kind === "artifact-update") {
-    return convertA2AArtifactToDistri(event);
-  }
-  if (event.artifactId && event.parts) {
     return convertA2AArtifactToDistri(event);
   }
   return null;

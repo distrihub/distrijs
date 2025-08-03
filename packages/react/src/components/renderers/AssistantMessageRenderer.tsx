@@ -1,10 +1,10 @@
 import React from 'react';
 import { DistriMessage } from '@distri/core';
 import { extractContent, renderTextContent } from './utils';
+import { useChatStateStore } from '../../stores/chatStateStore';
 
 export interface AssistantMessageRendererProps {
   message: DistriMessage;
-  chatState: any;
   className?: string;
   avatar?: React.ReactNode;
   name?: string;
@@ -12,15 +12,14 @@ export interface AssistantMessageRendererProps {
 
 export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> = ({
   message,
-  chatState,
   className = '',
 }) => {
   const content = extractContent(message);
-  const isStreaming = chatState?.isStreaming || false;
+  const isStreaming = useChatStateStore(state => state.isStreaming);
 
   return (
     <div className={`flex items-start gap-4 py-6 ${className}`}>
-      <div className="flex-1 min-w-0 max-w-3xl">
+      <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
           {isStreaming && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">

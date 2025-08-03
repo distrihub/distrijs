@@ -199,9 +199,10 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
  * Enhanced decoder for A2A stream events that properly handles all event types
  */
 export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | DistriArtifact | null {
-  // Handle JSONrpc wrapped events from stream.json
-  if (event.jsonrpc && event.result) {
-    return decodeA2AStreamEvent(event.result);
+
+  // Handle artifacts (without kind field)
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
   }
 
   // Handle regular messages
@@ -219,10 +220,7 @@ export function decodeA2AStreamEvent(event: any): DistriEvent | DistriMessage | 
     return convertA2AArtifactToDistri(event);
   }
 
-  // Handle artifacts (without kind field)
-  if (event.artifactId && event.parts) {
-    return convertA2AArtifactToDistri(event);
-  }
+
 
   return null;
 }

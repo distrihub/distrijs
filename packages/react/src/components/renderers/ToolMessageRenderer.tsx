@@ -6,14 +6,12 @@ import { extractContent, renderTextContent } from './utils';
 
 export interface ToolMessageRendererProps {
   message: DistriMessage;
-  chatState: any;
   className?: string;
   avatar?: React.ReactNode;
 }
 
 export const ToolMessageRenderer: React.FC<ToolMessageRendererProps> = ({
   message,
-  chatState: _chatState,
   className = '',
   avatar
 }) => {

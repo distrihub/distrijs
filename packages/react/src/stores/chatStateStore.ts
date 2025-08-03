@@ -5,11 +5,9 @@ import {
   DistriArtifact,
   isDistriEvent,
   isDistriArtifact,
-  isDistriMessage,
   Agent,
   ToolCall,
   ToolResult,
-  Role,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 
@@ -63,8 +61,7 @@ export interface ToolCallState {
 }
 
 export interface ChatState {
-  // Messages state
-  messages: (DistriEvent | DistriMessage | DistriArtifact)[];
+  // Processing state
   isStreaming: boolean;
   isLoading: boolean;
   error: Error | null;
@@ -87,13 +84,10 @@ export interface ChatState {
 }
 
 export interface ChatStateStore extends ChatState {
-  // Message actions
-  addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-  clearMessages: () => void;
+  // State actions
   setStreaming: (isStreaming: boolean) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
-  appendToMessage: (messageId: string, role: Role, delta: string) => void;
 
   // Streaming indicator actions
   setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
@@ -133,7 +127,6 @@ export interface ChatStateStore extends ChatState {
 }
 
 export const useChatStateStore = create<ChatStateStore>((set, get) => ({
-  messages: [],
   isStreaming: false,
   isLoading: false,
   error: null,
@@ -145,17 +138,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   currentPlanId: undefined,
   streamingIndicator: undefined,
 
-  // Message actions
-  addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => {
-    set((state: ChatState) => {
-      const newState = { ...state };
-      newState.messages.push(message);
-      return newState;
-    });
-  },
-  clearMessages: () => {
-    set({ messages: [] });
-  },
+  // State actions
   setStreaming: (isStreaming: boolean) => {
     set({ isStreaming });
   },
@@ -168,34 +151,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => {
     set({ streamingIndicator: indicator });
-  },
-
-  appendToMessage: (messageId: string, role: Role, delta: string) => {
-    set((state: ChatState) => {
-      const newState = { ...state };
-      const index = newState.messages.findIndex(
-        m => isDistriMessage(m) && (m as DistriMessage).id === messageId
-      );
-
-      if (index >= 0) {
-        const existing = newState.messages[index] as DistriMessage;
-        let textPart = existing.parts.find(p => p.type === 'text') as any;
-        if (!textPart) {
-          textPart = { type: 'text', text: '' };
-          existing.parts.push(textPart as any);
-        }
-        (textPart as any).text += delta;
-      } else {
-        const newMessage: DistriMessage = {
-          id: messageId,
-          role,
-          parts: delta ? [{ type: 'text', text: delta }] : [],
-        };
-        newState.messages.push(newMessage);
-      }
-
-      return newState;
-    });
   },
 
   // State actions
@@ -318,16 +273,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
 
         case 'text_message_start':
-          get().appendToMessage(message.data.message_id, message.data.role, '');
           // Start generating response indicator and streaming
           set({ isStreaming: true });
           break;
 
         case 'text_message_content':
-          get().appendToMessage(message.data.message_id, 'assistant', message.data.delta);
-
           get().setStreamingIndicator(undefined);
-
           break;
 
         case 'text_message_end':
@@ -590,7 +541,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   clearAllStates: () => {
     set({
-      messages: [],
       tasks: new Map(),
       plans: new Map(),
       steps: new Map(),

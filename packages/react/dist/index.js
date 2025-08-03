@@ -1,7 +1,7 @@
 "use client";
 
 // src/components/Chat.tsx
-import { useState as useState2, useCallback as useCallback2, useRef as useRef4, useEffect as useEffect5 } from "react";
+import { useState as useState3, useCallback as useCallback3, useRef as useRef5, useEffect as useEffect6 } from "react";
 
 // src/components/ChatInput.tsx
 import { useRef, useEffect } from "react";
@@ -71,217 +71,15 @@ var ChatInput = ({
 };
 
 // src/useChat.ts
-import { useCallback, useEffect as useEffect4, useRef as useRef3 } from "react";
+import { useCallback as useCallback2, useEffect as useEffect5, useRef as useRef4 } from "react";
 import { DistriClient } from "@distri/core";
 import {
   convertDistriMessageToA2A
 } from "@distri/core";
 
-// ../core/src/encoder.ts
-function convertA2AMessageToDistri(a2aMessage) {
-  const role = a2aMessage.role === "agent" ? "assistant" : "user";
-  return {
-    id: a2aMessage.messageId,
-    role,
-    parts: a2aMessage.parts.map(convertA2APartToDistri),
-    created_at: a2aMessage.createdAt
-  };
-}
-function convertA2AStatusUpdateToDistri(statusUpdate) {
-  if (!statusUpdate.metadata || !statusUpdate.metadata.type) {
-    return null;
-  }
-  const metadata = statusUpdate.metadata;
-  switch (metadata.type) {
-    case "run_started":
-      return {
-        type: "run_started",
-        data: {}
-      };
-    case "run_finished":
-      return {
-        type: "run_finished",
-        data: {}
-      };
-    case "plan_started":
-      return {
-        type: "plan_started",
-        data: {
-          initial_plan: metadata.initial_plan
-        }
-      };
-    case "plan_finished":
-      return {
-        type: "plan_finished",
-        data: {
-          total_steps: metadata.total_steps
-        }
-      };
-    case "step_started":
-      return {
-        type: "step_started",
-        data: {
-          step_id: metadata.step_id,
-          step_title: metadata.step_title || "Processing",
-          step_index: metadata.step_index || 0
-        }
-      };
-    case "step_completed":
-      return {
-        type: "step_completed",
-        data: {
-          step_id: metadata.step_id,
-          step_title: metadata.step_title || "Processing",
-          step_index: metadata.step_index || 0
-        }
-      };
-    case "tool_execution_start":
-      return {
-        type: "tool_call_start",
-        data: {
-          tool_call_id: metadata.tool_call_id,
-          tool_call_name: metadata.tool_call_name || "Tool",
-          parent_message_id: statusUpdate.taskId,
-          is_external: true
-        }
-      };
-    case "tool_execution_end":
-      return {
-        type: "tool_call_end",
-        data: {
-          tool_call_id: metadata.tool_call_id
-        }
-      };
-    case "text_message_start":
-      return {
-        type: "text_message_start",
-        data: {
-          message_id: metadata.message_id,
-          role: metadata.role === "assistant" ? "assistant" : "user"
-        }
-      };
-    case "text_message_content":
-      return {
-        type: "text_message_content",
-        data: {
-          message_id: metadata.message_id,
-          delta: metadata.delta || ""
-        }
-      };
-    case "text_message_end":
-      return {
-        type: "text_message_end",
-        data: {
-          message_id: metadata.message_id
-        }
-      };
-    default:
-      console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      return {
-        type: "run_started",
-        data: { metadata }
-      };
-  }
-}
-function convertA2AArtifactToDistri(artifact) {
-  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
-    return null;
-  }
-  const part = artifact.parts[0];
-  if (!part || part.kind !== "data" || !part.data) {
-    return null;
-  }
-  const data = part.data;
-  if (data.type === "llm_response") {
-    const executionResult2 = {
-      id: data.id || artifact.artifactId,
-      type: "llm_response",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      content: data.content || "",
-      tool_calls: data.tool_calls || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-    return executionResult2;
-  }
-  if (data.type === "tool_results") {
-    const executionResult2 = {
-      id: data.id || artifact.artifactId,
-      type: "tool_results",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      results: data.results || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-    return executionResult2;
-  }
-  const executionResult = {
-    id: artifact.artifactId,
-    type: "artifact",
-    timestamp: Date.now(),
-    data,
-    artifactId: artifact.artifactId,
-    name: artifact.name || "",
-    description: artifact.description || null
-  };
-  return executionResult;
-}
-function decodeA2AStreamEvent(event) {
-  if (event.jsonrpc && event.result) {
-    return decodeA2AStreamEvent(event.result);
-  }
-  if (event.kind === "message") {
-    return convertA2AMessageToDistri(event);
-  }
-  if (event.kind === "status-update") {
-    return convertA2AStatusUpdateToDistri(event);
-  }
-  if (event.kind === "artifact-update") {
-    return convertA2AArtifactToDistri(event);
-  }
-  if (event.artifactId && event.parts) {
-    return convertA2AArtifactToDistri(event);
-  }
-  return null;
-}
-function convertA2APartToDistri(a2aPart) {
-  switch (a2aPart.kind) {
-    case "text":
-      return { type: "text", text: a2aPart.text };
-    case "file":
-      if ("uri" in a2aPart.file) {
-        return { type: "image_url", image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
-      } else {
-        return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
-      }
-    case "data":
-      switch (a2aPart.data.part_type) {
-        case "tool_call":
-          return { type: "tool_call", tool_call: a2aPart.data };
-        case "tool_result":
-          return { type: "tool_result", tool_result: a2aPart.data };
-        case "code_observation":
-          return { type: "code_observation", thought: a2aPart.data.thought, code: a2aPart.data.code };
-        case "plan":
-          return { type: "plan", plan: a2aPart.data.plan };
-        default:
-          return { type: "data", data: a2aPart.data };
-      }
-    default:
-      return { type: "text", text: JSON.stringify(a2aPart) };
-  }
-}
-
 // ../core/src/types.ts
 function isDistriMessage(event) {
   return "id" in event && "role" in event && "parts" in event;
-}
-function isDistriEvent(event) {
-  return "type" in event && "data" in event;
 }
 function isDistriArtifact(event) {
   return "type" in event && "timestamp" in event && "id" in event;
@@ -512,12 +310,10 @@ var defaultTools = [
 // src/stores/chatStateStore.ts
 import { create } from "zustand";
 import {
-  isDistriEvent as isDistriEvent2,
-  isDistriArtifact as isDistriArtifact2,
-  isDistriMessage as isDistriMessage2
+  isDistriEvent,
+  isDistriArtifact as isDistriArtifact2
 } from "@distri/core";
 var useChatStateStore = create((set, get) => ({
-  messages: [],
   isStreaming: false,
   isLoading: false,
   error: null,
@@ -528,17 +324,7 @@ var useChatStateStore = create((set, get) => ({
   currentTaskId: void 0,
   currentPlanId: void 0,
   streamingIndicator: void 0,
-  // Message actions
-  addMessage: (message) => {
-    set((state) => {
-      const newState = { ...state };
-      newState.messages.push(message);
-      return newState;
-    });
-  },
-  clearMessages: () => {
-    set({ messages: [] });
-  },
+  // State actions
   setStreaming: (isStreaming) => {
     set({ isStreaming });
   },
@@ -551,35 +337,10 @@ var useChatStateStore = create((set, get) => ({
   setStreamingIndicator: (indicator) => {
     set({ streamingIndicator: indicator });
   },
-  appendToMessage: (messageId, role, delta) => {
-    set((state) => {
-      const newState = { ...state };
-      const index = newState.messages.findIndex(
-        (m) => isDistriMessage2(m) && m.id === messageId
-      );
-      if (index >= 0) {
-        const existing = newState.messages[index];
-        let textPart = existing.parts.find((p) => p.type === "text");
-        if (!textPart) {
-          textPart = { type: "text", text: "" };
-          existing.parts.push(textPart);
-        }
-        textPart.text += delta;
-      } else {
-        const newMessage = {
-          id: messageId,
-          role,
-          parts: delta ? [{ type: "text", text: delta }] : []
-        };
-        newState.messages.push(newMessage);
-      }
-      return newState;
-    });
-  },
   // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
-    if (isDistriEvent2(message)) {
+    if (isDistriEvent(message)) {
       switch (message.type) {
         case "run_started":
           const taskId = `task_${Date.now()}`;
@@ -675,11 +436,9 @@ var useChatStateStore = create((set, get) => ({
           }
           break;
         case "text_message_start":
-          get().appendToMessage(message.data.message_id, message.data.role, "");
           set({ isStreaming: true });
           break;
         case "text_message_content":
-          get().appendToMessage(message.data.message_id, "assistant", message.data.delta);
           get().setStreamingIndicator(void 0);
           break;
         case "text_message_end":
@@ -907,7 +666,6 @@ var useChatStateStore = create((set, get) => ({
   },
   clearAllStates: () => {
     set({
-      messages: [],
       tasks: /* @__PURE__ */ new Map(),
       plans: /* @__PURE__ */ new Map(),
       steps: /* @__PURE__ */ new Map(),
@@ -991,179 +749,435 @@ var useChatStateStore = create((set, get) => ({
   }
 }));
 
+// src/hooks/useChatMessages.ts
+import { useCallback, useEffect as useEffect4, useState as useState2, useRef as useRef3 } from "react";
+
+// ../core/src/encoder.ts
+function convertA2AMessageToDistri(a2aMessage) {
+  const role = a2aMessage.role === "agent" ? "assistant" : "user";
+  return {
+    id: a2aMessage.messageId,
+    role,
+    parts: a2aMessage.parts.map(convertA2APartToDistri),
+    created_at: a2aMessage.createdAt
+  };
+}
+function convertA2AStatusUpdateToDistri(statusUpdate) {
+  if (!statusUpdate.metadata || !statusUpdate.metadata.type) {
+    return null;
+  }
+  const metadata = statusUpdate.metadata;
+  switch (metadata.type) {
+    case "run_started":
+      return {
+        type: "run_started",
+        data: {}
+      };
+    case "run_finished":
+      return {
+        type: "run_finished",
+        data: {}
+      };
+    case "plan_started":
+      return {
+        type: "plan_started",
+        data: {
+          initial_plan: metadata.initial_plan
+        }
+      };
+    case "plan_finished":
+      return {
+        type: "plan_finished",
+        data: {
+          total_steps: metadata.total_steps
+        }
+      };
+    case "step_started":
+      return {
+        type: "step_started",
+        data: {
+          step_id: metadata.step_id,
+          step_title: metadata.step_title || "Processing",
+          step_index: metadata.step_index || 0
+        }
+      };
+    case "step_completed":
+      return {
+        type: "step_completed",
+        data: {
+          step_id: metadata.step_id,
+          step_title: metadata.step_title || "Processing",
+          step_index: metadata.step_index || 0
+        }
+      };
+    case "tool_execution_start":
+      return {
+        type: "tool_call_start",
+        data: {
+          tool_call_id: metadata.tool_call_id,
+          tool_call_name: metadata.tool_call_name || "Tool",
+          parent_message_id: statusUpdate.taskId,
+          is_external: true
+        }
+      };
+    case "tool_execution_end":
+      return {
+        type: "tool_call_end",
+        data: {
+          tool_call_id: metadata.tool_call_id
+        }
+      };
+    case "text_message_start":
+      return {
+        type: "text_message_start",
+        data: {
+          message_id: metadata.message_id,
+          role: metadata.role === "assistant" ? "assistant" : "user"
+        }
+      };
+    case "text_message_content":
+      return {
+        type: "text_message_content",
+        data: {
+          message_id: metadata.message_id,
+          delta: metadata.delta || ""
+        }
+      };
+    case "text_message_end":
+      return {
+        type: "text_message_end",
+        data: {
+          message_id: metadata.message_id
+        }
+      };
+    default:
+      console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
+      return {
+        type: "run_started",
+        data: { metadata }
+      };
+  }
+}
+function convertA2AArtifactToDistri(artifact) {
+  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
+    return null;
+  }
+  const part = artifact.parts[0];
+  if (!part || part.kind !== "data" || !part.data) {
+    return null;
+  }
+  const data = part.data;
+  if (data.type === "llm_response") {
+    const executionResult2 = {
+      id: data.id || artifact.artifactId,
+      type: "llm_response",
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      content: data.content || "",
+      tool_calls: data.tool_calls || [],
+      step_id: data.step_id,
+      success: data.success,
+      rejected: data.rejected,
+      reason: data.reason
+    };
+    return executionResult2;
+  }
+  if (data.type === "tool_results") {
+    const executionResult2 = {
+      id: data.id || artifact.artifactId,
+      type: "tool_results",
+      timestamp: data.timestamp || data.created_at || Date.now(),
+      results: data.results || [],
+      step_id: data.step_id,
+      success: data.success,
+      rejected: data.rejected,
+      reason: data.reason
+    };
+    return executionResult2;
+  }
+  const executionResult = {
+    id: artifact.artifactId,
+    type: "artifact",
+    timestamp: Date.now(),
+    data,
+    artifactId: artifact.artifactId,
+    name: artifact.name || "",
+    description: artifact.description || null
+  };
+  return executionResult;
+}
+function decodeA2AStreamEvent(event) {
+  if (event.artifactId && event.parts) {
+    return convertA2AArtifactToDistri(event);
+  }
+  if (event.kind === "message") {
+    return convertA2AMessageToDistri(event);
+  }
+  if (event.kind === "status-update") {
+    return convertA2AStatusUpdateToDistri(event);
+  }
+  if (event.kind === "artifact-update") {
+    return convertA2AArtifactToDistri(event);
+  }
+  return null;
+}
+function convertA2APartToDistri(a2aPart) {
+  switch (a2aPart.kind) {
+    case "text":
+      return { type: "text", text: a2aPart.text };
+    case "file":
+      if ("uri" in a2aPart.file) {
+        return { type: "image_url", image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+      } else {
+        return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+      }
+    case "data":
+      switch (a2aPart.data.part_type) {
+        case "tool_call":
+          return { type: "tool_call", tool_call: a2aPart.data };
+        case "tool_result":
+          return { type: "tool_result", tool_result: a2aPart.data };
+        case "code_observation":
+          return { type: "code_observation", thought: a2aPart.data.thought, code: a2aPart.data.code };
+        case "plan":
+          return { type: "plan", plan: a2aPart.data.plan };
+        default:
+          return { type: "data", data: a2aPart.data };
+      }
+    default:
+      return { type: "text", text: JSON.stringify(a2aPart) };
+  }
+}
+
+// src/hooks/useChatMessages.ts
+function useChatMessages({
+  initialMessages = [],
+  agent,
+  threadId,
+  onError,
+  onMessageProcess,
+  clearStoreState
+} = {}) {
+  const onErrorRef = useRef3(onError);
+  const onMessageProcessRef = useRef3(onMessageProcess);
+  useEffect4(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+  useEffect4(() => {
+    onMessageProcessRef.current = onMessageProcess;
+  }, [onMessageProcess]);
+  const [messages, setMessages] = useState2(initialMessages);
+  const [isLoading, setIsLoading] = useState2(false);
+  const [error, setError] = useState2(null);
+  useEffect4(() => {
+    if (initialMessages.length > 0) {
+      clearStoreState?.();
+      setMessages(initialMessages);
+      initialMessages.forEach((message) => onMessageProcessRef.current?.(message));
+    }
+  }, [initialMessages, clearStoreState]);
+  const addMessage = useCallback((message) => {
+    setMessages((prev) => [...prev, message]);
+    onMessageProcessRef.current?.(message);
+  }, []);
+  const addMessages = useCallback((newMessages) => {
+    setMessages((prev) => [...prev, ...newMessages]);
+    newMessages.forEach((message) => onMessageProcessRef.current?.(message));
+  }, []);
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
+  const fetchMessages = useCallback(async () => {
+    if (!agent || !threadId) return;
+    try {
+      setIsLoading(true);
+      setError(null);
+      const a2aMessages = await agent.getThreadMessages(threadId);
+      const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean);
+      setMessages(distriMessages);
+    } catch (err) {
+      const error2 = err instanceof Error ? err : new Error("Failed to fetch messages");
+      setError(error2);
+      onErrorRef.current?.(error2);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [agent, threadId]);
+  useEffect4(() => {
+    if (threadId && agent && !initialMessages?.length) {
+      fetchMessages();
+    }
+  }, [threadId, agent?.id, initialMessages?.length, fetchMessages]);
+  return {
+    messages,
+    addMessage,
+    addMessages,
+    clearMessages,
+    fetchMessages,
+    isLoading,
+    error
+  };
+}
+
 // src/useChat.ts
 function useChat({
   threadId,
-  onMessage,
   onError,
   getMetadata,
-  onMessagesUpdate,
   agent,
   tools,
-  overrideChatState,
-  messageFilter
+  initialMessages
 }) {
-  const abortControllerRef = useRef3(null);
-  const createInvokeContext = useCallback(() => ({
+  const abortControllerRef = useRef4(null);
+  const onErrorRef = useRef4(onError);
+  useEffect5(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+  const getMetadataRef = useRef4(getMetadata);
+  useEffect5(() => {
+    getMetadataRef.current = getMetadata;
+  }, [getMetadata]);
+  const createInvokeContext = useCallback2(() => ({
     thread_id: threadId,
     run_id: void 0,
-    getMetadata
-  }), [threadId, getMetadata]);
+    getMetadata: getMetadataRef.current
+  }), [threadId]);
   registerTools({ agent, tools });
-  const chatState = overrideChatState || useChatStateStore.getState();
-  useEffect4(() => {
+  const chatState = useChatStateStore();
+  const isLoading = useChatStateStore((state) => state.isLoading);
+  const isStreaming = useChatStateStore((state) => state.isStreaming);
+  const {
+    processMessage,
+    clearAllStates,
+    setError,
+    setLoading,
+    setStreaming,
+    setAgent,
+    setTools,
+    initToolCall,
+    updateToolCallStatus,
+    getExternalToolResponses,
+    hasPendingToolCalls
+  } = chatState;
+  const {
+    addMessage: addMessageToHook,
+    messages
+  } = useChatMessages({
+    initialMessages,
+    agent,
+    threadId,
+    onError,
+    onMessageProcess: processMessage,
+    clearStoreState: clearAllStates
+  });
+  const addMessageToHookRef = useRef4(addMessageToHook);
+  useEffect5(() => {
+    addMessageToHookRef.current = addMessageToHook;
+  }, [addMessageToHook]);
+  const addMessage = useCallback2((message) => {
+    addMessageToHookRef.current(message);
+  }, []);
+  const addMessageRef = useRef4(addMessage);
+  useEffect5(() => {
+    addMessageRef.current = addMessage;
+  }, [addMessage]);
+  useEffect5(() => {
     if (agent) {
-      chatState.setAgent(agent);
+      setAgent(agent);
     }
     if (tools) {
-      chatState.setTools(tools);
+      setTools(tools);
     }
-  }, [agent, tools, chatState]);
-  useEffect4(() => {
+  }, [agent, tools, setAgent, setTools]);
+  useEffect5(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
   }, []);
-  const agentIdRef = useRef3(void 0);
-  const messageFilterRef = useRef3(void 0);
-  const allMessagesRef = useRef3([]);
-  const reapplyFilter = useCallback(() => {
-    const filteredMessages = allMessagesRef.current.filter(messageFilter || (() => true));
-    chatState.clearMessages();
-    chatState.clearAllStates();
-    chatState.setError(null);
-    filteredMessages.forEach((message) => {
-      chatState.addMessage(message);
-      chatState.processMessage(message);
-    });
-  }, [chatState, messageFilter]);
-  useEffect4(() => {
+  const agentIdRef = useRef4(void 0);
+  useEffect5(() => {
     if (agent?.id !== agentIdRef.current) {
-      allMessagesRef.current = [];
-      chatState.clearMessages();
-      chatState.clearAllStates();
-      chatState.setError(null);
+      clearAllStates();
+      setError(null);
       agentIdRef.current = agent?.id;
     }
-    if (messageFilter !== messageFilterRef.current) {
-      messageFilterRef.current = messageFilter;
-      reapplyFilter();
-    }
-  }, [agent?.id, chatState, messageFilter, reapplyFilter]);
-  const addMessages = useCallback((messages) => {
-    allMessagesRef.current = [...allMessagesRef.current, ...messages];
-    const filteredMessages = messages.filter(messageFilter || (() => true));
-    filteredMessages.forEach((message) => {
-      chatState.addMessage(message);
-      chatState.processMessage(message);
-    });
-  }, [chatState, messageFilter]);
-  const fetchMessages = useCallback(async () => {
-    if (!agent) return;
-    try {
-      chatState.setLoading(true);
-      const a2aMessages = await agent.getThreadMessages(threadId);
-      const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean);
-      allMessagesRef.current = distriMessages;
-      chatState.clearMessages();
-      addMessages(distriMessages);
-      onMessagesUpdate?.();
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to fetch messages");
-      chatState.setError(error);
-      onError?.(error);
-    } finally {
-      chatState.setLoading(false);
-    }
-  }, [threadId, agent?.id, onError, onMessagesUpdate, chatState, addMessages]);
-  useEffect4(() => {
-    if (threadId) {
-      fetchMessages();
-    }
-  }, [threadId, agent?.id]);
-  const handleStreamEvent = useCallback((event) => {
-    allMessagesRef.current = [...allMessagesRef.current, event];
-    if (!messageFilter || messageFilter(event, allMessagesRef.current.length - 1)) {
-      if (isDistriEvent(event) && (event.type === "text_message_start" || event.type === "text_message_content" || event.type === "text_message_end")) {
-        chatState.processMessage(event);
-      } else {
-        chatState.addMessage(event);
-        chatState.processMessage(event);
+  }, [agent?.id, clearAllStates, setError]);
+  const handleStreamEvent = useCallback2(
+    (event) => {
+      addMessageRef.current(event);
+      if (isDistriArtifact(event)) {
+        const artifact = event;
+        if (artifact.type === "llm_response") {
+          const llmArtifact = artifact;
+          if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
+            llmArtifact.tool_calls.forEach((toolCall) => {
+              const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
+              const isExternal = !!distriTool;
+              const stepTitle = llmArtifact.step_id || toolCall.tool_name;
+              initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
+            });
+          }
+        } else if (artifact.type === "tool_results") {
+          const toolResultsArtifact = artifact;
+          if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
+            toolResultsArtifact.results.forEach((result) => {
+              let parsedResult = result.result;
+              if (typeof parsedResult === "string") {
+                try {
+                  parsedResult = JSON.parse(parsedResult);
+                } catch {
+                }
+              }
+              updateToolCallStatus(
+                result.tool_call_id,
+                {
+                  status: toolResultsArtifact.success ? "completed" : "error",
+                  result: parsedResult,
+                  error: toolResultsArtifact.reason || void 0,
+                  completedAt: new Date(toolResultsArtifact.timestamp)
+                }
+              );
+            });
+          }
+        }
       }
-    }
-    if (isDistriArtifact(event)) {
-      const artifact = event;
-      if (artifact.type === "llm_response") {
-        const llmArtifact = artifact;
-        if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
-          llmArtifact.tool_calls.forEach((toolCall) => {
+      if (isDistriMessage(event)) {
+        const distriMessage = event;
+        const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
+        if (toolCallParts.length > 0) {
+          const newToolCalls = toolCallParts.map((part) => part.tool_call);
+          newToolCalls.forEach((toolCall) => {
             const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
             const isExternal = !!distriTool;
-            const stepTitle = llmArtifact.step_id || toolCall.tool_name;
-            chatState.initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
+            const stepTitle = toolCall.tool_name;
+            initToolCall(toolCall, void 0, isExternal, stepTitle);
           });
         }
-      } else if (artifact.type === "tool_results") {
-        const toolResultsArtifact = artifact;
-        if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
-          toolResultsArtifact.results.forEach((result) => {
-            let parsedResult = result.result;
-            if (typeof parsedResult === "string") {
-              try {
-                parsedResult = JSON.parse(parsedResult);
-              } catch {
-              }
-            }
-            chatState.updateToolCallStatus(
-              result.tool_call_id,
+        const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
+        if (toolResultParts.length > 0) {
+          const newToolResults = toolResultParts.map((part) => part.tool_result);
+          newToolResults.forEach((toolResult) => {
+            updateToolCallStatus(
+              toolResult.tool_call_id,
               {
-                status: toolResultsArtifact.success ? "completed" : "error",
-                result: parsedResult,
-                error: toolResultsArtifact.reason || void 0,
-                completedAt: new Date(toolResultsArtifact.timestamp)
+                status: toolResult.success ? "completed" : "error",
+                result: toolResult.result,
+                error: toolResult.error,
+                completedAt: /* @__PURE__ */ new Date()
               }
             );
           });
         }
       }
-    }
-    if (isDistriMessage(event)) {
-      const distriMessage = event;
-      const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
-      if (toolCallParts.length > 0) {
-        const newToolCalls = toolCallParts.map((part) => part.tool_call);
-        newToolCalls.forEach((toolCall) => {
-          const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
-          const isExternal = !!distriTool;
-          const stepTitle = toolCall.tool_name;
-          chatState.initToolCall(toolCall, void 0, isExternal, stepTitle);
-        });
-      }
-      const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
-      if (toolResultParts.length > 0) {
-        const newToolResults = toolResultParts.map((part) => part.tool_result);
-        newToolResults.forEach((toolResult) => {
-          chatState.updateToolCallStatus(
-            toolResult.tool_call_id,
-            {
-              status: toolResult.success ? "completed" : "error",
-              result: toolResult.result,
-              error: toolResult.error,
-              completedAt: /* @__PURE__ */ new Date()
-            }
-          );
-        });
-      }
-    }
-    onMessage?.(event);
-  }, [onMessage, agent, chatState, messageFilter]);
-  const sendMessage = useCallback(async (content) => {
+    },
+    [chatState.tools, initToolCall, updateToolCallStatus]
+  );
+  const sendMessage = useCallback2(async (content) => {
     if (!agent) return;
-    chatState.setLoading(true);
-    chatState.setStreaming(true);
-    chatState.setError(null);
+    setLoading(true);
+    setStreaming(true);
+    setError(null);
     chatState.setStreamingIndicator(void 0);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -1172,11 +1186,10 @@ function useChat({
     try {
       const parts = typeof content === "string" ? [{ type: "text", text: content }] : content;
       const distriMessage = DistriClient.initDistriMessage("user", parts);
+      addMessageRef.current(distriMessage);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
-      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
-      chatState.addMessage(distriMessage);
-      const contextMetadata = await getMetadata?.() || {};
+      const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
         metadata: contextMetadata
@@ -1192,19 +1205,19 @@ function useChat({
         return;
       }
       const error = err instanceof Error ? err : new Error("Failed to send message");
-      chatState.setError(error);
-      onError?.(error);
+      setError(error);
+      onErrorRef.current?.(error);
     } finally {
-      chatState.setLoading(false);
-      chatState.setStreaming(false);
+      setLoading(false);
+      setStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [agent, createInvokeContext, handleStreamEvent, onError]);
-  const sendMessageStream = useCallback(async (content, role = "user") => {
+  }, [agent, createInvokeContext, handleStreamEvent, setLoading, setStreaming, setError]);
+  const sendMessageStream = useCallback2(async (content, role = "user") => {
     if (!agent) return;
-    chatState.setLoading(true);
-    chatState.setStreaming(true);
-    chatState.setError(null);
+    setLoading(true);
+    setStreaming(true);
+    setError(null);
     chatState.setStreamingIndicator(void 0);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -1213,11 +1226,10 @@ function useChat({
     try {
       const parts = typeof content === "string" ? [{ type: "text", text: content }] : content;
       const distriMessage = DistriClient.initDistriMessage(role, parts);
+      addMessageRef.current(distriMessage);
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
-      allMessagesRef.current = [...allMessagesRef.current, distriMessage];
-      chatState.addMessage(distriMessage);
-      const contextMetadata = await getMetadata?.() || {};
+      const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
         metadata: { ...contextMetadata }
@@ -1233,19 +1245,19 @@ function useChat({
         return;
       }
       const error = err instanceof Error ? err : new Error("Failed to send message");
-      chatState.setError(error);
-      onError?.(error);
+      setError(error);
+      onErrorRef.current?.(error);
     } finally {
-      if (!chatState.hasPendingToolCalls()) {
-        chatState.setLoading(false);
+      if (!hasPendingToolCalls()) {
+        setLoading(false);
       }
-      chatState.setStreaming(false);
+      setStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [agent, createInvokeContext, handleStreamEvent, onError, threadId]);
-  const handleExternalToolResponses = useCallback(async () => {
-    const externalResponses = chatState.getExternalToolResponses();
-    if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
+  }, [agent, createInvokeContext, handleStreamEvent, threadId, setLoading, setStreaming, setError, hasPendingToolCalls]);
+  const handleExternalToolResponses = useCallback2(async () => {
+    const externalResponses = getExternalToolResponses();
+    if (externalResponses.length > 0 && !isStreaming && !isLoading) {
       console.log("Sending external tool responses:", externalResponses);
       try {
         const toolResultParts = externalResponses.map((result) => ({
@@ -1261,14 +1273,14 @@ function useChat({
         chatState.clearToolResults();
       } catch (err) {
         console.error("Failed to send external tool responses:", err);
-        chatState.setError(err instanceof Error ? err : new Error("Failed to send tool responses"));
+        setError(err instanceof Error ? err : new Error("Failed to send tool responses"));
       }
     }
-  }, [chatState, sendMessageStream]);
-  useEffect4(() => {
+  }, [chatState, sendMessageStream, getExternalToolResponses, setError]);
+  useEffect5(() => {
     const interval = setInterval(() => {
-      const externalResponses = chatState.getExternalToolResponses();
-      if (externalResponses.length > 0 && !chatState.isStreaming && !chatState.isLoading) {
+      const externalResponses = getExternalToolResponses();
+      if (externalResponses.length > 0 && !isStreaming && !isLoading) {
         const hasExternalToolResponses = externalResponses.some((response) => {
           const toolCall = chatState.getToolCallById(response.tool_call_id);
           return toolCall && toolCall.isExternal && toolCall.status === "completed";
@@ -1279,33 +1291,27 @@ function useChat({
       }
     }, 1e3);
     return () => clearInterval(interval);
-  }, [chatState, handleExternalToolResponses]);
-  const stopStreaming = useCallback(() => {
+  }, [chatState, handleExternalToolResponses, getExternalToolResponses]);
+  const stopStreaming = useCallback2(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
   }, []);
-  const clearMessages = useCallback(() => {
-    allMessagesRef.current = [];
-    chatState.clearMessages();
-    chatState.setStreamingIndicator(void 0);
-  }, [chatState]);
   return {
-    messages: allMessagesRef.current,
-    isStreaming: chatState.isStreaming,
+    isStreaming,
+    messages,
     sendMessage,
     sendMessageStream,
-    isLoading: chatState.isLoading,
+    isLoading,
     error: chatState.error,
-    clearMessages,
-    agent: agent || void 0,
-    hasPendingToolCalls: chatState.hasPendingToolCalls,
-    stopStreaming
+    hasPendingToolCalls,
+    stopStreaming,
+    addMessage
   };
 }
 
 // src/components/renderers/MessageRenderer.tsx
-import { isDistriMessage as isDistriMessage3, isDistriEvent as isDistriEvent3, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
+import { isDistriMessage as isDistriMessage2, isDistriEvent as isDistriEvent2, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
 
 // src/components/renderers/UserMessageRenderer.tsx
 import { User } from "lucide-react";
@@ -1358,7 +1364,8 @@ function extractContent(message) {
   let hasImages = false;
   if ("parts" in message && Array.isArray(message.parts)) {
     const distriMessage = message;
-    text = distriMessage.parts?.filter((p) => p.type === "text")?.map((p) => p.text)?.join("") || "";
+    const textParts = distriMessage.parts?.filter((p) => p.type === "text" && p.text)?.map((p) => p.text)?.filter((text2) => text2 && text2.trim()) || [];
+    text = textParts.join(" ").trim();
     hasMarkdown = /[*_`#\[\]()>]/.test(text);
     hasCode = /```|`/.test(text);
     hasLinks = /\[.*?\]\(.*?\)|https?:\/\/[^\s]+/.test(text);
@@ -1384,25 +1391,38 @@ function extractContent(message) {
 }
 function renderTextContent(content) {
   const { text, hasMarkdown, hasCode, hasLinks, hasImages } = content;
-  if (!text) return null;
+  if (!text || !text.trim()) return null;
   if (hasMarkdown || hasCode || hasLinks || hasImages) {
     return React6.createElement("pre", { className: "whitespace-pre-wrap text-sm" }, text);
   }
-  return React6.createElement("p", { className: "text-sm leading-relaxed" }, text);
+  const paragraphs = text.split("\n").filter((p) => p.trim());
+  if (paragraphs.length === 1) {
+    return React6.createElement("p", { className: "text-sm leading-relaxed" }, text);
+  } else {
+    return React6.createElement(
+      "div",
+      { className: "space-y-2" },
+      paragraphs.map(
+        (paragraph, index) => React6.createElement("p", {
+          key: index,
+          className: "text-sm leading-relaxed"
+        }, paragraph)
+      )
+    );
+  }
 }
 
 // src/components/renderers/UserMessageRenderer.tsx
 import { jsx as jsx7, jsxs as jsxs3 } from "react/jsx-runtime";
 var UserMessageRenderer = ({
   message,
-  chatState: _chatState,
   className = "",
   avatar
 }) => {
   const content = extractContent(message);
-  return /* @__PURE__ */ jsxs3("div", { className: `flex items-start items-centergap-4 py-6 ${className}`, children: [
+  return /* @__PURE__ */ jsxs3("div", { className: `flex items-start gap-4 py-6 ${className}`, children: [
     /* @__PURE__ */ jsx7(Avatar, { className: "h-8 w-8 flex-shrink-0", children: /* @__PURE__ */ jsx7(AvatarFallback, { className: "bg-secondary text-secondary-foreground", children: avatar || /* @__PURE__ */ jsx7(User, { className: "h-4 w-4" }) }) }),
-    /* @__PURE__ */ jsx7("div", { className: "flex-1 min-w-0 max-w-3xl", children: /* @__PURE__ */ jsx7("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) })
+    /* @__PURE__ */ jsx7("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsx7("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) })
   ] });
 };
 
@@ -1410,12 +1430,11 @@ var UserMessageRenderer = ({
 import { jsx as jsx8, jsxs as jsxs4 } from "react/jsx-runtime";
 var AssistantMessageRenderer = ({
   message,
-  chatState,
   className = ""
 }) => {
   const content = extractContent(message);
-  const isStreaming = chatState?.isStreaming || false;
-  return /* @__PURE__ */ jsx8("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ jsxs4("div", { className: "flex-1 min-w-0 max-w-3xl", children: [
+  const isStreaming = useChatStateStore((state) => state.isStreaming);
+  return /* @__PURE__ */ jsx8("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ jsxs4("div", { className: "flex-1 min-w-0", children: [
     /* @__PURE__ */ jsx8("div", { className: "text-sm font-medium text-foreground mb-3 flex items-center gap-2", children: isStreaming && /* @__PURE__ */ jsxs4("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
       /* @__PURE__ */ jsx8("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
       /* @__PURE__ */ jsx8("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
@@ -1430,7 +1449,6 @@ import { Wrench } from "lucide-react";
 import { jsx as jsx9, jsxs as jsxs5 } from "react/jsx-runtime";
 var ToolMessageRenderer = ({
   message,
-  chatState: _chatState,
   className = "",
   avatar
 }) => {
@@ -1449,7 +1467,6 @@ import { Brain } from "lucide-react";
 import { jsx as jsx10, jsxs as jsxs6 } from "react/jsx-runtime";
 var PlanRenderer = ({
   message,
-  chatState: _chatState,
   className = "",
   avatar
 }) => {
@@ -1513,7 +1530,6 @@ import { Wrench as Wrench2, ChevronDown, ChevronRight, Loader2 as Loader22, Chec
 import { jsx as jsx12, jsxs as jsxs8 } from "react/jsx-runtime";
 var ToolCallRenderer = ({
   toolCall,
-  chatState: _chatState,
   isExpanded,
   onToggle,
   className = ""
@@ -1740,7 +1756,6 @@ import { Bug } from "lucide-react";
 import { jsx as jsx16, jsxs as jsxs10 } from "react/jsx-runtime";
 var DebugRenderer = ({
   message,
-  chatState: _chatState,
   className = "",
   avatar
 }) => {
@@ -1758,27 +1773,27 @@ import { jsx as jsx17, jsxs as jsxs11 } from "react/jsx-runtime";
 function MessageRenderer({
   message,
   index,
-  chatState,
   isExpanded = false,
   onToggle = () => {
   }
 }) {
-  if (isDistriMessage3(message)) {
+  const steps = useChatStateStore((state) => state.steps);
+  const toolCalls = useChatStateStore((state) => state.toolCalls);
+  if (isDistriMessage2(message)) {
     const distriMessage = message;
     const textContent = distriMessage.parts.filter((part) => part.type === "text").map((part) => part.text).join("").trim();
     if (!textContent) {
       return null;
     }
   }
-  if (isDistriMessage3(message)) {
+  if (isDistriMessage2(message)) {
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
         return /* @__PURE__ */ jsx17(
           UserMessageRenderer,
           {
-            message: distriMessage,
-            chatState
+            message: distriMessage
           },
           `user-${index}`
         );
@@ -1786,8 +1801,7 @@ function MessageRenderer({
         return /* @__PURE__ */ jsx17(
           AssistantMessageRenderer,
           {
-            message: distriMessage,
-            chatState
+            message: distriMessage
           },
           `assistant-${index}`
         );
@@ -1795,8 +1809,7 @@ function MessageRenderer({
         return /* @__PURE__ */ jsx17(
           ToolMessageRenderer,
           {
-            message: distriMessage,
-            chatState
+            message: distriMessage
           },
           `tool-${index}`
         );
@@ -1804,7 +1817,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if (isDistriEvent3(message)) {
+  if (isDistriEvent2(message)) {
     const event = message;
     switch (event.type) {
       case "run_started":
@@ -1831,7 +1844,7 @@ function MessageRenderer({
         return null;
       case "step_started":
         const stepId = event.data.step_id;
-        const step = chatState.steps.get(stepId);
+        const step = steps.get(stepId);
         if (step) {
           return /* @__PURE__ */ jsx17(
             StepRenderer,
@@ -1844,7 +1857,7 @@ function MessageRenderer({
         return null;
       case "step_completed":
         const completedStepId = event.data.step_id;
-        const completedStep = chatState.steps.get(completedStepId);
+        const completedStep = steps.get(completedStepId);
         if (completedStep) {
           return /* @__PURE__ */ jsx17(
             StepRenderer,
@@ -1910,8 +1923,7 @@ function MessageRenderer({
           return /* @__PURE__ */ jsx17(
             DebugRenderer,
             {
-              message: event,
-              chatState
+              message: event
             },
             `event-${index}`
           );
@@ -1926,21 +1938,19 @@ function MessageRenderer({
         return /* @__PURE__ */ jsx17(
           PlanRenderer,
           {
-            message: artifact,
-            chatState
+            message: artifact
           },
           `plan-${index}`
         );
       case "llm_response":
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
           return artifact.tool_calls.map((toolCall, toolIndex) => {
-            const toolCallState = chatState.getToolCallById(toolCall.tool_call_id);
+            const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
             return /* @__PURE__ */ jsx17(
               ToolCallRenderer,
               {
                 toolCall: toolCallState,
-                chatState,
                 isExpanded,
                 onToggle
               },
@@ -1974,8 +1984,7 @@ function MessageRenderer({
           return /* @__PURE__ */ jsx17(
             DebugRenderer,
             {
-              message: artifact,
-              chatState
+              message: artifact
             },
             `artifact-${index}`
           );
@@ -2036,34 +2045,29 @@ function Chat({
   onMessage,
   onError,
   getMetadata,
-  onMessagesUpdate,
   tools,
-  messageFilter,
-  overrideChatState,
+  initialMessages,
   theme = "auto"
 }) {
-  const [input, setInput] = useState2("");
-  const [expandedTools, setExpandedTools] = useState2(/* @__PURE__ */ new Set());
-  const messagesEndRef = useRef4(null);
+  const [input, setInput] = useState3("");
+  const [expandedTools, setExpandedTools] = useState3(/* @__PURE__ */ new Set());
+  const messagesEndRef = useRef5(null);
   const {
     sendMessage,
-    stopStreaming
+    stopStreaming,
+    isStreaming,
+    isLoading,
+    error,
+    messages
   } = useChat({
     threadId,
     agent,
     onMessage,
     onError,
     getMetadata,
-    onMessagesUpdate,
-    messageFilter,
     tools,
-    overrideChatState
+    initialMessages
   });
-  const chatState = overrideChatState || useChatStateStore.getState();
-  const messages = useChatStateStore((state) => state.messages);
-  const isStreaming = useChatStateStore((state) => state.isStreaming);
-  const isLoading = useChatStateStore((state) => state.isLoading);
-  const error = useChatStateStore((state) => state.error);
   const toolCalls = useChatStateStore((state) => state.toolCalls);
   const currentPlanId = useChatStateStore((state) => state.currentPlanId);
   const plans = useChatStateStore((state) => state.plans);
@@ -2073,15 +2077,15 @@ function Chat({
   const pendingToolCalls = Array.from(toolCalls.values()).filter(
     (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
   );
-  const handleSendMessage = useCallback2(async (content) => {
+  const handleSendMessage = useCallback3(async (content) => {
     if (!content.trim()) return;
     setInput("");
     await sendMessage(content);
   }, [sendMessage]);
-  const handleStopStreaming = useCallback2(() => {
+  const handleStopStreaming = useCallback3(() => {
     stopStreaming();
   }, [stopStreaming]);
-  const toggleToolExpansion = useCallback2((toolId) => {
+  const toggleToolExpansion = useCallback3((toolId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(toolId)) {
@@ -2092,10 +2096,10 @@ function Chat({
       return newSet;
     });
   }, []);
-  useEffect5(() => {
+  useEffect6(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-  useEffect5(() => {
+  useEffect6(() => {
     const newExpanded = new Set(expandedTools);
     let hasChanges = false;
     toolCalls.forEach((toolCall) => {
@@ -2123,7 +2127,6 @@ function Chat({
         {
           message,
           index,
-          chatState,
           isExpanded: expandedTools.has(message.id || `message-${index}`),
           onToggle: () => {
             const messageId = message.id || `message-${index}`;
@@ -2179,11 +2182,11 @@ function Chat({
 }
 
 // src/DistriProvider.tsx
-import { createContext as createContext2, useContext as useContext2, useEffect as useEffect7, useState as useState4 } from "react";
+import { createContext as createContext2, useContext as useContext2, useEffect as useEffect8, useState as useState5 } from "react";
 import { DistriClient as DistriClient2 } from "@distri/core";
 
 // src/components/ThemeProvider.tsx
-import { createContext, useContext, useEffect as useEffect6, useState as useState3 } from "react";
+import { createContext, useContext, useEffect as useEffect7, useState as useState4 } from "react";
 import { jsx as jsx20 } from "react/jsx-runtime";
 var initialState = {
   theme: "system",
@@ -2196,14 +2199,14 @@ function ThemeProvider({
   storageKey = "distri-theme",
   ...props
 }) {
-  const [theme, setTheme] = useState3(() => {
+  const [theme, setTheme] = useState4(() => {
     const stored = localStorage.getItem(storageKey);
     if (stored) {
       return stored;
     }
     return defaultTheme === "system" ? "dark" : defaultTheme;
   });
-  useEffect6(() => {
+  useEffect7(() => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark", "chatgpt");
     if (theme === "system") {
@@ -2242,10 +2245,10 @@ var debug = (config, ...args) => {
   }
 };
 function DistriProvider({ config, children, defaultTheme = "dark" }) {
-  const [client, setClient] = useState4(null);
-  const [error, setError] = useState4(null);
-  const [isLoading, setIsLoading] = useState4(true);
-  useEffect7(() => {
+  const [client, setClient] = useState5(null);
+  const [error, setError] = useState5(null);
+  const [isLoading, setIsLoading] = useState5(true);
+  useEffect8(() => {
     let currentClient = null;
     try {
       debug(config, "[DistriProvider] Initializing client with config:", config);
@@ -2519,13 +2522,13 @@ var AgentSelect = ({
 };
 
 // src/useAgentDefinitions.ts
-import { useState as useState5, useEffect as useEffect8, useCallback as useCallback3 } from "react";
+import { useState as useState6, useEffect as useEffect9, useCallback as useCallback4 } from "react";
 function useAgentDefinitions() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agents, setAgents] = useState5([]);
-  const [loading, setLoading] = useState5(true);
-  const [error, setError] = useState5(null);
-  const fetchAgents = useCallback3(async () => {
+  const [agents, setAgents] = useState6([]);
+  const [loading, setLoading] = useState6(true);
+  const [error, setError] = useState6(null);
+  const fetchAgents = useCallback4(async () => {
     if (!client) {
       return;
     }
@@ -2541,7 +2544,7 @@ function useAgentDefinitions() {
       setLoading(false);
     }
   }, [client]);
-  const getAgent = useCallback3(async (agentId) => {
+  const getAgent = useCallback4(async (agentId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -2555,7 +2558,7 @@ function useAgentDefinitions() {
       throw error2;
     }
   }, [client]);
-  useEffect8(() => {
+  useEffect9(() => {
     if (clientLoading) {
       setLoading(true);
       return;
@@ -2734,7 +2737,7 @@ var ExecutionSteps = ({ messages, className = "" }) => {
 
 // src/components/TaskExecutionRenderer.tsx
 import { useMemo } from "react";
-import { isDistriMessage as isDistriMessage4 } from "@distri/core";
+import { isDistriMessage as isDistriMessage3 } from "@distri/core";
 import { CheckCircle as CheckCircle6, Clock as Clock3, AlertCircle as AlertCircle2, Loader2 as Loader24 } from "lucide-react";
 import { jsx as jsx28, jsxs as jsxs20 } from "react/jsx-runtime";
 var TaskExecutionRenderer = ({
@@ -2745,7 +2748,7 @@ var TaskExecutionRenderer = ({
     const stepMap = /* @__PURE__ */ new Map();
     const stepOrder = [];
     events.forEach((event) => {
-      if (isDistriMessage4(event)) {
+      if (isDistriMessage3(event)) {
         const message = event;
         const stepId = `message_${message.id}`;
         if (!stepMap.has(stepId)) {
@@ -3060,7 +3063,7 @@ function renderGenericArtifact(genericArtifact, _chatState, className, avatar) {
 }
 
 // src/useAgent.ts
-import React15, { useState as useState6, useCallback as useCallback4, useRef as useRef5 } from "react";
+import React15, { useState as useState7, useCallback as useCallback5, useRef as useRef6 } from "react";
 import {
   Agent as Agent3
 } from "@distri/core";
@@ -3068,12 +3071,12 @@ function useAgent({
   agentIdOrDef
 }) {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agent, setAgent] = useState6(null);
-  const [loading, setLoading] = useState6(false);
-  const [error, setError] = useState6(null);
-  const agentRef = useRef5(null);
-  const currentAgentIdRef = useRef5(null);
-  const initializeAgent = useCallback4(async () => {
+  const [agent, setAgent] = useState7(null);
+  const [loading, setLoading] = useState7(false);
+  const [error, setError] = useState7(null);
+  const agentRef = useRef6(null);
+  const currentAgentIdRef = useRef6(null);
+  const initializeAgent = useCallback5(async () => {
     if (!client || !agentIdOrDef) return;
     if (currentAgentIdRef.current === agentIdOrDef && agentRef.current) {
       return;
@@ -3117,13 +3120,13 @@ function useAgent({
 }
 
 // src/useThreads.ts
-import { useState as useState7, useEffect as useEffect9, useCallback as useCallback5 } from "react";
+import { useState as useState8, useEffect as useEffect10, useCallback as useCallback6 } from "react";
 function useThreads() {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [threads, setThreads] = useState7([]);
-  const [loading, setLoading] = useState7(true);
-  const [error, setError] = useState7(null);
-  const fetchThreads = useCallback5(async () => {
+  const [threads, setThreads] = useState8([]);
+  const [loading, setLoading] = useState8(true);
+  const [error, setError] = useState8(null);
+  const fetchThreads = useCallback6(async () => {
     if (!client) {
       console.error("[useThreads] Client not available");
       setError(new Error("Client not available"));
@@ -3142,7 +3145,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [client]);
-  const fetchThread = useCallback5(async (threadId) => {
+  const fetchThread = useCallback6(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -3154,7 +3157,7 @@ function useThreads() {
       throw err;
     }
   }, [client]);
-  const deleteThread = useCallback5(async (threadId) => {
+  const deleteThread = useCallback6(async (threadId) => {
     if (!client) {
       throw new Error("Client not available");
     }
@@ -3171,7 +3174,7 @@ function useThreads() {
       console.warn("Failed to delete thread from server, but removed locally:", err);
     }
   }, [client]);
-  const updateThread = useCallback5(async (threadId, localId) => {
+  const updateThread = useCallback6(async (threadId, localId) => {
     if (!client) {
       return;
     }
@@ -3195,7 +3198,7 @@ function useThreads() {
       console.warn("Failed to update thread:", err);
     }
   }, [client]);
-  useEffect9(() => {
+  useEffect10(() => {
     if (clientLoading) {
       setLoading(true);
       return;
@@ -3211,7 +3214,7 @@ function useThreads() {
       setLoading(false);
     }
   }, [clientLoading, clientError, client, fetchThreads]);
-  useEffect9(() => {
+  useEffect10(() => {
     if (!client) return;
     const interval = setInterval(() => {
       fetchThreads();
@@ -3230,7 +3233,7 @@ function useThreads() {
 }
 
 // src/components/ChatContext.tsx
-import { createContext as createContext3, useContext as useContext3, useState as useState8 } from "react";
+import { createContext as createContext3, useContext as useContext3, useState as useState9 } from "react";
 import { jsx as jsx30 } from "react/jsx-runtime";
 var ChatContext = createContext3(void 0);
 var useChatConfig = () => {
@@ -4080,9 +4083,9 @@ var SidebarMenuSubButton = React23.forwardRef(({ asChild = false, size = "md", i
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 // src/utils/messageUtils.ts
-import { isDistriMessage as isDistriMessage5, isDistriArtifact as isDistriArtifact4 } from "@distri/core";
+import { isDistriMessage as isDistriMessage4, isDistriArtifact as isDistriArtifact4 } from "@distri/core";
 var extractTextFromMessage = (message) => {
-  if (isDistriMessage5(message)) {
+  if (isDistriMessage4(message)) {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
@@ -4097,7 +4100,7 @@ var shouldDisplayMessage = (message, showDebugMessages = false) => {
   if (isDistriArtifact4(message)) {
     return true;
   }
-  if (isDistriMessage5(message)) {
+  if (isDistriMessage4(message)) {
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;
   }
@@ -4188,6 +4191,7 @@ export {
   useAgentDefinitions,
   useChat,
   useChatConfig,
+  useChatMessages,
   useChatStateStore,
   useSidebar,
   useTheme,

@@ -12,18 +12,9 @@ export interface ChatProps {
   onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
-  onMessagesUpdate?: () => void;
   tools?: any[];
-
-  // Message filter to control what messages are displayed
-  messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
-
-  // Limit processing to messages up to this index (for debugging/replay)
-  processMessagesUntil?: number;
-
-  // Override chat state (for testing/debugging)
-  overrideChatState?: any;
-
+  // Initial messages to use instead of fetching
+  initialMessages?: (DistriEvent | DistriMessage | DistriArtifact)[];
   // Theme
   theme?: 'light' | 'dark' | 'auto';
 }
@@ -34,11 +25,8 @@ export function Chat({
   onMessage,
   onError,
   getMetadata,
-  onMessagesUpdate,
   tools,
-  messageFilter,
-  processMessagesUntil,
-  overrideChatState,
+  initialMessages,
   theme = 'auto',
 }: ChatProps) {
   const [input, setInput] = useState('');
@@ -48,27 +36,21 @@ export function Chat({
   const {
     sendMessage,
     stopStreaming,
+    isStreaming,
+    isLoading,
+    error,
+    messages,
   } = useChat({
     threadId,
     agent,
     onMessage,
     onError,
     getMetadata,
-    onMessagesUpdate,
-    messageFilter,
-    processMessagesUntil,
     tools,
-    overrideChatState,
+    initialMessages,
   });
 
-  // Get chat state - use override if provided, otherwise get from store
-  const chatState = overrideChatState || useChatStateStore.getState();
-
   // Get reactive state from store
-  const messages = useChatStateStore(state => state.messages);
-  const isStreaming = useChatStateStore(state => state.isStreaming);
-  const isLoading = useChatStateStore(state => state.isLoading);
-  const error = useChatStateStore(state => state.error);
   const toolCalls = useChatStateStore(state => state.toolCalls);
   const currentPlanId = useChatStateStore(state => state.currentPlanId);
   const plans = useChatStateStore(state => state.plans);
@@ -146,7 +128,6 @@ export function Chat({
           key={`message-${index}`}
           message={message}
           index={index}
-          chatState={chatState}
           isExpanded={expandedTools.has(message.id || `message-${index}`)}
           onToggle={() => {
             const messageId = message.id || `message-${index}`;
