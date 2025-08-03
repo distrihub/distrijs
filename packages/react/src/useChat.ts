@@ -6,11 +6,8 @@ import {
   InvokeContext,
   DistriEvent,
   DistriArtifact,
-  AssistantWithToolCalls,
-  ToolResults,
   convertDistriMessageToA2A,
 } from '@distri/core';
-import { isDistriMessage, isDistriArtifact } from '../../core/src/types';
 import { registerTools } from './hooks/registerTools';
 import { useChatStateStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
@@ -153,105 +150,10 @@ export function useChat({
   }, [agent?.id, clearAllStates, setError]);
 
 
-
-
-
-
-
-
-
   const handleStreamEvent = useCallback(
     (event: DistriEvent | DistriMessage | DistriArtifact) => {
       // Add event to messages (this will trigger onMessageAdded callback)
       addMessageRef.current(event);
-
-      // Handle tool calls and results automatically from artifacts
-      if (isDistriArtifact(event)) {
-        const artifact = event as DistriArtifact;
-
-        if (artifact.type === 'llm_response') {
-          const llmArtifact = artifact as AssistantWithToolCalls;
-
-          // Process tool calls from LLM response
-          if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
-            llmArtifact.tool_calls.forEach(toolCall => {
-              // Check if tool is external (only if explicitly registered in tools array)
-              const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
-              const isExternal = !!distriTool; // Only true if found in tools array
-
-              // Use step_id as step title if available
-              const stepTitle = llmArtifact.step_id || toolCall.tool_name;
-
-              initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
-            });
-          }
-        } else if (artifact.type === 'tool_results') {
-          const toolResultsArtifact = artifact as ToolResults;
-
-          // Process tool results
-          if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
-            toolResultsArtifact.results.forEach(result => {
-              let parsedResult = result.result;
-              if (typeof parsedResult === 'string') {
-                try {
-                  parsedResult = JSON.parse(parsedResult);
-                } catch {
-                  // Keep as string if not valid JSON
-                }
-              }
-
-              updateToolCallStatus(
-                result.tool_call_id,
-                {
-                  status: toolResultsArtifact.success ? 'completed' : 'error',
-                  result: parsedResult,
-                  error: toolResultsArtifact.reason || undefined,
-                  completedAt: new Date(toolResultsArtifact.timestamp)
-                }
-              );
-            });
-          }
-        }
-      }
-
-      // Handle tool calls and results from regular messages (for backward compatibility)
-      if (isDistriMessage(event)) {
-        const distriMessage = event as DistriMessage;
-
-        // Process tool calls
-        const toolCallParts = distriMessage.parts.filter(part => part.type === 'tool_call');
-        if (toolCallParts.length > 0) {
-          const newToolCalls = toolCallParts.map(part => (part as any).tool_call);
-          newToolCalls.forEach(toolCall => {
-            // Check if tool is external (only if explicitly registered in tools array)
-            const distriTool = chatState.tools?.find(t => t.name === toolCall.tool_name);
-            const isExternal = !!distriTool; // Only true if found in tools array
-
-            // Use tool name as step title for regular messages
-            const stepTitle = toolCall.tool_name;
-
-            initToolCall(toolCall, undefined, isExternal, stepTitle);
-          });
-        }
-
-        // Process tool results
-        const toolResultParts = distriMessage.parts.filter(part => part.type === 'tool_result');
-        if (toolResultParts.length > 0) {
-          const newToolResults = toolResultParts.map(part => (part as any).tool_result);
-          newToolResults.forEach(toolResult => {
-            updateToolCallStatus(
-              toolResult.tool_call_id,
-              {
-                status: toolResult.success ? 'completed' : 'error',
-                result: toolResult.result,
-                error: toolResult.error,
-                completedAt: new Date()
-              }
-            );
-          });
-        }
-      }
-
     }, [chatState.tools, initToolCall, updateToolCallStatus]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
@@ -400,28 +302,6 @@ export function useChat({
       }
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError]);
-
-  // Check for external tool responses periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const externalResponses = getExternalToolResponses();
-      // Only process if there are responses and we're not currently streaming or loading
-      // AND only for external tools that have actually completed their handling
-      if (externalResponses.length > 0 && !isStreaming && !isLoading) {
-        // Additional check: only send if these are truly external tool responses
-        const hasExternalToolResponses = externalResponses.some(response => {
-          const toolCall = chatState.getToolCallById(response.tool_call_id);
-          return toolCall && toolCall.isExternal && toolCall.status === 'completed';
-        });
-
-        if (hasExternalToolResponses) {
-          handleExternalToolResponses();
-        }
-      }
-    }, 1000); // Check every second
-
-    return () => clearInterval(interval);
-  }, [chatState, handleExternalToolResponses, getExternalToolResponses]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {

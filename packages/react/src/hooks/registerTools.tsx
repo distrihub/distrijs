@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Agent } from '@distri/core';
 import { DistriAnyTool, UiToolProps } from '@/types';
-import { ToastToolCall } from '@/components/toolcalls';
+import { ToastToolCall } from '@/components/renderers/tools';
 // import { ApprovalToolCall } from '@/components/toolcalls';
 
 export interface UseToolsOptions {

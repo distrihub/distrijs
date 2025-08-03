@@ -41,7 +41,7 @@ export { useChatStateStore } from './stores/chatStateStore';
 export * from './components/ui';
 
 // Tool call components
-export { ApprovalToolCall, ToastToolCall } from './components/toolcalls';
+export { ApprovalToolCall, ToastToolCall } from './components/renderers/tools';
 // Utilities
 export { shouldDisplayMessage, extractTextFromMessage } from './utils/messageUtils';
 

@@ -213,18 +213,10 @@ var import_react6 = require("react");
 var import_core3 = require("@distri/core");
 var import_core4 = require("@distri/core");
 
-// ../core/src/types.ts
-function isDistriMessage(event) {
-  return "id" in event && "role" in event && "parts" in event;
-}
-function isDistriArtifact(event) {
-  return "type" in event && "timestamp" in event && "id" in event;
-}
-
 // src/hooks/registerTools.tsx
 var import_react4 = require("react");
 
-// src/components/toolcalls/ApprovalToolCall.tsx
+// src/components/renderers/tools/ApprovalToolCall.tsx
 var import_react2 = require("react");
 
 // src/components/ui/button.tsx
@@ -274,7 +266,7 @@ var Button = React2.forwardRef(
 );
 Button.displayName = "Button";
 
-// src/components/toolcalls/ApprovalToolCall.tsx
+// src/components/renderers/tools/ApprovalToolCall.tsx
 var import_lucide_react2 = require("lucide-react");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var ApprovalToolCall = ({
@@ -343,7 +335,7 @@ var ApprovalToolCall = ({
   ] });
 };
 
-// src/components/toolcalls/ToastToolCall.tsx
+// src/components/renderers/tools/ToastToolCall.tsx
 var import_react3 = require("react");
 var import_sonner = require("sonner");
 var import_jsx_runtime4 = require("react/jsx-runtime");
@@ -470,6 +462,13 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   setStreamingIndicator: (indicator) => {
     set({ streamingIndicator: indicator });
   },
+  triggerTools: () => {
+    set({ isLoading: true });
+    const pendingToolCalls = get().getPendingToolCalls();
+    if (pendingToolCalls.length === 0) {
+      set({ isLoading: false });
+    }
+  },
   // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
@@ -486,6 +485,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           });
           set({ currentTaskId: taskId });
           get().setStreamingIndicator("typing");
+          set({ isStreaming: true });
           break;
         case "run_finished":
           const currentTaskId = get().currentTaskId;
@@ -496,7 +496,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             });
           }
           get().setStreamingIndicator(void 0);
-          set({ isLoading: false });
+          set({ isStreaming: false });
           break;
         case "run_error":
           const errorTaskId = get().currentTaskId;
@@ -508,7 +508,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             });
           }
           get().setStreamingIndicator(void 0);
-          set({ isLoading: false, isStreaming: false });
+          set({ isStreaming: false });
           break;
         case "plan_started":
           const planId = `plan_${Date.now()}`;
@@ -521,7 +521,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           });
           set({ currentPlanId: planId });
           get().setStreamingIndicator("planning");
-          set({ isStreaming: false });
           break;
         case "plan_finished":
           const currentPlanId = get().currentPlanId;
@@ -561,13 +560,8 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               endTime: timestamp
             });
           }
-          const pendingToolCalls = get().getPendingToolCalls();
-          if (pendingToolCalls.length === 0) {
-            set({ isLoading: false });
-          }
           break;
         case "text_message_start":
-          set({ isStreaming: true });
           get().setStreamingIndicator("typing");
           break;
         case "text_message_content":
@@ -620,7 +614,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               });
             }
           }
-          set({ isStreaming: false });
           break;
         case "tool_results":
           const resultsTaskId = message.step_id || message.id;
@@ -659,22 +652,17 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       }
     }
   },
-  initToolCall: (toolCall, timestamp, isExternal, stepTitle) => {
+  initToolCall: (toolCall, timestamp) => {
     set((state) => {
       const newState = { ...state };
-      let toolIsExternal = isExternal;
-      if (toolIsExternal === void 0) {
-        const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
-        toolIsExternal = !!distriTool;
-      }
+      const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
-        step_title: stepTitle,
         input: toolCall.input || {},
         status: "pending",
         startTime: timestamp || Date.now(),
-        isExternal: toolIsExternal
+        isExternal: !!distriTool
       });
       return newState;
     });
@@ -1284,70 +1272,6 @@ function useChat({
   const handleStreamEvent = (0, import_react6.useCallback)(
     (event) => {
       addMessageRef.current(event);
-      if (isDistriArtifact(event)) {
-        const artifact = event;
-        if (artifact.type === "llm_response") {
-          const llmArtifact = artifact;
-          if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
-            llmArtifact.tool_calls.forEach((toolCall) => {
-              const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
-              const isExternal = !!distriTool;
-              const stepTitle = llmArtifact.step_id || toolCall.tool_name;
-              initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
-            });
-          }
-        } else if (artifact.type === "tool_results") {
-          const toolResultsArtifact = artifact;
-          if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
-            toolResultsArtifact.results.forEach((result) => {
-              let parsedResult = result.result;
-              if (typeof parsedResult === "string") {
-                try {
-                  parsedResult = JSON.parse(parsedResult);
-                } catch {
-                }
-              }
-              updateToolCallStatus(
-                result.tool_call_id,
-                {
-                  status: toolResultsArtifact.success ? "completed" : "error",
-                  result: parsedResult,
-                  error: toolResultsArtifact.reason || void 0,
-                  completedAt: new Date(toolResultsArtifact.timestamp)
-                }
-              );
-            });
-          }
-        }
-      }
-      if (isDistriMessage(event)) {
-        const distriMessage = event;
-        const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
-        if (toolCallParts.length > 0) {
-          const newToolCalls = toolCallParts.map((part) => part.tool_call);
-          newToolCalls.forEach((toolCall) => {
-            const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
-            const isExternal = !!distriTool;
-            const stepTitle = toolCall.tool_name;
-            initToolCall(toolCall, void 0, isExternal, stepTitle);
-          });
-        }
-        const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
-        if (toolResultParts.length > 0) {
-          const newToolResults = toolResultParts.map((part) => part.tool_result);
-          newToolResults.forEach((toolResult) => {
-            updateToolCallStatus(
-              toolResult.tool_call_id,
-              {
-                status: toolResult.success ? "completed" : "error",
-                result: toolResult.result,
-                error: toolResult.error,
-                completedAt: /* @__PURE__ */ new Date()
-              }
-            );
-          });
-        }
-      }
     },
     [chatState.tools, initToolCall, updateToolCallStatus]
   );
@@ -1455,21 +1379,6 @@ function useChat({
       }
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError]);
-  (0, import_react6.useEffect)(() => {
-    const interval = setInterval(() => {
-      const externalResponses = getExternalToolResponses();
-      if (externalResponses.length > 0 && !isStreaming && !isLoading) {
-        const hasExternalToolResponses = externalResponses.some((response) => {
-          const toolCall = chatState.getToolCallById(response.tool_call_id);
-          return toolCall && toolCall.isExternal && toolCall.status === "completed";
-        });
-        if (hasExternalToolResponses) {
-          handleExternalToolResponses();
-        }
-      }
-    }, 1e3);
-    return () => clearInterval(interval);
-  }, [chatState, handleExternalToolResponses, getExternalToolResponses]);
   const stopStreaming = (0, import_react6.useCallback)(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();

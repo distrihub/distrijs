@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '../ui/button';
+import { Button } from '../../ui/button';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { UiToolProps } from '@/types';
 import { ToolResult } from '@distri/core';

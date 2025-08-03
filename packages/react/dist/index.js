@@ -77,18 +77,10 @@ import {
   convertDistriMessageToA2A
 } from "@distri/core";
 
-// ../core/src/types.ts
-function isDistriMessage(event) {
-  return "id" in event && "role" in event && "parts" in event;
-}
-function isDistriArtifact(event) {
-  return "type" in event && "timestamp" in event && "id" in event;
-}
-
 // src/hooks/registerTools.tsx
 import { useEffect as useEffect3, useRef as useRef2 } from "react";
 
-// src/components/toolcalls/ApprovalToolCall.tsx
+// src/components/renderers/tools/ApprovalToolCall.tsx
 import { useState } from "react";
 
 // src/components/ui/button.tsx
@@ -138,7 +130,7 @@ var Button = React2.forwardRef(
 );
 Button.displayName = "Button";
 
-// src/components/toolcalls/ApprovalToolCall.tsx
+// src/components/renderers/tools/ApprovalToolCall.tsx
 import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
 var ApprovalToolCall = ({
@@ -207,7 +199,7 @@ var ApprovalToolCall = ({
   ] });
 };
 
-// src/components/toolcalls/ToastToolCall.tsx
+// src/components/renderers/tools/ToastToolCall.tsx
 import { useEffect as useEffect2 } from "react";
 import { toast } from "sonner";
 import { Fragment, jsx as jsx4 } from "react/jsx-runtime";
@@ -311,7 +303,7 @@ var defaultTools = [
 import { create } from "zustand";
 import {
   isDistriEvent,
-  isDistriArtifact as isDistriArtifact2
+  isDistriArtifact
 } from "@distri/core";
 var useChatStateStore = create((set, get) => ({
   isStreaming: false,
@@ -337,6 +329,13 @@ var useChatStateStore = create((set, get) => ({
   setStreamingIndicator: (indicator) => {
     set({ streamingIndicator: indicator });
   },
+  triggerTools: () => {
+    set({ isLoading: true });
+    const pendingToolCalls = get().getPendingToolCalls();
+    if (pendingToolCalls.length === 0) {
+      set({ isLoading: false });
+    }
+  },
   // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
@@ -353,6 +352,7 @@ var useChatStateStore = create((set, get) => ({
           });
           set({ currentTaskId: taskId });
           get().setStreamingIndicator("typing");
+          set({ isStreaming: true });
           break;
         case "run_finished":
           const currentTaskId = get().currentTaskId;
@@ -363,7 +363,7 @@ var useChatStateStore = create((set, get) => ({
             });
           }
           get().setStreamingIndicator(void 0);
-          set({ isLoading: false });
+          set({ isStreaming: false });
           break;
         case "run_error":
           const errorTaskId = get().currentTaskId;
@@ -375,7 +375,7 @@ var useChatStateStore = create((set, get) => ({
             });
           }
           get().setStreamingIndicator(void 0);
-          set({ isLoading: false, isStreaming: false });
+          set({ isStreaming: false });
           break;
         case "plan_started":
           const planId = `plan_${Date.now()}`;
@@ -388,7 +388,6 @@ var useChatStateStore = create((set, get) => ({
           });
           set({ currentPlanId: planId });
           get().setStreamingIndicator("planning");
-          set({ isStreaming: false });
           break;
         case "plan_finished":
           const currentPlanId = get().currentPlanId;
@@ -428,13 +427,8 @@ var useChatStateStore = create((set, get) => ({
               endTime: timestamp
             });
           }
-          const pendingToolCalls = get().getPendingToolCalls();
-          if (pendingToolCalls.length === 0) {
-            set({ isLoading: false });
-          }
           break;
         case "text_message_start":
-          set({ isStreaming: true });
           get().setStreamingIndicator("typing");
           break;
         case "text_message_content":
@@ -467,7 +461,7 @@ var useChatStateStore = create((set, get) => ({
           break;
       }
     }
-    if (isDistriArtifact2(message)) {
+    if (isDistriArtifact(message)) {
       switch (message.type) {
         case "llm_response":
           const taskId = message.step_id || message.id;
@@ -487,7 +481,6 @@ var useChatStateStore = create((set, get) => ({
               });
             }
           }
-          set({ isStreaming: false });
           break;
         case "tool_results":
           const resultsTaskId = message.step_id || message.id;
@@ -526,22 +519,17 @@ var useChatStateStore = create((set, get) => ({
       }
     }
   },
-  initToolCall: (toolCall, timestamp, isExternal, stepTitle) => {
+  initToolCall: (toolCall, timestamp) => {
     set((state) => {
       const newState = { ...state };
-      let toolIsExternal = isExternal;
-      if (toolIsExternal === void 0) {
-        const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
-        toolIsExternal = !!distriTool;
-      }
+      const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
-        step_title: stepTitle,
         input: toolCall.input || {},
         status: "pending",
         startTime: timestamp || Date.now(),
-        isExternal: toolIsExternal
+        isExternal: !!distriTool
       });
       return newState;
     });
@@ -751,7 +739,7 @@ var useChatStateStore = create((set, get) => ({
 
 // src/hooks/useChatMessages.ts
 import { useCallback, useEffect as useEffect4, useState as useState2, useRef as useRef3 } from "react";
-import { isDistriMessage as isDistriMessage2, isDistriEvent as isDistriEvent2 } from "@distri/core";
+import { isDistriMessage, isDistriEvent as isDistriEvent2 } from "@distri/core";
 
 // ../core/src/encoder.ts
 function convertA2AMessageToDistri(a2aMessage) {
@@ -1009,7 +997,7 @@ function useChatMessages({
           const messageId = event.data.message_id;
           const delta = event.data.delta;
           const existingIndex = prev.findIndex(
-            (m) => isDistriMessage2(m) && m.id === messageId
+            (m) => isDistriMessage(m) && m.id === messageId
           );
           if (existingIndex >= 0) {
             const existing = prev[existingIndex];
@@ -1151,70 +1139,6 @@ function useChat({
   const handleStreamEvent = useCallback2(
     (event) => {
       addMessageRef.current(event);
-      if (isDistriArtifact(event)) {
-        const artifact = event;
-        if (artifact.type === "llm_response") {
-          const llmArtifact = artifact;
-          if (llmArtifact.tool_calls && Array.isArray(llmArtifact.tool_calls)) {
-            llmArtifact.tool_calls.forEach((toolCall) => {
-              const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
-              const isExternal = !!distriTool;
-              const stepTitle = llmArtifact.step_id || toolCall.tool_name;
-              initToolCall(toolCall, llmArtifact.timestamp, isExternal, stepTitle);
-            });
-          }
-        } else if (artifact.type === "tool_results") {
-          const toolResultsArtifact = artifact;
-          if (toolResultsArtifact.results && Array.isArray(toolResultsArtifact.results)) {
-            toolResultsArtifact.results.forEach((result) => {
-              let parsedResult = result.result;
-              if (typeof parsedResult === "string") {
-                try {
-                  parsedResult = JSON.parse(parsedResult);
-                } catch {
-                }
-              }
-              updateToolCallStatus(
-                result.tool_call_id,
-                {
-                  status: toolResultsArtifact.success ? "completed" : "error",
-                  result: parsedResult,
-                  error: toolResultsArtifact.reason || void 0,
-                  completedAt: new Date(toolResultsArtifact.timestamp)
-                }
-              );
-            });
-          }
-        }
-      }
-      if (isDistriMessage(event)) {
-        const distriMessage = event;
-        const toolCallParts = distriMessage.parts.filter((part) => part.type === "tool_call");
-        if (toolCallParts.length > 0) {
-          const newToolCalls = toolCallParts.map((part) => part.tool_call);
-          newToolCalls.forEach((toolCall) => {
-            const distriTool = chatState.tools?.find((t) => t.name === toolCall.tool_name);
-            const isExternal = !!distriTool;
-            const stepTitle = toolCall.tool_name;
-            initToolCall(toolCall, void 0, isExternal, stepTitle);
-          });
-        }
-        const toolResultParts = distriMessage.parts.filter((part) => part.type === "tool_result");
-        if (toolResultParts.length > 0) {
-          const newToolResults = toolResultParts.map((part) => part.tool_result);
-          newToolResults.forEach((toolResult) => {
-            updateToolCallStatus(
-              toolResult.tool_call_id,
-              {
-                status: toolResult.success ? "completed" : "error",
-                result: toolResult.result,
-                error: toolResult.error,
-                completedAt: /* @__PURE__ */ new Date()
-              }
-            );
-          });
-        }
-      }
     },
     [chatState.tools, initToolCall, updateToolCallStatus]
   );
@@ -1322,21 +1246,6 @@ function useChat({
       }
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError]);
-  useEffect5(() => {
-    const interval = setInterval(() => {
-      const externalResponses = getExternalToolResponses();
-      if (externalResponses.length > 0 && !isStreaming && !isLoading) {
-        const hasExternalToolResponses = externalResponses.some((response) => {
-          const toolCall = chatState.getToolCallById(response.tool_call_id);
-          return toolCall && toolCall.isExternal && toolCall.status === "completed";
-        });
-        if (hasExternalToolResponses) {
-          handleExternalToolResponses();
-        }
-      }
-    }, 1e3);
-    return () => clearInterval(interval);
-  }, [chatState, handleExternalToolResponses, getExternalToolResponses]);
   const stopStreaming = useCallback2(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -1356,7 +1265,7 @@ function useChat({
 }
 
 // src/components/renderers/MessageRenderer.tsx
-import { isDistriMessage as isDistriMessage3, isDistriEvent as isDistriEvent3, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
+import { isDistriMessage as isDistriMessage2, isDistriEvent as isDistriEvent3, isDistriArtifact as isDistriArtifact2 } from "@distri/core";
 
 // src/components/renderers/UserMessageRenderer.tsx
 import { User } from "lucide-react";
@@ -1820,14 +1729,14 @@ function MessageRenderer({
 }) {
   const steps = useChatStateStore((state) => state.steps);
   const toolCalls = useChatStateStore((state) => state.toolCalls);
-  if (isDistriMessage3(message)) {
+  if (isDistriMessage2(message)) {
     const distriMessage = message;
     const textContent = distriMessage.parts.filter((part) => part.type === "text").map((part) => part.text).join("").trim();
     if (!textContent) {
       return null;
     }
   }
-  if (isDistriMessage3(message)) {
+  if (isDistriMessage2(message)) {
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
@@ -1955,7 +1864,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if (isDistriArtifact3(message)) {
+  if (isDistriArtifact2(message)) {
     const artifact = message;
     switch (artifact.type) {
       case "plan":
@@ -2768,7 +2677,7 @@ var ExecutionSteps = ({ messages, className = "" }) => {
 
 // src/components/TaskExecutionRenderer.tsx
 import { useMemo } from "react";
-import { isDistriMessage as isDistriMessage4 } from "@distri/core";
+import { isDistriMessage as isDistriMessage3 } from "@distri/core";
 import { CheckCircle as CheckCircle6, Clock as Clock3, AlertCircle as AlertCircle2, Loader2 as Loader23 } from "lucide-react";
 import { jsx as jsx28, jsxs as jsxs19 } from "react/jsx-runtime";
 var TaskExecutionRenderer = ({
@@ -2779,7 +2688,7 @@ var TaskExecutionRenderer = ({
     const stepMap = /* @__PURE__ */ new Map();
     const stepOrder = [];
     events.forEach((event) => {
-      if (isDistriMessage4(event)) {
+      if (isDistriMessage3(event)) {
         const message = event;
         const stepId = `message_${message.id}`;
         if (!stepMap.has(stepId)) {
@@ -4243,9 +4152,9 @@ var DropdownMenuShortcut = ({
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 // src/utils/messageUtils.ts
-import { isDistriMessage as isDistriMessage5, isDistriArtifact as isDistriArtifact4 } from "@distri/core";
+import { isDistriMessage as isDistriMessage4, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
 var extractTextFromMessage = (message) => {
-  if (isDistriMessage5(message)) {
+  if (isDistriMessage4(message)) {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
@@ -4257,10 +4166,10 @@ var extractTextFromMessage = (message) => {
 };
 var shouldDisplayMessage = (message, showDebugMessages = false) => {
   if (!message) return false;
-  if (isDistriArtifact4(message)) {
+  if (isDistriArtifact3(message)) {
     return true;
   }
-  if (isDistriMessage5(message)) {
+  if (isDistriMessage4(message)) {
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;
   }
