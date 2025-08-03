@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '../ui/button';
+import { Button } from '../../ui/button';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { UiToolProps } from '@/types';
 import { ToolResult } from '@distri/core';
@@ -19,6 +19,7 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
     setIsProcessing(true);
     const result: ToolResult = {
       tool_call_id: toolCall.tool_call_id,
+      tool_name: toolCall.tool_name,
       result: `${toolCall.tool_name} ${approved ? 'approved' : 'denied'} by user`,
       success: true,
       error: undefined

@@ -43,6 +43,7 @@ export const ToastToolCall: React.FC<UiToolProps> = ({
       // Complete the tool call
       const result: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
+        tool_name: toolCall.tool_name,
         result: 'Toast displayed successfully',
         success: true,
         error: undefined

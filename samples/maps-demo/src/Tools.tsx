@@ -75,7 +75,7 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
           return "Invalid input";
         }
         const result = await mapManagerRef.getDirections({ origin, destination, travel_mode });
-        return result.directions;
+        return result;
       }
     } as DistriFnTool,
 

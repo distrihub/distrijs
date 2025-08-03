@@ -445,6 +445,9 @@ body {
 .pointer-events-auto {
   pointer-events: auto;
 }
+.static {
+  position: static;
+}
 .fixed {
   position: fixed;
 }
@@ -563,6 +566,9 @@ body {
 }
 .ml-auto {
   margin-left: auto;
+}
+.mr-1 {
+  margin-right: 0.25rem;
 }
 .mt-0\.5 {
   margin-top: 0.125rem;
@@ -863,6 +869,9 @@ body {
 .cursor-not-allowed {
   cursor: not-allowed;
 }
+.cursor-pointer {
+  cursor: pointer;
+}
 .select-none {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -1103,6 +1112,9 @@ body {
 }
 .bg-destructive\/10 {
   background-color: hsl(var(--destructive) / 0.1);
+}
+.bg-destructive\/5 {
+  background-color: hsl(var(--destructive) / 0.05);
 }
 .bg-gray-100 {
   --tw-bg-opacity: 1;
@@ -1712,6 +1724,9 @@ body {
 }
 .hover\:bg-card\/80:hover {
   background-color: hsl(var(--card) / 0.8);
+}
+.hover\:bg-destructive\/10:hover {
+  background-color: hsl(var(--destructive) / 0.1);
 }
 .hover\:bg-destructive\/80:hover {
   background-color: hsl(var(--destructive) / 0.8);

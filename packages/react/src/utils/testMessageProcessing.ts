@@ -19,7 +19,7 @@ export async function loadFixtureData() {
 }
 
 // Test Zustand state representation after processing events
-export function testZustandStateRepresentation(events: (DistriEvent | DistriMessage | DistriArtifact)[]) {
+export function testZustandStateRepresentation(events: (DistriChatMessage)[]) {
   console.log('=== Testing Zustand State Representation ===');
 
   const store = useChatStateStore.getState();
@@ -27,7 +27,7 @@ export function testZustandStateRepresentation(events: (DistriEvent | DistriMess
 
   const stateSnapshots: Array<{
     eventIndex: number;
-    event: DistriEvent | DistriMessage | DistriArtifact;
+    event: DistriChatMessage;
     state: {
       tasks: any[];
       plans: any[];

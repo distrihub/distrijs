@@ -1,116 +1,17 @@
+import { DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, DistriChatMessage, DistriPart, AgentDefinition, DistriThread, DistriMessage, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact } from '@distri/core';
 import * as react_jsx_runtime from 'react/jsx-runtime';
-import { DistriEvent, DistriMessage, DistriArtifact, DistriClientConfig, AgentDefinition, DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, Role, DistriPart, DistriThread, DistriStreamEvent } from '@distri/core';
 import * as React$1 from 'react';
 import React__default, { ReactNode } from 'react';
-import * as zustand from 'zustand';
 import * as class_variance_authority_types from 'class-variance-authority/types';
 import { VariantProps } from 'class-variance-authority';
 import * as _radix_ui_react_separator from '@radix-ui/react-separator';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import * as SelectPrimitive from '@radix-ui/react-select';
-
-interface ChatProps {
-    threadId: string;
-    agent?: any;
-    onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-    onError?: (error: Error) => void;
-    getMetadata?: () => Promise<any>;
-    onMessagesUpdate?: () => void;
-    tools?: any[];
-    messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
-    overrideChatState?: any;
-    theme?: 'light' | 'dark' | 'auto';
-}
-declare function Chat({ threadId, agent, onMessage, onError, getMetadata, onMessagesUpdate, tools, messageFilter, overrideChatState, theme, }: ChatProps): react_jsx_runtime.JSX.Element;
-
-interface DistriProviderProps {
-    config: DistriClientConfig;
-    children: ReactNode;
-    defaultTheme?: 'dark' | 'light' | 'system';
-}
-declare function DistriProvider({ config, children, defaultTheme }: DistriProviderProps): react_jsx_runtime.JSX.Element;
-
-type Theme = 'dark' | 'light' | 'system';
-interface ThemeProviderProps {
-    children: React__default.ReactNode;
-    defaultTheme?: Theme;
-    storageKey?: string;
-}
-interface ThemeProviderState {
-    theme: Theme;
-    setTheme: (theme: Theme) => void;
-}
-declare function ThemeProvider({ children, defaultTheme, storageKey, ...props }: ThemeProviderProps): react_jsx_runtime.JSX.Element;
-declare const useTheme: () => ThemeProviderState;
-
-declare function ThemeToggle(): react_jsx_runtime.JSX.Element;
-
-interface AgentListProps {
-    agents: AgentDefinition[];
-    onRefresh: () => Promise<void>;
-    onStartChat: (agent: AgentDefinition) => void;
-}
-declare const AgentList: React__default.FC<AgentListProps>;
-
-interface Agent {
-    id: string;
-    name: string;
-    description?: string;
-}
-interface AgentSelectProps {
-    agents: Agent[];
-    selectedAgentId?: string;
-    onAgentSelect: (agentId: string) => void;
-    className?: string;
-    placeholder?: string;
-    disabled?: boolean;
-}
-declare const AgentSelect: React__default.FC<AgentSelectProps>;
-
-declare const AgentsPage: React__default.FC<{
-    onStartChat?: (agent: AgentDefinition) => void;
-}>;
-
-interface ExecutionStepsProps {
-    messages: DistriMessage[];
-    className?: string;
-}
-declare const ExecutionSteps: React__default.FC<ExecutionStepsProps>;
-
-interface TaskExecutionRendererProps {
-    events: (DistriMessage | DistriEvent)[];
-    className?: string;
-}
-declare const TaskExecutionRenderer: React__default.FC<TaskExecutionRendererProps>;
-
-interface UserMessageRendererProps {
-    message: DistriMessage;
-    chatState: any;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
-
-interface AssistantMessageRendererProps {
-    message: DistriMessage;
-    chatState: any;
-    className?: string;
-    avatar?: React__default.ReactNode;
-    name?: string;
-}
-declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
-
-interface ThinkingRendererProps {
-    indicator: 'agent_starting' | 'planning' | 'generating_response';
-    className?: string;
-    avatar?: React__default.ReactNode;
-    name?: string;
-}
-declare const ThinkingRenderer: React__default.FC<ThinkingRendererProps>;
+import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 
 type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-interface ToolCallState$1 {
+interface ToolCallState {
     tool_call_id: string;
     status: ToolCallStatus;
     tool_name: string;
@@ -128,171 +29,44 @@ interface DistriUiTool extends DistriBaseTool {
 }
 type UiToolProps = {
     toolCall: ToolCall;
-    toolCallState?: ToolCallState$1;
+    toolCallState?: ToolCallState;
     completeTool: (result: ToolResult) => void;
 };
 
-interface ToolCallRendererProps {
-    toolCall: ToolCallState$1;
-    chatState: any;
-    isExpanded: boolean;
-    onToggle: () => void;
-    className?: string;
-    avatar?: React__default.ReactNode;
-    name?: string;
+interface WrapToolOptions {
+    autoExecute?: boolean;
 }
-declare const ToolCallRenderer: React__default.FC<ToolCallRendererProps>;
-
-interface PlanRendererProps {
-    message: DistriArtifact;
-    chatState: any;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const PlanRenderer: React__default.FC<PlanRendererProps>;
-
-interface ToolMessageRendererProps {
-    message: DistriMessage;
-    chatState: any;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const ToolMessageRenderer: React__default.FC<ToolMessageRendererProps>;
-
-interface DebugRendererProps {
-    message: DistriEvent | DistriArtifact;
-    chatState: any;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const DebugRenderer: React__default.FC<DebugRendererProps>;
-
-interface ArtifactRendererProps {
-    message: DistriArtifact;
-    chatState: any;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare function ArtifactRenderer({ message, chatState: _chatState, className, avatar }: ArtifactRendererProps): react_jsx_runtime.JSX.Element | null;
-
-interface TaskState$1 {
-    id: string;
-    runId?: string;
-    planId?: string;
-    title: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
-    toolCalls?: any[];
-    results?: any[];
-    error?: string;
-    metadata?: any;
-}
-interface PlanState$1 {
-    id: string;
-    runId?: string;
-    steps: string[];
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
-}
-interface StepState {
-    id: string;
-    title: string;
-    index: number;
-    status: 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
-}
-interface ToolCallState {
-    tool_call_id: string;
-    tool_name: string;
-    step_title?: string;
-    input: any;
-    status: ToolCallStatus;
-    result?: any;
-    error?: string;
-    startTime?: number;
-    endTime?: number;
-    component?: React.ReactNode;
-    startedAt?: Date;
-    completedAt?: Date;
-    isExternal?: boolean;
-}
-interface ChatState {
-    messages: (DistriEvent | DistriMessage | DistriArtifact)[];
-    isStreaming: boolean;
-    isLoading: boolean;
-    error: Error | null;
-    tasks: Map<string, TaskState$1>;
-    plans: Map<string, PlanState$1>;
-    steps: Map<string, StepState>;
-    toolCalls: Map<string, ToolCallState>;
-    currentTaskId?: string;
-    currentPlanId?: string;
-    streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
-    agent?: Agent$1;
-    tools?: DistriAnyTool[];
-    onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
-}
-interface ChatStateStore extends ChatState {
-    addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-    clearMessages: () => void;
-    setStreaming: (isStreaming: boolean) => void;
-    setLoading: (isLoading: boolean) => void;
-    setError: (error: Error | null) => void;
-    appendToMessage: (messageId: string, role: Role, delta: string) => void;
-    setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
-    processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-    clearAllStates: () => void;
-    clearTask: (taskId: string) => void;
-    initToolCall: (toolCall: ToolCall, timestamp?: number, isExternal?: boolean, stepTitle?: string) => void;
-    updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
-    getToolCallById: (toolCallId: string) => ToolCallState | null;
-    getPendingToolCalls: () => ToolCallState[];
-    getCompletedToolCalls: () => ToolCallState[];
-    executeTool: (toolCall: ToolCall) => Promise<void>;
-    hasPendingToolCalls: () => boolean;
-    clearToolResults: () => void;
-    getExternalToolResponses: () => ToolResult[];
-    getCurrentTask: () => TaskState$1 | null;
-    getCurrentPlan: () => PlanState$1 | null;
-    getCurrentTasks: () => TaskState$1[];
-    getTaskById: (taskId: string) => TaskState$1 | null;
-    getPlanById: (planId: string) => PlanState$1 | null;
-    updateTask: (taskId: string, updates: Partial<TaskState$1>) => void;
-    updatePlan: (planId: string, updates: Partial<PlanState$1>) => void;
-    updateStep: (stepId: string, updates: Partial<StepState>) => void;
-    setAgent: (agent: Agent$1) => void;
-    setTools: (tools: DistriAnyTool[]) => void;
-    setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => void;
-}
-declare const useChatStateStore: zustand.UseBoundStore<zustand.StoreApi<ChatStateStore>>;
+/**
+ * Wraps a DistriFnTool as a DistriUiTool with DefaultToolActions component
+ */
+declare function wrapFnToolAsUiTool(fnTool: DistriFnTool, options?: WrapToolOptions): DistriUiTool;
+/**
+ * Automatically wraps an array of tools, converting DistriFnTools to DistriUiTools
+ */
+declare function wrapTools(tools: (DistriFnTool | DistriUiTool)[], options?: WrapToolOptions): DistriUiTool[];
 
 interface UseChatOptions {
     threadId: string;
     agent?: Agent$1;
-    onMessage?: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
+    onMessage?: (message: DistriChatMessage) => void;
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
-    onMessagesUpdate?: () => void;
-    messageFilter?: (message: DistriEvent | DistriMessage | DistriArtifact, idx: number) => boolean;
     tools?: DistriAnyTool[];
-    overrideChatState?: ChatStateStore;
+    wrapOptions?: WrapToolOptions;
+    initialMessages?: (DistriChatMessage)[];
 }
 interface UseChatReturn {
-    messages: (DistriEvent | DistriMessage | DistriArtifact)[];
+    messages: (DistriChatMessage)[];
     isStreaming: boolean;
     sendMessage: (content: string | DistriPart[]) => Promise<void>;
     sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
     isLoading: boolean;
     error: Error | null;
-    clearMessages: () => void;
-    agent: Agent$1 | undefined;
     hasPendingToolCalls: () => boolean;
     stopStreaming: () => void;
+    addMessage: (message: DistriChatMessage) => void;
 }
-declare function useChat({ threadId, onMessage, onError, getMetadata, onMessagesUpdate, agent, tools, overrideChatState, messageFilter, }: UseChatOptions): UseChatReturn;
+declare function useChat({ threadId, onError, getMetadata, agent, tools, wrapOptions, initialMessages, }: UseChatOptions): UseChatReturn;
 
 interface UseAgentOptions {
     agentIdOrDef: string | AgentDefinition;
@@ -327,35 +101,112 @@ interface UseThreadsResult {
     updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 declare function useThreads(): UseThreadsResult;
+interface UseThreadMessagesOptions {
+    threadId: string | null;
+}
 
-interface PlanState {
+interface ChatProps {
+    threadId: string;
+    agent?: any;
+    onMessage?: (message: DistriChatMessage) => void;
+    onError?: (error: Error) => void;
+    getMetadata?: () => Promise<any>;
+    tools?: any[];
+    wrapOptions?: WrapToolOptions;
+    initialMessages?: (DistriChatMessage)[];
+    theme?: 'light' | 'dark' | 'auto';
+}
+declare function Chat({ threadId, agent, onMessage, onError, getMetadata, tools, wrapOptions, initialMessages, theme, }: ChatProps): react_jsx_runtime.JSX.Element;
+
+interface Agent {
     id: string;
-    steps: string[];
-    status: 'pending' | 'running' | 'completed' | 'failed';
+    name: string;
+    description?: string;
 }
-interface TaskState {
-    id: string;
-    title: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
+interface AgentSelectProps {
+    agents: Agent[];
+    selectedAgentId?: string;
+    onAgentSelect: (agentId: string) => void;
+    className?: string;
+    placeholder?: string;
+    disabled?: boolean;
 }
-interface RunState {
-    id: string;
-    status: 'idle' | 'running' | 'completed' | 'failed';
-    startTime?: number;
-    endTime?: number;
+declare const AgentSelect: React__default.FC<AgentSelectProps>;
+
+interface AppSidebarProps {
+    selectedThreadId: string;
+    currentPage: 'chat' | 'agents';
+    onNewChat: () => void;
+    onThreadSelect: (threadId: string) => void;
+    onThreadDelete: (threadId: string) => void;
+    onThreadRename: (threadId: string, newTitle: string) => void;
+    onLogoClick?: () => void;
+    onPageChange: (page: 'chat' | 'agents') => void;
 }
-interface ChatContextType {
-    planState: PlanState | null;
-    taskState: TaskState | null;
-    runState: RunState | null;
-    setPlanState: (state: PlanState | null) => void;
-    setTaskState: (state: TaskState | null) => void;
-    setRunState: (state: RunState | null) => void;
-    clearAllStates: () => void;
+declare function AppSidebar({ selectedThreadId, currentPage, onNewChat, onThreadSelect, onThreadDelete, onThreadRename, onLogoClick, onPageChange, }: AppSidebarProps): react_jsx_runtime.JSX.Element;
+
+interface ChatInputProps {
+    value: string;
+    onChange: (value: string) => void;
+    onSend: () => void;
+    onStop?: () => void;
+    placeholder?: string;
+    disabled?: boolean;
+    isStreaming?: boolean;
+    className?: string;
 }
-declare const useChatConfig: () => ChatContextType;
+declare const ChatInput: React__default.FC<ChatInputProps>;
+
+interface TaskExecutionRendererProps {
+    events: (DistriMessage | DistriEvent)[];
+    className?: string;
+}
+declare const TaskExecutionRenderer: React__default.FC<TaskExecutionRendererProps>;
+
+type Theme = 'dark' | 'light' | 'system';
+interface ThemeProviderProps {
+    children: React__default.ReactNode;
+    defaultTheme?: Theme;
+    storageKey?: string;
+}
+interface ThemeProviderState {
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
+}
+declare function ThemeProvider({ children, defaultTheme, storageKey, ...props }: ThemeProviderProps): react_jsx_runtime.JSX.Element;
+declare const useTheme: () => ThemeProviderState;
+
+declare function ThemeToggle(): react_jsx_runtime.JSX.Element;
+
+interface DistriContextValue {
+    client: DistriClient | null;
+    error: Error | null;
+    isLoading: boolean;
+}
+interface DistriProviderProps {
+    config: DistriClientConfig;
+    children: ReactNode;
+    defaultTheme?: 'dark' | 'light' | 'system';
+}
+declare function DistriProvider({ config, children, defaultTheme }: DistriProviderProps): react_jsx_runtime.JSX.Element;
+declare function useDistri(): DistriContextValue;
+declare function useDistriClient(): DistriClient;
+
+interface UseChatMessagesOptions {
+    initialMessages?: DistriChatMessage[];
+    agent?: Agent$1;
+    threadId?: string;
+    onError?: (error: Error) => void;
+}
+interface UseChatMessagesReturn {
+    messages: DistriChatMessage[];
+    addMessage: (message: DistriChatMessage) => void;
+    clearMessages: () => void;
+    fetchMessages: () => Promise<void>;
+    isLoading: boolean;
+    error: Error | null;
+}
+declare function useChatMessages({ initialMessages, agent, threadId, onError, }?: UseChatMessagesOptions): UseChatMessagesReturn;
 
 declare const buttonVariants: {
     variant: {
@@ -512,18 +363,92 @@ declare const SelectLabel: React$1.ForwardRefExoticComponent<Omit<SelectPrimitiv
 declare const SelectItem: React$1.ForwardRefExoticComponent<Omit<SelectPrimitive.SelectItemProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
 declare const SelectSeparator: React$1.ForwardRefExoticComponent<Omit<SelectPrimitive.SelectSeparatorProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
 
-declare const ApprovalToolCall: React__default.FC<UiToolProps>;
+declare const DropdownMenu: React$1.FC<DropdownMenuPrimitive.DropdownMenuProps>;
+declare const DropdownMenuTrigger: React$1.ForwardRefExoticComponent<DropdownMenuPrimitive.DropdownMenuTriggerProps & React$1.RefAttributes<HTMLButtonElement>>;
+declare const DropdownMenuGroup: React$1.ForwardRefExoticComponent<DropdownMenuPrimitive.DropdownMenuGroupProps & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuPortal: React$1.FC<DropdownMenuPrimitive.DropdownMenuPortalProps>;
+declare const DropdownMenuSub: React$1.FC<DropdownMenuPrimitive.DropdownMenuSubProps>;
+declare const DropdownMenuRadioGroup: React$1.ForwardRefExoticComponent<DropdownMenuPrimitive.DropdownMenuRadioGroupProps & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuSubTrigger: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuSubTriggerProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & {
+    inset?: boolean;
+} & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuSubContent: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuSubContentProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuContent: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuContentProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuItem: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuItemProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & {
+    inset?: boolean;
+} & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuCheckboxItem: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuCheckboxItemProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuRadioItem: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuRadioItemProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuLabel: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuLabelProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & {
+    inset?: boolean;
+} & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuSeparator: React$1.ForwardRefExoticComponent<Omit<DropdownMenuPrimitive.DropdownMenuSeparatorProps & React$1.RefAttributes<HTMLDivElement>, "ref"> & React$1.RefAttributes<HTMLDivElement>>;
+declare const DropdownMenuShortcut: {
+    ({ className, ...props }: React$1.HTMLAttributes<HTMLSpanElement>): react_jsx_runtime.JSX.Element;
+    displayName: string;
+};
 
-declare const ToastToolCall: React__default.FC<UiToolProps>;
+interface UserMessageRendererProps {
+    message: DistriMessage;
+    className?: string;
+    avatar?: React__default.ReactNode;
+}
+declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
-/**
- * Utility function to extract text content from message parts
- */
-declare const extractTextFromMessage: (message: DistriStreamEvent) => string;
-/**
- * Utility function to determine if a message should be displayed
- * Can be used by builders when creating custom chat components
- */
-declare const shouldDisplayMessage: (message: DistriStreamEvent, showDebugMessages?: boolean) => boolean;
+interface AssistantMessageRendererProps {
+    message: DistriMessage | DistriArtifact;
+    className?: string;
+    avatar?: React__default.ReactNode;
+    name?: string;
+}
+declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
 
-export { AgentList, AgentSelect, AgentsPage, ApprovalToolCall, ArtifactRenderer, AssistantMessageRenderer, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, type ChatProps, DebugRenderer, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, ExecutionSteps, Input, PlanRenderer, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, ToastToolCall, ToolCallRenderer, ToolMessageRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, UserMessageRenderer, extractTextFromMessage, shouldDisplayMessage, useAgent, useAgentDefinitions, useChat, useChatConfig, useChatStateStore, useSidebar, useTheme, useThreads };
+type StreamingIndicator = 'typing' | 'thinking' | 'generating';
+interface ThinkingRendererProps {
+    indicator: StreamingIndicator;
+    className?: string;
+    avatar?: React__default.ReactNode;
+    name?: string;
+}
+declare const ThinkingRenderer: React__default.FC<ThinkingRendererProps>;
+
+interface ToolCallRendererProps {
+    toolCall: ToolCallState;
+    isExpanded: boolean;
+    onToggle: () => void;
+    className?: string;
+    avatar?: React__default.ReactNode;
+    name?: string;
+}
+declare const ToolCallRenderer: React__default.FC<ToolCallRendererProps>;
+
+interface PlanRendererProps {
+    message: DistriArtifact;
+    className?: string;
+    avatar?: React__default.ReactNode;
+}
+declare const PlanRenderer: React__default.FC<PlanRendererProps>;
+
+interface ToolMessageRendererProps {
+    message: DistriMessage;
+    className?: string;
+    avatar?: React__default.ReactNode;
+}
+declare const ToolMessageRenderer: React__default.FC<ToolMessageRendererProps>;
+
+interface DebugRendererProps {
+    message: DistriEvent | DistriArtifact;
+    className?: string;
+    avatar?: React__default.ReactNode;
+}
+declare const DebugRenderer: React__default.FC<DebugRendererProps>;
+
+interface ArtifactRendererProps {
+    message: DistriArtifact;
+    chatState: any;
+    className?: string;
+    avatar?: React__default.ReactNode;
+}
+declare function ArtifactRenderer({ message, chatState: _chatState, className, avatar }: ArtifactRendererProps): react_jsx_runtime.JSX.Element | null;
+
+export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatProps, DebugRenderer, type DebugRendererProps, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Input, PlanRenderer, type PlanRendererProps, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, ToolCallRenderer, type ToolCallRendererProps, type ToolCallState, type ToolCallStatus, ToolMessageRenderer, type ToolMessageRendererProps, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, type WrapToolOptions, useAgent, useAgentDefinitions, useChat, useChatMessages, useDistri, useDistriClient, useSidebar, useTheme, useThreads, wrapFnToolAsUiTool, wrapTools };
