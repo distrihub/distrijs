@@ -14,9 +14,10 @@ export const MissingTool: React.FC<UiToolProps> = ({
   const handleDismiss = () => {
     const toolResult: ToolResult = {
       tool_call_id: toolCall.tool_call_id,
+      tool_name: toolName,
       result: `Tool '${toolName}' is not available`,
       success: false,
-      error: `Tool '${toolName}' not found in agent definition or external tools`
+      error: `Tool '${toolName}' not found in external tools`
     };
 
     completeTool(toolResult);

@@ -41,6 +41,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
       const toolResult: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
+        tool_name: toolName,
         result: typeof result === 'string' ? result : JSON.stringify(result),
         success: true,
         error: undefined
@@ -48,11 +49,13 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
       completeTool(toolResult);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const toolResult: ToolResult = {
         tool_call_id: toolCall.tool_call_id,
-        result: '',
+        tool_name: toolName,
+        result: 'Tool execution failed' + errorMessage,
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage
       };
 
       completeTool(toolResult);
@@ -68,6 +71,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
     const toolResult: ToolResult = {
       tool_call_id: toolCall.tool_call_id,
+      tool_name: toolName,
       result: 'Tool execution cancelled by user',
       success: false,
       error: 'User cancelled the operation'
@@ -78,7 +82,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
   // Show completed state
   if (hasExecuted && !isProcessing) {
-    const wasSuccessful = toolCallState?.status === 'completed';
+    const wasSuccessful = !toolCallState?.error;
     return (
       <div className="border rounded-lg p-4 bg-muted/50">
         <div className="flex items-center gap-2 mb-2">

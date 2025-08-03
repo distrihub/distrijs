@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import {
   DistriEvent,
   DistriMessage,
-  DistriArtifact,
   isDistriEvent,
   isDistriArtifact,
   Agent,
@@ -125,6 +124,7 @@ export interface ChatStateStore extends ChatState {
   getCurrentTasks: () => TaskState[];
   getTaskById: (taskId: string) => TaskState | null;
   getPlanById: (planId: string) => PlanState | null;
+  resolveToolCalls: () => void;
 
   // Updates
   updateTask: (taskId: string, updates: Partial<TaskState>) => void;
@@ -182,7 +182,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   addMessage: (message: DistriChatMessage) => {
     set((state: ChatState) => {
       const prev = state.messages;
-      console.log('addMessage', message, isDistriEvent(message), isDistriArtifact(message), isDistriMessage(message));
       if (isDistriEvent(message)) {
         const event = message as DistriEvent;
         if (event.type === 'text_message_start') {
@@ -229,12 +228,16 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     });
   },
 
+  resolveToolCalls: () => {
+    const toolCalls = get().getPendingToolCalls();
+    toolCalls.forEach(toolCall => {
+      get().initializeTool(toolCall);
+    });
+  },
+
   // State actions
   processMessage: (message: DistriChatMessage) => {
     const timestamp = Date.now(); // Default fallback
-    console.log('processMessage', message, isDistriMessage(message));
-
-
     get().addMessage(message);
 
     if (isDistriEvent(message)) {
@@ -263,6 +266,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          get().resolveToolCalls();
           // Clear all indicators and stop loading when run is finished
           get().setStreamingIndicator(undefined);
           set({ isStreaming: false });
@@ -278,6 +282,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               error: message.data?.message || 'Unknown error',
             });
           }
+          get().resolveToolCalls();
           // Clear all indicators and stop loading when run errors
           get().setStreamingIndicator(undefined);
           set({ isStreaming: false });
@@ -400,18 +405,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
             // Initialize tool calls from LLM response
             if (message.tool_calls && Array.isArray(message.tool_calls)) {
-              const isExternal = message.is_external;
               message.tool_calls.forEach(async toolCall => {
                 get().initToolCall({
                   tool_call_id: toolCall.tool_call_id,
                   tool_name: toolCall.tool_name,
                   input: toolCall.input || {},
                 }, message.timestamp || timestamp);
-
-                // Automatically execute external tools if not already initialized
-                if (isExternal) {
-                  await get().initializeTool(toolCall);
-                }
               });
             }
           }
@@ -544,6 +543,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       return;
     }
 
+    console.log('distriTool', distriTool);
     let component: React.ReactNode | undefined;
     if (distriTool?.type === 'ui') {
       const uiTool = distriTool as DistriUiTool;
@@ -613,7 +613,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   getPendingToolCalls: () => {
     const state = get();
     return Array.from(state.toolCalls.values()).filter(toolCall =>
-      toolCall.status === 'pending' || toolCall.status === 'running'
+      toolCall.status === 'pending'
     );
   },
 

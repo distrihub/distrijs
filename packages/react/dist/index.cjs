@@ -238,6 +238,7 @@ var ToastToolCall = ({
     setTimeout(() => {
       const result = {
         tool_call_id: toolCall.tool_call_id,
+        tool_name: toolCall.tool_name,
         result: "Toast displayed successfully",
         success: true,
         error: void 0
@@ -276,17 +277,20 @@ var DefaultToolActions = ({
       const result = await toolHandler(toolCall.input);
       const toolResult = {
         tool_call_id: toolCall.tool_call_id,
+        tool_name: toolName,
         result: typeof result === "string" ? result : JSON.stringify(result),
         success: true,
         error: void 0
       };
       completeTool(toolResult);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const toolResult = {
         tool_call_id: toolCall.tool_call_id,
-        result: "",
+        tool_name: toolName,
+        result: "Tool execution failed" + errorMessage,
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage
       };
       completeTool(toolResult);
     } finally {
@@ -298,6 +302,7 @@ var DefaultToolActions = ({
     setHasExecuted(true);
     const toolResult = {
       tool_call_id: toolCall.tool_call_id,
+      tool_name: toolName,
       result: "Tool execution cancelled by user",
       success: false,
       error: "User cancelled the operation"
@@ -305,7 +310,7 @@ var DefaultToolActions = ({
     completeTool(toolResult);
   };
   if (hasExecuted && !isProcessing) {
-    const wasSuccessful = toolCallState?.status === "completed";
+    const wasSuccessful = !toolCallState?.error;
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "border rounded-lg p-4 bg-muted/50", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center gap-2 mb-2", children: [
         wasSuccessful ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_lucide_react2.CheckCircle, { className: "h-4 w-4 text-green-600" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_lucide_react2.XCircle, { className: "h-4 w-4 text-red-600" }),
@@ -386,9 +391,10 @@ var MissingTool = ({
   const handleDismiss = () => {
     const toolResult = {
       tool_call_id: toolCall.tool_call_id,
+      tool_name: toolName,
       result: `Tool '${toolName}' is not available`,
       success: false,
-      error: `Tool '${toolName}' not found in agent definition or external tools`
+      error: `Tool '${toolName}' not found in external tools`
     };
     completeTool(toolResult);
   };
@@ -468,7 +474,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   addMessage: (message) => {
     set((state) => {
       const prev = state.messages;
-      console.log("addMessage", message, (0, import_core.isDistriEvent)(message), (0, import_core.isDistriArtifact)(message), (0, import_core.isDistriMessage)(message));
       if ((0, import_core.isDistriEvent)(message)) {
         const event = message;
         if (event.type === "text_message_start") {
@@ -505,10 +510,15 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       return { ...state, messages: prev };
     });
   },
+  resolveToolCalls: () => {
+    const toolCalls = get().getPendingToolCalls();
+    toolCalls.forEach((toolCall) => {
+      get().initializeTool(toolCall);
+    });
+  },
   // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
-    console.log("processMessage", message, (0, import_core.isDistriMessage)(message));
     get().addMessage(message);
     if ((0, import_core.isDistriEvent)(message)) {
       switch (message.type) {
@@ -533,6 +543,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               endTime: timestamp
             });
           }
+          get().resolveToolCalls();
           get().setStreamingIndicator(void 0);
           set({ isStreaming: false });
           break;
@@ -545,6 +556,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               error: message.data?.message || "Unknown error"
             });
           }
+          get().resolveToolCalls();
           get().setStreamingIndicator(void 0);
           set({ isStreaming: false });
           break;
@@ -646,16 +658,12 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               error: message.reason || void 0
             });
             if (message.tool_calls && Array.isArray(message.tool_calls)) {
-              const isExternal = message.is_external;
               message.tool_calls.forEach(async (toolCall) => {
                 get().initToolCall({
                   tool_call_id: toolCall.tool_call_id,
                   tool_name: toolCall.tool_name,
                   input: toolCall.input || {}
                 }, message.timestamp || timestamp);
-                if (isExternal) {
-                  await get().initializeTool(toolCall);
-                }
               });
             }
           }
@@ -766,6 +774,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       });
       return;
     }
+    console.log("distriTool", distriTool);
     let component;
     if (distriTool?.type === "ui") {
       const uiTool = distriTool;
@@ -827,7 +836,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   getPendingToolCalls: () => {
     const state = get();
     return Array.from(state.toolCalls.values()).filter(
-      (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
+      (toolCall) => toolCall.status === "pending"
     );
   },
   getCompletedToolCalls: () => {
@@ -1008,8 +1017,7 @@ function useChat({
     hasPendingToolCalls
   } = chatState;
   (0, import_react6.useEffect)(() => {
-    if (initialMessages && initialMessages.length > 0) {
-      console.log("recalculating messages", initialMessages.length);
+    if (initialMessages) {
       chatState.clearAllStates();
       initialMessages.forEach((message) => chatState.processMessage(message));
     }
@@ -1137,6 +1145,7 @@ function useChat({
           type: "tool_result",
           tool_result: {
             tool_call_id: result.tool_call_id,
+            tool_name: result.tool_name,
             result: result.result,
             success: result.success,
             error: result.error
@@ -2257,13 +2266,10 @@ function MessageRenderer({
           ) }, `assistant-${index}`);
         }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
-          console.log("artifact", artifact);
-          console.log("tool_calls", toolCalls);
           return artifact.tool_calls.map((toolCall, toolIndex) => {
             const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
             const toolCallStartState = toolCalls.get(toolCall.tool_call_id);
-            console.log("toolCallStartState", toolCallStartState);
             if (toolCallStartState?.component) {
               return toolCallStartState.component;
             } else if (toolCallStartState?.status === "pending") {
@@ -2300,14 +2306,12 @@ function MessageRenderer({
         }
         return null;
       default:
-        if (process.env.NODE_ENV === "development") {
-          return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
-            DebugRenderer,
-            {
-              message: artifact
-            }
-          ) }, `artifact-${index}`);
-        }
+        return /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          DebugRenderer,
+          {
+            message: artifact
+          }
+        ) }, `artifact-${index}`);
         return null;
     }
   }

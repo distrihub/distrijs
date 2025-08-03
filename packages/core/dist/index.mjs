@@ -696,11 +696,11 @@ function convertDistriPartToA2A(distriPart) {
         kind: "data",
         data: {
           tool_call_id: distriPart.tool_result.tool_call_id,
+          tool_name: distriPart.tool_result.tool_name,
           result: distriPart.tool_result.result,
           part_type: "tool_result"
         }
       };
-      console.log("<> val", val);
       return val;
     case "code_observation":
       return { kind: "data", data: { ...distriPart, part_type: "code_observation" } };

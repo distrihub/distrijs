@@ -259,15 +259,12 @@ export function MessageRenderer({
           );
         }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
-          console.log('artifact', artifact);
-          console.log('tool_calls', toolCalls);
           return artifact.tool_calls.map((toolCall, toolIndex) => {
             // Get tool call state from chat state
             const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
 
             const toolCallStartState = toolCalls.get(toolCall.tool_call_id);
-            console.log('toolCallStartState', toolCallStartState);
             if (toolCallStartState?.component) {
               return toolCallStartState.component;
             }
@@ -318,15 +315,15 @@ export function MessageRenderer({
 
       default:
         // Debug artifacts in development
-        if (process.env.NODE_ENV === 'development') {
-          return (
-            <RendererWrapper key={`artifact-${index}`}>
-              <DebugRenderer
-                message={artifact}
-              />
-            </RendererWrapper>
-          );
-        }
+
+        return (
+          <RendererWrapper key={`artifact-${index}`}>
+            <DebugRenderer
+              message={artifact}
+            />
+          </RendererWrapper>
+        );
+
         return null;
     }
   }

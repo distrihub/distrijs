@@ -61,7 +61,6 @@ interface ToolCallStartEvent {
         tool_call_id: string;
         tool_call_name: string;
         parent_message_id?: string;
-        is_external?: boolean;
     };
 }
 interface ToolCallArgsEvent {
@@ -306,6 +305,7 @@ interface ToolCall {
  */
 interface ToolResult {
     tool_call_id: string;
+    tool_name: string;
     result: string | number | boolean | null;
     success: boolean;
     error?: string;

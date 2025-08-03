@@ -88,10 +88,8 @@ export function useChat({
 
   // Handle initial messages processing - static recalculation when initialMessages change
   useEffect(() => {
-    if (initialMessages && initialMessages.length > 0) {
+    if (initialMessages) {
       // Clear state and process initial messages
-      console.log('recalculating messages', initialMessages.length);
-
       chatState.clearAllStates();
       initialMessages.forEach(message => chatState.processMessage(message));
     }
@@ -271,6 +269,7 @@ export function useChat({
           type: 'tool_result',
           tool_result: {
             tool_call_id: result.tool_call_id,
+            tool_name: result.tool_name,
             result: result.result,
             success: result.success,
             error: result.error

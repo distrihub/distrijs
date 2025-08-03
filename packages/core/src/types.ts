@@ -183,6 +183,7 @@ export interface ToolCall {
  */
 export interface ToolResult {
   tool_call_id: string;
+  tool_name: string;
   result: string | number | boolean | null;
   success: boolean;
   error?: string;
