@@ -1585,7 +1585,7 @@ var UserMessageRenderer = ({
   const content = extractContent(message);
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Avatar, { className: "h-8 w-8 flex-shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(AvatarFallback, { className: "bg-secondary text-secondary-foreground", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react3.User, { className: "h-4 w-4" }) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) })
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "w-full", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) })
   ] });
 };
 
@@ -1596,7 +1596,7 @@ var AssistantMessageRenderer = ({
   className = ""
 }) => {
   const content = extractContent(message);
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "w-full", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) }) });
 };
 
 // src/components/renderers/ToolMessageRenderer.tsx
@@ -1610,7 +1610,7 @@ var ToolMessageRenderer = ({
   const content = extractContent(message);
   return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: [
     /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Avatar, { className: "h-8 w-8 flex-shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(AvatarFallback, { className: "bg-accent text-accent-foreground", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_lucide_react4.Wrench, { className: "h-4 w-4" }) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "flex-1 min-w-0 max-w-3xl", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "w-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "text-sm font-medium text-foreground mb-3", children: "Tool Response" }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) })
     ] })
@@ -1628,7 +1628,7 @@ var PlanRenderer = ({
   const content = extractContent(message);
   return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: [
     /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Avatar, { className: "h-8 w-8 flex-shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(AvatarFallback, { className: "bg-primary/10 text-primary", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.Brain, { className: "h-4 w-4" }) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex-1 min-w-0 max-w-3xl", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "w-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-sm font-medium text-foreground mb-3", children: "Plan" }),
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) })
     ] })
@@ -1666,7 +1666,7 @@ var StepRenderer = ({
         return "Unknown";
     }
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: `py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "max-w-3xl mx-auto p-4 bg-muted/50 rounded-lg border", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "flex items-center justify-between", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "flex items-center gap-3", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: `py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "p-4 bg-muted/50 rounded-lg border", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "flex items-center justify-between", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "flex items-center gap-3", children: [
     getStatusIcon(),
     /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "text-sm font-medium text-foreground", children: [
@@ -1718,7 +1718,7 @@ var ToolCallRenderer = ({
     }
   };
   const canCollapse = toolCall.result !== void 0 || toolCall.error !== void 0 || toolCall.status === "completed" || toolCall.status === "error";
-  return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "flex-1 min-w-0 max-w-3xl", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "w-full", children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "border rounded-lg bg-background overflow-hidden", children: [
     /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "p-3 border-b border-border", children: [
       /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center justify-between", children: [
         /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "flex items-center gap-2", children: [
@@ -1916,7 +1916,7 @@ var DebugRenderer = ({
 }) => {
   return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
     /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Avatar, { className: "h-8 w-8", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(AvatarFallback, { className: "bg-muted text-muted-foreground", children: avatar || /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(import_lucide_react9.Bug, { className: "h-4 w-4" }) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "flex-1 min-w-0", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "w-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "text-sm font-medium text-foreground mb-2", children: "Debug" }),
       /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("pre", { className: "text-xs bg-muted p-2 rounded border overflow-auto", children: JSON.stringify(message, null, 2) }) })
     ] })
@@ -1925,6 +1925,10 @@ var DebugRenderer = ({
 
 // src/components/renderers/MessageRenderer.tsx
 var import_jsx_runtime17 = require("react/jsx-runtime");
+var RendererWrapper = ({
+  children,
+  className = ""
+}) => /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: `max-w-3xl mx-auto w-full ${className}`, children });
 function MessageRenderer({
   message,
   index,
@@ -1945,29 +1949,26 @@ function MessageRenderer({
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
           UserMessageRenderer,
           {
             message: distriMessage
-          },
-          `user-${index}`
-        );
+          }
+        ) }, `user-${index}`);
       case "assistant":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
           AssistantMessageRenderer,
           {
             message: distriMessage
-          },
-          `assistant-${index}`
-        );
+          }
+        ) }, `assistant-${index}`);
       case "tool":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
           ToolMessageRenderer,
           {
             message: distriMessage
-          },
-          `tool-${index}`
-        );
+          }
+        ) }, `tool-${index}`);
       default:
         return null;
     }
@@ -1980,14 +1981,14 @@ function MessageRenderer({
       case "plan_started":
         return null;
       case "plan_finished":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-primary", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-primary", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: "Plan ready:" }),
           " ",
           event.data?.total_steps || 0,
           " steps"
         ] }) }) }, `plan-finished-${index}`);
       case "plan_pruned":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
           "Removed steps: ",
           event.data?.removed_steps || "0"
         ] }) }) }, `plan-pruned-${index}`);
@@ -2001,13 +2002,12 @@ function MessageRenderer({
         const stepId = event.data.step_id;
         const step = steps.get(stepId);
         if (step) {
-          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
             StepRenderer,
             {
               step
-            },
-            `step-${stepId}`
-          );
+            }
+          ) }, `step-${stepId}`);
         }
         return null;
       case "step_completed":
@@ -2016,7 +2016,7 @@ function MessageRenderer({
         const toolCallStartId = event.data.tool_call_id;
         const toolCallStartState = toolCalls.get(toolCallStartId);
         if (toolCallStartState?.status === "running") {
-          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded", children: [
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "flex items-center space-x-2 p-2 bg-muted rounded", children: [
             /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-primary" }),
             /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { className: "text-sm", children: [
               "Calling tool: ",
@@ -2029,31 +2029,31 @@ function MessageRenderer({
       case "tool_call_end":
         return null;
       case "tool_call_result":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-primary", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-primary", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: "Tool result:" }),
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("pre", { className: "mt-1 text-xs overflow-x-auto", children: event.data?.result || "No result" })
         ] }) }) }, `tool-call-result-${index}`);
       case "tool_rejected":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-destructive/10 border border-destructive/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-destructive", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-destructive", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: "Tool rejected:" }),
           " ",
           event.data?.reason || "Unknown reason"
         ] }) }) }, `tool-rejected-${index}`);
       case "agent_handover":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: "Handover to:" }),
           " ",
           event.data?.to_agent || "unknown agent"
         ] }) }) }, `handover-${index}`);
       case "feedback_received":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
           "You said: ",
           event.data?.feedback || ""
         ] }) }) }, `feedback-${index}`);
       case "run_finished":
         return null;
       case "run_error":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-destructive", children: [
             /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: "Error:" }),
             " ",
@@ -2063,13 +2063,12 @@ function MessageRenderer({
         ] }) }, `run-error-${index}`);
       default:
         if (process.env.NODE_ENV === "development") {
-          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
             DebugRenderer,
             {
               message: event
-            },
-            `event-${index}`
-          );
+            }
+          ) }, `event-${index}`);
         }
         return null;
     }
@@ -2078,22 +2077,20 @@ function MessageRenderer({
     const artifact = message;
     switch (artifact.type) {
       case "plan":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
           PlanRenderer,
           {
             message: artifact
-          },
-          `plan-${index}`
-        );
+          }
+        ) }, `plan-${index}`);
       case "llm_response":
         if (artifact.content && artifact.content.length > 0) {
-          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
             AssistantMessageRenderer,
             {
               message: artifact
-            },
-            `assistant-${index}`
-          );
+            }
+          ) }, `assistant-${index}`);
         }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
           return artifact.tool_calls.map((toolCall, toolIndex) => {
@@ -2101,15 +2098,14 @@ function MessageRenderer({
             if (!toolCallState) return null;
             const toolCallStartState = toolCalls.get(toolCall.tool_call_id);
             if (toolCallStartState?.status === "pending") {
-              return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+              return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
                 ToolCallRenderer,
                 {
                   toolCall: toolCallState,
                   isExpanded,
                   onToggle
-                },
-                `tool-call-${index}-${toolIndex}`
-              );
+                }
+              ) }, `tool-call-${index}-${toolIndex}`);
             }
             return null;
           }).filter(Boolean);
@@ -2121,7 +2117,7 @@ function MessageRenderer({
           return artifact.results.map((result, resultIndex) => {
             const success = result.success !== void 0 ? result.success : toolResultsArtifact.success ?? (result.status ? result.status === "completed" : true);
             const error = result.error !== void 0 ? result.error : toolResultsArtifact.success ? void 0 : toolResultsArtifact.reason;
-            return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+            return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
               ToolResultRenderer,
               {
                 toolCallId: result.tool_call_id,
@@ -2129,21 +2125,19 @@ function MessageRenderer({
                 result: result.result,
                 success,
                 error
-              },
-              `tool-result-${index}-${resultIndex}`
-            );
+              }
+            ) }, `tool-result-${index}-${resultIndex}`);
           });
         }
         return null;
       default:
         if (process.env.NODE_ENV === "development") {
-          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
             DebugRenderer,
             {
               message: artifact
-            },
-            `artifact-${index}`
-          );
+            }
+          ) }, `artifact-${index}`);
         }
         return null;
     }
@@ -2183,7 +2177,7 @@ var ThinkingRenderer = ({
     }
   };
   const { icon, text } = getIconAndText();
-  return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "flex-1 min-w-0 max-w-3xl", children: /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "w-full", children: /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
     icon,
     text && /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { children: text })
   ] }) }) });
@@ -2191,6 +2185,10 @@ var ThinkingRenderer = ({
 
 // src/components/Chat.tsx
 var import_jsx_runtime19 = require("react/jsx-runtime");
+var RendererWrapper2 = ({
+  children,
+  className = ""
+}) => /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: `max-w-3xl mx-auto w-full ${className}`, children });
 function Chat({
   threadId,
   agent,
@@ -2296,13 +2294,12 @@ function Chat({
   const renderThinkingIndicator = () => {
     if (streamingIndicator) {
       console.log("Rendering thinking indicator:", streamingIndicator);
-      return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(RendererWrapper2, { children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
         ThinkingRenderer,
         {
           indicator: streamingIndicator
-        },
-        `thinking-${streamingIndicator}`
-      );
+        }
+      ) }, `thinking-${streamingIndicator}`);
     }
     return null;
   };
@@ -3158,7 +3155,7 @@ function renderLLMResponse(llmArtifact, _chatState, className, avatar) {
   const content = extractContent(llmArtifact);
   return /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
     avatar && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "flex-shrink-0", children: avatar }),
-    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex-1 min-w-0", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "w-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "text-sm font-medium text-foreground mb-2", children: "Assistant" }),
       content.text && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "prose prose-sm max-w-none text-foreground mb-3", children: renderTextContent(content) }),
       llmArtifact.tool_calls && llmArtifact.tool_calls.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "space-y-2", children: llmArtifact.tool_calls.map((toolCall, index) => /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "border rounded-lg p-3", children: [
@@ -3177,7 +3174,7 @@ function renderLLMResponse(llmArtifact, _chatState, className, avatar) {
 function renderToolResults(toolResultsArtifact, _chatState, className, avatar) {
   return /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
     avatar && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "flex-shrink-0", children: avatar }),
-    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex-1 min-w-0", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "w-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "text-sm font-medium text-foreground mb-2", children: "Tool Results" }),
       /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "prose prose-sm max-w-none text-foreground mb-3", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("p", { children: [
         "Tool execution completed with ",
@@ -3200,16 +3197,9 @@ function renderToolResults(toolResultsArtifact, _chatState, className, avatar) {
 function renderGenericArtifact(genericArtifact, _chatState, className, avatar) {
   return /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: `flex items-start gap-4 py-3 px-2 ${className}`, children: [
     avatar && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "flex-shrink-0", children: avatar }),
-    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex-1 min-w-0", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "w-full", children: [
       /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "text-sm font-medium text-foreground mb-2", children: "Artifact" }),
-      /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "prose prose-sm max-w-none text-foreground mb-3", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("p", { children: [
-        "Artifact processed: ",
-        genericArtifact.name
-      ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "border rounded-lg p-3", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "text-sm", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("strong", { children: "Data:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto", children: JSON.stringify(genericArtifact.data, null, 2) })
-      ] }) })
+      /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded", children: JSON.stringify(genericArtifact, null, 2) }) })
     ] })
   ] });
 }

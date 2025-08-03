@@ -24,7 +24,7 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({
           {avatar || <User className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
+      <div className="w-full">
         <div className="prose prose-sm max-w-none text-foreground">
           {renderTextContent(content)}
         </div>

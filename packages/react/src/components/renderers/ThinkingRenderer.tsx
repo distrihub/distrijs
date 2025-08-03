@@ -47,7 +47,7 @@ export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
 
   return (
     <div className={`flex items-start gap-4 py-6 ${className}`}>
-      <div className="flex-1 min-w-0 max-w-3xl">
+      <div className="w-full">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {icon}
           {text && <span>{text}</span>}

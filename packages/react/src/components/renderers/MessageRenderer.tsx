@@ -17,6 +17,16 @@ export interface MessageRendererProps {
   onToggle?: () => void;
 }
 
+// Wrapper component to ensure consistent width and centering
+const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
+}) => (
+  <div className={`max-w-3xl mx-auto w-full ${className}`}>
+    {children}
+  </div>
+);
+
 export function MessageRenderer({
   message,
   index,
@@ -47,26 +57,29 @@ export function MessageRenderer({
     switch (distriMessage.role) {
       case 'user':
         return (
-          <UserMessageRenderer
-            key={`user-${index}`}
-            message={distriMessage}
-          />
+          <RendererWrapper key={`user-${index}`}>
+            <UserMessageRenderer
+              message={distriMessage}
+            />
+          </RendererWrapper>
         );
 
       case 'assistant':
         return (
-          <AssistantMessageRenderer
-            key={`assistant-${index}`}
-            message={distriMessage}
-          />
+          <RendererWrapper key={`assistant-${index}`}>
+            <AssistantMessageRenderer
+              message={distriMessage}
+            />
+          </RendererWrapper>
         );
 
       case 'tool':
         return (
-          <ToolMessageRenderer
-            key={`tool-${index}`}
-            message={distriMessage}
-          />
+          <RendererWrapper key={`tool-${index}`}>
+            <ToolMessageRenderer
+              message={distriMessage}
+            />
+          </RendererWrapper>
         );
 
       default:
@@ -89,24 +102,24 @@ export function MessageRenderer({
 
       case 'plan_finished':
         return (
-          <div key={`plan-finished-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded">
+          <RendererWrapper key={`plan-finished-${index}`} className="py-6">
+            <div className="p-3 bg-primary/10 border border-primary/20 rounded">
               <div className="text-sm text-primary">
                 <strong>Plan ready:</strong> {event.data?.total_steps || 0} steps
               </div>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       case 'plan_pruned':
         return (
-          <div key={`plan-pruned-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-muted rounded border">
+          <RendererWrapper key={`plan-pruned-${index}`} className="py-6">
+            <div className="p-3 bg-muted rounded border">
               <div className="text-sm text-muted-foreground">
                 Removed steps: {event.data?.removed_steps || '0'}
               </div>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       case 'text_message_start':
@@ -127,10 +140,11 @@ export function MessageRenderer({
         const step = steps.get(stepId);
         if (step) {
           return (
-            <StepRenderer
-              key={`step-${stepId}`}
-              step={step}
-            />
+            <RendererWrapper key={`step-${stepId}`}>
+              <StepRenderer
+                step={step}
+              />
+            </RendererWrapper>
           );
         }
         return null;
@@ -145,14 +159,14 @@ export function MessageRenderer({
         const toolCallStartState = toolCalls.get(toolCallStartId);
         if (toolCallStartState?.status === 'running') {
           return (
-            <div key={`tool-call-start-${index}`} className="py-6">
-              <div className="max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded">
+            <RendererWrapper key={`tool-call-start-${index}`} className="py-6">
+              <div className="flex items-center space-x-2 p-2 bg-muted rounded">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                 <span className="text-sm">
                   Calling tool: {event.data?.tool_call_name || 'unknown'} ⏳
                 </span>
               </div>
-            </div>
+            </RendererWrapper>
           );
         }
         return null;
@@ -162,8 +176,8 @@ export function MessageRenderer({
 
       case 'tool_call_result':
         return (
-          <div key={`tool-call-result-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded">
+          <RendererWrapper key={`tool-call-result-${index}`} className="py-6">
+            <div className="p-3 bg-primary/10 border border-primary/20 rounded">
               <div className="text-sm text-primary">
                 <strong>Tool result:</strong>
                 <pre className="mt-1 text-xs overflow-x-auto">
@@ -171,40 +185,40 @@ export function MessageRenderer({
                 </pre>
               </div>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       case 'tool_rejected':
         return (
-          <div key={`tool-rejected-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-destructive/10 border border-destructive/20 rounded">
+          <RendererWrapper key={`tool-rejected-${index}`} className="py-6">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded">
               <div className="text-sm text-destructive">
                 <strong>Tool rejected:</strong> {event.data?.reason || 'Unknown reason'}
               </div>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       case 'agent_handover':
         return (
-          <div key={`handover-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-muted rounded border">
+          <RendererWrapper key={`handover-${index}`} className="py-6">
+            <div className="p-3 bg-muted rounded border">
               <div className="text-sm text-muted-foreground">
                 <strong>Handover to:</strong> {event.data?.to_agent || 'unknown agent'}
               </div>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       case 'feedback_received':
         return (
-          <div key={`feedback-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-muted rounded border">
+          <RendererWrapper key={`feedback-${index}`} className="py-6">
+            <div className="p-3 bg-muted rounded border">
               <div className="text-sm text-muted-foreground">
                 You said: {event.data?.feedback || ''}
               </div>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       case 'run_finished':
@@ -212,24 +226,25 @@ export function MessageRenderer({
 
       case 'run_error':
         return (
-          <div key={`run-error-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto p-3 bg-destructive/10 border border-destructive/20 rounded">
+          <RendererWrapper key={`run-error-${index}`} className="py-6">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded">
               <div className="text-sm text-destructive">
                 <strong>Error:</strong> {event.data?.message || 'Unknown error occurred'}
               </div>
               <button className="mt-2 text-xs text-destructive underline">Retry</button>
             </div>
-          </div>
+          </RendererWrapper>
         );
 
       default:
         // Debug events in development
         if (process.env.NODE_ENV === 'development') {
           return (
-            <DebugRenderer
-              key={`event-${index}`}
-              message={event}
-            />
+            <RendererWrapper key={`event-${index}`}>
+              <DebugRenderer
+                message={event}
+              />
+            </RendererWrapper>
           );
         }
         return null;
@@ -243,20 +258,22 @@ export function MessageRenderer({
     switch (artifact.type) {
       case 'plan':
         return (
-          <PlanRenderer
-            key={`plan-${index}`}
-            message={artifact}
-          />
+          <RendererWrapper key={`plan-${index}`}>
+            <PlanRenderer
+              message={artifact}
+            />
+          </RendererWrapper>
         );
 
       case 'llm_response':
         // Handle tool calls from LLM response
         if (artifact.content && artifact.content.length > 0) {
           return (
-            <AssistantMessageRenderer
-              key={`assistant-${index}`}
-              message={artifact}
-            />
+            <RendererWrapper key={`assistant-${index}`}>
+              <AssistantMessageRenderer
+                message={artifact}
+              />
+            </RendererWrapper>
           );
         }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
@@ -269,12 +286,13 @@ export function MessageRenderer({
             if (toolCallStartState?.status === 'pending') {
 
               return (
-                <ToolCallRenderer
-                  key={`tool-call-${index}-${toolIndex}`}
-                  toolCall={toolCallState}
-                  isExpanded={isExpanded}
-                  onToggle={onToggle}
-                />
+                <RendererWrapper key={`tool-call-${index}-${toolIndex}`}>
+                  <ToolCallRenderer
+                    toolCall={toolCallState}
+                    isExpanded={isExpanded}
+                    onToggle={onToggle}
+                  />
+                </RendererWrapper>
               );
             }
             return null;
@@ -296,14 +314,15 @@ export function MessageRenderer({
                 ? (result as any).error
                 : toolResultsArtifact.success ? undefined : toolResultsArtifact.reason;
             return (
-              <ToolResultRenderer
-                key={`tool-result-${index}-${resultIndex}`}
-                toolCallId={result.tool_call_id}
-                toolName={result.tool_name || 'Unknown Tool'}
-                result={result.result}
-                success={success}
-                error={error}
-              />
+              <RendererWrapper key={`tool-result-${index}-${resultIndex}`}>
+                <ToolResultRenderer
+                  toolCallId={result.tool_call_id}
+                  toolName={result.tool_name || 'Unknown Tool'}
+                  result={result.result}
+                  success={success}
+                  error={error}
+                />
+              </RendererWrapper>
             );
           });
         }
@@ -313,10 +332,11 @@ export function MessageRenderer({
         // Debug artifacts in development
         if (process.env.NODE_ENV === 'development') {
           return (
-            <DebugRenderer
-              key={`artifact-${index}`}
-              message={artifact}
-            />
+            <RendererWrapper key={`artifact-${index}`}>
+              <DebugRenderer
+                message={artifact}
+              />
+            </RendererWrapper>
           );
         }
         return null;

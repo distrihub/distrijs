@@ -24,7 +24,7 @@ export const ToolMessageRenderer: React.FC<ToolMessageRendererProps> = ({
           {avatar || <Wrench className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0 max-w-3xl">
+      <div className="w-full">
         <div className="text-sm font-medium text-foreground mb-3">Tool Response</div>
         <div className="prose prose-sm max-w-none text-foreground">
           {renderTextContent(content)}

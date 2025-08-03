@@ -52,7 +52,7 @@ export const ToolCallRenderer: React.FC<ToolCallRendererProps> = ({
 
   return (
     <div className={`flex items-start gap-4 py-6 ${className}`}>
-      <div className="flex-1 min-w-0 max-w-3xl">
+      <div className="w-full">
         <div className="border rounded-lg bg-background overflow-hidden">
           {/* Tool Call Header */}
           <div className="p-3 border-b border-border">

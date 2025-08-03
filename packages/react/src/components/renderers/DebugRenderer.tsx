@@ -21,7 +21,7 @@ export const DebugRenderer: React.FC<DebugRendererProps> = ({
           {avatar || <Bug className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
+      <div className="w-full">
         <div className="text-sm font-medium text-foreground mb-2">Debug</div>
         <div className="prose prose-sm max-w-none text-foreground">
           <pre className="text-xs bg-muted p-2 rounded border overflow-auto">

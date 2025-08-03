@@ -19,6 +19,16 @@ export interface ChatProps {
   theme?: 'light' | 'dark' | 'auto';
 }
 
+// Wrapper component to ensure consistent width and centering
+const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
+}) => (
+  <div className={`max-w-3xl mx-auto w-full ${className}`}>
+    {children}
+  </div>
+);
+
 export function Chat({
   threadId,
   agent,
@@ -150,10 +160,11 @@ export function Chat({
     if (streamingIndicator) {
       console.log('Rendering thinking indicator:', streamingIndicator);
       return (
-        <ThinkingRenderer
-          key={`thinking-${streamingIndicator}`}
-          indicator={streamingIndicator}
-        />
+        <RendererWrapper key={`thinking-${streamingIndicator}`}>
+          <ThinkingRenderer
+            indicator={streamingIndicator}
+          />
+        </RendererWrapper>
       );
     }
     return null;

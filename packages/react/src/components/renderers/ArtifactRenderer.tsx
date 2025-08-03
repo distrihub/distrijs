@@ -28,7 +28,7 @@ function renderLLMResponse(llmArtifact: AssistantWithToolCalls, _chatState: any,
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       {avatar && <div className="flex-shrink-0">{avatar}</div>}
-      <div className="flex-1 min-w-0">
+      <div className="w-full">
         <div className="text-sm font-medium text-foreground mb-2">Assistant</div>
 
         {/* Text content if present */}
@@ -66,7 +66,7 @@ function renderToolResults(toolResultsArtifact: ToolResults, _chatState: any, cl
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       {avatar && <div className="flex-shrink-0">{avatar}</div>}
-      <div className="flex-1 min-w-0">
+      <div className="w-full">
         <div className="text-sm font-medium text-foreground mb-2">Tool Results</div>
 
         {/* Text observation */}
@@ -98,22 +98,12 @@ function renderGenericArtifact(genericArtifact: GenericArtifact, _chatState: any
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       {avatar && <div className="flex-shrink-0">{avatar}</div>}
-      <div className="flex-1 min-w-0">
+      <div className="w-full">
         <div className="text-sm font-medium text-foreground mb-2">Artifact</div>
-
-        {/* Text observation */}
-        <div className="prose prose-sm max-w-none text-foreground mb-3">
-          <p>Artifact processed: {genericArtifact.name}</p>
-        </div>
-
-        {/* Artifact data */}
-        <div className="border rounded-lg p-3">
-          <div className="text-sm">
-            <strong>Data:</strong>
-            <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
-              {JSON.stringify(genericArtifact.data, null, 2)}
-            </pre>
-          </div>
+        <div className="prose prose-sm max-w-none text-foreground">
+          <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded">
+            {JSON.stringify(genericArtifact, null, 2)}
+          </pre>
         </div>
       </div>
     </div>

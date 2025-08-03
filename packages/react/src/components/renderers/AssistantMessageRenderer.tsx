@@ -17,7 +17,7 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
   const content = extractContent(message);
   return (
     <div className={`flex items-start gap-4 py-6 ${className}`}>
-      <div className="flex-1 min-w-0">
+      <div className="w-full">
 
         <div className="prose prose-sm max-w-none text-foreground">
           {renderTextContent(content)}
