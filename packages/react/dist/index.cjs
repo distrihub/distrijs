@@ -195,8 +195,8 @@ var ChatInput = ({
 
 // src/useChat.ts
 var import_react6 = require("react");
-var import_core2 = require("@distri/core");
 var import_core3 = require("@distri/core");
+var import_core4 = require("@distri/core");
 
 // ../core/src/types.ts
 function isDistriMessage(event) {
@@ -470,7 +470,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             metadata: message.data
           });
           set({ currentTaskId: taskId });
-          get().setStreamingIndicator("agent_starting");
+          get().setStreamingIndicator("typing");
           break;
         case "run_finished":
           const currentTaskId = get().currentTaskId;
@@ -506,7 +506,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           });
           set({ currentPlanId: planId });
           get().setStreamingIndicator("planning");
-          console.log("Set streamingIndicator to planning");
           set({ isStreaming: false });
           break;
         case "plan_finished":
@@ -538,7 +537,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               startTime: timestamp
             });
           }
-          set({ isStreaming: false });
           break;
         case "tool_call_end":
           const finishedTaskId = message.data.tool_call_id;
@@ -555,12 +553,12 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           break;
         case "text_message_start":
           set({ isStreaming: true });
+          get().setStreamingIndicator("typing");
           break;
         case "text_message_content":
           get().setStreamingIndicator(void 0);
           break;
         case "text_message_end":
-          set({ isStreaming: false });
           break;
         case "step_started":
           const stepId = message.data.step_id;
@@ -571,6 +569,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             status: "running",
             startTime: timestamp
           });
+          get().setStreamingIndicator("generating");
           break;
         case "step_completed":
           const completedStepId = message.data.step_id;
@@ -578,6 +577,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             status: "completed",
             endTime: timestamp
           });
+          get().setStreamingIndicator(void 0);
           break;
         case "agent_handover":
           break;
@@ -869,6 +869,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
 
 // src/hooks/useChatMessages.ts
 var import_react5 = require("react");
+var import_core2 = require("@distri/core");
 
 // ../core/src/encoder.ts
 function convertA2AMessageToDistri(a2aMessage) {
@@ -986,18 +987,34 @@ function convertA2AArtifactToDistri(artifact) {
   }
   const data = part.data;
   if (data.type === "llm_response") {
-    const executionResult2 = {
-      id: data.id || artifact.artifactId,
-      type: "llm_response",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      content: data.content || "",
-      tool_calls: data.tool_calls || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-    return executionResult2;
+    const hasContent = data.content && data.content.trim() !== "";
+    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
+    if (hasToolCalls) {
+      const executionResult2 = {
+        id: data.id || artifact.artifactId,
+        type: "llm_response",
+        timestamp: data.timestamp || data.created_at || Date.now(),
+        content: data.content?.trim() || "",
+        tool_calls: data.tool_calls,
+        step_id: data.step_id,
+        success: data.success,
+        rejected: data.rejected,
+        reason: data.reason
+      };
+      return executionResult2;
+    } else {
+      const parts = [];
+      if (hasContent) {
+        parts.push({ type: "text", text: data.content });
+      }
+      const distriMessage = {
+        id: artifact.artifactId,
+        role: "assistant",
+        parts,
+        created_at: data.timestamp || data.created_at || (/* @__PURE__ */ new Date()).toISOString()
+      };
+      return distriMessage;
+    }
   }
   if (data.type === "tool_results") {
     const executionResult2 = {
@@ -1094,12 +1111,41 @@ function useChatMessages({
     }
   }, [initialMessages, clearStoreState]);
   const addMessage = (0, import_react5.useCallback)((message) => {
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) => {
+      if ((0, import_core2.isDistriEvent)(message)) {
+        const event = message;
+        if (event.type === "text_message_start") {
+          const messageId = event.data.message_id;
+          const role = event.data.role;
+          const newDistriMessage = {
+            id: messageId,
+            role,
+            parts: [{ type: "text", text: "" }]
+          };
+          return [...prev, newDistriMessage];
+        } else if (event.type === "text_message_content") {
+          const messageId = event.data.message_id;
+          const delta = event.data.delta;
+          const existingIndex = prev.findIndex(
+            (m) => (0, import_core2.isDistriMessage)(m) && m.id === messageId
+          );
+          if (existingIndex >= 0) {
+            const existing = prev[existingIndex];
+            let textPart = existing.parts.find((p) => p.type === "text");
+            if (!textPart) {
+              textPart = { type: "text", text: "" };
+              existing.parts.push(textPart);
+            }
+            textPart.text += delta;
+          }
+        } else if (event.type === "text_message_end") {
+        } else {
+          return [...prev, message];
+        }
+      }
+      return [...prev, message];
+    });
     onMessageProcessRef.current?.(message);
-  }, []);
-  const addMessages = (0, import_react5.useCallback)((newMessages) => {
-    setMessages((prev) => [...prev, ...newMessages]);
-    newMessages.forEach((message) => onMessageProcessRef.current?.(message));
   }, []);
   const clearMessages = (0, import_react5.useCallback)(() => {
     setMessages([]);
@@ -1128,7 +1174,6 @@ function useChatMessages({
   return {
     messages,
     addMessage,
-    addMessages,
     clearMessages,
     fetchMessages,
     isLoading,
@@ -1303,10 +1348,10 @@ function useChat({
     abortControllerRef.current = new AbortController();
     try {
       const parts = typeof content === "string" ? [{ type: "text", text: content }] : content;
-      const distriMessage = import_core2.DistriClient.initDistriMessage("user", parts);
+      const distriMessage = import_core3.DistriClient.initDistriMessage("user", parts);
       addMessageRef.current(distriMessage);
       const context = createInvokeContext();
-      const a2aMessage = (0, import_core3.convertDistriMessageToA2A)(distriMessage, context);
+      const a2aMessage = (0, import_core4.convertDistriMessageToA2A)(distriMessage, context);
       const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
@@ -1343,10 +1388,10 @@ function useChat({
     abortControllerRef.current = new AbortController();
     try {
       const parts = typeof content === "string" ? [{ type: "text", text: content }] : content;
-      const distriMessage = import_core2.DistriClient.initDistriMessage(role, parts);
+      const distriMessage = import_core3.DistriClient.initDistriMessage(role, parts);
       addMessageRef.current(distriMessage);
       const context = createInvokeContext();
-      const a2aMessage = (0, import_core3.convertDistriMessageToA2A)(distriMessage, context);
+      const a2aMessage = (0, import_core4.convertDistriMessageToA2A)(distriMessage, context);
       const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
@@ -1429,7 +1474,7 @@ function useChat({
 }
 
 // src/components/renderers/MessageRenderer.tsx
-var import_core4 = require("@distri/core");
+var import_core5 = require("@distri/core");
 
 // src/components/renderers/UserMessageRenderer.tsx
 var import_lucide_react3 = require("lucide-react");
@@ -1551,15 +1596,7 @@ var AssistantMessageRenderer = ({
   className = ""
 }) => {
   const content = extractContent(message);
-  const isStreaming = useChatStateStore((state) => state.isStreaming);
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "flex-1 min-w-0", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "text-sm font-medium text-foreground mb-3 flex items-center gap-2", children: isStreaming && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150" })
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) })
-  ] }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "prose prose-sm max-w-none text-foreground", children: renderTextContent(content) }) }) });
 };
 
 // src/components/renderers/ToolMessageRenderer.tsx
@@ -1897,14 +1934,14 @@ function MessageRenderer({
 }) {
   const steps = useChatStateStore((state) => state.steps);
   const toolCalls = useChatStateStore((state) => state.toolCalls);
-  if ((0, import_core4.isDistriMessage)(message)) {
+  if ((0, import_core5.isDistriMessage)(message)) {
     const distriMessage = message;
     const textContent = distriMessage.parts.filter((part) => part.type === "text").map((part) => part.text).join("").trim();
     if (!textContent) {
       return null;
     }
   }
-  if ((0, import_core4.isDistriMessage)(message)) {
+  if ((0, import_core5.isDistriMessage)(message)) {
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
@@ -1935,7 +1972,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if ((0, import_core4.isDistriEvent)(message)) {
+  if ((0, import_core5.isDistriEvent)(message)) {
     const event = message;
     switch (event.type) {
       case "run_started":
@@ -1974,32 +2011,23 @@ function MessageRenderer({
         }
         return null;
       case "step_completed":
-        const completedStepId = event.data.step_id;
-        const completedStep = steps.get(completedStepId);
-        if (completedStep) {
-          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
-            StepRenderer,
-            {
-              step: completedStep
-            },
-            `step-${completedStepId}`
-          );
-        }
         return null;
       case "tool_call_start":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-primary" }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { className: "text-sm", children: [
-            "Calling tool: ",
-            event.data?.tool_call_name || "unknown",
-            " \u23F3"
-          ] })
-        ] }) }, `tool-call-start-${index}`);
+        const toolCallStartId = event.data.tool_call_id;
+        const toolCallStartState = toolCalls.get(toolCallStartId);
+        if (toolCallStartState?.status === "running") {
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-primary" }),
+            /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("span", { className: "text-sm", children: [
+              "Calling tool: ",
+              event.data?.tool_call_name || "unknown",
+              " \u23F3"
+            ] })
+          ] }) }, `tool-call-start-${index}`);
+        }
+        return null;
       case "tool_call_end":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "text-primary", children: "\u2705" }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "text-sm", children: "Tool complete" })
-        ] }) }, `tool-call-end-${index}`);
+        return null;
       case "tool_call_result":
         return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "max-w-3xl mx-auto p-3 bg-primary/10 border border-primary/20 rounded", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-primary", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("strong", { children: "Tool result:" }),
@@ -2023,10 +2051,7 @@ function MessageRenderer({
           event.data?.feedback || ""
         ] }) }) }, `feedback-${index}`);
       case "run_finished":
-        return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-primary/10 rounded", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "text-primary", children: "\u2705" }),
-          /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("span", { className: "text-sm font-medium", children: "Done" })
-        ] }) }, `run-finished-${index}`);
+        return null;
       case "run_error":
         return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("div", { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "max-w-3xl mx-auto p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("div", { className: "text-sm text-destructive", children: [
@@ -2049,7 +2074,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if ((0, import_core4.isDistriArtifact)(message)) {
+  if ((0, import_core5.isDistriArtifact)(message)) {
     const artifact = message;
     switch (artifact.type) {
       case "plan":
@@ -2061,19 +2086,32 @@ function MessageRenderer({
           `plan-${index}`
         );
       case "llm_response":
+        if (artifact.content && artifact.content.length > 0) {
+          return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+            AssistantMessageRenderer,
+            {
+              message: artifact
+            },
+            `assistant-${index}`
+          );
+        }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
           return artifact.tool_calls.map((toolCall, toolIndex) => {
             const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
-            return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
-              ToolCallRenderer,
-              {
-                toolCall: toolCallState,
-                isExpanded,
-                onToggle
-              },
-              `tool-call-${index}-${toolIndex}`
-            );
+            const toolCallStartState = toolCalls.get(toolCall.tool_call_id);
+            if (toolCallStartState?.status === "pending") {
+              return /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(
+                ToolCallRenderer,
+                {
+                  toolCall: toolCallState,
+                  isExpanded,
+                  onToggle
+                },
+                `tool-call-${index}-${toolIndex}`
+              );
+            }
+            return null;
           }).filter(Boolean);
         }
         return null;
@@ -2118,25 +2156,24 @@ var import_lucide_react10 = require("lucide-react");
 var import_jsx_runtime18 = require("react/jsx-runtime");
 var ThinkingRenderer = ({
   indicator,
-  className = "",
-  name = "Assistant"
+  className = ""
 }) => {
   const getIconAndText = () => {
     switch (indicator) {
-      case "agent_starting":
+      case "typing":
+      case "generating":
         return {
-          icon: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(import_lucide_react10.Loader2, { className: "h-4 w-4 text-muted-foreground animate-spin" }),
+          icon: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "text-sm font-medium text-foreground mb-3 flex items-center gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "flex items-center gap-1 text-xs text-muted-foreground", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse" }),
+            /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75" }),
+            /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150" })
+          ] }) }),
           text: null
         };
       case "planning":
         return {
           icon: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(import_lucide_react10.Sparkles, { className: "h-4 w-4 text-primary" }),
           text: "Planning\u2026"
-        };
-      case "generating_response":
-        return {
-          icon: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(import_lucide_react10.Loader2, { className: "h-4 w-4 text-primary animate-spin" }),
-          text: null
         };
       default:
         return {
@@ -2146,13 +2183,10 @@ var ThinkingRenderer = ({
     }
   };
   const { icon, text } = getIconAndText();
-  return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "flex-1 min-w-0 max-w-3xl", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "text-sm font-medium text-foreground mb-3", children: name }),
-    /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
-      icon,
-      text && /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { children: text })
-    ] })
-  ] }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: `flex items-start gap-4 py-6 ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "flex-1 min-w-0 max-w-3xl", children: /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
+    icon,
+    text && /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("span", { children: text })
+  ] }) }) });
 };
 
 // src/components/Chat.tsx
@@ -2301,7 +2335,7 @@ function Chat({
 
 // src/DistriProvider.tsx
 var import_react10 = require("react");
-var import_core5 = require("@distri/core");
+var import_core6 = require("@distri/core");
 
 // src/components/ThemeProvider.tsx
 var import_react9 = require("react");
@@ -2370,7 +2404,7 @@ function DistriProvider({ config, children, defaultTheme = "dark" }) {
     let currentClient = null;
     try {
       debug(config, "[DistriProvider] Initializing client with config:", config);
-      currentClient = new import_core5.DistriClient(config);
+      currentClient = new import_core6.DistriClient(config);
       setClient(currentClient);
       setError(null);
       setIsLoading(false);
@@ -2855,7 +2889,7 @@ var ExecutionSteps = ({ messages, className = "" }) => {
 
 // src/components/TaskExecutionRenderer.tsx
 var import_react15 = require("react");
-var import_core6 = require("@distri/core");
+var import_core7 = require("@distri/core");
 var import_lucide_react16 = require("lucide-react");
 var import_jsx_runtime28 = require("react/jsx-runtime");
 var TaskExecutionRenderer = ({
@@ -2866,7 +2900,7 @@ var TaskExecutionRenderer = ({
     const stepMap = /* @__PURE__ */ new Map();
     const stepOrder = [];
     events.forEach((event) => {
-      if ((0, import_core6.isDistriMessage)(event)) {
+      if ((0, import_core7.isDistriMessage)(event)) {
         const message = event;
         const stepId = `message_${message.id}`;
         if (!stepMap.has(stepId)) {
@@ -3182,7 +3216,7 @@ function renderGenericArtifact(genericArtifact, _chatState, className, avatar) {
 
 // src/useAgent.ts
 var import_react16 = __toESM(require("react"), 1);
-var import_core7 = require("@distri/core");
+var import_core8 = require("@distri/core");
 function useAgent({
   agentIdOrDef
 }) {
@@ -3204,7 +3238,7 @@ function useAgent({
         agentRef.current = null;
         setAgent(null);
       }
-      const newAgent = await import_core7.Agent.create(agentIdOrDef, client);
+      const newAgent = await import_core8.Agent.create(agentIdOrDef, client);
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
       setAgent(newAgent);
@@ -4199,9 +4233,9 @@ var SidebarMenuSubButton = React23.forwardRef(({ asChild = false, size = "md", i
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 // src/utils/messageUtils.ts
-var import_core8 = require("@distri/core");
+var import_core9 = require("@distri/core");
 var extractTextFromMessage = (message) => {
-  if ((0, import_core8.isDistriMessage)(message)) {
+  if ((0, import_core9.isDistriMessage)(message)) {
     if (!message?.parts || !Array.isArray(message.parts)) {
       return "";
     }
@@ -4213,10 +4247,10 @@ var extractTextFromMessage = (message) => {
 };
 var shouldDisplayMessage = (message, showDebugMessages = false) => {
   if (!message) return false;
-  if ((0, import_core8.isDistriArtifact)(message)) {
+  if ((0, import_core9.isDistriArtifact)(message)) {
     return true;
   }
-  if ((0, import_core8.isDistriMessage)(message)) {
+  if ((0, import_core9.isDistriMessage)(message)) {
     const textContent = extractTextFromMessage(message);
     if (textContent.trim()) return true;
   }

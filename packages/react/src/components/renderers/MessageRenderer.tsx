@@ -137,39 +137,28 @@ export function MessageRenderer({
 
       case 'step_completed':
         // Get step from chat state
-        const completedStepId = event.data.step_id;
-        const completedStep = steps.get(completedStepId);
-        if (completedStep) {
+
+        return null;
+
+      case 'tool_call_start':
+        const toolCallStartId = event.data.tool_call_id;
+        const toolCallStartState = toolCalls.get(toolCallStartId);
+        if (toolCallStartState?.status === 'running') {
           return (
-            <StepRenderer
-              key={`step-${completedStepId}`}
-              step={completedStep}
-            />
+            <div key={`tool-call-start-${index}`} className="py-6">
+              <div className="max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span className="text-sm">
+                  Calling tool: {event.data?.tool_call_name || 'unknown'} ⏳
+                </span>
+              </div>
+            </div>
           );
         }
         return null;
 
-      case 'tool_call_start':
-        return (
-          <div key={`tool-call-start-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-              <span className="text-sm">
-                Calling tool: {event.data?.tool_call_name || 'unknown'} ⏳
-              </span>
-            </div>
-          </div>
-        );
-
       case 'tool_call_end':
-        return (
-          <div key={`tool-call-end-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-muted rounded">
-              <span className="text-primary">✅</span>
-              <span className="text-sm">Tool complete</span>
-            </div>
-          </div>
-        );
+        return null;
 
       case 'tool_call_result':
         return (
@@ -219,14 +208,7 @@ export function MessageRenderer({
         );
 
       case 'run_finished':
-        return (
-          <div key={`run-finished-${index}`} className="py-6">
-            <div className="max-w-3xl mx-auto flex items-center space-x-2 p-2 bg-primary/10 rounded">
-              <span className="text-primary">✅</span>
-              <span className="text-sm font-medium">Done</span>
-            </div>
-          </div>
-        );
+        return null;
 
       case 'run_error':
         return (
@@ -269,20 +251,33 @@ export function MessageRenderer({
 
       case 'llm_response':
         // Handle tool calls from LLM response
+        if (artifact.content && artifact.content.length > 0) {
+          return (
+            <AssistantMessageRenderer
+              key={`assistant-${index}`}
+              message={artifact}
+            />
+          );
+        }
         if (artifact.tool_calls && Array.isArray(artifact.tool_calls)) {
           return artifact.tool_calls.map((toolCall, toolIndex) => {
             // Get tool call state from chat state
             const toolCallState = toolCalls.get(toolCall.tool_call_id);
             if (!toolCallState) return null;
 
-            return (
-              <ToolCallRenderer
-                key={`tool-call-${index}-${toolIndex}`}
-                toolCall={toolCallState}
-                isExpanded={isExpanded}
-                onToggle={onToggle}
-              />
-            );
+            const toolCallStartState = toolCalls.get(toolCall.tool_call_id);
+            if (toolCallStartState?.status === 'pending') {
+
+              return (
+                <ToolCallRenderer
+                  key={`tool-call-${index}-${toolIndex}`}
+                  toolCall={toolCallState}
+                  isExpanded={isExpanded}
+                  onToggle={onToggle}
+                />
+              );
+            }
+            return null;
           }).filter(Boolean);
         }
         return null;

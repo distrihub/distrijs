@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { TaskState } from '../../hooks/useChatState';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ToolCallRenderer } from '../toolcalls/ToolCallRenderer';
+import { TaskState } from '../../stores/chatStateStore';
 
 interface TaskRendererProps {
   task: TaskState;

@@ -90,15 +90,16 @@ interface UserMessageRendererProps {
 declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
 interface AssistantMessageRendererProps {
-    message: DistriMessage;
+    message: DistriMessage | DistriArtifact;
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;
 }
 declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
 
+type StreamingIndicator = 'typing' | 'planning' | 'generating';
 interface ThinkingRendererProps {
-    indicator: 'agent_starting' | 'planning' | 'generating_response';
+    indicator: 'typing' | 'planning' | 'generating';
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;
@@ -200,7 +201,6 @@ interface UseChatMessagesOptions {
 interface UseChatMessagesReturn {
     messages: (DistriEvent | DistriMessage | DistriArtifact)[];
     addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-    addMessages: (messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => void;
     clearMessages: () => void;
     fetchMessages: () => Promise<void>;
     isLoading: boolean;
@@ -325,7 +325,7 @@ interface ChatState {
     toolCalls: Map<string, ToolCallState>;
     currentTaskId?: string;
     currentPlanId?: string;
-    streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
+    streamingIndicator: StreamingIndicator | undefined;
     agent?: Agent$1;
     tools?: DistriAnyTool[];
     onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
@@ -334,7 +334,7 @@ interface ChatStateStore extends ChatState {
     setStreaming: (isStreaming: boolean) => void;
     setLoading: (isLoading: boolean) => void;
     setError: (error: Error | null) => void;
-    setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
+    setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
     processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
     clearAllStates: () => void;
     clearTask: (taskId: string) => void;

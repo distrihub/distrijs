@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { DistriEvent, DistriMessage, DistriArtifact, Agent } from '@distri/core';
+import { DistriEvent, DistriMessage, DistriArtifact, Agent, isDistriMessage, isDistriEvent } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../../core/src/encoder';
 
 export interface UseChatMessagesOptions {
@@ -14,7 +14,6 @@ export interface UseChatMessagesOptions {
 export interface UseChatMessagesReturn {
   messages: (DistriEvent | DistriMessage | DistriArtifact)[];
   addMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
-  addMessages: (messages: (DistriEvent | DistriMessage | DistriArtifact)[]) => void;
   clearMessages: () => void;
   fetchMessages: () => Promise<void>;
   isLoading: boolean;
@@ -58,13 +57,52 @@ export function useChatMessages({
   }, [initialMessages, clearStoreState]);
 
   const addMessage = useCallback((message: DistriEvent | DistriMessage | DistriArtifact) => {
-    setMessages(prev => [...prev, message]);
-    onMessageProcessRef.current?.(message);
-  }, []);
+    setMessages(prev => {
 
-  const addMessages = useCallback((newMessages: (DistriEvent | DistriMessage | DistriArtifact)[]) => {
-    setMessages(prev => [...prev, ...newMessages]);
-    newMessages.forEach(message => onMessageProcessRef.current?.(message));
+      if (isDistriEvent(message)) {
+        const event = message as DistriEvent;
+
+        if (event.type === 'text_message_start') {
+          // Create a new message with the specified ID and role
+          const messageId = event.data.message_id;
+          const role = event.data.role;
+
+          const newDistriMessage: DistriMessage = {
+            id: messageId,
+            role,
+            parts: [{ type: 'text', text: '' }]
+          };
+
+          return [...prev, newDistriMessage];
+        } else if (event.type === 'text_message_content') {
+          // Find existing message and append delta to text part
+          const messageId = event.data.message_id;
+          const delta = event.data.delta;
+
+          const existingIndex = prev.findIndex(
+            m => isDistriMessage(m) && (m as DistriMessage).id === messageId
+          );
+
+          if (existingIndex >= 0) {
+            const existing = prev[existingIndex] as DistriMessage;
+            let textPart = existing.parts.find(p => p.type === 'text') as any;
+            if (!textPart) {
+              textPart = { type: 'text', text: '' };
+              existing.parts.push(textPart);
+            }
+            textPart.text += delta;
+          }
+        } else if (event.type === 'text_message_end') {
+          // Message is complete, no additional action needed
+          // The message already exists and has been updated with content
+        } else {
+          // For other event types, just append
+          return [...prev, message];
+        }
+      }
+      return [...prev, message];
+    });
+    onMessageProcessRef.current?.(message);
   }, []);
 
   const clearMessages = useCallback(() => {
@@ -102,7 +140,6 @@ export function useChatMessages({
   return {
     messages,
     addMessage,
-    addMessages,
     clearMessages,
     fetchMessages,
     isLoading,

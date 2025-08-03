@@ -10,6 +10,7 @@ import {
   ToolResult,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
+import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
 
 // State types
 export interface TaskState {
@@ -75,7 +76,7 @@ export interface ChatState {
   currentPlanId?: string;
 
   // Streaming indicator state
-  streamingIndicator: 'agent_starting' | 'planning' | 'generating_response' | undefined;
+  streamingIndicator: StreamingIndicator | undefined;
 
   // Tool execution state
   agent?: Agent;
@@ -90,7 +91,7 @@ export interface ChatStateStore extends ChatState {
   setError: (error: Error | null) => void;
 
   // Streaming indicator actions
-  setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => void;
+  setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
 
   // State actions
   processMessage: (message: DistriEvent | DistriMessage | DistriArtifact) => void;
@@ -149,7 +150,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set({ error });
   },
 
-  setStreamingIndicator: (indicator: 'agent_starting' | 'planning' | 'generating_response' | undefined) => {
+  setStreamingIndicator: (indicator: 'typing' | 'planning' | 'generating' | undefined) => {
     set({ streamingIndicator: indicator });
   },
 
@@ -173,7 +174,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           });
           set({ currentTaskId: taskId });
           // Show "Agent is starting..." indicator
-          get().setStreamingIndicator('agent_starting');
+          get().setStreamingIndicator('typing');
           // console.log('Set streamingIndicator to agent_starting');
           break;
 
@@ -217,7 +218,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           set({ currentPlanId: planId });
           // Switch to planning indicator and stop streaming
           get().setStreamingIndicator('planning');
-          console.log('Set streamingIndicator to planning');
           set({ isStreaming: false });
           break;
 
@@ -252,8 +252,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               startTime: timestamp,
             });
           }
-          // Stop streaming when tool calls start - the agent is now executing tools, not generating text
-          set({ isStreaming: false });
           break;
 
         case 'tool_call_end':
@@ -275,6 +273,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'text_message_start':
           // Start generating response indicator and streaming
           set({ isStreaming: true });
+          get().setStreamingIndicator('typing');
           break;
 
         case 'text_message_content':
@@ -282,8 +281,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
 
         case 'text_message_end':
-          // Stop generating response indicator and streaming when text message generation ends
-          set({ isStreaming: false });
           break;
 
         case 'step_started':
@@ -295,6 +292,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             status: 'running',
             startTime: timestamp,
           });
+          get().setStreamingIndicator('generating');
           break;
 
         case 'step_completed':
@@ -303,6 +301,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             status: 'completed',
             endTime: timestamp,
           });
+          get().setStreamingIndicator(undefined);
           break;
 
         case 'agent_handover':

@@ -529,18 +529,34 @@ function convertA2AArtifactToDistri(artifact) {
   }
   const data = part.data;
   if (data.type === "llm_response") {
-    const executionResult2 = {
-      id: data.id || artifact.artifactId,
-      type: "llm_response",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      content: data.content || "",
-      tool_calls: data.tool_calls || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-    return executionResult2;
+    const hasContent = data.content && data.content.trim() !== "";
+    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
+    if (hasToolCalls) {
+      const executionResult2 = {
+        id: data.id || artifact.artifactId,
+        type: "llm_response",
+        timestamp: data.timestamp || data.created_at || Date.now(),
+        content: data.content?.trim() || "",
+        tool_calls: data.tool_calls,
+        step_id: data.step_id,
+        success: data.success,
+        rejected: data.rejected,
+        reason: data.reason
+      };
+      return executionResult2;
+    } else {
+      const parts = [];
+      if (hasContent) {
+        parts.push({ type: "text", text: data.content });
+      }
+      const distriMessage = {
+        id: artifact.artifactId,
+        role: "assistant",
+        parts,
+        created_at: data.timestamp || data.created_at || (/* @__PURE__ */ new Date()).toISOString()
+      };
+      return distriMessage;
+    }
   }
   if (data.type === "tool_results") {
     const executionResult2 = {

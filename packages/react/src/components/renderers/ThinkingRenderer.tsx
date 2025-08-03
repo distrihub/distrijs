@@ -1,8 +1,11 @@
 import React from 'react';
-import { Brain, Sparkles, Loader2 } from 'lucide-react';
+import { Brain, Sparkles } from 'lucide-react';
+
+
+export type StreamingIndicator = 'typing' | 'planning' | 'generating';
 
 export interface ThinkingRendererProps {
-  indicator: 'agent_starting' | 'planning' | 'generating_response';
+  indicator: 'typing' | 'planning' | 'generating';
   className?: string;
   avatar?: React.ReactNode;
   name?: string;
@@ -11,13 +14,19 @@ export interface ThinkingRendererProps {
 export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
   indicator,
   className = '',
-  name = "Assistant",
 }) => {
   const getIconAndText = () => {
     switch (indicator) {
-      case 'agent_starting':
+      case 'typing':
+      case 'generating':
         return {
-          icon: <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />,
+          icon: <div className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>
+              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
+            </div>
+          </div>,
           text: null,
         };
       case 'planning':
@@ -25,11 +34,7 @@ export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
           icon: <Sparkles className="h-4 w-4 text-primary" />,
           text: 'Planning…',
         };
-      case 'generating_response':
-        return {
-          icon: <Loader2 className="h-4 w-4 text-primary animate-spin" />,
-          text: null,
-        };
+
       default:
         return {
           icon: <Brain className="h-4 w-4 text-muted-foreground" />,
@@ -43,7 +48,6 @@ export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
   return (
     <div className={`flex items-start gap-4 py-6 ${className}`}>
       <div className="flex-1 min-w-0 max-w-3xl">
-        <div className="text-sm font-medium text-foreground mb-3">{name}</div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {icon}
           {text && <span>{text}</span>}

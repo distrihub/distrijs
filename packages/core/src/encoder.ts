@@ -149,20 +149,42 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
 
   // Handle different artifact types based on the data structure
   if (data.type === 'llm_response') {
-    // Convert to AssistantWithToolCalls for LLM responses
-    const executionResult: AssistantWithToolCalls = {
-      id: data.id || artifact.artifactId,
-      type: 'llm_response',
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      content: data.content || '',
-      tool_calls: data.tool_calls || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
+    // Check if there's content or tool calls to determine the return type
+    const hasContent = data.content && data.content.trim() !== '';
+    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
 
-    return executionResult;
+    if (hasToolCalls) {
+      // If there are only tool calls (no content), return as AssistantWithToolCalls
+      const executionResult: AssistantWithToolCalls = {
+        id: data.id || artifact.artifactId,
+        type: 'llm_response',
+        timestamp: data.timestamp || data.created_at || Date.now(),
+        content: data.content?.trim() || '',
+        tool_calls: data.tool_calls,
+        step_id: data.step_id,
+        success: data.success,
+        rejected: data.rejected,
+        reason: data.reason
+      };
+
+      return executionResult;
+    } else {
+      // If there's content, return as DistriMessage
+      const parts: DistriPart[] = [];
+      // Add text part for content
+      if (hasContent) {
+        parts.push({ type: 'text', text: data.content });
+      }
+
+      const distriMessage: DistriMessage = {
+        id: artifact.artifactId,
+        role: 'assistant',
+        parts: parts,
+        created_at: data.timestamp || data.created_at || new Date().toISOString()
+      };
+      return distriMessage;
+    }
+
   }
 
   if (data.type === 'tool_results') {
