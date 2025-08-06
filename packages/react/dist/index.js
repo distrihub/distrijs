@@ -314,10 +314,12 @@ var useChatStateStore = create((set, get) => ({
   isStreaming: false,
   isLoading: false,
   error: null,
+  debug: false,
   tasks: /* @__PURE__ */ new Map(),
   plans: /* @__PURE__ */ new Map(),
   steps: /* @__PURE__ */ new Map(),
   toolCalls: /* @__PURE__ */ new Map(),
+  currentRunId: void 0,
   currentTaskId: void 0,
   currentPlanId: void 0,
   streamingIndicator: void 0,
@@ -332,6 +334,9 @@ var useChatStateStore = create((set, get) => ({
   setError: (error) => {
     set({ error });
   },
+  setDebug: (debug2) => {
+    set({ debug: debug2 });
+  },
   setStreamingIndicator: (indicator) => {
     set({ streamingIndicator: indicator });
   },
@@ -343,8 +348,9 @@ var useChatStateStore = create((set, get) => ({
     }
   },
   addMessage: (message) => {
+    const isDebugEnabled = get().debug;
     set((state) => {
-      const prev = state.messages;
+      const messages = [...state.messages];
       if (isDistriEvent(message)) {
         const event = message;
         if (event.type === "text_message_start") {
@@ -353,32 +359,52 @@ var useChatStateStore = create((set, get) => ({
           const newDistriMessage = {
             id: messageId,
             role,
-            parts: [{ type: "text", text: "" }]
+            parts: [{ type: "text", text: "" }],
+            created_at: (/* @__PURE__ */ new Date()).toISOString()
           };
-          prev.push(newDistriMessage);
+          messages.push(newDistriMessage);
         } else if (event.type === "text_message_content") {
           const messageId = event.data.message_id;
           const delta = event.data.delta;
-          const existingIndex = prev.findIndex(
+          const existingIndex = messages.findIndex(
             (m) => isDistriMessage(m) && m.id === messageId
           );
           if (existingIndex >= 0) {
-            const existing = prev[existingIndex];
+            const existing = messages[existingIndex];
             let textPart = existing.parts.find((p) => p.type === "text");
             if (!textPart) {
               textPart = { type: "text", text: "" };
               existing.parts.push(textPart);
             }
             textPart.text += delta;
+          } else {
+            if (isDebugEnabled) {
+              console.warn("\u274C Cannot find streaming message to append to:", messageId);
+              console.log("\u{1F4CB} Available message IDs:", messages.filter(isDistriMessage).map((m) => m.id));
+            }
           }
         } else if (event.type === "text_message_end") {
+          const messageId = event.data.message_id;
         } else {
-          prev.push(message);
+          const stateOnlyEvents = [
+            "run_started",
+            "run_finished",
+            "run_error",
+            "plan_started",
+            "plan_finished",
+            "step_started",
+            "step_completed",
+            "tool_calls",
+            "tool_results"
+          ];
+          if (!stateOnlyEvents.includes(event.type)) {
+            messages.push(message);
+          }
         }
       } else {
-        prev.push(message);
+        messages.push(message);
       }
-      return { ...state, messages: prev };
+      return { ...state, messages };
     });
   },
   resolveToolCalls: () => {
@@ -390,26 +416,61 @@ var useChatStateStore = create((set, get) => ({
   // State actions
   processMessage: (message) => {
     const timestamp = Date.now();
+    const isDebugEnabled = get().debug;
     get().addMessage(message);
     if (isDistriEvent(message)) {
+      const event = message;
+      if (isDebugEnabled && ["run_started", "run_finished", "plan_started", "plan_finished", "text_message_start"].includes(event.type)) {
+        console.log("\u{1F3EA} STORE BEFORE:", {
+          eventType: event.type,
+          streamingIndicator: get().streamingIndicator,
+          isStreaming: get().isStreaming,
+          currentTaskId: get().currentTaskId,
+          currentPlanId: get().currentPlanId
+        });
+      }
       switch (message.type) {
         case "run_started":
-          const taskId = `task_${Date.now()}`;
-          get().updateTask(taskId, {
-            id: taskId,
-            title: "Agent Run",
-            status: "running",
-            startTime: timestamp,
-            metadata: message.data
+          const runStartedEvent = event;
+          const runId = runStartedEvent.data.runId;
+          const taskId = runStartedEvent.data.taskId;
+          if (isDebugEnabled) {
+            console.log("\u{1F3EA} run_started with IDs:", { runId, taskId });
+          }
+          if (taskId) {
+            get().updateTask(taskId, {
+              id: taskId,
+              runId,
+              title: "Agent Run",
+              status: "running",
+              startTime: timestamp,
+              metadata: event.data
+            });
+          }
+          set({
+            currentRunId: runId,
+            currentTaskId: taskId
           });
-          set({ currentTaskId: taskId });
           get().setStreamingIndicator("typing");
           set({ isStreaming: true });
+          if (isDebugEnabled) {
+            console.log("\u{1F3EA} STORE AFTER run_started:", {
+              streamingIndicator: get().streamingIndicator,
+              isStreaming: get().isStreaming,
+              currentRunId: get().currentRunId,
+              currentTaskId: get().currentTaskId
+            });
+          }
           break;
         case "run_finished":
-          const currentTaskId = get().currentTaskId;
-          if (currentTaskId) {
-            get().updateTask(currentTaskId, {
+          const runFinishedEvent = event;
+          const finishedRunId = runFinishedEvent.data.runId;
+          const finishedTaskId = runFinishedEvent.data.taskId;
+          if (isDebugEnabled) {
+            console.log("\u{1F3EA} run_finished with IDs:", { runId: finishedRunId, taskId: finishedTaskId });
+          }
+          if (finishedTaskId) {
+            get().updateTask(finishedTaskId, {
               status: "completed",
               endTime: timestamp
             });
@@ -433,15 +494,31 @@ var useChatStateStore = create((set, get) => ({
           break;
         case "plan_started":
           const planId = `plan_${Date.now()}`;
+          const currentRunId = get().currentRunId;
+          const currentTaskId = get().currentTaskId;
+          if (isDebugEnabled) {
+            console.log("\u{1F3EA} plan_started for run/task:", { currentRunId, currentTaskId });
+          }
           get().updatePlan(planId, {
             id: planId,
-            runId: get().currentTaskId,
+            runId: currentRunId,
+            // Link to the current run
+            taskId: currentTaskId,
+            // Link to the current task
             steps: [],
             status: "running",
             startTime: timestamp
           });
           set({ currentPlanId: planId });
           get().setStreamingIndicator("thinking");
+          if (isDebugEnabled) {
+            console.log("\u{1F3EA} STORE AFTER plan_started:", {
+              streamingIndicator: get().streamingIndicator,
+              currentPlanId: get().currentPlanId,
+              currentRunId: get().currentRunId,
+              currentTaskId: get().currentTaskId
+            });
+          }
           break;
         case "plan_finished":
           const currentPlanId = get().currentPlanId;
@@ -477,9 +554,9 @@ var useChatStateStore = create((set, get) => ({
           }
           break;
         case "tool_call_end":
-          const finishedTaskId = message.data.tool_call_id;
-          if (finishedTaskId) {
-            get().updateTask(finishedTaskId, {
+          const finishedToolCallId = message.data.tool_call_id;
+          if (finishedToolCallId) {
+            get().updateTask(finishedToolCallId, {
               status: "completed",
               endTime: timestamp
             });
@@ -487,6 +564,11 @@ var useChatStateStore = create((set, get) => ({
           break;
         case "text_message_start":
           get().setStreamingIndicator("typing");
+          if (isDebugEnabled) {
+            console.log("\u{1F3EA} STORE AFTER text_message_start:", {
+              streamingIndicator: get().streamingIndicator
+            });
+          }
           break;
         case "text_message_content":
           get().setStreamingIndicator(void 0);
@@ -512,6 +594,35 @@ var useChatStateStore = create((set, get) => ({
           });
           get().setStreamingIndicator(void 0);
           break;
+        case "tool_calls":
+          if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
+            message.data.tool_calls.forEach((toolCall) => {
+              get().initToolCall({
+                tool_call_id: toolCall.tool_call_id,
+                tool_name: toolCall.tool_name,
+                input: toolCall.input
+              }, timestamp);
+            });
+          }
+          break;
+        case "tool_results":
+          if (message.data.results && Array.isArray(message.data.results)) {
+            message.data.results.forEach((result) => {
+              get().updateToolCallStatus(result.tool_call_id, {
+                status: result.success !== false ? "completed" : "error",
+                result: {
+                  tool_call_id: result.tool_call_id,
+                  tool_name: result.tool_name,
+                  result: result.result,
+                  error: result.error,
+                  success: result.success !== false
+                },
+                error: result.error,
+                endTime: timestamp
+              });
+            });
+          }
+          break;
         case "agent_handover":
           break;
         default:
@@ -520,49 +631,6 @@ var useChatStateStore = create((set, get) => ({
     }
     if (isDistriArtifact(message)) {
       switch (message.type) {
-        case "llm_response":
-          const taskId = message.step_id || message.id;
-          if (taskId) {
-            get().updateTask(taskId, {
-              toolCalls: message.tool_calls || [],
-              status: message.success ? "completed" : "failed",
-              error: message.reason || void 0
-            });
-            if (message.tool_calls && Array.isArray(message.tool_calls)) {
-              message.tool_calls.forEach(async (toolCall) => {
-                get().initToolCall({
-                  tool_call_id: toolCall.tool_call_id,
-                  tool_name: toolCall.tool_name,
-                  input: toolCall.input || {}
-                }, message.timestamp || timestamp);
-              });
-            }
-          }
-          break;
-        case "tool_results":
-          const resultsTaskId = message.step_id || message.id;
-          if (resultsTaskId) {
-            get().updateTask(resultsTaskId, {
-              results: message.results || [],
-              status: message.success ? "completed" : "failed",
-              error: message.reason || void 0
-            });
-            if (message.results && Array.isArray(message.results)) {
-              message.results.forEach((result) => {
-                get().updateToolCallStatus(result.tool_call_id, {
-                  status: message.success ? "completed" : "error",
-                  result: result.result,
-                  error: message.reason || void 0,
-                  endTime: message.timestamp || timestamp
-                });
-              });
-            }
-          }
-          const pendingToolCalls = get().getPendingToolCalls();
-          if (pendingToolCalls.length === 0) {
-            set({ isLoading: false });
-          }
-          break;
         case "plan":
           const planId = message.id;
           if (planId) {
@@ -572,6 +640,18 @@ var useChatStateStore = create((set, get) => ({
               status: "completed",
               endTime: message.timestamp || timestamp
             });
+            if (message.steps && Array.isArray(message.steps)) {
+              message.steps.forEach((step) => {
+                if (step.type === "action" && step.action && step.action.tool_name) {
+                  const toolCall = {
+                    tool_call_id: step.id || `tool_${Date.now()}`,
+                    tool_name: step.action.tool_name,
+                    input: step.action.input || {}
+                  };
+                  get().initToolCall(toolCall, message.timestamp || timestamp);
+                }
+              });
+            }
           }
           get().setStreamingIndicator(void 0);
           break;
@@ -722,6 +802,7 @@ var useChatStateStore = create((set, get) => ({
       plans: /* @__PURE__ */ new Map(),
       steps: /* @__PURE__ */ new Map(),
       toolCalls: /* @__PURE__ */ new Map(),
+      currentRunId: void 0,
       currentTaskId: void 0,
       currentPlanId: void 0,
       streamingIndicator: void 0,
@@ -1532,6 +1613,8 @@ AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
 // src/components/renderers/utils.ts
 import React10 from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 function extractContent(message) {
   let text = "";
   let hasMarkdown = false;
@@ -1566,25 +1649,100 @@ function extractContent(message) {
   };
 }
 function renderTextContent(content) {
-  const { text, hasMarkdown, hasCode, hasLinks, hasImages } = content;
+  const { text } = content;
   if (!text || !text.trim()) return null;
-  if (hasMarkdown || hasCode || hasLinks || hasImages) {
-    return React10.createElement("pre", { className: "whitespace-pre-wrap text-sm" }, text);
+  return parseAndRenderContent(text);
+}
+function parseAndRenderContent(text) {
+  const elements = [];
+  let currentIndex = 0;
+  let elementKey = 0;
+  const codeBlockPattern = /```([\w]*)?[ \t]*\n?([\s\S]*?)```/g;
+  const codeMatches = [];
+  let codeMatch;
+  while ((codeMatch = codeBlockPattern.exec(text)) !== null) {
+    const language = codeMatch[1] || "typescript";
+    const content = codeMatch[2].trim();
+    const isXmlWithOnlyThoughts = language === "xml" && /<thought>[\s\S]*?<\/thought>/.test(content) && content.replace(/<thought>[\s\S]*?<\/thought>/g, "").trim() === "";
+    codeMatches.push({
+      start: codeMatch.index,
+      end: codeMatch.index + codeMatch[0].length,
+      content,
+      language,
+      shouldRender: !isXmlWithOnlyThoughts && (language === "typescript" || language === "ts" || language === "javascript" || language === "js")
+    });
   }
+  for (const match of codeMatches) {
+    if (currentIndex < match.start) {
+      let textBefore = text.slice(currentIndex, match.start);
+      textBefore = textBefore.replace(/<thought>[\s\S]*?<\/thought>/g, "");
+      textBefore = textBefore.trim();
+      if (textBefore) {
+        elements.push(renderPlainText(textBefore, elementKey++));
+      }
+    }
+    if (match.shouldRender) {
+      elements.push(renderCodeBlock(match.content, match.language, elementKey++));
+    }
+    currentIndex = match.end;
+  }
+  if (currentIndex < text.length) {
+    let remainingText = text.slice(currentIndex);
+    remainingText = remainingText.replace(/<thought>[\s\S]*?<\/thought>/g, "");
+    remainingText = remainingText.trim();
+    if (remainingText) {
+      elements.push(renderPlainText(remainingText, elementKey++));
+    }
+  }
+  if (elements.length === 0) {
+    let cleanText = text.replace(/<thought>[\s\S]*?<\/thought>/g, "").trim();
+    cleanText = cleanText.replace(/```xml[\s\S]*?```/g, "").trim();
+    if (cleanText) {
+      return renderPlainText(cleanText, 0);
+    }
+    return null;
+  }
+  return React10.createElement("div", { className: "space-y-3" }, ...elements);
+}
+function renderCodeBlock(content, language, key) {
+  return React10.createElement(
+    "div",
+    {
+      key,
+      className: "rounded-md overflow-hidden my-3"
+    },
+    React10.createElement(SyntaxHighlighter, {
+      language: language === "ts" ? "typescript" : language,
+      style: oneDark,
+      className: "text-sm",
+      showLineNumbers: false,
+      wrapLines: true,
+      customStyle: {
+        margin: 0,
+        padding: "1rem",
+        fontSize: "0.875rem",
+        borderRadius: "0.375rem"
+      }
+    }, content)
+  );
+}
+function renderPlainText(text, key) {
   const paragraphs = text.split("\n").filter((p) => p.trim());
   if (paragraphs.length === 1) {
-    return React10.createElement("p", { className: "text-sm leading-relaxed" }, text);
+    return React10.createElement("p", {
+      key,
+      className: "text-sm leading-relaxed"
+    }, text.trim());
   } else {
-    return React10.createElement(
-      "div",
-      { className: "space-y-2" },
-      paragraphs.map(
-        (paragraph, index) => React10.createElement("p", {
-          key: index,
-          className: "text-sm leading-relaxed"
-        }, paragraph)
-      )
-    );
+    return React10.createElement("div", {
+      key,
+      className: "space-y-2"
+    }, paragraphs.map(
+      (paragraph, index) => React10.createElement("p", {
+        key: `${key}-${index}`,
+        className: "text-sm leading-relaxed"
+      }, paragraph.trim())
+    ));
   }
 }
 
@@ -1631,7 +1789,7 @@ var ToolMessageRenderer = ({
 };
 
 // src/components/renderers/PlanRenderer.tsx
-import { Eye } from "lucide-react";
+import { Eye, Code, Zap } from "lucide-react";
 import { jsx as jsx14, jsxs as jsxs7 } from "react/jsx-runtime";
 var formatDuration = (milliseconds) => {
   const seconds = (milliseconds / 1e3).toFixed(2);
@@ -1642,18 +1800,58 @@ var StepRenderer = ({ step, index }) => {
     const thoughtStep = step;
     return /* @__PURE__ */ jsxs7("div", { className: "border border-border rounded-lg p-4 mb-4", children: [
       /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-2 mb-3", children: [
-        /* @__PURE__ */ jsx14("div", { className: "flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground rounded-full text-xs font-medium", children: index + 1 }),
-        /* @__PURE__ */ jsx14("h4", { className: "font-medium text-foreground", children: step.title })
+        /* @__PURE__ */ jsx14("div", { className: "flex items-center justify-center w-6 h-6 bg-blue-500 text-white rounded-full text-xs font-medium", children: /* @__PURE__ */ jsx14(Eye, { className: "h-3 w-3" }) }),
+        /* @__PURE__ */ jsx14("h4", { className: "font-medium text-foreground", children: "Thinking" })
       ] }),
       /* @__PURE__ */ jsx14("div", { className: "text-sm text-muted-foreground pl-8", children: thoughtStep.message })
     ] });
   }
-  if (step.type === "react_step") {
+  if (step.type === "action") {
+    const actionStep = step;
+    const { action } = actionStep;
+    return /* @__PURE__ */ jsxs7("div", { className: "border border-border rounded-lg p-4 mb-4", children: [
+      /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-2 mb-3", children: [
+        /* @__PURE__ */ jsx14("div", { className: "flex items-center justify-center w-6 h-6 bg-green-500 text-white rounded-full text-xs font-medium", children: /* @__PURE__ */ jsx14(Zap, { className: "h-3 w-3" }) }),
+        /* @__PURE__ */ jsx14("h4", { className: "font-medium text-foreground", children: action.tool_name ? `Using ${action.tool_name}` : "Action" })
+      ] }),
+      /* @__PURE__ */ jsxs7("div", { className: "pl-8 space-y-2", children: [
+        action.tool_name && /* @__PURE__ */ jsxs7("div", { className: "text-sm", children: [
+          /* @__PURE__ */ jsx14("span", { className: "font-medium text-muted-foreground", children: "Tool:" }),
+          " ",
+          action.tool_name
+        ] }),
+        action.input && /* @__PURE__ */ jsxs7("div", { className: "text-sm", children: [
+          /* @__PURE__ */ jsx14("span", { className: "font-medium text-muted-foreground", children: "Input:" }),
+          /* @__PURE__ */ jsx14("pre", { className: "mt-1 text-xs bg-muted p-2 rounded border overflow-x-auto", children: typeof action.input === "string" ? action.input : JSON.stringify(action.input, null, 2) })
+        ] }),
+        action.prompt && /* @__PURE__ */ jsxs7("div", { className: "text-sm", children: [
+          /* @__PURE__ */ jsx14("span", { className: "font-medium text-muted-foreground", children: "Prompt:" }),
+          " ",
+          action.prompt
+        ] })
+      ] })
+    ] });
+  }
+  if (step.type === "code") {
+    const codeStep = step;
+    return /* @__PURE__ */ jsxs7("div", { className: "border border-border rounded-lg p-4 mb-4", children: [
+      /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-2 mb-3", children: [
+        /* @__PURE__ */ jsx14("div", { className: "flex items-center justify-center w-6 h-6 bg-purple-500 text-white rounded-full text-xs font-medium", children: /* @__PURE__ */ jsx14(Code, { className: "h-3 w-3" }) }),
+        /* @__PURE__ */ jsxs7("h4", { className: "font-medium text-foreground", children: [
+          "Code (",
+          codeStep.language,
+          ")"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx14("div", { className: "pl-8", children: /* @__PURE__ */ jsx14("pre", { className: "text-xs bg-muted p-3 rounded border overflow-x-auto", children: /* @__PURE__ */ jsx14("code", { children: codeStep.code }) }) })
+    ] });
+  }
+  if ("type" in step && step.type === "react_step") {
     const reactStep = step;
     return /* @__PURE__ */ jsxs7("div", { className: "border border-border rounded-lg p-4 mb-4", children: [
       /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-2 mb-3", children: [
         /* @__PURE__ */ jsx14("div", { className: "flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground rounded-full text-xs font-medium", children: index + 1 }),
-        /* @__PURE__ */ jsx14("h4", { className: "font-medium text-foreground", children: step.title })
+        /* @__PURE__ */ jsx14("h4", { className: "font-medium text-foreground", children: "ReAct Step" })
       ] }),
       /* @__PURE__ */ jsxs7("div", { className: "pl-8 space-y-2", children: [
         /* @__PURE__ */ jsxs7("div", { className: "text-sm", children: [
@@ -2238,7 +2436,8 @@ function Chat({
   tools,
   wrapOptions,
   initialMessages,
-  theme = "auto"
+  theme = "auto",
+  debug: debug2 = false
 }) {
   const [input, setInput] = useState8("");
   const [expandedTools, setExpandedTools] = useState8(/* @__PURE__ */ new Set());
@@ -2265,6 +2464,10 @@ function Chat({
   const plans = useChatStateStore((state) => state.plans);
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore((state) => state.streamingIndicator);
+  const setDebug = useChatStateStore((state) => state.setDebug);
+  useEffect10(() => {
+    setDebug(debug2);
+  }, [debug2, setDebug]);
   const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
   const pendingToolCalls = Array.from(toolCalls.values()).filter(
     (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
@@ -4001,12 +4204,18 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
     case "run_started":
       return {
         type: "run_started",
-        data: {}
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       };
     case "run_finished":
       return {
         type: "run_finished",
-        data: {}
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       };
     case "plan_started":
       return {
@@ -4080,6 +4289,20 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           message_id: metadata.message_id
         }
       };
+    case "tool_calls":
+      return {
+        type: "tool_calls",
+        data: {
+          tool_calls: metadata.tool_calls || []
+        }
+      };
+    case "tool_results":
+      return {
+        type: "tool_results",
+        data: {
+          results: metadata.results || []
+        }
+      };
     default:
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
       return {
@@ -4097,51 +4320,6 @@ function convertA2AArtifactToDistri(artifact) {
     return null;
   }
   const data = part.data;
-  if (data.type === "llm_response") {
-    const hasContent = data.content && data.content.trim() !== "";
-    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
-    const isExternal = data.is_external;
-    if (hasToolCalls) {
-      const executionResult2 = {
-        id: data.id || artifact.artifactId,
-        type: "llm_response",
-        timestamp: data.timestamp || data.created_at || Date.now(),
-        content: data.content?.trim() || "",
-        tool_calls: data.tool_calls,
-        step_id: data.step_id,
-        success: data.success,
-        rejected: data.rejected,
-        reason: data.reason,
-        is_external: isExternal
-      };
-      return executionResult2;
-    } else {
-      const parts = [];
-      if (hasContent) {
-        parts.push({ type: "text", text: data.content });
-      }
-      const distriMessage = {
-        id: artifact.artifactId,
-        role: "assistant",
-        parts,
-        created_at: data.timestamp || data.created_at || (/* @__PURE__ */ new Date()).toISOString()
-      };
-      return distriMessage;
-    }
-  }
-  if (data.type === "tool_results") {
-    const executionResult2 = {
-      id: data.id || artifact.artifactId,
-      type: "tool_results",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      results: data.results || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-    return executionResult2;
-  }
   if (data.type === "plan") {
     const planResult = {
       id: data.id || artifact.artifactId,
@@ -4288,6 +4466,171 @@ function wrapTools(tools, options = {}) {
       return wrapFnToolAsUiTool(tool, options);
     }
     return tool;
+  });
+}
+
+// src/utils/debugStream.ts
+import { isDistriEvent as isDistriEvent3, isDistriMessage as isDistriMessage4, isDistriArtifact as isDistriArtifact3 } from "@distri/core";
+async function debugStreamEvents(agent, message, options = {}) {
+  const {
+    logEvents = true,
+    logMessages = true,
+    logTiming = true,
+    onEvent
+  } = options;
+  console.log("\u{1F9EA} Starting stream debug for message:", message);
+  const startTime = Date.now();
+  let eventCount = 0;
+  const events = [];
+  try {
+    const userMessage = {
+      messageId: "debug-msg-" + Date.now(),
+      role: "user",
+      parts: [{ kind: "text", text: message }],
+      kind: "message",
+      contextId: "debug-context",
+      taskId: "debug-task"
+    };
+    console.log("\u{1F4E4} Sending message to agent...");
+    const stream = await agent.invokeStream({
+      message: userMessage,
+      metadata: {}
+    });
+    console.log("\u{1F4E1} Stream started, listening for events...");
+    for await (const event of stream) {
+      eventCount++;
+      const eventTime = Date.now() - startTime;
+      events.push(event);
+      if (logEvents) {
+        console.log(`
+\u{1F4E5} Event ${eventCount} (${eventTime}ms):`, {
+          type: event.type || "message",
+          id: event.id || "no-id",
+          role: event.role || "no-role",
+          isEvent: isDistriEvent3(event),
+          isMessage: isDistriMessage4(event),
+          isArtifact: isDistriArtifact3(event)
+        });
+      }
+      if (isDistriEvent3(event)) {
+        const distriEvent = event;
+        if (logEvents) {
+          console.log(`   \u{1F50D} Event data:`, distriEvent.data);
+        }
+        if (distriEvent.type === "text_message_start") {
+          console.log(`   \u{1F680} Started streaming message: ${distriEvent.data.message_id}`);
+        } else if (distriEvent.type === "text_message_content") {
+          const data = distriEvent.data;
+          console.log(`   \u{1F4DD} Content delta: "${data.delta}" (${data.delta?.length} chars)`);
+        } else if (distriEvent.type === "text_message_end") {
+          console.log(`   \u{1F3C1} Finished streaming message: ${distriEvent.data.message_id}`);
+        } else if (distriEvent.type === "tool_calls") {
+          const data = distriEvent.data;
+          console.log(`   \u{1F527} Tool calls: ${data.tool_calls?.length} tools`);
+          data.tool_calls?.forEach((tool, i) => {
+            console.log(`      ${i + 1}. ${tool.tool_name} (${tool.tool_call_id})`);
+          });
+        } else if (distriEvent.type === "tool_results") {
+          const data = distriEvent.data;
+          console.log(`   \u2705 Tool results: ${data.results?.length} results`);
+          data.results?.forEach((result, i) => {
+            console.log(`      ${i + 1}. ${result.tool_name}: ${result.success ? "success" : "failed"}`);
+          });
+        }
+      } else if (isDistriMessage4(event)) {
+        const distriMessage = event;
+        if (logMessages) {
+          const textContent = distriMessage.parts?.filter((p) => p.type === "text")?.map((p) => p.text)?.join(" ") || "";
+          console.log(`   \u{1F4AC} Message: ${distriMessage.role} - "${textContent.substring(0, 100)}${textContent.length > 100 ? "..." : ""}"`);
+        }
+      }
+      onEvent?.(event, eventCount);
+    }
+    const totalTime = Date.now() - startTime;
+    if (logTiming) {
+      console.log(`
+\u23F1\uFE0F  Stream completed in ${totalTime}ms`);
+      console.log(`\u{1F4CA} Total events: ${eventCount}`);
+    }
+    const analysis = analyzeEvents(events);
+    console.log("\n\u{1F4C8} Event Analysis:");
+    console.log("   Event types:", analysis.eventTypes);
+    console.log("   Messages:", analysis.messageCount);
+    console.log("   Streaming events:", analysis.streamingEvents);
+    console.log("   Tool events:", analysis.toolEvents);
+    if (analysis.issues.length > 0) {
+      console.log("\n\u26A0\uFE0F  Potential issues:");
+      analysis.issues.forEach((issue) => console.log(`   - ${issue}`));
+    }
+    return {
+      events,
+      eventCount,
+      totalTime,
+      analysis
+    };
+  } catch (error) {
+    console.error("\u274C Stream debug failed:", error);
+    throw error;
+  }
+}
+function analyzeEvents(events) {
+  const eventTypes = {};
+  let messageCount = 0;
+  const streamingEvents = [];
+  const toolEvents = [];
+  const issues = [];
+  const streamingMessages = /* @__PURE__ */ new Map();
+  events.forEach((event) => {
+    if (isDistriEvent3(event)) {
+      const type = event.type;
+      eventTypes[type] = (eventTypes[type] || 0) + 1;
+      if (type.startsWith("text_message_")) {
+        streamingEvents.push(event);
+        const messageId = event.data.message_id;
+        if (!streamingMessages.has(messageId)) {
+          streamingMessages.set(messageId, { content: 0 });
+        }
+        const msgData = streamingMessages.get(messageId);
+        if (type === "text_message_start") {
+          msgData.start = true;
+        } else if (type === "text_message_content") {
+          msgData.content++;
+        } else if (type === "text_message_end") {
+          msgData.end = true;
+        }
+      }
+      if (type.includes("tool")) {
+        toolEvents.push(event);
+      }
+    } else if (isDistriMessage4(event)) {
+      messageCount++;
+    }
+  });
+  streamingMessages.forEach((data, messageId) => {
+    if (data.start && !data.end) {
+      issues.push(`Streaming message ${messageId} started but never ended`);
+    }
+    if (!data.start && data.content > 0) {
+      issues.push(`Streaming message ${messageId} has content but no start event`);
+    }
+    if (data.content === 0 && data.start) {
+      issues.push(`Streaming message ${messageId} started but has no content events`);
+    }
+  });
+  return {
+    eventTypes,
+    messageCount,
+    streamingEvents: streamingEvents.length,
+    toolEvents: toolEvents.length,
+    streamingMessages: Object.fromEntries(streamingMessages),
+    issues
+  };
+}
+async function quickDebugMessage(agent, message) {
+  return debugStreamEvents(agent, message, {
+    logEvents: true,
+    logMessages: true,
+    logTiming: true
   });
 }
 
@@ -4448,6 +4791,8 @@ export {
   TooltipProvider,
   TooltipTrigger,
   UserMessageRenderer,
+  debugStreamEvents,
+  quickDebugMessage,
   useAgent,
   useAgentDefinitions,
   useChat,

@@ -20,6 +20,8 @@ export interface ChatProps {
   initialMessages?: (DistriChatMessage)[];
   // Theme
   theme?: 'light' | 'dark' | 'auto';
+  // Debug mode for enhanced console logging
+  debug?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -42,6 +44,7 @@ export function Chat({
   wrapOptions,
   initialMessages,
   theme = 'auto',
+  debug = false,
 }: ChatProps) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -71,6 +74,12 @@ export function Chat({
   const plans = useChatStateStore(state => state.plans);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
+  const setDebug = useChatStateStore(state => state.setDebug);
+  
+  // Set debug mode when component mounts or debug prop changes
+  useEffect(() => {
+    setDebug(debug);
+  }, [debug, setDebug]);
 
   // Compute derived state
   const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Eye } from 'lucide-react';
-import { DistriArtifact, DistriPlan, PlanStep, ThoughtStep, ReactStep } from '@distri/core';
+import { Eye, Code, Zap } from 'lucide-react';
+import { DistriArtifact, DistriPlan, PlanStep, ThoughtPlanStep, ActionPlanStep, CodePlanStep, ReactStep } from '@distri/core';
 import { useChatStateStore } from '../../stores/chatStateStore';
 
 export interface PlanRendererProps {
@@ -15,16 +15,16 @@ const formatDuration = (milliseconds: number): string => {
 };
 
 const StepRenderer: React.FC<{ step: PlanStep; index: number }> = ({ step, index }) => {
-  // Only render text for thought and react steps
+
   if (step.type === 'thought') {
-    const thoughtStep = step as ThoughtStep;
+    const thoughtStep = step as ThoughtPlanStep;
     return (
       <div className="border border-border rounded-lg p-4 mb-4">
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground rounded-full text-xs font-medium">
-            {index + 1}
+          <div className="flex items-center justify-center w-6 h-6 bg-blue-500 text-white rounded-full text-xs font-medium">
+            <Eye className="h-3 w-3" />
           </div>
-          <h4 className="font-medium text-foreground">{step.title}</h4>
+          <h4 className="font-medium text-foreground">Thinking</h4>
         </div>
         <div className="text-sm text-muted-foreground pl-8">
           {thoughtStep.message}
@@ -33,15 +33,73 @@ const StepRenderer: React.FC<{ step: PlanStep; index: number }> = ({ step, index
     );
   }
 
-  if (step.type === 'react_step') {
-    const reactStep = step as ReactStep;
+  if (step.type === 'action') {
+    const actionStep = step as ActionPlanStep;
+    const { action } = actionStep;
+    
+    return (
+      <div className="border border-border rounded-lg p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center justify-center w-6 h-6 bg-green-500 text-white rounded-full text-xs font-medium">
+            <Zap className="h-3 w-3" />
+          </div>
+          <h4 className="font-medium text-foreground">
+            {action.tool_name ? `Using ${action.tool_name}` : 'Action'}
+          </h4>
+        </div>
+        <div className="pl-8 space-y-2">
+          {action.tool_name && (
+            <div className="text-sm">
+              <span className="font-medium text-muted-foreground">Tool:</span> {action.tool_name}
+            </div>
+          )}
+          {action.input && (
+            <div className="text-sm">
+              <span className="font-medium text-muted-foreground">Input:</span>
+              <pre className="mt-1 text-xs bg-muted p-2 rounded border overflow-x-auto">
+                {typeof action.input === 'string' ? action.input : JSON.stringify(action.input, null, 2)}
+              </pre>
+            </div>
+          )}
+          {action.prompt && (
+            <div className="text-sm">
+              <span className="font-medium text-muted-foreground">Prompt:</span> {action.prompt}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (step.type === 'code') {
+    const codeStep = step as CodePlanStep;
+    return (
+      <div className="border border-border rounded-lg p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center justify-center w-6 h-6 bg-purple-500 text-white rounded-full text-xs font-medium">
+            <Code className="h-3 w-3" />
+          </div>
+          <h4 className="font-medium text-foreground">Code ({codeStep.language})</h4>
+        </div>
+        <div className="pl-8">
+          <pre className="text-xs bg-muted p-3 rounded border overflow-x-auto">
+            <code>{codeStep.code}</code>
+          </pre>
+        </div>
+      </div>
+    );
+  }
+
+  // Legacy support for react_step
+  if ('type' in step && (step as any).type === 'react_step') {
+    const reactStep = step as unknown as ReactStep;
     return (
       <div className="border border-border rounded-lg p-4 mb-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground rounded-full text-xs font-medium">
             {index + 1}
           </div>
-          <h4 className="font-medium text-foreground">{step.title}</h4>
+          <h4 className="font-medium text-foreground">ReAct Step</h4>
         </div>
         <div className="pl-8 space-y-2">
           <div className="text-sm">
@@ -55,7 +113,7 @@ const StepRenderer: React.FC<{ step: PlanStep; index: number }> = ({ step, index
     );
   }
 
-  // For other step types, don't render anything (too complex)
+  // For other step types, don't render anything
   return null;
 };
 
@@ -95,7 +153,7 @@ export const PlanRenderer: React.FC<PlanRendererProps> = ({
           </div>
         )}
 
-        {/* Steps - only render thought and react steps */}
+        {/* Steps */}
         {plan.steps && plan.steps.length > 0 && (
           <div className="space-y-4">
             {plan.steps.map((step, index) => (

@@ -131,7 +131,7 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@18.3.23)(react@19.1.0)
       react-syntax-highlighter:
-        specifier: ^15.5.0
+        specifier: ^15.6.1
         version: 15.6.1(react@19.1.0)
       sonner:
         specifier: ^2.0.6
@@ -159,7 +159,7 @@ importers:
         specifier: ^18.0.0
         version: 18.3.7(@types/react@18.3.23)
       '@types/react-syntax-highlighter':
-        specifier: ^15.5.0
+        specifier: ^15.5.13
         version: 15.5.13
       autoprefixer:
         specifier: ^10.4.16

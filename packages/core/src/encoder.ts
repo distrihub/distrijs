@@ -1,6 +1,6 @@
 import { Artifact, Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, AssistantWithToolCalls, ToolResults, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent } from './events';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -32,13 +32,19 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
     case 'run_started':
       return {
         type: 'run_started',
-        data: {}
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       } as RunStartedEvent;
 
     case 'run_finished':
       return {
         type: 'run_finished',
-        data: {}
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       } as RunFinishedEvent;
 
     case 'plan_started':
@@ -122,6 +128,22 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         }
       } as TextMessageEndEvent;
 
+    case 'tool_calls':
+      return {
+        type: 'tool_calls',
+        data: {
+          tool_calls: metadata.tool_calls || []
+        }
+      } as ToolCallsEvent;
+
+    case 'tool_results':
+      return {
+        type: 'tool_results',
+        data: {
+          results: metadata.results || []
+        }
+      } as ToolResultsEvent;
+
     default:
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
@@ -148,62 +170,8 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
   const data = part.data as any;
 
   // Handle different artifact types based on the data structure
-  if (data.type === 'llm_response') {
-    // Check if there's content or tool calls to determine the return type
-    const hasContent = data.content && data.content.trim() !== '';
-    const hasToolCalls = data.tool_calls && Array.isArray(data.tool_calls) && data.tool_calls.length > 0;
-    const isExternal = data.is_external;
-
-    if (hasToolCalls) {
-      // If there are only tool calls (no content), return as AssistantWithToolCalls
-      const executionResult: AssistantWithToolCalls = {
-        id: data.id || artifact.artifactId,
-        type: 'llm_response',
-        timestamp: data.timestamp || data.created_at || Date.now(),
-        content: data.content?.trim() || '',
-        tool_calls: data.tool_calls,
-        step_id: data.step_id,
-        success: data.success,
-        rejected: data.rejected,
-        reason: data.reason,
-        is_external: isExternal
-      };
-
-      return executionResult;
-    } else {
-      // If there's content, return as DistriMessage
-      const parts: DistriPart[] = [];
-      // Add text part for content
-      if (hasContent) {
-        parts.push({ type: 'text', text: data.content });
-      }
-
-      const distriMessage: DistriMessage = {
-        id: artifact.artifactId,
-        role: 'assistant',
-        parts: parts,
-        created_at: data.timestamp || data.created_at || new Date().toISOString()
-      };
-      return distriMessage;
-    }
-
-  }
-
-  if (data.type === 'tool_results') {
-    // Convert to ToolResults for tool results
-    const executionResult: ToolResults = {
-      id: data.id || artifact.artifactId,
-      type: 'tool_results',
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      results: data.results || [],
-      step_id: data.step_id,
-      success: data.success,
-      rejected: data.rejected,
-      reason: data.reason
-    };
-
-    return executionResult;
-  }
+  // Note: llm_response and tool_results are no longer used as artifacts
+  // They come as direct events (tool_calls, tool_results) instead
 
   if (data.type === 'plan') {
     // Convert to DistriPlan for plan artifacts

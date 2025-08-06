@@ -27,12 +27,15 @@ export * from './hooks/useChatMessages';
 
 // Utility exports
 export * from './utils/toolWrapper';
+export * from './utils/debugStream';
 
 // UI Component exports (for customization)
 export * from './components/ui';
 
 // Renderer exports (for customization)
 export * from './components/renderers';
+
+// Debug utilities (use debugStreamEvents function for debugging)
 
 // Default styles
 import './globals.css';

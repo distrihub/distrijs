@@ -1,5 +1,9 @@
 import React from 'react';
 import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
+// @ts-ignore
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+// @ts-ignore  
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export interface ExtractedContent {
   text: string;
@@ -58,29 +62,133 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
 }
 
 export function renderTextContent(content: ExtractedContent): React.ReactNode {
-  const { text, hasMarkdown, hasCode, hasLinks, hasImages } = content;
+  const { text } = content;
 
   if (!text || !text.trim()) return null;
 
-  // For now, return plain text - in the future this could be enhanced with markdown rendering
-  if (hasMarkdown || hasCode || hasLinks || hasImages) {
-    // TODO: Add markdown rendering library like react-markdown
-    return React.createElement('pre', { className: 'whitespace-pre-wrap text-sm' }, text);
+  return parseAndRenderContent(text);
+}
+
+function parseAndRenderContent(text: string): React.ReactNode {
+  const elements: React.ReactNode[] = [];
+  let currentIndex = 0;
+  let elementKey = 0;
+
+  // Find ALL code blocks (including xml ones that might contain thought tags)
+  const codeBlockPattern = /```([\w]*)?[ \t]*\n?([\s\S]*?)```/g;
+  const codeMatches: Array<{
+    start: number;
+    end: number;
+    content: string;
+    language: string;
+    shouldRender: boolean;
+  }> = [];
+
+  let codeMatch;
+  while ((codeMatch = codeBlockPattern.exec(text)) !== null) {
+    const language = codeMatch[1] || 'typescript';
+    const content = codeMatch[2].trim();
+    
+    // If this is an XML code block that only contains thought tags, skip it entirely
+    const isXmlWithOnlyThoughts = language === 'xml' && 
+      /<thought>[\s\S]*?<\/thought>/.test(content) && 
+      content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim() === '';
+    
+    codeMatches.push({
+      start: codeMatch.index,
+      end: codeMatch.index + codeMatch[0].length,
+      content: content,
+      language: language,
+      shouldRender: !isXmlWithOnlyThoughts && (language === 'typescript' || language === 'ts' || language === 'javascript' || language === 'js')
+    });
   }
 
-  // Split text into paragraphs and render each as a separate paragraph
+  // Process the text
+  for (const match of codeMatches) {
+    // Add text before the code block, cleaning out thought tags
+    if (currentIndex < match.start) {
+      let textBefore = text.slice(currentIndex, match.start);
+      // Remove thought tags from this text segment
+      textBefore = textBefore.replace(/<thought>[\s\S]*?<\/thought>/g, '');
+      textBefore = textBefore.trim();
+      if (textBefore) {
+        elements.push(renderPlainText(textBefore, elementKey++));
+      }
+    }
+
+    // Add the code block only if it should be rendered
+    if (match.shouldRender) {
+      elements.push(renderCodeBlock(match.content, match.language, elementKey++));
+    }
+    
+    currentIndex = match.end;
+  }
+
+  // Add remaining text after all code blocks, cleaning out thought tags
+  if (currentIndex < text.length) {
+    let remainingText = text.slice(currentIndex);
+    // Remove thought tags from remaining text
+    remainingText = remainingText.replace(/<thought>[\s\S]*?<\/thought>/g, '');
+    remainingText = remainingText.trim();
+    if (remainingText) {
+      elements.push(renderPlainText(remainingText, elementKey++));
+    }
+  }
+
+  // If no elements were created, just clean the entire text and render
+  if (elements.length === 0) {
+    let cleanText = text.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim();
+    // Also remove xml code blocks that only contained thought tags
+    cleanText = cleanText.replace(/```xml[\s\S]*?```/g, '').trim();
+    if (cleanText) {
+      return renderPlainText(cleanText, 0);
+    }
+    return null;
+  }
+
+  return React.createElement('div', { className: 'space-y-3' }, ...elements);
+}
+
+
+function renderCodeBlock(content: string, language: string, key: number): React.ReactNode {
+  return React.createElement('div', {
+    key,
+    className: 'rounded-md overflow-hidden my-3'
+  }, 
+    React.createElement(SyntaxHighlighter, {
+      language: language === 'ts' ? 'typescript' : language,
+      style: oneDark,
+      className: 'text-sm',
+      showLineNumbers: false,
+      wrapLines: true,
+      customStyle: {
+        margin: 0,
+        padding: '1rem',
+        fontSize: '0.875rem',
+        borderRadius: '0.375rem'
+      }
+    }, content)
+  );
+}
+
+function renderPlainText(text: string, key: number): React.ReactNode {
+  // Split text into paragraphs
   const paragraphs = text.split('\n').filter(p => p.trim());
 
   if (paragraphs.length === 1) {
-    return React.createElement('p', { className: 'text-sm leading-relaxed' }, text);
+    return React.createElement('p', {
+      key,
+      className: 'text-sm leading-relaxed'
+    }, text.trim());
   } else {
-    return React.createElement('div', { className: 'space-y-2' },
-      paragraphs.map((paragraph, index) =>
-        React.createElement('p', {
-          key: index,
-          className: 'text-sm leading-relaxed'
-        }, paragraph)
-      )
-    );
+    return React.createElement('div', {
+      key,
+      className: 'space-y-2'
+    }, paragraphs.map((paragraph, index) =>
+      React.createElement('p', {
+        key: `${key}-${index}`,
+        className: 'text-sm leading-relaxed'
+      }, paragraph.trim())
+    ));
   }
 } 
