@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Button } from '../../ui/button';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { UiToolProps } from '@/types';
-import { ToolResult } from '@distri/core';
+import { ToolResult, ToolCall } from '@distri/core';
 
 export const ApprovalToolCall: React.FC<UiToolProps> = ({
   toolCall,
+  toolCallState,
   completeTool
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -14,7 +15,7 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
   const toolCallsToApprove = input.tool_calls || [];
 
   const handleResponse = async (approved: boolean) => {
-    if (isProcessing || status === 'completed') return;
+    if (isProcessing || toolCallState?.status === 'completed') return;
 
     setIsProcessing(true);
     const result: ToolResult = {
@@ -28,7 +29,7 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
     completeTool(result);
   };
 
-  if (status === 'completed') {
+  if (toolCallState?.status === 'completed') {
     const result = input.result || {};
     return (
       <div className="border rounded-lg p-4 bg-muted/50">
@@ -60,7 +61,7 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
         <div className="mb-4">
           <p className="text-xs text-muted-foreground mb-2">Tool calls requiring approval:</p>
           <div className="space-y-1">
-            {toolCallsToApprove.map((tc: any, index: number) => (
+            {toolCallsToApprove.map((tc: ToolCall, index: number) => (
               <div key={index} className="text-xs bg-muted p-2 rounded">
                 <span className="font-mono">{tc.tool_name}</span>
               </div>

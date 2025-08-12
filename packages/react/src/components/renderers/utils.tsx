@@ -1,5 +1,10 @@
 import React from 'react';
 import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
+// @ts-ignore
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+// @ts-ignore  
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import TextRenderer from './TextRenderer';
 
 export interface ExtractedContent {
   text: string;
@@ -7,7 +12,7 @@ export interface ExtractedContent {
   hasCode: boolean;
   hasLinks: boolean;
   hasImages: boolean;
-  rawContent: any;
+  rawContent: DistriMessage | DistriEvent | DistriArtifact;
 }
 
 export function extractContent(message: DistriMessage | DistriEvent | DistriArtifact): ExtractedContent {
@@ -23,8 +28,8 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
 
     // Extract all text parts and join them properly
     const textParts = distriMessage.parts
-      ?.filter(p => p.type === 'text' && (p as any).text)
-      ?.map(p => (p as any).text)
+      ?.filter(p => p.type === 'text' && (p as { type: 'text'; data: string }).data)
+      ?.map(p => (p as { type: 'text'; data: string }).data)
       ?.filter(text => text && text.trim()) || [];
 
     text = textParts.join(' ').trim();
@@ -58,29 +63,9 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
 }
 
 export function renderTextContent(content: ExtractedContent): React.ReactNode {
-  const { text, hasMarkdown, hasCode, hasLinks, hasImages } = content;
+  const { text } = content;
 
   if (!text || !text.trim()) return null;
 
-  // For now, return plain text - in the future this could be enhanced with markdown rendering
-  if (hasMarkdown || hasCode || hasLinks || hasImages) {
-    // TODO: Add markdown rendering library like react-markdown
-    return React.createElement('pre', { className: 'whitespace-pre-wrap text-sm' }, text);
-  }
-
-  // Split text into paragraphs and render each as a separate paragraph
-  const paragraphs = text.split('\n').filter(p => p.trim());
-
-  if (paragraphs.length === 1) {
-    return React.createElement('p', { className: 'text-sm leading-relaxed' }, text);
-  } else {
-    return React.createElement('div', { className: 'space-y-2' },
-      paragraphs.map((paragraph, index) =>
-        React.createElement('p', {
-          key: index,
-          className: 'text-sm leading-relaxed'
-        }, paragraph)
-      )
-    );
-  }
-} 
+  return <TextRenderer content={content} />;
+}

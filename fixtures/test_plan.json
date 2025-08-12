@@ -1,0 +1,21 @@
+{
+  "id": "a6b2501b-43d1-48cd-98f5-cac6a7e5ca52",
+  "type": "plan",
+  "timestamp": 1754423943748,
+  "reasoning": "",
+  "steps": [
+    {
+      "id": "8a05c4a8-0413-4ce3-b4eb-7ede6d47fdac",
+      "type": "thought",
+      "message": "I need to find information specifically about the founders of LangDB. I will start by searching the web with the query \"founders of LangDB\" to get relevant results."
+    },
+    {
+      "id": "223fdf84-cc48-47d8-a0e7-ea084dce2899",
+      "type": "action",
+      "action": {
+        "tool_name": "search",
+        "input": "{\"query\":\"founders of LangDB\"}"
+      }
+    }
+  ]
+}
