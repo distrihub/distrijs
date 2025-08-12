@@ -6,10 +6,10 @@ import { CheckCircle, XCircle, Send } from 'lucide-react';
 interface ToolResultRendererProps {
   toolCallId: string;
   toolName: string;
-  result: any;
+  result: string | number | boolean | null | object;
   success: boolean;
   error?: string;
-  onSendResponse?: (toolCallId: string, response: any) => void;
+  onSendResponse?: (toolCallId: string, response: string | number | boolean | null | object) => void;
   className?: string;
 }
 

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Agent, DistriFnTool } from '@distri/core';
+import { Agent } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, UiToolProps } from '@/types';
 import { ToastToolCall } from '@/components/renderers/tools';
-import { wrapTools, WrapToolOptions } from '../utils/toolWrapper';
+import { WrapToolOptions } from '../utils/toolWrapper';
 import { useChatStateStore } from '../stores/chatStateStore';
 
 export interface UseToolsOptions {
