@@ -61,18 +61,51 @@ export interface DistriPlan {
 
 export interface BasePlanStep {
   id: string;
-  title: string;
 }
 
+export interface ThoughtPlanStep extends BasePlanStep {
+  type: 'thought';
+  message: string;
+}
+
+export interface ActionPlanStep extends BasePlanStep {
+  type: 'action';
+  action: PlanAction;
+}
+
+export interface CodePlanStep extends BasePlanStep {
+  type: 'code';
+  code: string;
+  language: string;
+}
+
+export interface FinalResultPlanStep extends BasePlanStep {
+  type: 'final_result';
+  content: string;
+  tool_calls: any[]; // Vec<ToolCall> in Rust
+}
+
+// Action can be either a tool call or an LLM call
+export interface PlanAction {
+  tool_name?: string;
+  input?: string;
+  prompt?: string;
+  context?: any[];
+  tool_calling_config?: any;
+}
+
+export type PlanStep = ThoughtPlanStep | ActionPlanStep | CodePlanStep | FinalResultPlanStep;
+
+// Legacy types for backward compatibility
 export interface LlmPlanStep extends BasePlanStep {
   type: 'llm_call';
   prompt: string;
-  context: any[]; // Vec<Message> in Rust
+  context: any[];
 }
 
 export interface BatchToolCallsStep extends BasePlanStep {
   type: 'batch_tool_calls';
-  tool_calls: any[]; // Vec<ToolCall> in Rust
+  tool_calls: any[];
 }
 
 export interface ThoughtStep extends BasePlanStep {
@@ -85,14 +118,6 @@ export interface ReactStep extends BasePlanStep {
   thought: string;
   action: string;
 }
-
-export interface FinalResultStep extends BasePlanStep {
-  type: 'final_result';
-  content: string;
-  tool_calls: any[]; // Vec<ToolCall> in Rust
-}
-
-export type PlanStep = LlmPlanStep | BatchToolCallsStep | ThoughtStep | ReactStep | FinalResultStep;
 
 export type DistriArtifact = AssistantWithToolCalls | ToolResults | GenericArtifact | DistriPlan;
 
@@ -113,17 +138,12 @@ export interface InvokeContext {
  * Distri message parts - equivalent to Rust enum Part
  */
 
-export type TextPart = { type: 'text'; text: string }
-export type CodeObservationPart = { type: 'code_observation'; thought: string; code: string }
-
-export type ImageUrlPart = { type: 'image_url'; image: FileUrl }
-export type ImageBytesPart = { type: 'image_bytes'; image: FileBytes }
-export type ImagePart = ImageUrlPart | ImageBytesPart
+export type TextPart = { type: 'text'; data: string }
+export type ToolCallPart = { type: 'tool_call'; data: ToolCall }
+export type ToolResultPart = { type: 'tool_result'; data: ToolResult }
+export type ImagePart = { type: 'image'; data: FileType }
 export type DataPart = { type: 'data'; data: any }
-export type ToolCallPart = { type: 'tool_call'; tool_call: ToolCall }
-export type ToolResultPart = { type: 'tool_result'; tool_result: ToolResult }
-export type PlanPart = { type: 'plan'; plan: string }
-export type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCallPart | ToolResultPart | PlanPart;
+export type DistriPart = TextPart | ToolCallPart | ToolResultPart | ImagePart | DataPart;
 
 
 
@@ -153,6 +173,8 @@ export interface DistriBaseTool {
   type: 'function' | 'ui';
   description: string;
   input_schema: object; // JSON Schema
+  is_final?: boolean;
+  autoExecute?: boolean;
 }
 
 export interface DistriFnTool extends DistriBaseTool {

@@ -4,6 +4,8 @@ import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
+import { ToolCallRenderer } from './renderers/ToolCallRenderer';
+
 import { useChatStateStore } from '../stores/chatStateStore';
 import { WrapToolOptions } from '../utils/toolWrapper';
 
@@ -20,6 +22,8 @@ export interface ChatProps {
   initialMessages?: (DistriChatMessage)[];
   // Theme
   theme?: 'light' | 'dark' | 'auto';
+  // Debug mode for enhanced console logging
+  debug?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -42,6 +46,7 @@ export function Chat({
   wrapOptions,
   initialMessages,
   theme = 'auto',
+  debug = false,
 }: ChatProps) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -71,6 +76,12 @@ export function Chat({
   const plans = useChatStateStore(state => state.plans);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
+  const setDebug = useChatStateStore(state => state.setDebug);
+
+  // Set debug mode when component mounts or debug prop changes
+  useEffect(() => {
+    setDebug(debug);
+  }, [debug, setDebug]);
 
   // Compute derived state
   const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
@@ -157,13 +168,44 @@ export function Chat({
       }
     });
 
+    // Render standalone tool calls that aren't part of any message
+    const standaloneToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
+      toolCall.status === 'pending' || toolCall.status === 'running'
+    );
+
+    if (standaloneToolCalls.length > 0) {
+      console.log('🔧 Found standalone tool calls:', standaloneToolCalls.length, standaloneToolCalls.map(tc => ({ name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
+    }
+
+    standaloneToolCalls.forEach((toolCall) => {
+      if (toolCall.component) {
+        // Render the tool call component directly
+        elements.push(
+          <RendererWrapper key={`standalone-tool-${toolCall.tool_call_id}`}>
+            {toolCall.component}
+          </RendererWrapper>
+        );
+      } else {
+        // Fallback: render with ToolCallRenderer
+        console.log('🔧 Rendering standalone tool call with ToolCallRenderer:', toolCall.tool_name);
+        elements.push(
+          <RendererWrapper key={`standalone-fallback-${toolCall.tool_call_id}`}>
+            <ToolCallRenderer
+              toolCall={toolCall}
+              isExpanded={expandedTools.has(toolCall.tool_call_id)}
+              onToggle={() => toggleToolExpansion(toolCall.tool_call_id)}
+            />
+          </RendererWrapper>
+        );
+      }
+    });
+
     return elements;
   };
 
   // Render thinking indicator separately at the end
   const renderThinkingIndicator = () => {
     if (streamingIndicator) {
-      console.log('Rendering thinking indicator:', streamingIndicator);
       return (
         <RendererWrapper key={`thinking-${streamingIndicator}`}>
           <ThinkingRenderer
@@ -174,6 +216,7 @@ export function Chat({
     }
     return null;
   };
+
 
   return (
     <div className={`flex flex-col h-full ${getThemeClasses()}`}>

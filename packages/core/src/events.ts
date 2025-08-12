@@ -3,12 +3,18 @@ export type Role = 'user' | 'system' | 'assistant';
 // Each event is a concrete type
 export interface RunStartedEvent {
   type: 'run_started';
-  data: {}
+  data: {
+    runId?: string;
+    taskId?: string;
+  }
 }
 
 export interface RunFinishedEvent {
   type: 'run_finished';
-  data: {}
+  data: {
+    runId?: string;
+    taskId?: string;
+  }
 }
 
 export interface RunErrorEvent {
@@ -147,6 +153,30 @@ export interface FeedbackReceivedEvent {
   };
 }
 
+export interface ToolCallsEvent {
+  type: 'tool_calls';
+  data: {
+    tool_calls: Array<{
+      tool_call_id: string;
+      tool_name: string;
+      input: any;
+    }>;
+  };
+}
+
+export interface ToolResultsEvent {
+  type: 'tool_results';
+  data: {
+    results: Array<{
+      tool_call_id: string;
+      tool_name: string;
+      result: any;
+      success?: boolean;
+      error?: string;
+    }>;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -167,4 +197,6 @@ export type DistriEvent =
   | StepCompletedEvent
   | TaskArtifactEvent
   | AgentHandoverEvent
-  | FeedbackReceivedEvent;
+  | FeedbackReceivedEvent
+  | ToolCallsEvent
+  | ToolResultsEvent;

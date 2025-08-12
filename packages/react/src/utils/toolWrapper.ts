@@ -24,8 +24,7 @@ export function wrapFnToolAsUiTool(
     component: (props: UiToolProps) => {
       return React.createElement(DefaultToolActions, {
         ...props,
-        toolHandler: fnTool.handler,
-        autoExecute
+        tool: { ...fnTool, autoExecute: fnTool.autoExecute || autoExecute },
       });
     }
   };
