@@ -157,7 +157,7 @@ export function useChat({
 
     try {
       const parts: DistriPart[] = typeof content === 'string'
-        ? [{ type: 'text', text: content }]
+        ? [{ type: 'text', data: content }]
         : content;
 
       const distriMessage = DistriClient.initDistriMessage('user', parts);
@@ -213,7 +213,7 @@ export function useChat({
 
     try {
       const parts: DistriPart[] = typeof content === 'string'
-        ? [{ type: 'text', text: content }]
+        ? [{ type: 'text', data: content }]
         : content;
 
       const distriMessage = DistriClient.initDistriMessage(role, parts);
@@ -257,6 +257,7 @@ export function useChat({
 
   // Handle external tool responses
   const handleExternalToolResponses = useCallback(async () => {
+    setStreaming(true);
     const externalResponses = getExternalToolResponses();
     // Only send responses if there are actual external tool calls that need responses
     // and we're not currently streaming
@@ -267,7 +268,7 @@ export function useChat({
         // Construct tool result parts
         const toolResultParts: DistriPart[] = externalResponses.map(result => ({
           type: 'tool_result',
-          tool_result: {
+          data: {
             tool_call_id: result.tool_call_id,
             tool_name: result.tool_name,
             result: result.result,
@@ -275,15 +276,21 @@ export function useChat({
             error: result.error
           }
         }));
+        toolResultParts.push({
+          type: 'text',
+          data: 'Tool execution completed. Please continue.'
+        });
 
         // Send tool results back to agent
-        await sendMessageStream(toolResultParts, 'tool');
+        await sendMessageStream(toolResultParts, 'user');
 
         // Clear completed tool results
         chatState.clearToolResults();
       } catch (err) {
         console.error('Failed to send external tool responses:', err);
         setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
+      } finally {
+        setStreaming(false);
       }
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);

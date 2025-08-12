@@ -11,8 +11,6 @@ import {
   isDistriMessage,
   DistriChatMessage,
   PlanStep,
-  ToolCallsEvent,
-  ToolResultsEvent,
   RunStartedEvent,
   RunFinishedEvent,
 } from '@distri/core';
@@ -197,10 +195,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
     set((state: ChatState) => {
       const messages = [...state.messages]; // Create a shallow copy of the array
-      
+
       if (isDistriEvent(message)) {
         const event = message as DistriEvent;
-        
+
         if (event.type === 'text_message_start') {
           // Create a new message with the specified ID and role
           const messageId = event.data.message_id;
@@ -209,12 +207,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           const newDistriMessage: DistriMessage = {
             id: messageId,
             role,
-            parts: [{ type: 'text', text: '' }],
+            parts: [{ type: 'text', data: '' }],
             created_at: new Date().toISOString()
           };
 
           messages.push(newDistriMessage);
-          
+
         } else if (event.type === 'text_message_content') {
           // Find existing message and append delta to text part
           const messageId = event.data.message_id;
@@ -229,13 +227,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           if (existingIndex >= 0) {
             const existing = messages[existingIndex] as DistriMessage;
             let textPart = existing.parts.find(p => p.type === 'text') as any;
-            
+
             if (!textPart) {
-              textPart = { type: 'text', text: '' };
+              textPart = { type: 'text', data: '' };
               existing.parts.push(textPart);
             }
-            
-            textPart.text += delta;
+
+            textPart.data += delta;
           } else {
             // Only log errors for streaming issues
             if (isDebugEnabled) {
@@ -243,20 +241,20 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               console.log('📋 Available message IDs:', messages.filter(isDistriMessage).map(m => (m as DistriMessage).id));
             }
           }
-          
+
         } else if (event.type === 'text_message_end') {
           // Message is complete, no additional action needed
           const messageId = event.data.message_id;
-          
+
         } else {
           // Don't add state-only events to messages (they only update store state)
           const stateOnlyEvents = [
             'run_started', 'run_finished', 'run_error',
-            'plan_started', 'plan_finished', 
+            'plan_started', 'plan_finished',
             'step_started', 'step_completed',
             'tool_calls', 'tool_results'
           ];
-          
+
           if (!stateOnlyEvents.includes(event.type)) {
             // For other event types, just append
             messages.push(message);
@@ -281,12 +279,16 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   processMessage: (message: DistriChatMessage) => {
     const timestamp = Date.now(); // Default fallback
     const isDebugEnabled = get().debug;
-    
+
+    if (isDebugEnabled) {
+      console.log("🔧 Processing message:");
+      console.log(message);
+    }
     get().addMessage(message);
 
     if (isDistriEvent(message)) {
       const event = message as DistriEvent;
-      
+
       // Debug store state changes for visual indicators
       if (isDebugEnabled && ['run_started', 'run_finished', 'plan_started', 'plan_finished', 'text_message_start'].includes(event.type)) {
         console.log('🏪 STORE BEFORE:', {
@@ -297,17 +299,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           currentPlanId: get().currentPlanId
         });
       }
-      
+
       switch (message.type) {
         case 'run_started':
           const runStartedEvent = event as RunStartedEvent;
           const runId = runStartedEvent.data.runId;
           const taskId = runStartedEvent.data.taskId;
-          
+
           if (isDebugEnabled) {
             console.log('🏪 run_started with IDs:', { runId, taskId });
           }
-          
+
           // Create or update task using the actual taskId from the event
           if (taskId) {
             get().updateTask(taskId, {
@@ -319,17 +321,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               metadata: event.data,
             });
           }
-          
+
           // Track current IDs
-          set({ 
+          set({
             currentRunId: runId,
-            currentTaskId: taskId 
+            currentTaskId: taskId
           });
-          
+
           // Show "Agent is starting..." indicator
           get().setStreamingIndicator('typing');
           set({ isStreaming: true });
-          
+
           if (isDebugEnabled) {
             console.log('🏪 STORE AFTER run_started:', {
               streamingIndicator: get().streamingIndicator,
@@ -344,11 +346,11 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           const runFinishedEvent = event as RunFinishedEvent;
           const finishedRunId = runFinishedEvent.data.runId;
           const finishedTaskId = runFinishedEvent.data.taskId;
-          
+
           if (isDebugEnabled) {
             console.log('🏪 run_finished with IDs:', { runId: finishedRunId, taskId: finishedTaskId });
           }
-          
+
           // Update the specific task that finished
           if (finishedTaskId) {
             get().updateTask(finishedTaskId, {
@@ -356,8 +358,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
-          
+
+          console.log('🔧 Resolving tool calls after run_finished');
+          console.log('🔧 Pending tool calls:', get().getPendingToolCalls().map(tc => ({ id: tc.tool_call_id, name: tc.tool_name, status: tc.status })));
+          console.log('🔧 Available tools:', get().tools?.map(t => t.name));
           get().resolveToolCalls();
+          console.log('🔧 Tool calls after resolve:', Array.from(get().toolCalls.entries()).map(([id, tc]) => ({ id, name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
+
           // Clear all indicators and stop loading when run is finished
           get().setStreamingIndicator(undefined);
           set({ isStreaming: false });
@@ -365,6 +372,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
 
         case 'run_error':
+          console.log('🔧 run_error');
           const errorTaskId = get().currentTaskId;
           if (errorTaskId) {
             get().updateTask(errorTaskId, {
@@ -373,7 +381,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               error: message.data?.message || 'Unknown error',
             });
           }
+
+          console.log('🔧 Resolving tool calls after run_error');
+          console.log('🔧 Pending tool calls:', get().getPendingToolCalls().map(tc => ({ id: tc.tool_call_id, name: tc.tool_name, status: tc.status })));
+          console.log('🔧 Available tools:', get().tools?.map(t => t.name));
           get().resolveToolCalls();
+          console.log('🔧 Tool calls after resolve:', Array.from(get().toolCalls.entries()).map(([id, tc]) => ({ id, name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
+
           // Clear all indicators and stop loading when run errors
           get().setStreamingIndicator(undefined);
           set({ isStreaming: false });
@@ -383,11 +397,11 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           const planId = `plan_${Date.now()}`;
           const currentRunId = get().currentRunId;
           const currentTaskId = get().currentTaskId;
-          
+
           if (isDebugEnabled) {
             console.log('🏪 plan_started for run/task:', { currentRunId, currentTaskId });
           }
-          
+
           get().updatePlan(planId, {
             id: planId,
             runId: currentRunId,     // Link to the current run
@@ -399,7 +413,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           set({ currentPlanId: planId });
           // Switch to planning indicator and stop streaming
           get().setStreamingIndicator('thinking');
-          
+
           if (isDebugEnabled) {
             console.log('🏪 STORE AFTER plan_started:', {
               streamingIndicator: get().streamingIndicator,
@@ -459,7 +473,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'text_message_start':
           // Start generating response indicator and streaming
           get().setStreamingIndicator('typing');
-          
+
           if (isDebugEnabled) {
             console.log('🏪 STORE AFTER text_message_start:', {
               streamingIndicator: get().streamingIndicator
@@ -498,13 +512,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'tool_calls':
           // Handle direct tool calls event
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
+            console.log('🔧 Processing tool_calls event:', message.data.tool_calls);
             message.data.tool_calls.forEach(toolCall => {
+              console.log('🔧 Creating tool call:', toolCall.tool_name, toolCall.tool_call_id);
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
                 input: toolCall.input,
               }, timestamp);
             });
+            console.log('🔧 Tool calls after init:', Array.from(get().toolCalls.entries()));
+            // Don't resolve immediately - wait for run completion
           }
           break;
 
@@ -550,7 +568,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               status: 'completed',
               endTime: message.timestamp || timestamp,
             });
-            
+
             // Extract tool calls from action steps in the plan
             if (message.steps && Array.isArray(message.steps)) {
               message.steps.forEach(step => {
@@ -561,7 +579,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                     tool_name: step.action.tool_name,
                     input: step.action.input || {},
                   };
-                  
+
                   get().initToolCall(toolCall, message.timestamp || timestamp);
                 }
               });
@@ -642,7 +660,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       const component = React.createElement(MissingTool, {
         toolCall,
         toolCallState,
-        completeTool: completeToolFn
+        completeTool: completeToolFn,
+        tool: {
+          name: toolCall.tool_name,
+          type: 'function',
+          description: 'Unknown tool',
+          input_schema: {},
+          autoExecute: false,
+        } as DistriFnTool,
       });
 
       get().updateToolCallStatus(toolCall.tool_call_id, {
@@ -662,17 +687,19 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       component = uiTool.component({
         toolCall,
         toolCallState,
-        completeTool: completeToolFn
+        completeTool: completeToolFn,
+        tool: distriTool
       });
     } else if (distriTool?.type === 'function') {
       // For DistriFnTool, automatically create DefaultToolActions component
-      const fnTool = distriTool as DistriFnTool;
+      let fnTool = distriTool as DistriFnTool;
+      fnTool.autoExecute = fnTool.autoExecute || state.wrapOptions?.autoExecute;
+
       component = React.createElement(DefaultToolActions, {
         toolCall,
         toolCallState: state.toolCalls.get(toolCall.tool_call_id),
         completeTool: completeToolFn,
-        toolHandler: fnTool.handler,
-        autoExecute: state.wrapOptions?.autoExecute ?? false
+        tool: fnTool,
       });
     }
     get().updateToolCallStatus(toolCall.tool_call_id, {
@@ -832,6 +859,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set({ agent });
   },
   setTools: (tools: DistriAnyTool[]) => {
+    console.log('🔧 Setting tools in store:', tools?.map(t => ({ name: t.name, type: t.type })));
     set({ tools });
   },
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {

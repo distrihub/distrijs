@@ -607,28 +607,24 @@ function processA2AMessagesData(data) {
 function convertA2APartToDistri(a2aPart) {
   switch (a2aPart.kind) {
     case "text":
-      return { type: "text", text: a2aPart.text };
+      return { type: "text", data: a2aPart.text };
     case "file":
       if ("uri" in a2aPart.file) {
-        return { type: "image_url", image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+        return { type: "image", data: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
       } else {
-        return { type: "image_bytes", image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+        return { type: "image", data: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
       }
     case "data":
       switch (a2aPart.data.part_type) {
         case "tool_call":
-          return { type: "tool_call", tool_call: a2aPart.data };
+          return { type: "tool_call", data: a2aPart.data };
         case "tool_result":
-          return { type: "tool_result", tool_result: a2aPart.data };
-        case "code_observation":
-          return { type: "code_observation", thought: a2aPart.data.thought, code: a2aPart.data.code };
-        case "plan":
-          return { type: "plan", plan: a2aPart.data.plan };
+          return { type: "tool_result", data: a2aPart.data };
         default:
           return { type: "data", data: a2aPart.data };
       }
     default:
-      return { type: "text", text: JSON.stringify(a2aPart) };
+      return { type: "text", data: JSON.stringify(a2aPart) };
   }
 }
 function convertDistriMessageToA2A(distriMessage, context) {
@@ -657,42 +653,46 @@ function convertDistriMessageToA2A(distriMessage, context) {
   };
 }
 function convertDistriPartToA2A(distriPart) {
+  console.log("Converting DistriPart to A2A:", JSON.stringify(distriPart, null, 2));
+  let result;
   switch (distriPart.type) {
     case "text":
-      return { kind: "text", text: distriPart.text };
-    case "image_url":
-      return { kind: "file", file: { mimeType: distriPart.image.mime_type, uri: distriPart.image.url } };
-    case "image_bytes":
-      return { kind: "file", file: { mimeType: distriPart.image.mime_type, bytes: distriPart.image.data } };
+      result = { kind: "text", text: distriPart.data };
+      break;
+    case "image":
+      if ("url" in distriPart.data) {
+        result = { kind: "file", file: { mimeType: distriPart.data.mime_type, uri: distriPart.data.url } };
+      } else {
+        result = { kind: "file", file: { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data } };
+      }
+      break;
     case "tool_call":
-      return { kind: "data", data: { part_type: "tool_call", tool_call: distriPart.tool_call } };
+      result = { kind: "data", data: { part_type: "tool_call", ...distriPart.data } };
+      break;
     case "tool_result":
-      let val = {
+      result = {
         kind: "data",
         data: {
-          tool_call_id: distriPart.tool_result.tool_call_id,
-          tool_name: distriPart.tool_result.tool_name,
-          result: distriPart.tool_result.result,
-          part_type: "tool_result"
+          part_type: "tool_result",
+          ...distriPart.data
         }
       };
-      return val;
-    case "code_observation":
-      return { kind: "data", data: { ...distriPart, part_type: "code_observation" } };
-    case "plan":
-      return { kind: "data", data: { ...distriPart, part_type: "plan" } };
+      break;
     case "data":
-      return { kind: "data", ...distriPart.data };
+      result = { kind: "data", data: distriPart.data };
+      break;
   }
+  console.log("Converted A2A Part:", JSON.stringify(result, null, 2));
+  return result;
 }
 function extractTextFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "text").map((part) => part.text).join("\n");
+  return message.parts.filter((part) => part.type === "text").map((part) => part.data).join("\n");
 }
 function extractToolCallsFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "tool_call").map((part) => part.tool_call);
+  return message.parts.filter((part) => part.type === "tool_call").map((part) => part.data);
 }
 function extractToolResultsFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "tool_result").map((part) => part.tool_result);
+  return message.parts.filter((part) => part.type === "tool_result").map((part) => part.data);
 }
 
 // src/distri-client.ts

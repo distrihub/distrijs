@@ -1,5 +1,5 @@
 import { Artifact, Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, CodeObservationPart, PlanPart, ToolCallPart, ToolResultPart, DataPart, FileUrl, FileBytes, ImageBytesPart, ImageUrlPart, DistriArtifact, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriArtifact, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
@@ -270,30 +270,26 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
 
   switch (a2aPart.kind) {
     case 'text':
-      return { type: 'text', text: a2aPart.text };
+      return { type: 'text', data: a2aPart.text };
     case 'file':
       if ('uri' in a2aPart.file) {
-        return { type: 'image_url', image: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } as FileUrl } as ImageUrlPart;
+        return { type: 'image', data: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } as FileUrl };
       }
       else {
-        return { type: 'image_bytes', image: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } as FileBytes } as ImageBytesPart;
+        return { type: 'image', data: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } as FileBytes };
       }
     case 'data':
       switch (a2aPart.data.part_type) {
         case 'tool_call':
-          return { type: 'tool_call', tool_call: a2aPart.data as unknown as ToolCall } as ToolCallPart;
+          return { type: 'tool_call', data: a2aPart.data as unknown as ToolCall };
         case 'tool_result':
-          return { type: 'tool_result', tool_result: a2aPart.data as unknown as ToolResult } as ToolResultPart;
-        case 'code_observation':
-          return { type: 'code_observation', thought: a2aPart.data.thought, code: a2aPart.data.code } as CodeObservationPart;
-        case 'plan':
-          return { type: 'plan', plan: a2aPart.data.plan } as PlanPart;
+          return { type: 'tool_result', data: a2aPart.data as unknown as ToolResult };
         default:
-          return { type: 'data', data: a2aPart.data } as DataPart;
+          return { type: 'data', data: a2aPart.data };
       }
     default:
       // For unknown parts, convert to text by stringifying
-      return { type: 'text', text: JSON.stringify(a2aPart) };
+      return { type: 'text', data: JSON.stringify(a2aPart) };
   }
 }
 
@@ -333,32 +329,39 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
  * Converts a DistriPart to an A2A Part
  */
 export function convertDistriPartToA2A(distriPart: DistriPart): Part {
+  console.log('Converting DistriPart to A2A:', JSON.stringify(distriPart, null, 2));
+  
+  let result: Part;
+  
   switch (distriPart.type) {
     case 'text':
-      return { kind: 'text', text: distriPart.text };
-    case 'image_url':
-      return { kind: 'file', file: { mimeType: distriPart.image.mime_type, uri: distriPart.image.url } as FileWithUri };
-    case 'image_bytes':
-      return { kind: 'file', file: { mimeType: distriPart.image.mime_type, bytes: distriPart.image.data } as FileWithBytes };
+      result = { kind: 'text', text: distriPart.data };
+      break;
+    case 'image':
+      if ('url' in distriPart.data) {
+        result = { kind: 'file', file: { mimeType: distriPart.data.mime_type, uri: distriPart.data.url } as FileWithUri };
+      } else {
+        result = { kind: 'file', file: { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data } as FileWithBytes };
+      }
+      break;
     case 'tool_call':
-      return { kind: 'data', data: { part_type: 'tool_call', tool_call: distriPart.tool_call } };
+      result = { kind: 'data', data: { part_type: 'tool_call', ...distriPart.data } };
+      break;
     case 'tool_result':
-      let val = {
+      result = {
         kind: 'data', data: {
-          tool_call_id: distriPart.tool_result.tool_call_id,
-          tool_name: distriPart.tool_result.tool_name,
-          result: distriPart.tool_result.result,
-          part_type: 'tool_result'
+          part_type: 'tool_result',
+          ...distriPart.data
         }
-      };
-      return val as Part;
-    case 'code_observation':
-      return { kind: 'data', data: { ...distriPart, part_type: 'code_observation' } };
-    case 'plan':
-      return { kind: 'data', data: { ...distriPart, part_type: 'plan' } };
+      } as Part;
+      break;
     case 'data':
-      return { kind: 'data', ...distriPart.data };
+      result = { kind: 'data', data: distriPart.data };
+      break;
   }
+  
+  console.log('Converted A2A Part:', JSON.stringify(result, null, 2));
+  return result;
 }
 
 /**
@@ -367,7 +370,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
 export function extractTextFromDistriMessage(message: DistriMessage): string {
   return message.parts
     .filter(part => part.type === 'text')
-    .map(part => (part as { type: 'text'; text: string }).text)
+    .map(part => (part as { type: 'text'; data: string }).data)
     .join('\n');
 }
 
@@ -377,7 +380,7 @@ export function extractTextFromDistriMessage(message: DistriMessage): string {
 export function extractToolCallsFromDistriMessage(message: DistriMessage): any[] {
   return message.parts
     .filter(part => part.type === 'tool_call')
-    .map(part => (part as { type: 'tool_call'; tool_call: any }).tool_call);
+    .map(part => (part as { type: 'tool_call'; data: any }).data);
 }
 
 /**
@@ -386,5 +389,5 @@ export function extractToolCallsFromDistriMessage(message: DistriMessage): any[]
 export function extractToolResultsFromDistriMessage(message: DistriMessage): any[] {
   return message.parts
     .filter(part => part.type === 'tool_result')
-    .map(part => (part as { type: 'tool_result'; tool_result: any }).tool_result);
+    .map(part => (part as { type: 'tool_result'; data: any }).data);
 }

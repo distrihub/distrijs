@@ -138,17 +138,12 @@ export interface InvokeContext {
  * Distri message parts - equivalent to Rust enum Part
  */
 
-export type TextPart = { type: 'text'; text: string }
-export type CodeObservationPart = { type: 'code_observation'; thought: string; code: string }
-
-export type ImageUrlPart = { type: 'image_url'; image: FileUrl }
-export type ImageBytesPart = { type: 'image_bytes'; image: FileBytes }
-export type ImagePart = ImageUrlPart | ImageBytesPart
+export type TextPart = { type: 'text'; data: string }
+export type ToolCallPart = { type: 'tool_call'; data: ToolCall }
+export type ToolResultPart = { type: 'tool_result'; data: ToolResult }
+export type ImagePart = { type: 'image'; data: FileType }
 export type DataPart = { type: 'data'; data: any }
-export type ToolCallPart = { type: 'tool_call'; tool_call: ToolCall }
-export type ToolResultPart = { type: 'tool_result'; tool_result: ToolResult }
-export type PlanPart = { type: 'plan'; plan: string }
-export type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCallPart | ToolResultPart | PlanPart;
+export type DistriPart = TextPart | ToolCallPart | ToolResultPart | ImagePart | DataPart;
 
 
 
@@ -178,6 +173,8 @@ export interface DistriBaseTool {
   type: 'function' | 'ui';
   description: string;
   input_schema: object; // JSON Schema
+  is_final?: boolean;
+  autoExecute?: boolean;
 }
 
 export interface DistriFnTool extends DistriBaseTool {

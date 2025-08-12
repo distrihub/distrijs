@@ -99,7 +99,7 @@ export async function debugStreamEvents(
         if (logMessages) {
           const textContent = distriMessage.parts
             ?.filter(p => p.type === 'text')
-            ?.map(p => p.text)
+            ?.map(p => (p as { type: 'text'; data: string }).data)
             ?.join(' ') || '';
           
           console.log(`   💬 Message: ${distriMessage.role} - "${textContent.substring(0, 100)}${textContent.length > 100 ? '...' : ''}"`);

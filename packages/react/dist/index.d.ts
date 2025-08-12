@@ -31,6 +31,7 @@ type UiToolProps = {
     toolCall: ToolCall;
     toolCallState?: ToolCallState;
     completeTool: (result: ToolResult) => void;
+    tool: DistriBaseTool;
 };
 
 interface WrapToolOptions {

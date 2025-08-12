@@ -543,9 +543,11 @@ body {
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
 }
-.my-3 {
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+.\!mb-0 {
+  margin-bottom: 0px !important;
+}
+.\!mt-0 {
+  margin-top: 0px !important;
 }
 .mb-1 {
   margin-bottom: 0.25rem;
@@ -597,9 +599,6 @@ body {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-}
-.block {
-  display: block;
 }
 .inline-block {
   display: inline-block;
@@ -893,6 +892,15 @@ body {
 .resize {
   resize: both;
 }
+.list-inside {
+  list-style-position: inside;
+}
+.list-decimal {
+  list-style-type: decimal;
+}
+.list-disc {
+  list-style-type: disc;
+}
 .grid-cols-1 {
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
@@ -1061,6 +1069,10 @@ body {
 }
 .border-destructive\/20 {
   border-color: hsl(var(--destructive) / 0.2);
+}
+.border-gray-300 {
+  --tw-border-opacity: 1;
+  border-color: rgb(209 213 219 / var(--tw-border-opacity, 1));
 }
 .border-green-200 {
   --tw-border-opacity: 1;
@@ -1304,6 +1316,9 @@ body {
 .pl-2 {
   padding-left: 0.5rem;
 }
+.pl-4 {
+  padding-left: 1rem;
+}
 .pl-8 {
   padding-left: 2rem;
 }
@@ -1347,6 +1362,10 @@ body {
   font-size: 1.875rem;
   line-height: 2.25rem;
 }
+.text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
 .text-lg {
   font-size: 1.125rem;
   line-height: 1.75rem;
@@ -1375,15 +1394,15 @@ body {
 .capitalize {
   text-transform: capitalize;
 }
+.italic {
+  font-style: italic;
+}
 .tabular-nums {
   --tw-numeric-spacing: tabular-nums;
   font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
 }
 .leading-none {
   line-height: 1;
-}
-.leading-relaxed {
-  line-height: 1.625;
 }
 .leading-tight {
   line-height: 1.25;
@@ -1771,6 +1790,9 @@ body {
   content: var(--tw-content);
   --tw-translate-x: -50%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+.last\:mb-0:last-child {
+  margin-bottom: 0px;
 }
 .hover\:border-border\/80:hover {
   border-color: hsl(var(--border) / 0.8);

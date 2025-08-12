@@ -28,7 +28,7 @@ export const ExecutionSteps: React.FC<ExecutionStepsProps> = ({ messages, classN
     messages.forEach((message) => {
       message.parts.forEach((part: DistriPart) => {
         if (part.type === 'tool_call') {
-          const toolCall = part.tool_call;
+          const toolCall = part.data;
           const step: ExecutionStep = {
             id: toolCall.tool_call_id,
             type: 'tool_call',
@@ -39,7 +39,7 @@ export const ExecutionSteps: React.FC<ExecutionStepsProps> = ({ messages, classN
           stepsMap.set(toolCall.tool_call_id, step);
           allSteps.push(step);
         } else if (part.type === 'tool_result') {
-          const toolResult = part.tool_result;
+          const toolResult = part.data;
           const existingStep = stepsMap.get(toolResult.tool_call_id);
           if (existingStep) {
             existingStep.tool_result = toolResult;
@@ -55,12 +55,12 @@ export const ExecutionSteps: React.FC<ExecutionStepsProps> = ({ messages, classN
             };
             allSteps.push(step);
           }
-        } else if (part.type === 'text' && part.text.trim()) {
+        } else if (part.type === 'text' && part.data.trim()) {
           // Final response step
           const step: ExecutionStep = {
             id: `response_${message.id}`,
             type: 'response',
-            content: part.text,
+            content: part.data,
             status: 'completed',
             timestamp: message.created_at,
           };

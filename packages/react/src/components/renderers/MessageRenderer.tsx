@@ -41,7 +41,7 @@ export function MessageRenderer({
     const distriMessage = message as DistriMessage;
     const textContent = distriMessage.parts
       .filter(part => part.type === 'text')
-      .map(part => (part as { type: 'text'; text: string }).text)
+      .map(part => (part as { type: 'text'; data: string }).data)
       .join('')
       .trim();
 

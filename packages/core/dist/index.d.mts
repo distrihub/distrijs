@@ -272,39 +272,25 @@ interface InvokeContext {
  */
 type TextPart = {
     type: 'text';
-    text: string;
+    data: string;
 };
-type CodeObservationPart = {
-    type: 'code_observation';
-    thought: string;
-    code: string;
+type ToolCallPart = {
+    type: 'tool_call';
+    data: ToolCall;
 };
-type ImageUrlPart = {
-    type: 'image_url';
-    image: FileUrl;
+type ToolResultPart = {
+    type: 'tool_result';
+    data: ToolResult;
 };
-type ImageBytesPart = {
-    type: 'image_bytes';
-    image: FileBytes;
+type ImagePart = {
+    type: 'image';
+    data: FileType;
 };
-type ImagePart = ImageUrlPart | ImageBytesPart;
 type DataPart = {
     type: 'data';
     data: any;
 };
-type ToolCallPart = {
-    type: 'tool_call';
-    tool_call: ToolCall;
-};
-type ToolResultPart = {
-    type: 'tool_result';
-    tool_result: ToolResult;
-};
-type PlanPart = {
-    type: 'plan';
-    plan: string;
-};
-type DistriPart = TextPart | CodeObservationPart | ImagePart | DataPart | ToolCallPart | ToolResultPart | PlanPart;
+type DistriPart = TextPart | ToolCallPart | ToolResultPart | ImagePart | DataPart;
 /**
  * File type for images
  */
@@ -327,6 +313,8 @@ interface DistriBaseTool {
     type: 'function' | 'ui';
     description: string;
     input_schema: object;
+    is_final?: boolean;
+    autoExecute?: boolean;
 }
 interface DistriFnTool extends DistriBaseTool {
     type: 'function';
@@ -701,4 +689,4 @@ declare function extractToolCallsFromDistriMessage(message: DistriMessage): any[
  */
 declare function extractToolResultsFromDistriMessage(message: DistriMessage): any[];
 
-export { A2AProtocolError, type A2AStreamEventData, type ActionPlanStep, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type AssistantWithToolCalls, type BasePlanStep, type BatchToolCallsStep, type ChatProps, type CodeObservationPart, type CodePlanStep, ConnectionError, type ConnectionStatus, type DataPart, type DistriArtifact, type DistriBaseTool, type DistriChatMessage, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriPlan, type DistriStreamEvent, type DistriThread, type FeedbackReceivedEvent, type FileBytes, type FileType, type FileUrl, type FinalResultPlanStep, type GenericArtifact, type ImageBytesPart, type ImagePart, type ImageUrlPart, type InvokeConfig, type InvokeContext, type InvokeResult, type LlmPlanStep, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanAction, type PlanFinishedEvent, type PlanPart, type PlanPrunedEvent, type PlanStartedEvent, type PlanStep, type ReactStep, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type StepCompletedEvent, type StepStartedEvent, type TaskArtifactEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type ThoughtPlanStep, type ThoughtStep, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolCallsEvent, type ToolHandler, type ToolRejectedEvent, type ToolResult, type ToolResultPart, type ToolResults, type ToolResultsEvent, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriArtifact, isDistriEvent, isDistriMessage, isDistriPlan, processA2AMessagesData, processA2AStreamData, uuidv4 };
+export { A2AProtocolError, type A2AStreamEventData, type ActionPlanStep, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type AssistantWithToolCalls, type BasePlanStep, type BatchToolCallsStep, type ChatProps, type CodePlanStep, ConnectionError, type ConnectionStatus, type DataPart, type DistriArtifact, type DistriBaseTool, type DistriChatMessage, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriPlan, type DistriStreamEvent, type DistriThread, type FeedbackReceivedEvent, type FileBytes, type FileType, type FileUrl, type FinalResultPlanStep, type GenericArtifact, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type LlmPlanStep, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanAction, type PlanFinishedEvent, type PlanPrunedEvent, type PlanStartedEvent, type PlanStep, type ReactStep, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type StepCompletedEvent, type StepStartedEvent, type TaskArtifactEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type ThoughtPlanStep, type ThoughtStep, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolCallsEvent, type ToolHandler, type ToolRejectedEvent, type ToolResult, type ToolResultPart, type ToolResults, type ToolResultsEvent, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriArtifact, isDistriEvent, isDistriMessage, isDistriPlan, processA2AMessagesData, processA2AStreamData, uuidv4 };
