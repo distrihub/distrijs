@@ -5,7 +5,7 @@ import { UiToolProps } from '@/types';
 import { ToolResult, DistriFnTool } from '@distri/core';
 
 export interface DefaultToolActionsProps extends UiToolProps {
-  toolHandler: DistriFnTool['handler'];
+  tool: DistriFnTool;
   autoExecute?: boolean;
 }
 
@@ -13,23 +13,22 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
   toolCall,
   toolCallState,
   completeTool,
-  toolHandler,
-  autoExecute = false
+  tool
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasExecuted, setHasExecuted] = useState(false);
-
+  const autoExecute = tool.autoExecute;
   const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
   const toolName = toolCall.tool_name;
 
   // Auto-execute if enabled
   useEffect(() => {
     if (autoExecute && !hasExecuted && !isProcessing) {
-      handleConfirm();
+      handleExecute();
     }
   }, [autoExecute, hasExecuted, isProcessing]);
 
-  const handleConfirm = async () => {
+  const handleExecute = async () => {
     if (isProcessing || hasExecuted) return;
 
     setIsProcessing(true);
@@ -37,17 +36,21 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
     try {
       // Execute the tool handler
-      const result = await toolHandler(toolCall.input);
+      const result = await tool.handler(toolCall.input);
 
-      const toolResult: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolName,
-        result: typeof result === 'string' ? result : JSON.stringify(result),
-        success: true,
-        error: undefined
-      };
+      if (!tool.is_final) {
+        const toolResult: ToolResult = {
+          tool_call_id: toolCall.tool_call_id,
+          tool_name: toolName,
+          result: typeof result === 'string' ? result : JSON.stringify(result),
+          success: true,
+          error: undefined
+        };
 
-      completeTool(toolResult);
+        await completeTool(toolResult);
+      } else {
+        console.log('Tool is final, no action required');
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const toolResult: ToolResult = {
@@ -58,7 +61,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
         error: errorMessage
       };
 
-      completeTool(toolResult);
+      await completeTool(toolResult);
     } finally {
       setIsProcessing(false);
     }
@@ -167,7 +170,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
           </Button>
           <Button
             size="sm"
-            onClick={handleConfirm}
+            onClick={handleExecute}
             disabled={isProcessing}
           >
             Confirm

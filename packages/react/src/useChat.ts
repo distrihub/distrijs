@@ -17,7 +17,7 @@ export interface UseChatOptions {
   onMessage?: (message: DistriChatMessage) => void;
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
-  getMetadata?: () => Promise<any>;
+  getMetadata?: () => Promise<Record<string, unknown>>;
   tools?: DistriAnyTool[];
   wrapOptions?: WrapToolOptions;
   initialMessages?: (DistriChatMessage)[];
@@ -157,7 +157,7 @@ export function useChat({
 
     try {
       const parts: DistriPart[] = typeof content === 'string'
-        ? [{ type: 'text', text: content }]
+        ? [{ type: 'text', data: content }]
         : content;
 
       const distriMessage = DistriClient.initDistriMessage('user', parts);
@@ -213,7 +213,7 @@ export function useChat({
 
     try {
       const parts: DistriPart[] = typeof content === 'string'
-        ? [{ type: 'text', text: content }]
+        ? [{ type: 'text', data: content }]
         : content;
 
       const distriMessage = DistriClient.initDistriMessage(role, parts);
@@ -257,6 +257,7 @@ export function useChat({
 
   // Handle external tool responses
   const handleExternalToolResponses = useCallback(async () => {
+    setStreaming(true);
     const externalResponses = getExternalToolResponses();
     // Only send responses if there are actual external tool calls that need responses
     // and we're not currently streaming
@@ -267,7 +268,7 @@ export function useChat({
         // Construct tool result parts
         const toolResultParts: DistriPart[] = externalResponses.map(result => ({
           type: 'tool_result',
-          tool_result: {
+          data: {
             tool_call_id: result.tool_call_id,
             tool_name: result.tool_name,
             result: result.result,
@@ -277,31 +278,31 @@ export function useChat({
         }));
 
         // Send tool results back to agent
-        await sendMessageStream(toolResultParts, 'tool');
+        await sendMessageStream(toolResultParts, 'user');
 
         // Clear completed tool results
         chatState.clearToolResults();
       } catch (err) {
         console.error('Failed to send external tool responses:', err);
         setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
+      } finally {
+        setStreaming(false);
       }
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);
 
-  // Watch for completed external tool calls and automatically send responses
+  // Store handleExternalToolResponses in a ref to avoid dependency issues
+  const handleExternalToolResponsesRef = useRef(handleExternalToolResponses);
   useEffect(() => {
-    const checkAndSendExternalResponses = async () => {
-      // Check if we have completed external tool calls and no pending ones
-      const externalResponses = getExternalToolResponses();
-      const pendingToolCalls = hasPendingToolCalls();
+    handleExternalToolResponsesRef.current = handleExternalToolResponses;
+  }, [handleExternalToolResponses]);
 
-      if (externalResponses.length > 0 && !pendingToolCalls && !isStreaming && !isLoading) {
-        await handleExternalToolResponses();
-      }
-    };
-
-    checkAndSendExternalResponses();
-  }, [chatState.toolCalls, isStreaming, isLoading, getExternalToolResponses, hasPendingToolCalls, handleExternalToolResponses]);
+  // Set up callback for when all external tools complete (only once)
+  useEffect(() => {
+    chatState.setOnAllToolsCompleted(async () => {
+      await handleExternalToolResponsesRef.current();
+    });
+  }, []); // Empty dependency array - only run once
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
