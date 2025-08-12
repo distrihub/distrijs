@@ -91,7 +91,7 @@ const StepRenderer: React.FC<{ step: PlanStep; index: number }> = ({ step, index
   }
 
   // Legacy support for react_step
-  if ('type' in step && (step as any).type === 'react_step') {
+  if ('type' in step && (step as { type: string }).type === 'react_step') {
     const reactStep = step as unknown as ReactStep;
     return (
       <div className="border border-border rounded-lg p-4 mb-4">

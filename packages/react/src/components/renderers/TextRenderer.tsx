@@ -31,7 +31,7 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
 
             return !isInline && language ? (
               <SyntaxHighlighter
-                style={tomorrow as any}
+                style={tomorrow}
                 language={language}
                 PreTag="div"
                 className="!mt-0 !mb-0"

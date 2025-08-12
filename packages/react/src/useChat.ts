@@ -17,7 +17,7 @@ export interface UseChatOptions {
   onMessage?: (message: DistriChatMessage) => void;
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
-  getMetadata?: () => Promise<any>;
+  getMetadata?: () => Promise<Record<string, unknown>>;
   tools?: DistriAnyTool[];
   wrapOptions?: WrapToolOptions;
   initialMessages?: (DistriChatMessage)[];
@@ -276,10 +276,6 @@ export function useChat({
             error: result.error
           }
         }));
-        toolResultParts.push({
-          type: 'text',
-          data: 'Tool execution completed. Please continue.'
-        });
 
         // Send tool results back to agent
         await sendMessageStream(toolResultParts, 'user');
@@ -295,20 +291,18 @@ export function useChat({
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);
 
-  // Watch for completed external tool calls and automatically send responses
+  // Store handleExternalToolResponses in a ref to avoid dependency issues
+  const handleExternalToolResponsesRef = useRef(handleExternalToolResponses);
   useEffect(() => {
-    const checkAndSendExternalResponses = async () => {
-      // Check if we have completed external tool calls and no pending ones
-      const externalResponses = getExternalToolResponses();
-      const pendingToolCalls = hasPendingToolCalls();
+    handleExternalToolResponsesRef.current = handleExternalToolResponses;
+  }, [handleExternalToolResponses]);
 
-      if (externalResponses.length > 0 && !pendingToolCalls && !isStreaming && !isLoading) {
-        await handleExternalToolResponses();
-      }
-    };
-
-    checkAndSendExternalResponses();
-  }, [chatState.toolCalls, isStreaming, isLoading, getExternalToolResponses, hasPendingToolCalls, handleExternalToolResponses]);
+  // Set up callback for when all external tools complete (only once)
+  useEffect(() => {
+    chatState.setOnAllToolsCompleted(async () => {
+      await handleExternalToolResponsesRef.current();
+    });
+  }, []); // Empty dependency array - only run once
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {

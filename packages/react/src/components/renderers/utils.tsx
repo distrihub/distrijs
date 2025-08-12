@@ -12,7 +12,7 @@ export interface ExtractedContent {
   hasCode: boolean;
   hasLinks: boolean;
   hasImages: boolean;
-  rawContent: any;
+  rawContent: DistriMessage | DistriEvent | DistriArtifact;
 }
 
 export function extractContent(message: DistriMessage | DistriEvent | DistriArtifact): ExtractedContent {
@@ -28,8 +28,8 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
 
     // Extract all text parts and join them properly
     const textParts = distriMessage.parts
-      ?.filter(p => p.type === 'text' && (p as any).data)
-      ?.map(p => (p as any).data)
+      ?.filter(p => p.type === 'text' && (p as { type: 'text'; data: string }).data)
+      ?.map(p => (p as { type: 'text'; data: string }).data)
       ?.filter(text => text && text.trim()) || [];
 
     text = textParts.join(' ').trim();

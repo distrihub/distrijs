@@ -388,7 +388,6 @@ var useChatStateStore = create((set, get) => ({
             }
           }
         } else if (event.type === "text_message_end") {
-          const messageId = event.data.message_id;
         } else {
           const stateOnlyEvents = [
             "run_started",
@@ -693,15 +692,15 @@ var useChatStateStore = create((set, get) => ({
       return newState;
     });
   },
-  updateToolCallStatus: (toolCallId, status2) => {
+  updateToolCallStatus: (toolCallId, status) => {
     set((state) => {
       const newState = { ...state };
       const existingToolCall = newState.toolCalls.get(toolCallId);
       if (existingToolCall) {
         newState.toolCalls.set(toolCallId, {
           ...existingToolCall,
-          ...status2,
-          endTime: status2.status === "completed" || status2.status === "error" ? Date.now() : existingToolCall.endTime
+          ...status,
+          endTime: status.status === "completed" || status.status === "error" ? Date.now() : existingToolCall.endTime
         });
       }
       return newState;
@@ -714,6 +713,15 @@ var useChatStateStore = create((set, get) => ({
       endTime: Date.now(),
       error: result.error || void 0
     });
+    const state = get();
+    const pendingExternalTools = Array.from(state.toolCalls.values()).filter(
+      (tc) => tc.isExternal && (tc.status === "pending" || tc.status === "running")
+    );
+    if (pendingExternalTools.length === 0 && state.onAllToolsCompleted) {
+      setTimeout(() => {
+        state.onAllToolsCompleted?.();
+      }, 0);
+    }
   },
   initializeTool: (toolCall) => {
     const state = get();
@@ -1133,10 +1141,6 @@ function useChat({
             error: result.error
           }
         }));
-        toolResultParts.push({
-          type: "text",
-          data: "Tool execution completed. Please continue."
-        });
         await sendMessageStream(toolResultParts, "user");
         chatState.clearToolResults();
       } catch (err) {
@@ -1147,16 +1151,15 @@ function useChat({
       }
     }
   }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);
+  const handleExternalToolResponsesRef = useRef2(handleExternalToolResponses);
   useEffect4(() => {
-    const checkAndSendExternalResponses = async () => {
-      const externalResponses = getExternalToolResponses();
-      const pendingToolCalls = hasPendingToolCalls();
-      if (externalResponses.length > 0 && !pendingToolCalls && !isStreaming && !isLoading) {
-        await handleExternalToolResponses();
-      }
-    };
-    checkAndSendExternalResponses();
-  }, [chatState.toolCalls, isStreaming, isLoading, getExternalToolResponses, hasPendingToolCalls, handleExternalToolResponses]);
+    handleExternalToolResponsesRef.current = handleExternalToolResponses;
+  }, [handleExternalToolResponses]);
+  useEffect4(() => {
+    chatState.setOnAllToolsCompleted(async () => {
+      await handleExternalToolResponsesRef.current();
+    });
+  }, []);
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -2360,7 +2363,7 @@ function MessageRenderer({
                 toolName: result.tool_name || "Unknown Tool",
                 result: result.result,
                 success,
-                error
+                error: error || void 0
               }
             ) }, `tool-result-${index}-${resultIndex}`);
           });

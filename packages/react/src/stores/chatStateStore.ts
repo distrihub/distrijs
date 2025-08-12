@@ -29,10 +29,10 @@ export interface TaskState {
   status: 'pending' | 'running' | 'completed' | 'failed';
   startTime?: number;
   endTime?: number;
-  toolCalls?: any[];
-  results?: any[];
+  toolCalls?: ToolCall[];
+  results?: ToolResult[];
   error?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PlanState {
@@ -59,7 +59,7 @@ export interface StepState {
 export interface ToolCallState {
   tool_call_id: string;
   tool_name: string;
-  input: any;
+  input: Record<string, unknown>;
   status: ToolCallStatus;
   result?: ToolResult;
   error?: string;
@@ -93,7 +93,7 @@ export interface ChatState {
   agent?: Agent;
   tools?: DistriAnyTool[];
   wrapOptions?: { autoExecute?: boolean };
-  onAllToolsCompleted?: (toolResults: ToolResult[]) => void;
+  onAllToolsCompleted?: () => void;
 }
 
 export interface ChatStateStore extends ChatState {
@@ -143,7 +143,7 @@ export interface ChatStateStore extends ChatState {
   setAgent: (agent: Agent) => void;
   setTools: (tools: DistriAnyTool[]) => void;
   setWrapOptions: (options: { autoExecute?: boolean }) => void;
-  setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => void;
+  setOnAllToolsCompleted: (callback: () => void) => void;
 }
 
 export const useChatStateStore = create<ChatStateStore>((set, get) => ({
@@ -226,7 +226,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           if (existingIndex >= 0) {
             const existing = messages[existingIndex] as DistriMessage;
-            let textPart = existing.parts.find(p => p.type === 'text') as any;
+            let textPart = existing.parts.find(p => p.type === 'text') as { type: 'text'; data: string } | undefined;
 
             if (!textPart) {
               textPart = { type: 'text', data: '' };
@@ -244,7 +244,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
         } else if (event.type === 'text_message_end') {
           // Message is complete, no additional action needed
-          const messageId = event.data.message_id;
 
         } else {
           // Don't add state-only events to messages (they only update store state)
@@ -636,6 +635,19 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       endTime: Date.now(),
       error: result.error || undefined,
     });
+
+    // Check if all external tools are completed after this completion
+    const state = get();
+    const pendingExternalTools = Array.from(state.toolCalls.values()).filter(
+      tc => tc.isExternal && (tc.status === 'pending' || tc.status === 'running')
+    );
+
+    // If no pending external tools and we have an onAllToolsCompleted callback, trigger it
+    if (pendingExternalTools.length === 0 && state.onAllToolsCompleted) {
+      setTimeout(() => {
+        state.onAllToolsCompleted?.();
+      }, 0); // Defer to next tick to avoid state update conflicts
+    }
   },
 
   initializeTool: (toolCall: ToolCall) => {
@@ -865,7 +877,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {
     set({ wrapOptions });
   },
-  setOnAllToolsCompleted: (callback: (toolResults: ToolResult[]) => void) => {
+  setOnAllToolsCompleted: (callback: () => void) => {
     set({ onAllToolsCompleted: callback });
   },
 })); 

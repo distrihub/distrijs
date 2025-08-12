@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact, ToolResults, DistriChatMessage } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact, isDistriMessage, isDistriEvent, isDistriArtifact, ToolResults, DistriChatMessage, ToolResult } from '@distri/core';
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { ToolMessageRenderer } from './ToolMessageRenderer';
@@ -291,12 +291,12 @@ export function MessageRenderer({
           const toolResultsArtifact = artifact as ToolResults;
           return artifact.results.map((result, resultIndex) => {
             const success =
-              (result as any).success !== undefined
-                ? (result as any).success
-                : toolResultsArtifact.success ?? ((result as any).status ? (result as any).status === 'completed' : true);
+              (result as ToolResult).success !== undefined
+                ? (result as ToolResult).success
+                : toolResultsArtifact.success ?? ((result as { status?: string }).status ? (result as { status?: string }).status === 'completed' : true);
             const error =
-              (result as any).error !== undefined
-                ? (result as any).error
+              (result as ToolResult).error !== undefined
+                ? (result as ToolResult).error
                 : toolResultsArtifact.success ? undefined : toolResultsArtifact.reason;
             return (
               <RendererWrapper key={`tool-result-${index}-${resultIndex}`}>
@@ -305,7 +305,7 @@ export function MessageRenderer({
                   toolName={result.tool_name || 'Unknown Tool'}
                   result={result.result}
                   success={success}
-                  error={error}
+                  error={error || undefined}
                 />
               </RendererWrapper>
             );

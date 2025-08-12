@@ -51,7 +51,7 @@ interface UseChatOptions {
     agent?: Agent$1;
     onMessage?: (message: DistriChatMessage) => void;
     onError?: (error: Error) => void;
-    getMetadata?: () => Promise<any>;
+    getMetadata?: () => Promise<Record<string, unknown>>;
     tools?: DistriAnyTool[];
     wrapOptions?: WrapToolOptions;
     initialMessages?: (DistriChatMessage)[];
@@ -492,7 +492,7 @@ declare const DebugRenderer: React__default.FC<DebugRendererProps>;
 
 interface ArtifactRendererProps {
     message: DistriArtifact;
-    chatState: any;
+    chatState: Record<string, unknown>;
     className?: string;
     avatar?: React__default.ReactNode;
 }

@@ -4,7 +4,7 @@ import { extractContent, renderTextContent } from './utils';
 
 export interface ArtifactRendererProps {
   message: DistriArtifact;
-  chatState: any;
+  chatState: Record<string, unknown>;
   className?: string;
   avatar?: React.ReactNode;
 }
@@ -22,8 +22,8 @@ export function ArtifactRenderer({ message, chatState: _chatState, className = '
   }
 }
 
-function renderLLMResponse(llmArtifact: AssistantWithToolCalls, _chatState: any, className: string, avatar?: React.ReactNode) {
-  const content = extractContent(llmArtifact as any);
+function renderLLMResponse(llmArtifact: AssistantWithToolCalls, _chatState: Record<string, unknown>, className: string, avatar?: React.ReactNode) {
+  const content = extractContent(llmArtifact as DistriArtifact);
 
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
@@ -62,7 +62,7 @@ function renderLLMResponse(llmArtifact: AssistantWithToolCalls, _chatState: any,
   );
 }
 
-function renderToolResults(toolResultsArtifact: ToolResults, _chatState: any, className: string, avatar?: React.ReactNode) {
+function renderToolResults(toolResultsArtifact: ToolResults, _chatState: Record<string, unknown>, className: string, avatar?: React.ReactNode) {
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       {avatar && <div className="flex-shrink-0">{avatar}</div>}
@@ -94,7 +94,7 @@ function renderToolResults(toolResultsArtifact: ToolResults, _chatState: any, cl
   );
 }
 
-function renderGenericArtifact(genericArtifact: GenericArtifact, _chatState: any, className: string, avatar?: React.ReactNode) {
+function renderGenericArtifact(genericArtifact: GenericArtifact, _chatState: Record<string, unknown>, className: string, avatar?: React.ReactNode) {
   return (
     <div className={`flex items-start gap-4 py-3 px-2 ${className}`}>
       {avatar && <div className="flex-shrink-0">{avatar}</div>}
