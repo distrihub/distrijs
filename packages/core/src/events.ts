@@ -50,7 +50,9 @@ export interface TextMessageStartEvent {
   type: 'text_message_start';
   data: {
     message_id: string;
+    step_id: string;
     role: Role;
+    is_final?: boolean;
   };
 }
 
@@ -58,6 +60,7 @@ export interface TextMessageContentEvent {
   type: 'text_message_content';
   data: {
     message_id: string;
+    step_id: string;
     delta: string;
   };
 }
@@ -66,6 +69,7 @@ export interface TextMessageEndEvent {
   type: 'text_message_end';
   data: {
     message_id: string;
+    step_id: string;
   };
 }
 

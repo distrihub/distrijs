@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../ui/button';
+import { Checkbox } from '../../ui/checkbox';
 import { Wrench, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { UiToolProps } from '@/types';
 import { ToolResult, DistriFnTool } from '@distri/core';
@@ -17,19 +18,69 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasExecuted, setHasExecuted] = useState(false);
+  const [dontAskAgain, setDontAskAgain] = useState(false);
   const autoExecute = tool.autoExecute;
   const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
   const toolName = toolCall.tool_name;
+  const isLiveStream = toolCallState?.isLiveStream || false;
 
-  // Auto-execute if enabled
+  // Get approval preferences from localStorage
+  const getApprovalPreferences = (): Record<string, boolean> => {
+    try {
+      const stored = localStorage.getItem('distri-tool-preferences');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  // Save approval preferences to localStorage
+  const saveApprovalPreference = (toolName: string, approved: boolean) => {
+    try {
+      const preferences = getApprovalPreferences();
+      preferences[toolName] = approved;
+      localStorage.setItem('distri-tool-preferences', JSON.stringify(preferences));
+    } catch {
+      // Silently fail if localStorage is unavailable
+    }
+  };
+
+  // Check for auto-approval preference - but only for live stream tool calls
   useEffect(() => {
-    if (autoExecute && !hasExecuted && !isProcessing) {
+    if (!isLiveStream) return; // Don't auto-execute historical tool calls
+
+    const preferences = getApprovalPreferences();
+    const autoApprove = preferences[toolName];
+
+    if (autoApprove !== undefined && !hasExecuted && !isProcessing) {
+      if (autoApprove) {
+        handleExecute();
+      } else {
+        handleCancel();
+      }
+    }
+  }, [toolName, isLiveStream]);
+
+  // Auto-execute if enabled - but only for live stream tool calls and if no user preference exists
+  useEffect(() => {
+    if (!isLiveStream) return; // Don't auto-execute historical tool calls
+
+    const preferences = getApprovalPreferences();
+    const hasPreference = preferences[toolName] !== undefined;
+
+    // Only auto-execute if there's no saved user preference, autoExecute is enabled, and it's from live stream
+    if (autoExecute && !hasPreference && !hasExecuted && !isProcessing) {
       handleExecute();
     }
-  }, [autoExecute, hasExecuted, isProcessing]);
+  }, [autoExecute, hasExecuted, isProcessing, toolName, isLiveStream]);
 
   const handleExecute = async () => {
     if (isProcessing || hasExecuted) return;
+
+    // Save preference if "don't ask again" is checked
+    if (dontAskAgain) {
+      saveApprovalPreference(toolName, true);
+    }
 
     setIsProcessing(true);
     setHasExecuted(true);
@@ -69,6 +120,11 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
   const handleCancel = () => {
     if (isProcessing || hasExecuted) return;
+
+    // Save preference if "don't ask again" is checked
+    if (dontAskAgain) {
+      saveApprovalPreference(toolName, false);
+    }
 
     setHasExecuted(true);
 
@@ -159,22 +215,38 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
       </div>
 
       {!autoExecute && (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleCancel}
-            disabled={isProcessing}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleExecute}
-            disabled={isProcessing}
-          >
-            Confirm
-          </Button>
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="dont-ask-again-tool"
+              checked={dontAskAgain}
+              onCheckedChange={(checked: boolean) => setDontAskAgain(checked)}
+            />
+            <label
+              htmlFor="dont-ask-again-tool"
+              className="text-sm text-muted-foreground cursor-pointer"
+            >
+              Don't ask again for <span className="font-mono text-xs">{toolName}</span>
+            </label>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleExecute}
+              disabled={isProcessing}
+            >
+              Confirm
+            </Button>
+          </div>
         </div>
       )}
     </div>

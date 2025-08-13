@@ -1,6 +1,8 @@
 import React from 'react';
 import { DistriArtifact, DistriMessage } from '@distri/core';
-import { extractContent, renderTextContent } from './utils';
+import { extractContent } from './utils';
+import { StreamingTextRenderer } from './StreamingTextRenderer';
+import { useChatStateStore } from '../../stores/chatStateStore';
 
 
 export interface AssistantMessageRendererProps {
@@ -14,14 +16,21 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
   message,
   className = '',
 }) => {
+  const steps = useChatStateStore(state => state.steps);
   const content = extractContent(message);
-  return (
-    <div className={`flex items-start gap-4 py-6 ${className}`}>
-      <div className="w-full">
+  
+  // Check if this message is currently streaming
+  const stepId = (message as DistriMessage).step_id;
+  const step = stepId ? steps.get(stepId) : null;
+  const isStreaming = step?.status === 'running';
 
-        <div className="prose prose-sm max-w-none text-foreground">
-          {renderTextContent(content)}
-        </div>
+  return (
+    <div className={`flex items-start gap-4 ${className}`}>
+      <div className="w-full">
+        <StreamingTextRenderer
+          text={content.text}
+          isStreaming={isStreaming}
+        />
       </div>
     </div>
   );

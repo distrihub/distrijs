@@ -15,6 +15,8 @@ export interface DistriMessage {
   role: MessageRole;
   parts: DistriPart[];
   created_at?: string;
+  step_id?: string;
+  is_final?: boolean;
 }
 
 export interface AssistantWithToolCalls {

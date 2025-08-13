@@ -1,159 +1,185 @@
 [
   {
-    "kind": "message",
-    "messageId": "1f38569c-ef3e-45b7-beb6-5c97239c1b32",
-    "role": "user",
-    "parts": [
-      {
-        "kind": "text",
-        "text": "zoom into kovan singapore"
-      }
-    ],
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "referenceTaskIds": [],
-    "extensions": [],
-    "metadata": "text"
-  },
-  {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511076683"
-    },
-    "final": false,
-    "metadata": {
-      "type": "run_started"
+    "type": "run_started",
+    "data": {
+      "taskId": "c6852e1a-8ae7-4895-870b-338bc9bf4745"
     }
   },
   {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511076683"
-    },
-    "final": false,
-    "metadata": {
-      "type": "plan_started",
+    "type": "plan_started",
+    "data": {
       "initial_plan": true
     }
   },
   {
-    "kind": "message",
-    "messageId": "acd6e7c5-4cf5-431d-bead-1b44166a1342",
-    "role": "agent",
-    "parts": [
-      {
-        "kind": "text",
-        "text": "<agent_response>\n<thought>To zoom into Kovan, Singapore, I need to set the map center to the coordinates of Kovan with an appropriate zoom level for a close-up view.</thought>\n<action>set_map_center</action>\n<parameters>{\"latitude\":1.3743,\"longitude\":103.8917,\"zoom\":15}</parameters>\n</agent_response>"
-      }
-    ],
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "referenceTaskIds": [],
-    "extensions": [],
-    "metadata": "text"
-  },
-  {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511084098"
-    },
-    "final": false,
-    "metadata": {
-      "type": "plan_finished",
-      "total_steps": 2
+    "type": "text_message_start",
+    "data": {
+      "message_id": "b65d9751-3e44-4c27-9cdb-dc66d554ea78",
+      "role": "assistant"
     }
   },
   {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511084098"
-    },
-    "final": false,
-    "metadata": {
-      "type": "step_started",
-      "step_id": "c45b96de-09e4-46d7-acfa-adf178e2bc25",
+    "type": "text_message_content",
+    "data": {
+      "message_id": "b65d9751-3e44-4c27-9cdb-dc66d554ea78",
+      "delta": "<agent_response>\n  <thought>The first row is empty, so I can add headers and mock student data with essays. I will create columns for Student Name, Essay, and Grade, and fill in a few rows with example data to serve as mock essays that can be graded.</thought>\n  <action>APPLY_OPS</action>\n  <parameters>\"{\\\"ops\\\": [{\\\"op\\\": \\\"replace\\\", \\\"path\\\": [\\\"Sheet1\\\", 0, 0, 4, 3], \\\"value\\\": [[\\\"Student Name\\\", \\\"Essay\\\", \\\"Grade\\\"], [\\\"Alice Smith\\\", \\\"The importance of renewable energy cannot be overstated. It not only combats climate change but also creates jobs.\\\", \\\"\\\"], [\\\"Bob Lee\\\", \\\"Social media has drastically changed human communication, both for better and for worse.\\\", \\\"\\\"], [\\\"Carol White\\\", \\\"Learning a second language improves brain function and opens up opportunities in the global economy.\\\", \\\"\\\"]]}]}\"\n</agent_response>"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "b65d9751-3e44-4c27-9cdb-dc66d554ea78"
+    }
+  },
+  {
+    "type": "plan_finished",
+    "data": {
+      "total_steps": 1
+    }
+  },
+  {
+    "type": "plan_started",
+    "data": {
+      "initial_plan": true
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "1a1cee04-e033-47bb-b3d7-863959ee6a4e",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "1a1cee04-e033-47bb-b3d7-863959ee6a4e",
+      "delta": "<agent_response>\n  <thought>The first row is empty, so I can add headers and mock student data with essays. I will create columns for Student Name, Essay, and Grade, and fill in a few rows with example data to serve as mock essays that can be graded.</thought>\n  <action>APPLY_OPS</action>\n  <parameters>\"{\\\"ops\\\": [{\\\"op\\\": \\\"replace\\\", \\\"path\\\": [\\\"Sheet1\\\", 0, 0, 4, 2], \\\"value\\\": [[\\\"Student Name\\\", \\\"Essay\\\", \\\"Grade\\\"], [\\\"Alice Smith\\\", \\\"The importance of renewable energy cannot be overstated. It not only combats climate change but also creates jobs.\\\", \\\"\\\"], [\\\"Bob Lee\\\", \\\"Social media has drastically changed human communication, both for better and for worse.\\\", \\\"\\\"], [\\\"Carol White\\\", \\\"Learning a second language improves brain function and opens up opportunities in the global economy.\\\", \\\"\\\"]]}]}\"\n</agent_response>"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "1a1cee04-e033-47bb-b3d7-863959ee6a4e"
+    }
+  },
+  {
+    "type": "plan_finished",
+    "data": {
+      "total_steps": 1
+    }
+  },
+  {
+    "type": "plan_started",
+    "data": {
+      "initial_plan": true
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "fc80cac9-01f4-4d1e-8572-4165169f0a18",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "fc80cac9-01f4-4d1e-8572-4165169f0a18",
+      "delta": "<agent_response>\n  <thought>Mock student data with essay texts and a grade column is now set up in Sheet1, ready for grading.</thought>\n  <action>final</action>\n  <parameters>\"{\\\"message\\\": \\\"Added mock student data with essays and a grade column to Sheet1. The sheet now includes three example students with sample essays, ready for grading.\\\"}\"</parameters>\n</agent_response>\n"
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "fc80cac9-01f4-4d1e-8572-4165169f0a18"
+    }
+  },
+  {
+    "type": "plan_finished",
+    "data": {
+      "total_steps": 1
+    }
+  },
+  {
+    "type": "step_started",
+    "data": {
+      "step_id": "ffecfa60-5552-4ff6-9415-3f9e46838813",
+      "step_title": "Processing",
+      "step_index": 2
+    }
+  },
+  {
+    "type": "tool_calls",
+    "data": {
+      "tool_calls": [
+        {
+          "tool_call_id": "5406f46d-58b0-42a3-bba8-a7c75adb4654",
+          "tool_name": "final",
+          "input": "{\"message\":\"Added mock student data with essays and a grade column to Sheet1. The sheet now includes three example students with sample essays, ready for grading.\"}"
+        }
+      ]
+    }
+  },
+  {
+    "type": "tool_call_start",
+    "data": {
+      "tool_call_id": "5406f46d-58b0-42a3-bba8-a7c75adb4654",
+      "tool_call_name": "final",
+      "parent_message_id": "c6852e1a-8ae7-4895-870b-338bc9bf4745",
+      "is_external": true
+    }
+  },
+  {
+    "type": "text_message_start",
+    "data": {
+      "message_id": "fb84842c-1d70-4e74-b042-0fdb2126d6df",
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "text_message_content",
+    "data": {
+      "message_id": "fb84842c-1d70-4e74-b042-0fdb2126d6df",
+      "delta": "Added mock student data with essays and a grade column to Sheet1. The sheet now includes three example students with sample essays, ready for grading."
+    }
+  },
+  {
+    "type": "text_message_end",
+    "data": {
+      "message_id": "fb84842c-1d70-4e74-b042-0fdb2126d6df"
+    }
+  },
+  {
+    "type": "tool_call_end",
+    "data": {
+      "tool_call_id": "5406f46d-58b0-42a3-bba8-a7c75adb4654"
+    }
+  },
+  {
+    "type": "tool_results",
+    "data": {
+      "results": [
+        {
+          "tool_call_id": "5406f46d-58b0-42a3-bba8-a7c75adb4654",
+          "tool_name": "final",
+          "result": null
+        }
+      ]
+    }
+  },
+  {
+    "type": "step_completed",
+    "data": {
+      "step_id": "ffecfa60-5552-4ff6-9415-3f9e46838813",
+      "step_title": "Processing",
       "step_index": 0
     }
   },
   {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511084098"
-    },
-    "final": false,
-    "metadata": {
-      "type": "step_completed",
-      "step_id": "c45b96de-09e4-46d7-acfa-adf178e2bc25",
-      "success": true
-    }
-  },
-  {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511084098"
-    },
-    "final": false,
-    "metadata": {
-      "type": "step_started",
-      "step_id": "e227c12a-8226-4748-a4ad-2e18688b918d",
-      "step_index": 1
-    }
-  },
-  {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511084098"
-    },
-    "final": false,
-    "metadata": {
-      "type": "step_completed",
-      "step_id": "e227c12a-8226-4748-a4ad-2e18688b918d",
-      "success": true
-    }
-  },
-  {
-    "kind": "status-update",
-    "taskId": "b92dba0a-f7c0-4170-8735-6376eaf35273",
-    "contextId": "3e26facb-d933-4960-9955-cbf31c43546d",
-    "status": {
-      "state": "failed",
-      "message": null,
-      "timestamp": "1754511084099"
-    },
-    "final": true,
-    "metadata": {
-      "type": "run_finished",
-      "success": false,
-      "total_steps": 2,
-      "failed_steps": 0
+    "type": "run_finished",
+    "data": {
+      "taskId": "c6852e1a-8ae7-4895-870b-338bc9bf4745"
     }
   }
 ]

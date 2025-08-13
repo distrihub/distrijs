@@ -18,6 +18,7 @@ import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
 import { DefaultToolActions } from '../components/renderers/tools/DefaultToolActions';
 import { MissingTool } from '../components/renderers/tools/MissingTool';
+import { extractThoughtContent } from '../utils/extractThought';
 import React from 'react';
 
 // State types
@@ -67,6 +68,7 @@ export interface ToolCallState {
   endTime?: number;
   component?: React.ReactNode;
   isExternal?: boolean; // Flag to distinguish external tool calls
+  isLiveStream?: boolean; // Flag to distinguish live streaming vs historical tool calls
 }
 
 export interface ChatState {
@@ -88,12 +90,13 @@ export interface ChatState {
 
   // Streaming indicator state
   streamingIndicator: StreamingIndicator | undefined;
+  currentThought?: string;  // Current thought content from agent_response blocks
 
   // Tool execution state
   agent?: Agent;
   tools?: DistriAnyTool[];
   wrapOptions?: { autoExecute?: boolean };
-  onAllToolsCompleted?: () => void;
+  onAllToolsCompleted?: (() => void) | undefined;
 }
 
 export interface ChatStateStore extends ChatState {
@@ -105,15 +108,17 @@ export interface ChatStateStore extends ChatState {
 
   // Streaming indicator actions
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
+  setCurrentThought: (thought: string | undefined) => void;
 
   // State actions
   addMessage: (message: DistriChatMessage) => void;
-  processMessage: (message: DistriChatMessage) => void;
+  processMessage: (message: DistriChatMessage, isFromStream?: boolean) => void;
   clearAllStates: () => void;
   clearTask: (taskId: string) => void;
+  completeRunningSteps: () => void;
 
   // Tool call management
-  initToolCall: (toolCall: ToolCall, timestamp?: number) => void;
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean) => void;
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
   getToolCallById: (toolCallId: string) => ToolCallState | null;
   getPendingToolCalls: () => ToolCallState[];
@@ -143,7 +148,7 @@ export interface ChatStateStore extends ChatState {
   setAgent: (agent: Agent) => void;
   setTools: (tools: DistriAnyTool[]) => void;
   setWrapOptions: (options: { autoExecute?: boolean }) => void;
-  setOnAllToolsCompleted: (callback: () => void) => void;
+  setOnAllToolsCompleted: (callback: (() => void) | undefined) => void;
 }
 
 export const useChatStateStore = create<ChatStateStore>((set, get) => ({
@@ -159,6 +164,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   currentTaskId: undefined,
   currentPlanId: undefined,
   streamingIndicator: undefined,
+  currentThought: undefined,
   messages: [],
 
   // State actions
@@ -177,6 +183,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => {
     set({ streamingIndicator: indicator });
+  },
+
+  setCurrentThought: (thought: string | undefined) => {
+    set({ currentThought: thought });
   },
 
   triggerTools: () => {
@@ -202,20 +212,36 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         if (event.type === 'text_message_start') {
           // Create a new message with the specified ID and role
           const messageId = event.data.message_id;
+          const stepId = event.data.step_id;
           const role = event.data.role;
+          const isFinal = event.data.is_final;
 
           const newDistriMessage: DistriMessage = {
             id: messageId,
             role,
             parts: [{ type: 'text', data: '' }],
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            step_id: stepId,
+            is_final: isFinal
           };
 
           messages.push(newDistriMessage);
 
+          // Update existing step to show it's now generating text (if step exists)
+          if (stepId) {
+            const existingStep = get().steps.get(stepId);
+            if (existingStep) {
+              get().updateStep(stepId, {
+                // Keep the original title from step_started, just ensure it's running
+                status: 'running',
+              });
+            }
+          }
+
         } else if (event.type === 'text_message_content') {
           // Find existing message and append delta to text part
           const messageId = event.data.message_id;
+          const stepId = event.data.step_id;
           const delta = event.data.delta;
 
           // Silent processing - no logs for content streaming
@@ -234,6 +260,22 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             }
 
             textPart.data += delta;
+
+            // Extract thought content from accumulated text and update current thought
+            const thoughtContent = extractThoughtContent(textPart.data);
+            if (thoughtContent) {
+              get().setCurrentThought(thoughtContent);
+            }
+
+            // Update step progress if stepId provided and step exists
+            if (stepId) {
+              const currentStep = get().steps.get(stepId);
+              if (currentStep && currentStep.status === 'running') {
+                get().updateStep(stepId, {
+                  title: `${currentStep.title || 'Writing'} (${textPart.data.length} chars)`,
+                });
+              }
+            }
           } else {
             // Only log errors for streaming issues
             if (isDebugEnabled) {
@@ -243,7 +285,21 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           }
 
         } else if (event.type === 'text_message_end') {
-          // Message is complete, no additional action needed
+          // Message is complete, mark step as completed if stepId provided and step exists
+          const stepId = event.data.step_id;
+
+          if (stepId) {
+            const existingStep = get().steps.get(stepId);
+            if (existingStep) {
+              get().updateStep(stepId, {
+                status: 'completed',
+                endTime: Date.now(),
+              });
+            }
+          }
+
+          // Clear current thought when message is complete
+          get().setCurrentThought(undefined);
 
         } else {
           // Don't add state-only events to messages (they only update store state)
@@ -275,7 +331,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
 
   // State actions
-  processMessage: (message: DistriChatMessage) => {
+  processMessage: (message: DistriChatMessage, isFromStream: boolean = false) => {
     const timestamp = Date.now(); // Default fallback
     const isDebugEnabled = get().debug;
 
@@ -358,14 +414,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
-          console.log('🔧 Resolving tool calls after run_finished');
-          console.log('🔧 Pending tool calls:', get().getPendingToolCalls().map(tc => ({ id: tc.tool_call_id, name: tc.tool_name, status: tc.status })));
-          console.log('🔧 Available tools:', get().tools?.map(t => t.name));
-          get().resolveToolCalls();
-          console.log('🔧 Tool calls after resolve:', Array.from(get().toolCalls.entries()).map(([id, tc]) => ({ id, name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
+          // Tool calls are now resolved immediately when tool_calls event arrives, not here
+          console.log('🔧 Run finished - tool calls should already be resolved from tool_calls event');
 
           // Clear all indicators and stop loading when run is finished
           get().setStreamingIndicator(undefined);
+          get().setCurrentThought(undefined);
           set({ isStreaming: false });
 
           break;
@@ -381,14 +435,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
-          console.log('🔧 Resolving tool calls after run_error');
-          console.log('🔧 Pending tool calls:', get().getPendingToolCalls().map(tc => ({ id: tc.tool_call_id, name: tc.tool_name, status: tc.status })));
-          console.log('🔧 Available tools:', get().tools?.map(t => t.name));
-          get().resolveToolCalls();
-          console.log('🔧 Tool calls after resolve:', Array.from(get().toolCalls.entries()).map(([id, tc]) => ({ id, name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
+          // Tool calls are now resolved immediately when tool_calls event arrives, not here
+          console.log('🔧 Run error - tool calls should already be resolved from tool_calls event');
 
           // Clear all indicators and stop loading when run errors
           get().setStreamingIndicator(undefined);
+          get().setCurrentThought(undefined);
           set({ isStreaming: false });
           break;
 
@@ -436,6 +488,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           }
           // Clear planning indicator and stop loading when plan is finished
           get().setStreamingIndicator(undefined);
+          get().setCurrentThought(undefined);
           set({ isLoading: false });
           break;
 
@@ -518,10 +571,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
                 input: toolCall.input,
-              }, timestamp);
+              }, timestamp, isFromStream);
             });
             console.log('🔧 Tool calls after init:', Array.from(get().toolCalls.entries()));
-            // Don't resolve immediately - wait for run completion
+
+            // Immediately resolve/initialize tools when tool_calls event arrives (not on run_finished)
+            console.log('🔧 Resolving tool calls immediately on tool_calls event');
+            get().resolveToolCalls();
           }
           break;
 
@@ -579,7 +635,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                     input: step.action.input || {},
                   };
 
-                  get().initToolCall(toolCall, message.timestamp || timestamp);
+                  get().initToolCall(toolCall, message.timestamp || timestamp, isFromStream);
                 }
               });
             }
@@ -590,16 +646,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     }
   },
 
-  initToolCall: (toolCall: ToolCall, timestamp?: number) => {
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream: boolean = false) => {
     set((state: ChatState) => {
       const newState = { ...state };
 
       // Determine if tool is external (only if explicitly registered in tools array)
-
-      // Only tools explicitly registered in the tools array are considered external
       const distriTool = state.tools?.find(t => t.name === toolCall.tool_name);
-
-
 
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
@@ -608,6 +660,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         status: 'pending',
         startTime: timestamp || Date.now(),
         isExternal: !!distriTool,
+        isLiveStream: isFromStream,
       });
       return newState;
     });
@@ -705,7 +758,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     } else if (distriTool?.type === 'function') {
       // For DistriFnTool, automatically create DefaultToolActions component
       let fnTool = distriTool as DistriFnTool;
-      fnTool.autoExecute = fnTool.autoExecute || state.wrapOptions?.autoExecute;
+      // Only auto-execute if explicitly set on the tool itself, not from global wrapOptions
+      // This ensures tools show confirmation UI by default and only auto-execute when intended
+      fnTool.autoExecute = fnTool.autoExecute === true;
 
       component = React.createElement(DefaultToolActions, {
         toolCall,
@@ -789,6 +844,20 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       isStreaming: false,
       isLoading: false,
       error: null,
+    });
+  },
+
+  // Helper to complete any running steps (for cleanup)
+  completeRunningSteps: () => {
+    const state = get();
+    const now = Date.now();
+    state.steps.forEach((step, stepId) => {
+      if (step.status === 'running') {
+        get().updateStep(stepId, {
+          status: 'completed',
+          endTime: now,
+        });
+      }
     });
   },
 
@@ -877,7 +946,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {
     set({ wrapOptions });
   },
-  setOnAllToolsCompleted: (callback: () => void) => {
+  setOnAllToolsCompleted: (callback: (() => void) | undefined) => {
     set({ onAllToolsCompleted: callback });
   },
 })); 
