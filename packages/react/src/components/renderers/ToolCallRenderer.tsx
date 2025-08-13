@@ -1,6 +1,6 @@
 import React from 'react';
 import { Wrench, ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { ToolCallState } from '../../types';
+import { ToolCallState } from '../../stores/chatStateStore';
 
 export interface ToolCallRendererProps {
   toolCall: ToolCallState;
