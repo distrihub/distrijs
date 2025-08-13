@@ -4,6 +4,7 @@ import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
+import { TypingIndicator } from './renderers/TypingIndicator';
 import { ToolCallRenderer } from './renderers/ToolCallRenderer';
 
 import { useChatStateStore } from '../stores/chatStateStore';
@@ -76,6 +77,7 @@ export function Chat({
   const plans = useChatStateStore(state => state.plans);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
+  const currentThought = useChatStateStore(state => state.currentThought);
   const setDebug = useChatStateStore(state => state.setDebug);
 
   // Set debug mode when component mounts or debug prop changes
@@ -205,11 +207,18 @@ export function Chat({
 
   // Render thinking indicator separately at the end
   const renderThinkingIndicator = () => {
-    if (streamingIndicator) {
+    if (streamingIndicator === 'typing') {
+      return (
+        <RendererWrapper key={`typing-indicator`}>
+          <TypingIndicator />
+        </RendererWrapper>
+      );
+    } else if (streamingIndicator) {
       return (
         <RendererWrapper key={`thinking-${streamingIndicator}`}>
           <ThinkingRenderer
             indicator={streamingIndicator}
+            thoughtText={currentThought}
           />
         </RendererWrapper>
       );

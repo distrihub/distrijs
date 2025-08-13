@@ -1147,12 +1147,18 @@ var Agent = class _Agent {
     console.log("enhancedParams", enhancedParams);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
     return async function* () {
+      let events = [];
+      let mappedEvents = [];
       for await (const event of a2aStream) {
+        events.push(event);
         const converted = decodeA2AStreamEvent(event);
+        mappedEvents.push(converted);
         if (converted) {
           yield converted;
         }
       }
+      console.log("All events", events);
+      console.log("Mapped events", mappedEvents);
     }();
   }
   /**

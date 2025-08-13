@@ -91,13 +91,24 @@ export function useChat({
     if (initialMessages) {
       // Clear state and process initial messages
       chatState.clearAllStates();
-      initialMessages.forEach(message => chatState.processMessage(message));
+      // Process initial messages as historical (not from stream)
+      initialMessages.forEach(message => chatState.processMessage(message, false));
+      
+      // Ensure streaming states are cleared after processing initial messages
+      // (in case initial messages contain incomplete streaming sequences)
+      setTimeout(() => {
+        chatState.completeRunningSteps();
+        if (cleanupRef.current) {
+          cleanupRef.current();
+        }
+      }, 100);
     }
   }, [initialMessages]); // Only depend on initialMessages for static behavior
 
   // Direct message processing
   const addMessage = useCallback((message: DistriChatMessage) => {
-    processMessage(message);
+    // When manually adding messages, treat as non-stream by default
+    processMessage(message, false);
   }, [processMessage]);
 
 
@@ -112,14 +123,26 @@ export function useChat({
     }
   }, [agent, tools, setAgent, setTools]);
 
+  // Store cleanup functions in refs to avoid dependency changes
+  const cleanupRef = useRef<() => void>();
+  cleanupRef.current = () => {
+    chatState.setStreamingIndicator(undefined);
+    setStreaming(false);
+    setLoading(false);
+  };
+
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      // Clear any lingering streaming states on unmount
+      if (cleanupRef.current) {
+        setTimeout(cleanupRef.current, 0);
+      }
     };
-  }, []);
+  }, []); // Empty dependencies to avoid re-creating cleanup function
 
   // Reset state when agent changes
   const agentIdRef = useRef<string | undefined>(undefined);
@@ -136,8 +159,8 @@ export function useChat({
 
   const handleStreamEvent = useCallback(
     (event: DistriChatMessage) => {
-      // Process event directly
-      processMessage(event);
+      // Process event directly - mark as from stream
+      processMessage(event, true);
     }, [processMessage]);
 
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
@@ -162,8 +185,8 @@ export function useChat({
 
       const distriMessage = DistriClient.initDistriMessage('user', parts);
 
-      // Add user message immediately
-      processMessage(distriMessage);
+      // Add user message immediately - not from stream, user initiated
+      processMessage(distriMessage, false);
 
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
@@ -218,8 +241,8 @@ export function useChat({
 
       const distriMessage = DistriClient.initDistriMessage(role, parts);
 
-      // Add user/tool message immediately
-      processMessage(distriMessage);
+      // Add user/tool message immediately - not from stream, user initiated
+      processMessage(distriMessage, false);
 
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
@@ -299,9 +322,17 @@ export function useChat({
 
   // Set up callback for when all external tools complete (only once)
   useEffect(() => {
-    chatState.setOnAllToolsCompleted(async () => {
-      await handleExternalToolResponsesRef.current();
-    });
+    const callback = async () => {
+      if (handleExternalToolResponsesRef.current) {
+        await handleExternalToolResponsesRef.current();
+      }
+    };
+    chatState.setOnAllToolsCompleted(callback);
+    
+    // Cleanup the callback on unmount
+    return () => {
+      chatState.setOnAllToolsCompleted(undefined);
+    };
   }, []); // Empty dependency array - only run once
 
   const stopStreaming = useCallback(() => {
