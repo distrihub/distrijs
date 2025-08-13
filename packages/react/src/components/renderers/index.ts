@@ -1,12 +1,21 @@
-// Core renderers for different message types
-export { UserMessageRenderer } from './UserMessageRenderer';
-export { AssistantMessageRenderer } from './AssistantMessageRenderer';
-export { ThinkingRenderer } from './ThinkingRenderer';
-export { ToolCallRenderer } from './ToolCallRenderer';
-export { PlanRenderer } from './PlanRenderer';
-export { ToolMessageRenderer } from './ToolMessageRenderer';
-export { DebugRenderer } from './DebugRenderer';
-export { ArtifactRenderer } from './ArtifactRenderer';
+export * from './ArtifactRenderer';
+export * from './AssistantMessageRenderer';
+export * from './DebugRenderer';
+export * from './ImageRenderer';
+export * from './LoadingShimmer';
+export * from './MessageRenderer';
+export * from './PlanRenderer';
+export * from './StepBasedRenderer';
+export * from './StepRenderer';
+export * from './StreamingTextRenderer';
+export * from './TextRenderer';
+export * from './ThinkingRenderer';
+export * from './ToolCallRenderer';
+export * from './ToolMessageRenderer';
+export * from './ToolResultRenderer';
+export * from './TypingIndicator';
+export * from './UserMessageRenderer';
+export * from './utils';
 
 // Re-export types
 export type { UserMessageRendererProps } from './UserMessageRenderer';

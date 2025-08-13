@@ -2,6 +2,7 @@ import React from 'react';
 import { DistriArtifact, DistriMessage } from '@distri/core';
 import { extractContent } from './utils';
 import { StreamingTextRenderer } from './StreamingTextRenderer';
+import { ImageRenderer } from './ImageRenderer';
 import { useChatStateStore } from '../../stores/chatStateStore';
 
 
@@ -27,10 +28,18 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
   return (
     <div className={`flex items-start gap-4 ${className}`}>
       <div className="w-full">
-        <StreamingTextRenderer
-          text={content.text}
-          isStreaming={isStreaming}
-        />
+        {/* Text content */}
+        {content.text && (
+          <StreamingTextRenderer
+            text={content.text}
+            isStreaming={isStreaming}
+          />
+        )}
+        
+        {/* Image content */}
+        {content.imageParts && content.imageParts.length > 0 && (
+          <ImageRenderer imageParts={content.imageParts} />
+        )}
       </div>
     </div>
   );
