@@ -456,6 +456,7 @@ interface ThinkingRendererProps {
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;
+    thoughtText?: string;
 }
 declare const ThinkingRenderer: React__default.FC<ThinkingRendererProps>;
 

@@ -45,13 +45,16 @@ interface TextMessageStartEvent {
     type: 'text_message_start';
     data: {
         message_id: string;
+        step_id: string;
         role: Role;
+        is_final?: boolean;
     };
 }
 interface TextMessageContentEvent {
     type: 'text_message_content';
     data: {
         message_id: string;
+        step_id: string;
         delta: string;
     };
 }
@@ -59,6 +62,7 @@ interface TextMessageEndEvent {
     type: 'text_message_end';
     data: {
         message_id: string;
+        step_id: string;
     };
 }
 interface ToolCallStartEvent {
@@ -171,6 +175,8 @@ interface DistriMessage {
     role: MessageRole;
     parts: DistriPart[];
     created_at?: string;
+    step_id?: string;
+    is_final?: boolean;
 }
 interface AssistantWithToolCalls {
     id: string;

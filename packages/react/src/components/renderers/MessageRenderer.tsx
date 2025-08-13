@@ -8,6 +8,7 @@ import { StepRenderer } from './StepRenderer';
 import { ToolCallRenderer } from './ToolCallRenderer';
 import { ToolResultRenderer } from './ToolResultRenderer';
 import { DebugRenderer } from './DebugRenderer';
+import { StepBasedRenderer } from './StepBasedRenderer';
 import { useChatStateStore } from '../../stores/chatStateStore';
 
 export interface MessageRendererProps {
@@ -67,7 +68,7 @@ export function MessageRenderer({
       case 'assistant':
         return (
           <RendererWrapper key={`assistant-${index}`}>
-            <AssistantMessageRenderer
+            <StepBasedRenderer
               message={distriMessage}
             />
           </RendererWrapper>
