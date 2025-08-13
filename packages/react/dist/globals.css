@@ -1130,9 +1130,6 @@ body {
 .border-input {
   border-color: hsl(var(--input));
 }
-.border-muted-foreground\/30 {
-  border-color: hsl(var(--muted-foreground) / 0.3);
-}
 .border-primary {
   border-color: hsl(var(--primary));
 }
@@ -1242,9 +1239,6 @@ body {
 }
 .bg-muted-foreground {
   background-color: hsl(var(--muted-foreground));
-}
-.bg-muted\/20 {
-  background-color: hsl(var(--muted) / 0.2);
 }
 .bg-muted\/30 {
   background-color: hsl(var(--muted) / 0.3);

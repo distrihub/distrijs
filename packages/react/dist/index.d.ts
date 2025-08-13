@@ -1,7 +1,7 @@
-import { DistriFnTool, DistriBaseTool, ToolCall, ToolResult, Agent as Agent$1, DistriChatMessage, DistriPart, AgentDefinition, DistriThread, DistriMessage, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact } from '@distri/core';
-import * as react_jsx_runtime from 'react/jsx-runtime';
+import { ToolResult, DistriFnTool, DistriBaseTool, ToolCall, Agent as Agent$1, DistriChatMessage, DistriPart, AgentDefinition, DistriThread, DistriMessage, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact } from '@distri/core';
 import * as React$1 from 'react';
 import React__default, { ReactNode } from 'react';
+import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as class_variance_authority_types from 'class-variance-authority/types';
 import { VariantProps } from 'class-variance-authority';
 import * as _radix_ui_react_separator from '@radix-ui/react-separator';
@@ -10,18 +10,31 @@ import * as SheetPrimitive from '@radix-ui/react-dialog';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 
-type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
+type StreamingIndicator = 'typing' | 'thinking' | 'generating';
+interface ThinkingRendererProps {
+    indicator: StreamingIndicator;
+    className?: string;
+    avatar?: React__default.ReactNode;
+    name?: string;
+    thoughtText?: string;
+}
+declare const ThinkingRenderer: React__default.FC<ThinkingRendererProps>;
+
 interface ToolCallState {
     tool_call_id: string;
-    status: ToolCallStatus;
     tool_name: string;
-    input: any;
-    result?: any;
+    input: Record<string, unknown>;
+    status: ToolCallStatus;
+    result?: ToolResult;
     error?: string;
-    startedAt?: Date;
-    completedAt?: Date;
-    component?: React.ReactNode;
+    startTime?: number;
+    endTime?: number;
+    component?: React__default.ReactNode;
+    isExternal?: boolean;
+    isLiveStream?: boolean;
 }
+
+type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
 type DistriAnyTool = DistriFnTool | DistriUiTool;
 interface DistriUiTool extends DistriBaseTool {
     type: 'ui';
@@ -450,16 +463,6 @@ interface AssistantMessageRendererProps {
 }
 declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
 
-type StreamingIndicator = 'typing' | 'thinking' | 'generating';
-interface ThinkingRendererProps {
-    indicator: StreamingIndicator;
-    className?: string;
-    avatar?: React__default.ReactNode;
-    name?: string;
-    thoughtText?: string;
-}
-declare const ThinkingRenderer: React__default.FC<ThinkingRendererProps>;
-
 interface ToolCallRendererProps {
     toolCall: ToolCallState;
     isExpanded: boolean;
@@ -499,4 +502,4 @@ interface ArtifactRendererProps {
 }
 declare function ArtifactRenderer({ message, chatState: _chatState, className, avatar }: ArtifactRendererProps): react_jsx_runtime.JSX.Element | null;
 
-export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatProps, DebugRenderer, type DebugRendererProps, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Input, PlanRenderer, type PlanRendererProps, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, type StreamDebugOptions, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, ToolCallRenderer, type ToolCallRendererProps, type ToolCallState, type ToolCallStatus, ToolMessageRenderer, type ToolMessageRendererProps, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, type WrapToolOptions, debugStreamEvents, quickDebugMessage, useAgent, useAgentDefinitions, useChat, useChatMessages, useDistri, useDistriClient, useSidebar, useTheme, useThreads, wrapFnToolAsUiTool, wrapTools };
+export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatProps, DebugRenderer, type DebugRendererProps, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, Input, PlanRenderer, type PlanRendererProps, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, type StreamDebugOptions, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, ToolCallRenderer, type ToolCallRendererProps, type ToolCallStatus, ToolMessageRenderer, type ToolMessageRendererProps, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, type WrapToolOptions, debugStreamEvents, quickDebugMessage, useAgent, useAgentDefinitions, useChat, useChatMessages, useDistri, useDistriClient, useSidebar, useTheme, useThreads, wrapFnToolAsUiTool, wrapTools };

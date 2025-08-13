@@ -2068,18 +2068,27 @@ var import_jsx_runtime15 = require("react/jsx-runtime");
 function processAgentResponseBlocks(text) {
   if (!text) return text;
   let processed = text;
+  processed = processed.replace(/<agent_response[^>]*>\s*<\/agent_response>/gi, "");
+  processed = processed.replace(/<agent_response[^>]*>\s*$/gi, "");
+  processed = processed.replace(/^\s*<\/agent_response>/gi, "");
   const agentResponseRegex = /<agent_response[^>]*>([\s\S]*?)<\/agent_response>/gi;
-  processed = processed.replace(agentResponseRegex, (match, content) => {
+  processed = processed.replace(agentResponseRegex, (_match, content) => {
     const thoughtMatches = content.match(/<thought[^>]*>([\s\S]*?)<\/thought>/gi);
     if (thoughtMatches) {
       const thoughtContent = thoughtMatches.map((thoughtMatch) => {
         const thoughtText = thoughtMatch.replace(/<\/?thought[^>]*>/gi, "").trim();
-        return thoughtText;
-      }).join("\n\n");
+        if (thoughtText) {
+          return `<thought>
+${thoughtText}
+</thought>`;
+        }
+        return "";
+      }).filter(Boolean).join("\n\n");
       return thoughtContent;
     }
     return "";
   });
+  processed = processed.replace(/<\/?agent_response[^>]*>/gi, "");
   processed = processed.replace(/\n\s*\n\s*\n/g, "\n\n").trim();
   return processed;
 }
@@ -2103,10 +2112,10 @@ var StreamingTextRenderer = ({
           allowDangerousHtml: true
         },
         components: {
-          // Handle custom AI tags
-          thought: ({ children }) => /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "border-l-4 border-muted-foreground/30 pl-4 my-3 bg-muted/20 p-3 rounded-r-md", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "text-sm text-muted-foreground font-medium mb-1", children: "\u{1F4AD} Thinking" }),
-            /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "text-sm text-muted-foreground italic", children })
+          // Handle custom AI tags - cast to any to bypass TypeScript component restrictions
+          thought: ({ children }) => /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { className: "inline-flex items-start gap-1", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("span", { className: "text-muted-foreground", children: "\u{1F4AD}" }),
+            /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("span", { className: "text-foreground", children })
           ] }),
           thinking: ({ children }) => /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "border-l-4 border-blue-400/30 pl-4 my-3 bg-blue-50/20 p-3 rounded-r-md", children: [
             /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "text-sm text-blue-600 font-medium mb-1", children: "\u{1F914} Processing" }),

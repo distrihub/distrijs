@@ -35,7 +35,5 @@ export * from './components/ui';
 // Renderer exports (for customization)
 export * from './components/renderers';
 
-// Debug utilities (use debugStreamEvents function for debugging)
-
 // Default styles
 import './globals.css';
