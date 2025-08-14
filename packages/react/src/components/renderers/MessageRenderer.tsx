@@ -46,7 +46,10 @@ export function MessageRenderer({
       .join('')
       .trim();
 
-    if (!textContent) {
+    const imageParts = distriMessage.parts.filter(part => part.type === 'image');
+
+    // Only filter out messages that have neither text nor images
+    if (!textContent && imageParts.length === 0) {
       return null;
     }
   }

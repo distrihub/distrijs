@@ -1,14 +1,20 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriChatMessage } from '@distri/core';
+import { DistriChatMessage, DistriPart } from '@distri/core';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { TypingIndicator } from './renderers/TypingIndicator';
 import { ToolCallRenderer } from './renderers/ToolCallRenderer';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 import { useChatStateStore } from '../stores/chatStateStore';
 import { WrapToolOptions } from '../utils/toolWrapper';
+
+export interface ModelOption {
+  id: string;
+  name: string;
+}
 
 export interface ChatProps {
   threadId: string;
@@ -25,6 +31,10 @@ export interface ChatProps {
   theme?: 'light' | 'dark' | 'auto';
   // Debug mode for enhanced console logging
   debug?: boolean;
+  // Model dropdown options
+  models?: ModelOption[];
+  selectedModelId?: string;
+  onModelChange?: (modelId: string) => void;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -48,6 +58,9 @@ export function Chat({
   initialMessages,
   theme = 'auto',
   debug = false,
+  models,
+  selectedModelId,
+  onModelChange,
 }: ChatProps) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -91,8 +104,10 @@ export function Chat({
     toolCall.status === 'pending' || toolCall.status === 'running'
   );
 
-  const handleSendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return;
+  const handleSendMessage = useCallback(async (content: string | DistriPart[]) => {
+    if (typeof content === 'string' && !content.trim()) return;
+    if (Array.isArray(content) && content.length === 0) return;
+    
     setInput('');
     await sendMessage(content);
   }, [sendMessage]);
@@ -274,10 +289,29 @@ console.log('Full chat state:', useChatStateStore.getState());`}
 
       <div className="border-t border-border bg-background">
         <div className="max-w-4xl mx-auto px-4 py-4">
+          {/* Model selector dropdown */}
+          {models && models.length > 0 && (
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Model:</span>
+              <Select value={selectedModelId} onValueChange={onModelChange}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <ChatInput
             value={input}
             onChange={setInput}
-            onSend={() => handleSendMessage(input)}
+            onSend={handleSendMessage}
             onStop={handleStopStreaming}
             placeholder="Type your message..."
             disabled={isLoading || hasPendingToolCalls()}

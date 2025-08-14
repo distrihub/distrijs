@@ -3,6 +3,7 @@ import { User } from 'lucide-react';
 import { DistriMessage } from '@distri/core';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { extractContent, renderTextContent } from './utils';
+import { ImageRenderer } from './ImageRenderer';
 
 export interface UserMessageRendererProps {
   message: DistriMessage;
@@ -25,9 +26,17 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({
         </AvatarFallback>
       </Avatar>
       <div className="w-full">
-        <div className="prose prose-sm max-w-none text-foreground">
-          {renderTextContent(content)}
-        </div>
+        {/* Text content */}
+        {content.text && (
+          <div className="prose prose-sm max-w-none text-foreground">
+            {renderTextContent(content)}
+          </div>
+        )}
+        
+        {/* Image content */}
+        {content.imageParts && content.imageParts.length > 0 && (
+          <ImageRenderer imageParts={content.imageParts} />
+        )}
       </div>
     </div>
   );

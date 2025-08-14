@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistriMessage, DistriEvent, DistriArtifact } from '@distri/core';
+import { DistriMessage, DistriEvent, DistriArtifact, ImagePart } from '@distri/core';
 // @ts-ignore
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 // @ts-ignore  
@@ -12,6 +12,7 @@ export interface ExtractedContent {
   hasCode: boolean;
   hasLinks: boolean;
   hasImages: boolean;
+  imageParts: ImagePart[];
   rawContent: DistriMessage | DistriEvent | DistriArtifact;
 }
 
@@ -21,6 +22,7 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
   let hasCode = false;
   let hasLinks = false;
   let hasImages = false;
+  let imageParts: ImagePart[] = [];
 
   if ('parts' in message && Array.isArray(message.parts)) {
     // Handle DistriMessage
@@ -34,11 +36,15 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
 
     text = textParts.join(' ').trim();
 
+    // Extract image parts
+    imageParts = distriMessage.parts
+      ?.filter(p => p.type === 'image') as ImagePart[] || [];
+
     // Check for rich content in text
     hasMarkdown = /[*_`#\[\]()>]/.test(text);
     hasCode = /```|`/.test(text);
     hasLinks = /\[.*?\]\(.*?\)|https?:\/\/[^\s]+/.test(text);
-    hasImages = /!\[.*?\]\(.*?\)/.test(text);
+    hasImages = /!\[.*?\]\(.*?\)/.test(text) || imageParts.length > 0;
   } else if ('type' in message) {
     // Handle DistriArtifact
     const artifact = message as DistriArtifact;
@@ -58,6 +64,7 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
     hasCode,
     hasLinks,
     hasImages,
+    imageParts,
     rawContent: message
   };
 }
