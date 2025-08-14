@@ -160,7 +160,7 @@ export interface FileBytes {
 
 export interface FileUrl {
   mime_type: string;
-  url: string; // Base64 encoded data
+  url: string; // File Url
   name?: string;
 }
 export type FileType = FileBytes | FileUrl;
