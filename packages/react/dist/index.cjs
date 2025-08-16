@@ -238,53 +238,6 @@ var import_jsx_runtime3 = require("react/jsx-runtime");
 var import_react2 = require("react");
 var import_sonner = require("sonner");
 var import_jsx_runtime4 = require("react/jsx-runtime");
-var ToastToolCall = ({
-  toolCall,
-  completeTool
-}) => {
-  const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
-  const message = input.message || "Toast message";
-  const type = input.type || "info";
-  let method;
-  switch (type) {
-    case "success":
-      method = import_sonner.toast.success;
-      break;
-    case "error":
-      method = import_sonner.toast.error;
-      break;
-    case "warning":
-      method = import_sonner.toast.warning;
-      break;
-    default:
-      method = import_sonner.toast.info;
-  }
-  ;
-  let duration = 500;
-  (0, import_react2.useEffect)(() => {
-    method(message, {
-      duration: duration * 2,
-      position: "top-right",
-      className: "bg-background text-foreground border border-border",
-      style: {
-        backgroundColor: "var(--background)",
-        color: "var(--foreground)",
-        border: "1px solid var(--border)"
-      }
-    });
-    setTimeout(() => {
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolCall.tool_name,
-        result: "Toast displayed successfully",
-        success: true,
-        error: void 0
-      };
-      completeTool(result);
-    }, duration);
-  }, [message, type, completeTool]);
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, {});
-};
 
 // src/components/renderers/tools/DefaultToolActions.tsx
 var import_react3 = require("react");
@@ -572,6 +525,10 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   streamingIndicator: void 0,
   currentThought: void 0,
   messages: [],
+  tools: {
+    tools: [],
+    agent_tools: /* @__PURE__ */ new Map()
+  },
   // State actions
   setStreaming: (isStreaming) => {
     set({ isStreaming });
@@ -961,7 +918,9 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   initToolCall: (toolCall, timestamp, isFromStream = false) => {
     set((state) => {
       const newState = { ...state };
-      const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
+      let distriTool;
+      const tools = state.getAllTools();
+      distriTool = tools.find((t) => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
@@ -1007,7 +966,11 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   },
   initializeTool: (toolCall) => {
     const state = get();
-    const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
+    let distriTool;
+    if (state.tools) {
+      const tools = state.getAllTools();
+      distriTool = tools.find((t) => t.name === toolCall.tool_name);
+    }
     const commonProps = {
       tool_name: toolCall.tool_name,
       input: toolCall.input,
@@ -1205,13 +1168,26 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       return newState;
     });
   },
+  getAllTools: () => {
+    const state = get();
+    let tools = state.tools?.tools || [];
+    for (const [, toolList] of state.tools?.agent_tools || []) {
+      tools.push(...toolList);
+    }
+    return tools;
+  },
   // Setup
   setAgent: (agent) => {
     set({ agent });
   },
   setTools: (tools) => {
-    console.log("\u{1F527} Setting tools in store:", tools?.map((t) => ({ name: t.name, type: t.type })));
-    set({ tools });
+    console.log("\u{1F527} Setting tools in store (Map format):", tools);
+    set({
+      tools: {
+        tools: tools.tools,
+        agent_tools: tools.agent_tools
+      }
+    });
   },
   setWrapOptions: (wrapOptions) => {
     set({ wrapOptions });
@@ -1227,39 +1203,19 @@ function registerTools({ agent, tools, wrapOptions = {} }) {
   const lastAgentIdRef = (0, import_react5.useRef)(null);
   const setWrapOptions = useChatStateStore((state) => state.setWrapOptions);
   (0, import_react5.useEffect)(() => {
-    if (!agent || !tools || tools.length === 0) {
+    if (!agent || !tools) {
       return;
     }
     if (lastAgentIdRef.current === agent.id) {
       return;
     }
     setWrapOptions(wrapOptions);
-    const toolsToRegister = [...defaultTools, ...tools];
-    toolsToRegister.forEach((tool) => {
-      agent.registerTool(tool);
-      console.log(`\u2713 Registered tool: ${tool.name} (type: ${tool.type})`);
-    });
+    agent.setTools(tools);
     lastAgentIdRef.current = agent.id;
-    console.log(`Successfully registered ${tools.length} tools with agent`);
+    console.log(`\u2713 Set tools for agent ${agent.id}`);
+    console.log(`Tools Map contains ${tools.agent_tools.size} agent(s):`, Array.from(tools.agent_tools.keys()));
   }, [agent?.id, tools, wrapOptions, setWrapOptions]);
 }
-var defaultTools = [
-  {
-    name: "toast",
-    type: "ui",
-    description: "Show a toast message",
-    input_schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        type: { type: "string", enum: ["success", "error", "warning", "info"] }
-      }
-    },
-    component: (props) => {
-      return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ToastToolCall, { ...props });
-    }
-  }
-];
 
 // src/useChat.ts
 function useChat({
@@ -3355,9 +3311,9 @@ function Chat({
   wrapOptions,
   initialMessages,
   theme = "auto",
-  debug: debug2 = false,
   models,
   selectedModelId,
+  beforeSendMessage,
   onModelChange
 }) {
   const [input, setInput] = (0, import_react14.useState)("");
@@ -3381,20 +3337,14 @@ function Chat({
     initialMessages
   });
   const toolCalls = useChatStateStore((state) => state.toolCalls);
-  const currentPlanId = useChatStateStore((state) => state.currentPlanId);
-  const plans = useChatStateStore((state) => state.plans);
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore((state) => state.streamingIndicator);
   const currentThought = useChatStateStore((state) => state.currentThought);
-  const setDebug = useChatStateStore((state) => state.setDebug);
-  (0, import_react14.useEffect)(() => {
-    setDebug(debug2);
-  }, [debug2, setDebug]);
-  const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
-  const pendingToolCalls = Array.from(toolCalls.values()).filter(
-    (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
-  );
-  const handleSendMessage = (0, import_react14.useCallback)(async (content) => {
+  const handleSendMessage = (0, import_react14.useCallback)(async (initialContent) => {
+    let content = initialContent;
+    if (beforeSendMessage) {
+      content = await beforeSendMessage(content);
+    }
     if (typeof content === "string" && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
     setInput("");
@@ -3500,9 +3450,13 @@ function Chat({
   };
   return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: `flex flex-col h-full ${getThemeClasses()}`, children: [
     /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
+      error && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "text-destructive text-xs", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("strong", { children: "Error:" }),
+        " ",
+        error.message
+      ] }) }),
       renderMessages(),
       renderThinkingIndicator(),
-      process.env.NODE_ENV === "development" && false,
       /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { ref: messagesEndRef })
     ] }) }),
     /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
@@ -3525,11 +3479,6 @@ function Chat({
           isStreaming
         }
       )
-    ] }) }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "text-destructive text-xs", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("strong", { children: "Error:" }),
-      " ",
-      error.message
     ] }) })
   ] });
 }

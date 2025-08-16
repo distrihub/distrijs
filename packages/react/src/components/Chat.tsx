@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 import { useChatStateStore } from '../stores/chatStateStore';
 import { WrapToolOptions } from '../utils/toolWrapper';
+import { ToolsConfig } from '@distri/core';
 
 export interface ModelOption {
   id: string;
@@ -20,17 +21,16 @@ export interface ChatProps {
   threadId: string;
   agent?: any;
   onMessage?: (message: DistriChatMessage) => void;
+  beforeSendMessage?: (content: string | DistriPart[]) => Promise<string | DistriPart[]>;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
-  tools?: any[];
+  tools?: ToolsConfig;
   // Tool wrapping options
   wrapOptions?: WrapToolOptions;
   // Initial messages to use instead of fetching
   initialMessages?: (DistriChatMessage)[];
   // Theme
   theme?: 'light' | 'dark' | 'auto';
-  // Debug mode for enhanced console logging
-  debug?: boolean;
   // Model dropdown options
   models?: ModelOption[];
   selectedModelId?: string;
@@ -57,14 +57,15 @@ export function Chat({
   wrapOptions,
   initialMessages,
   theme = 'auto',
-  debug = false,
   models,
   selectedModelId,
+  beforeSendMessage,
   onModelChange,
 }: ChatProps) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const {
     sendMessage,
@@ -86,28 +87,21 @@ export function Chat({
 
   // Get reactive state from store
   const toolCalls = useChatStateStore(state => state.toolCalls);
-  const currentPlanId = useChatStateStore(state => state.currentPlanId);
-  const plans = useChatStateStore(state => state.plans);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
   const currentThought = useChatStateStore(state => state.currentThought);
-  const setDebug = useChatStateStore(state => state.setDebug);
 
-  // Set debug mode when component mounts or debug prop changes
-  useEffect(() => {
-    setDebug(debug);
-  }, [debug, setDebug]);
 
-  // Compute derived state
-  const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
-  const pendingToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
-    toolCall.status === 'pending' || toolCall.status === 'running'
-  );
+  const handleSendMessage = useCallback(async (initialContent: string | DistriPart[]) => {
 
-  const handleSendMessage = useCallback(async (content: string | DistriPart[]) => {
+    let content = initialContent;
+    if (beforeSendMessage) {
+      content = await beforeSendMessage(content);
+    }
+
     if (typeof content === 'string' && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
-    
+
     setInput('');
     await sendMessage(content);
   }, [sendMessage]);
@@ -247,41 +241,17 @@ export function Chat({
       <div className="flex-1 overflow-y-auto bg-background text-foreground">
         {/* Center container with max width and padding like ChatGPT */}
         <div className="max-w-4xl mx-auto px-4 py-8">
+          {error && (
+            <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
+              <div className="text-destructive text-xs">
+                <strong>Error:</strong> {error.message}
+              </div>
+            </div>
+          )}
           {/* Render all messages and state */}
           {renderMessages()}
           {/* Render thinking indicator at the end */}
           {renderThinkingIndicator()}
-
-          {/* Debug info - hidden by default */}
-          {process.env.NODE_ENV === 'development' && false && (
-            <div className="mt-8 p-4 bg-muted rounded-lg text-xs">
-              <h4 className="font-bold mb-2">Debug Info:</h4>
-              <div>Messages: {messages.length}</div>
-              <div>Tool Calls: {toolCalls.size}</div>
-              <div>Is Streaming: {isStreaming ? 'Yes' : 'No'}</div>
-              <div>Is Loading: {isLoading ? 'Yes' : 'No'}</div>
-              <div>Has Pending Tool Calls: {hasPendingToolCalls() ? 'Yes' : 'No'}</div>
-              <div>Current Plan: {currentPlan?.status || 'None'}</div>
-              <div>Pending Tool Calls: {pendingToolCalls.length}</div>
-
-              {/* Example of how to access chat state for debugging */}
-              <div className="mt-4 p-2 bg-background rounded border">
-                <h5 className="font-bold mb-1">Chat State Access Example:</h5>
-                <pre className="text-xs">
-                  {`// Access state directly from store (reactive):
-const messages = useChatStateStore(state => state.messages);
-const toolCalls = useChatStateStore(state => state.toolCalls);
-const currentPlan = useChatStateStore(state => {
-  const planId = state.currentPlanId;
-  return planId ? state.plans.get(planId) || null : null;
-});
-
-// For debugging, you can log the full state:
-console.log('Full chat state:', useChatStateStore.getState());`}
-                </pre>
-              </div>
-            </div>
-          )}
 
           <div ref={messagesEndRef} />
         </div>
@@ -307,7 +277,7 @@ console.log('Full chat state:', useChatStateStore.getState());`}
               </Select>
             </div>
           )}
-          
+
           <ChatInput
             value={input}
             onChange={setInput}
@@ -320,13 +290,7 @@ console.log('Full chat state:', useChatStateStore.getState());`}
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
-          <div className="text-destructive text-xs">
-            <strong>Error:</strong> {error.message}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

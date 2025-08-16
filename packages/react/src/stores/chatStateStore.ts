@@ -13,6 +13,7 @@ import {
   PlanStep,
   RunStartedEvent,
   RunFinishedEvent,
+  ToolsConfig,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -94,9 +95,13 @@ export interface ChatState {
 
   // Tool execution state
   agent?: Agent;
-  tools?: DistriAnyTool[];
+  tools?: {
+    tools: DistriAnyTool[];
+    agent_tools: Map<string, DistriAnyTool[]>;
+  };
   wrapOptions?: { autoExecute?: boolean };
   onAllToolsCompleted?: (() => void) | undefined;
+  getAllTools: () => DistriAnyTool[];
 }
 
 export interface ChatStateStore extends ChatState {
@@ -146,7 +151,7 @@ export interface ChatStateStore extends ChatState {
 
   // Setup
   setAgent: (agent: Agent) => void;
-  setTools: (tools: DistriAnyTool[]) => void;
+  setTools: (tools: ToolsConfig) => void;
   setWrapOptions: (options: { autoExecute?: boolean }) => void;
   setOnAllToolsCompleted: (callback: (() => void) | undefined) => void;
 }
@@ -166,6 +171,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   streamingIndicator: undefined,
   currentThought: undefined,
   messages: [],
+  tools: {
+    tools: [],
+    agent_tools: new Map(),
+  },
 
   // State actions
   setStreaming: (isStreaming: boolean) => {
@@ -650,9 +659,11 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set((state: ChatState) => {
       const newState = { ...state };
 
-      // Determine if tool is external (only if explicitly registered in tools array)
-      const distriTool = state.tools?.find(t => t.name === toolCall.tool_name);
+      // Determine if tool is external (only if explicitly registered in tools map)
+      let distriTool: DistriAnyTool | undefined;
 
+      const tools = state.getAllTools();
+      distriTool = tools.find(t => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || 'Unknown Tool',
@@ -705,7 +716,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   initializeTool: (toolCall: ToolCall) => {
     const state = get();
-    const distriTool = state.tools?.find(t => t.name === toolCall.tool_name);
+    let distriTool: DistriAnyTool | undefined;
+    if (state.tools) {
+      // Search through all agent tools to find the tool
+      const tools = state.getAllTools();
+
+      distriTool = tools.find(t => t.name === toolCall.tool_name);
+    }
     const commonProps = {
       tool_name: toolCall.tool_name,
       input: toolCall.input,
@@ -935,13 +952,27 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     });
   },
 
+  getAllTools: (): DistriAnyTool[] => {
+    const state = get();
+    let tools = state.tools?.tools || [];
+    for (const [, toolList] of state.tools?.agent_tools || []) {
+      tools.push(...toolList);
+    }
+    return tools;
+  },
+
   // Setup
   setAgent: (agent: Agent) => {
     set({ agent });
   },
-  setTools: (tools: DistriAnyTool[]) => {
-    console.log('🔧 Setting tools in store:', tools?.map(t => ({ name: t.name, type: t.type })));
-    set({ tools });
+  setTools: (tools: ToolsConfig) => {
+    console.log('🔧 Setting tools in store (Map format):', tools);
+    set({
+      tools: {
+        tools: tools.tools as DistriAnyTool[],
+        agent_tools: tools.agent_tools as Map<string, DistriAnyTool[]>,
+      }
+    });
   },
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {
     set({ wrapOptions });

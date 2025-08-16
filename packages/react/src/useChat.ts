@@ -7,7 +7,7 @@ import {
 } from '@distri/core';
 import { registerTools } from './hooks/registerTools';
 import { useChatStateStore } from './stores/chatStateStore';
-import { DistriAnyTool } from './types';
+import { ToolsConfig } from '@distri/core';
 
 import { WrapToolOptions } from './utils/toolWrapper';
 
@@ -18,7 +18,7 @@ export interface UseChatOptions {
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
   getMetadata?: () => Promise<Record<string, unknown>>;
-  tools?: DistriAnyTool[];
+  tools?: ToolsConfig;
   wrapOptions?: WrapToolOptions;
   initialMessages?: (DistriChatMessage)[];
 }
@@ -93,7 +93,7 @@ export function useChat({
       chatState.clearAllStates();
       // Process initial messages as historical (not from stream)
       initialMessages.forEach(message => chatState.processMessage(message, false));
-      
+
       // Ensure streaming states are cleared after processing initial messages
       // (in case initial messages contain incomplete streaming sequences)
       setTimeout(() => {
@@ -328,7 +328,7 @@ export function useChat({
       }
     };
     chatState.setOnAllToolsCompleted(callback);
-    
+
     // Cleanup the callback on unmount
     return () => {
       chatState.setOnAllToolsCompleted(undefined);

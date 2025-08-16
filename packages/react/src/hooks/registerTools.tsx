@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
-import { Agent } from '@distri/core';
-import { DistriAnyTool, DistriUiTool, UiToolProps } from '@/types';
+import { Agent, ToolsConfig } from '@distri/core';
+import { DistriUiTool, UiToolProps } from '@/types';
 import { ToastToolCall } from '@/components/renderers/tools';
 import { WrapToolOptions } from '../utils/toolWrapper';
 import { useChatStateStore } from '../stores/chatStateStore';
 
 export interface UseToolsOptions {
   agent?: Agent;
-  tools?: DistriAnyTool[];
+  tools?: ToolsConfig;
   wrapOptions?: WrapToolOptions;
 }
 
@@ -16,7 +16,7 @@ export function registerTools({ agent, tools, wrapOptions = {} }: UseToolsOption
   const setWrapOptions = useChatStateStore(state => state.setWrapOptions);
 
   useEffect(() => {
-    if (!agent || !tools || tools.length === 0) {
+    if (!agent || !tools) {
       return;
     }
 
@@ -28,18 +28,12 @@ export function registerTools({ agent, tools, wrapOptions = {} }: UseToolsOption
     // Store wrap options in chat state for use in executeTool
     setWrapOptions(wrapOptions);
 
-    // For DistriFnTools, register them as-is since DefaultToolActions will be created automatically in executeTool
-    // For DistriUiTools, keep them as-is
-    const toolsToRegister = [...defaultTools, ...tools];
-
-    // Register each tool
-    toolsToRegister.forEach(tool => {
-      agent.registerTool(tool);
-      console.log(`✓ Registered tool: ${tool.name} (type: ${tool.type})`);
-    });
+    // Set the tools Map on the agent as-is
+    agent.setTools(tools);
 
     lastAgentIdRef.current = agent.id;
-    console.log(`Successfully registered ${tools.length} tools with agent`);
+    console.log(`✓ Set tools for agent ${agent.id}`);
+    console.log(`Tools Map contains ${tools.agent_tools.size} agent(s):`, Array.from(tools.agent_tools.keys()));
   }, [agent?.id, tools, wrapOptions, setWrapOptions]);
 }
 
