@@ -5,7 +5,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import GoogleMapsManager, { GoogleMapsManagerRef } from './components/GoogleMapsManager';
 import { ConversationsSidebar } from './components/ConversationsSidebar';
 import { getTools } from './Tools.tsx';
-import { Agent, DistriArtifact, DistriChatMessage, DistriEvent, DistriMessage, uuidv4 } from '@distri/core';
+import { Agent, uuidv4 } from '@distri/core';
 import { SidebarProvider, SidebarInset } from '@distri/components';
 
 // Environment variables validation
@@ -148,7 +148,10 @@ function MapsChat() {
                 {!loading && agent && tools.length > 0 ? (
                   <Chat
                     agent={agent}
-                    tools={tools}
+                    tools={{
+                      tools: tools,
+                      agent_tools: new Map(),
+                    }}
                     initialMessages={messages}
                     theme="dark"
                     threadId={selectedThreadId}

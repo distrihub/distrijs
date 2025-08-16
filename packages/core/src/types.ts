@@ -167,6 +167,12 @@ export type FileType = FileBytes | FileUrl;
 
 
 
+export type ToolsConfig = {
+  tools: DistriBaseTool[];
+  agent_tools: Map<string, DistriBaseTool[]>;
+}
+
+
 /**
  * Tool definition interface following AG-UI pattern
  */

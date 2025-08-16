@@ -93,53 +93,6 @@ import { jsx as jsx3, jsxs } from "react/jsx-runtime";
 import { useEffect as useEffect2 } from "react";
 import { toast } from "sonner";
 import { Fragment, jsx as jsx4 } from "react/jsx-runtime";
-var ToastToolCall = ({
-  toolCall,
-  completeTool
-}) => {
-  const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
-  const message = input.message || "Toast message";
-  const type = input.type || "info";
-  let method;
-  switch (type) {
-    case "success":
-      method = toast.success;
-      break;
-    case "error":
-      method = toast.error;
-      break;
-    case "warning":
-      method = toast.warning;
-      break;
-    default:
-      method = toast.info;
-  }
-  ;
-  let duration = 500;
-  useEffect2(() => {
-    method(message, {
-      duration: duration * 2,
-      position: "top-right",
-      className: "bg-background text-foreground border border-border",
-      style: {
-        backgroundColor: "var(--background)",
-        color: "var(--foreground)",
-        border: "1px solid var(--border)"
-      }
-    });
-    setTimeout(() => {
-      const result = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolCall.tool_name,
-        result: "Toast displayed successfully",
-        success: true,
-        error: void 0
-      };
-      completeTool(result);
-    }, duration);
-  }, [message, type, completeTool]);
-  return /* @__PURE__ */ jsx4(Fragment, {});
-};
 
 // src/components/renderers/tools/DefaultToolActions.tsx
 import { useState as useState2, useEffect as useEffect3 } from "react";
@@ -431,6 +384,10 @@ var useChatStateStore = create((set, get) => ({
   streamingIndicator: void 0,
   currentThought: void 0,
   messages: [],
+  tools: {
+    tools: [],
+    agent_tools: /* @__PURE__ */ new Map()
+  },
   // State actions
   setStreaming: (isStreaming) => {
     set({ isStreaming });
@@ -820,7 +777,9 @@ var useChatStateStore = create((set, get) => ({
   initToolCall: (toolCall, timestamp, isFromStream = false) => {
     set((state) => {
       const newState = { ...state };
-      const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
+      let distriTool;
+      const tools = state.getAllTools();
+      distriTool = tools.find((t) => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
@@ -866,7 +825,11 @@ var useChatStateStore = create((set, get) => ({
   },
   initializeTool: (toolCall) => {
     const state = get();
-    const distriTool = state.tools?.find((t) => t.name === toolCall.tool_name);
+    let distriTool;
+    if (state.tools) {
+      const tools = state.getAllTools();
+      distriTool = tools.find((t) => t.name === toolCall.tool_name);
+    }
     const commonProps = {
       tool_name: toolCall.tool_name,
       input: toolCall.input,
@@ -1064,13 +1027,26 @@ var useChatStateStore = create((set, get) => ({
       return newState;
     });
   },
+  getAllTools: () => {
+    const state = get();
+    let tools = state.tools?.tools || [];
+    for (const [, toolList] of state.tools?.agent_tools || []) {
+      tools.push(...toolList);
+    }
+    return tools;
+  },
   // Setup
   setAgent: (agent) => {
     set({ agent });
   },
   setTools: (tools) => {
-    console.log("\u{1F527} Setting tools in store:", tools?.map((t) => ({ name: t.name, type: t.type })));
-    set({ tools });
+    console.log("\u{1F527} Setting tools in store (Map format):", tools);
+    set({
+      tools: {
+        tools: tools.tools,
+        agent_tools: tools.agent_tools
+      }
+    });
   },
   setWrapOptions: (wrapOptions) => {
     set({ wrapOptions });
@@ -1086,39 +1062,19 @@ function registerTools({ agent, tools, wrapOptions = {} }) {
   const lastAgentIdRef = useRef(null);
   const setWrapOptions = useChatStateStore((state) => state.setWrapOptions);
   useEffect4(() => {
-    if (!agent || !tools || tools.length === 0) {
+    if (!agent || !tools) {
       return;
     }
     if (lastAgentIdRef.current === agent.id) {
       return;
     }
     setWrapOptions(wrapOptions);
-    const toolsToRegister = [...defaultTools, ...tools];
-    toolsToRegister.forEach((tool) => {
-      agent.registerTool(tool);
-      console.log(`\u2713 Registered tool: ${tool.name} (type: ${tool.type})`);
-    });
+    agent.setTools(tools);
     lastAgentIdRef.current = agent.id;
-    console.log(`Successfully registered ${tools.length} tools with agent`);
+    console.log(`\u2713 Set tools for agent ${agent.id}`);
+    console.log(`Tools Map contains ${tools.agent_tools.size} agent(s):`, Array.from(tools.agent_tools.keys()));
   }, [agent?.id, tools, wrapOptions, setWrapOptions]);
 }
-var defaultTools = [
-  {
-    name: "toast",
-    type: "ui",
-    description: "Show a toast message",
-    input_schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        type: { type: "string", enum: ["success", "error", "warning", "info"] }
-      }
-    },
-    component: (props) => {
-      return /* @__PURE__ */ jsx7(ToastToolCall, { ...props });
-    }
-  }
-];
 
 // src/useChat.ts
 function useChat({
@@ -3216,9 +3172,9 @@ function Chat({
   wrapOptions,
   initialMessages,
   theme = "auto",
-  debug: debug2 = false,
   models,
   selectedModelId,
+  beforeSendMessage,
   onModelChange
 }) {
   const [input, setInput] = useState9("");
@@ -3242,20 +3198,14 @@ function Chat({
     initialMessages
   });
   const toolCalls = useChatStateStore((state) => state.toolCalls);
-  const currentPlanId = useChatStateStore((state) => state.currentPlanId);
-  const plans = useChatStateStore((state) => state.plans);
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore((state) => state.streamingIndicator);
   const currentThought = useChatStateStore((state) => state.currentThought);
-  const setDebug = useChatStateStore((state) => state.setDebug);
-  useEffect11(() => {
-    setDebug(debug2);
-  }, [debug2, setDebug]);
-  const currentPlan = currentPlanId ? plans.get(currentPlanId) || null : null;
-  const pendingToolCalls = Array.from(toolCalls.values()).filter(
-    (toolCall) => toolCall.status === "pending" || toolCall.status === "running"
-  );
-  const handleSendMessage = useCallback6(async (content) => {
+  const handleSendMessage = useCallback6(async (initialContent) => {
+    let content = initialContent;
+    if (beforeSendMessage) {
+      content = await beforeSendMessage(content);
+    }
     if (typeof content === "string" && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
     setInput("");
@@ -3361,9 +3311,13 @@ function Chat({
   };
   return /* @__PURE__ */ jsxs21("div", { className: `flex flex-col h-full ${getThemeClasses()}`, children: [
     /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
+      error && /* @__PURE__ */ jsx32("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs21("div", { className: "text-destructive text-xs", children: [
+        /* @__PURE__ */ jsx32("strong", { children: "Error:" }),
+        " ",
+        error.message
+      ] }) }),
       renderMessages(),
       renderThinkingIndicator(),
-      process.env.NODE_ENV === "development" && false,
       /* @__PURE__ */ jsx32("div", { ref: messagesEndRef })
     ] }) }),
     /* @__PURE__ */ jsx32("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
@@ -3386,11 +3340,6 @@ function Chat({
           isStreaming
         }
       )
-    ] }) }),
-    error && /* @__PURE__ */ jsx32("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs21("div", { className: "text-destructive text-xs", children: [
-      /* @__PURE__ */ jsx32("strong", { children: "Error:" }),
-      " ",
-      error.message
     ] }) })
   ] });
 }

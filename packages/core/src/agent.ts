@@ -2,7 +2,8 @@ import { DistriClient } from './distri-client';
 import {
   AgentDefinition,
   DistriBaseTool,
-  DistriChatMessage
+  DistriChatMessage,
+  ToolsConfig
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
@@ -37,7 +38,10 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: AgentDefinition;
-  private tools: Map<string, DistriBaseTool> = new Map();
+  private tools: ToolsConfig = {
+    tools: [],
+    agent_tools: new Map(),
+  };
 
   constructor(agentDefinition: AgentDefinition, client: DistriClient) {
     this.agentDefinition = agentDefinition;
@@ -46,38 +50,25 @@ export class Agent {
 
 
   /**
-   * Add a tool to the agent (AG-UI style)
+   * Set the entire agent tools map (for multi-agent scenarios)
    */
-  registerTool(tool: DistriBaseTool): void {
-    this.tools.set(tool.name, tool);
+  setTools(tools: ToolsConfig): void {
+    this.tools = tools;
   }
 
   /**
-   * Add multiple tools at once
+   * Get all tools for a specific agent
    */
-  registerTools(tools: DistriBaseTool[]): void {
-    tools.forEach(tool => this.registerTool(tool));
+  getToolsForAgent(agentName: string): DistriBaseTool[] {
+    return this.tools.agent_tools.get(agentName) || [];
   }
 
-  /**
-   * Remove a tool
-   */
-  unregisterTool(toolName: string): void {
-    this.tools.delete(toolName);
-  }
 
   /**
-   * Get all registered tools
+   * Check if tools are registered for a specific agent
    */
-  getTools(): DistriBaseTool[] {
-    return Array.from(this.tools.values());
-  }
-
-  /**
-   * Check if a tool is registered
-   */
-  hasTool(toolName: string): boolean {
-    return this.tools.has(toolName);
+  hasToolsForAgent(agentName: string): boolean {
+    return this.tools.agent_tools.has(agentName);
   }
 
   /**
@@ -146,20 +137,30 @@ export class Agent {
    * Enhance message params with tool definitions
    */
   private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
-    const tools = this.getTools();
 
     return {
       ...params,
       metadata: {
         ...params.metadata,
-        tools: tools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          input_schema: tool.input_schema
-        } as DistriBaseTool))
+        tools: {
+          tools: this.tools.tools.map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            input_schema: tool.input_schema,
+          } as DistriBaseTool)),
+          agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => ([
+            agentName,
+            tools.map(tool => ({
+              name: tool.name,
+              description: tool.description,
+              input_schema: tool.input_schema,
+            } as DistriBaseTool)),
+          ]))),
+        }
       }
     };
   }
+
 
   /**
    * Create an agent instance from an agent ID

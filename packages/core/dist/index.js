@@ -1076,39 +1076,30 @@ function uuidv4() {
 // src/agent.ts
 var Agent = class _Agent {
   constructor(agentDefinition, client) {
-    this.tools = /* @__PURE__ */ new Map();
+    this.tools = {
+      tools: [],
+      agent_tools: /* @__PURE__ */ new Map()
+    };
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
   /**
-   * Add a tool to the agent (AG-UI style)
+   * Set the entire agent tools map (for multi-agent scenarios)
    */
-  registerTool(tool) {
-    this.tools.set(tool.name, tool);
+  setTools(tools) {
+    this.tools = tools;
   }
   /**
-   * Add multiple tools at once
+   * Get all tools for a specific agent
    */
-  registerTools(tools) {
-    tools.forEach((tool) => this.registerTool(tool));
+  getToolsForAgent(agentName) {
+    return this.tools.agent_tools.get(agentName) || [];
   }
   /**
-   * Remove a tool
+   * Check if tools are registered for a specific agent
    */
-  unregisterTool(toolName) {
-    this.tools.delete(toolName);
-  }
-  /**
-   * Get all registered tools
-   */
-  getTools() {
-    return Array.from(this.tools.values());
-  }
-  /**
-   * Check if a tool is registered
-   */
-  hasTool(toolName) {
-    return this.tools.has(toolName);
+  hasToolsForAgent(agentName) {
+    return this.tools.agent_tools.has(agentName);
   }
   /**
    * Get agent information
@@ -1165,16 +1156,25 @@ var Agent = class _Agent {
    * Enhance message params with tool definitions
    */
   enhanceParamsWithTools(params) {
-    const tools = this.getTools();
     return {
       ...params,
       metadata: {
         ...params.metadata,
-        tools: tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          input_schema: tool.input_schema
-        }))
+        tools: {
+          tools: this.tools.tools.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            input_schema: tool.input_schema
+          })),
+          agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => [
+            agentName,
+            tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              input_schema: tool.input_schema
+            }))
+          ]))
+        }
       }
     };
   }
