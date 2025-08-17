@@ -417,7 +417,6 @@ var useChatStateStore = create((set, get) => ({
   addMessage: (message) => {
     const isDebugEnabled = get().debug;
     set((state) => {
-      const messages = [...state.messages];
       if (isDistriEvent(message)) {
         const event = message;
         if (event.type === "text_message_start") {
@@ -433,7 +432,7 @@ var useChatStateStore = create((set, get) => ({
             step_id: stepId,
             is_final: isFinal
           };
-          messages.push(newDistriMessage);
+          const messages = [...state.messages, newDistriMessage];
           if (stepId) {
             const existingStep = get().steps.get(stepId);
             if (existingStep) {
@@ -443,19 +442,27 @@ var useChatStateStore = create((set, get) => ({
               });
             }
           }
+          return { ...state, messages };
         } else if (event.type === "text_message_content") {
           const messageId = event.data.message_id;
           const stepId = event.data.step_id;
           const delta = event.data.delta;
-          const existingIndex = messages.findIndex(
+          const existingIndex = state.messages.findIndex(
             (m) => isDistriMessage(m) && m.id === messageId
           );
           if (existingIndex >= 0) {
-            const existing = messages[existingIndex];
-            let textPart = existing.parts.find((p) => p.type === "text");
+            const existingMessage = state.messages[existingIndex];
+            let textPart = existingMessage.parts.find((p) => p.type === "text");
             if (!textPart) {
               textPart = { type: "text", data: "" };
-              existing.parts.push(textPart);
+              const updatedMessage = {
+                ...existingMessage,
+                parts: [...existingMessage.parts, textPart]
+              };
+              const messages2 = state.messages.map(
+                (msg, idx) => idx === existingIndex ? updatedMessage : msg
+              );
+              return { ...state, messages: messages2 };
             }
             textPart.data += delta;
             const thoughtContent = extractThoughtContent(textPart.data);
@@ -470,11 +477,16 @@ var useChatStateStore = create((set, get) => ({
                 });
               }
             }
+            const messages = state.messages.map(
+              (msg, idx) => idx === existingIndex ? { ...existingMessage } : msg
+            );
+            return { ...state, messages };
           } else {
             if (isDebugEnabled) {
               console.warn("\u274C Cannot find streaming message to append to:", messageId);
-              console.log("\u{1F4CB} Available message IDs:", messages.filter(isDistriMessage).map((m) => m.id));
+              console.log("\u{1F4CB} Available message IDs:", state.messages.filter(isDistriMessage).map((m) => m.id));
             }
+            return state;
           }
         } else if (event.type === "text_message_end") {
           const stepId = event.data.step_id;
@@ -488,6 +500,7 @@ var useChatStateStore = create((set, get) => ({
             }
           }
           get().setCurrentThought(void 0);
+          return state;
         } else {
           const stateOnlyEvents = [
             "run_started",
@@ -501,13 +514,15 @@ var useChatStateStore = create((set, get) => ({
             "tool_results"
           ];
           if (!stateOnlyEvents.includes(event.type)) {
-            messages.push(message);
+            const messages = [...state.messages, message];
+            return { ...state, messages };
           }
+          return state;
         }
       } else {
-        messages.push(message);
+        const messages = [...state.messages, message];
+        return { ...state, messages };
       }
-      return { ...state, messages };
     });
   },
   resolveToolCalls: () => {
@@ -1668,10 +1683,10 @@ function useThreads() {
 }
 
 // src/components/Chat.tsx
-import { useState as useState9, useCallback as useCallback6, useRef as useRef5, useEffect as useEffect11 } from "react";
+import { useState as useState8, useCallback as useCallback6, useRef as useRef5, useEffect as useEffect11 } from "react";
 
 // src/components/ChatInput.tsx
-import { useRef as useRef4, useEffect as useEffect10, useState as useState8, useCallback as useCallback5 } from "react";
+import { useRef as useRef4, useEffect as useEffect10, useCallback as useCallback5 } from "react";
 import { Send, Square, ImageIcon, X } from "lucide-react";
 import { jsx as jsx10, jsxs as jsxs4 } from "react/jsx-runtime";
 var ChatInput = ({
@@ -1682,12 +1697,13 @@ var ChatInput = ({
   placeholder = "Type your message...",
   disabled = false,
   isStreaming = false,
-  className = ""
+  className = "",
+  attachedImages = [],
+  onRemoveImage,
+  onAddImages
 }) => {
   const textareaRef = useRef4(null);
   const fileInputRef = useRef4(null);
-  const [attachedImages, setAttachedImages] = useState8([]);
-  const [isDragOver, setIsDragOver] = useState8(false);
   useEffect10(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -1709,55 +1725,13 @@ var ChatInput = ({
       reader.readAsDataURL(file);
     });
   }, []);
-  const addImages = useCallback5(async (files) => {
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    for (const file of imageFiles) {
-      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-      const preview = URL.createObjectURL(file);
-      const newImage = {
-        id,
-        file,
-        preview,
-        name: file.name
-      };
-      setAttachedImages((prev) => [...prev, newImage]);
-    }
-  }, []);
-  const removeImage = useCallback5((id) => {
-    setAttachedImages((prev) => {
-      const image = prev.find((img) => img.id === id);
-      if (image) {
-        URL.revokeObjectURL(image.preview);
-      }
-      return prev.filter((img) => img.id !== id);
-    });
-  }, []);
-  const handleDragOver = useCallback5((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  }, []);
-  const handleDragLeave = useCallback5((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  }, []);
-  const handleDrop = useCallback5((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      addImages(files);
-    }
-  }, [addImages]);
   const handleFileSelect = useCallback5((e) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      addImages(files);
+    if (files && files.length > 0 && onAddImages) {
+      onAddImages(files);
     }
     e.target.value = "";
-  }, [addImages]);
+  }, [onAddImages]);
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -1792,10 +1766,6 @@ var ChatInput = ({
         onSend(value);
       }
       onChange("");
-      setAttachedImages((prev) => {
-        prev.forEach((img) => URL.revokeObjectURL(img.preview));
-        return [];
-      });
     } catch (error) {
       console.error("Error processing images:", error);
     }
@@ -1807,11 +1777,6 @@ var ChatInput = ({
   };
   const hasContent = value.trim().length > 0 || attachedImages.length > 0;
   const isDisabled = disabled || isStreaming;
-  useEffect10(() => {
-    return () => {
-      attachedImages.forEach((img) => URL.revokeObjectURL(img.preview));
-    };
-  }, []);
   return /* @__PURE__ */ jsx10("div", { className: `relative flex min-h-14 w-full items-end ${className}`, children: /* @__PURE__ */ jsxs4("div", { className: "relative flex w-full flex-auto flex-col", children: [
     attachedImages.length > 0 && /* @__PURE__ */ jsx10("div", { className: "flex flex-wrap gap-2 mb-2 mx-5", children: attachedImages.map((image) => /* @__PURE__ */ jsxs4("div", { className: "relative group", children: [
       /* @__PURE__ */ jsx10(
@@ -1825,59 +1790,49 @@ var ChatInput = ({
       /* @__PURE__ */ jsx10(
         "button",
         {
-          onClick: () => removeImage(image.id),
+          onClick: () => onRemoveImage?.(image.id),
           className: "absolute -top-1 -right-1 w-5 h-5 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
           children: /* @__PURE__ */ jsx10(X, { className: "w-3 h-3" })
         }
       ),
       /* @__PURE__ */ jsx10("div", { className: "absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg truncate", children: image.name })
     ] }, image.id)) }),
-    /* @__PURE__ */ jsxs4(
-      "div",
-      {
-        className: `relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full ${isDragOver ? "border-primary border-2 bg-primary/5" : ""}`,
-        onDragOver: handleDragOver,
-        onDragLeave: handleDragLeave,
-        onDrop: handleDrop,
-        children: [
-          /* @__PURE__ */ jsx10(
-            "textarea",
-            {
-              ref: textareaRef,
-              value,
-              onChange: (e) => onChange(e.target.value),
-              onKeyPress: handleKeyPress,
-              placeholder: attachedImages.length > 0 ? "Add a message..." : placeholder,
-              disabled: isDisabled,
-              rows: 1,
-              className: "max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-24 text-foreground min-h-[52px] max-h-[120px]"
-            }
-          ),
-          isDragOver && /* @__PURE__ */ jsx10("div", { className: "absolute inset-0 flex items-center justify-center bg-primary/10 rounded-lg", children: /* @__PURE__ */ jsx10("div", { className: "text-primary font-medium", children: "Drop images here" }) }),
-          /* @__PURE__ */ jsxs4("div", { className: "absolute right-2 bottom-0 flex items-center gap-1 h-full", children: [
-            /* @__PURE__ */ jsx10(
-              "button",
-              {
-                onClick: () => fileInputRef.current?.click(),
-                disabled: isDisabled,
-                className: "h-10 w-10 rounded-md transition-colors flex items-center justify-center hover:bg-muted text-muted-foreground",
-                title: "Attach image",
-                children: /* @__PURE__ */ jsx10(ImageIcon, { className: "h-5 w-5" })
-              }
-            ),
-            /* @__PURE__ */ jsx10(
-              "button",
-              {
-                onClick: isStreaming ? handleStop : handleSend,
-                disabled: !hasContent && !isStreaming,
-                className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : hasContent && !disabled ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"}`,
-                children: isStreaming ? /* @__PURE__ */ jsx10(Square, { className: "h-5 w-5" }) : /* @__PURE__ */ jsx10(Send, { className: "h-5 w-5" })
-              }
-            )
-          ] })
-        ]
-      }
-    ),
+    /* @__PURE__ */ jsxs4("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full", children: [
+      /* @__PURE__ */ jsx10(
+        "textarea",
+        {
+          ref: textareaRef,
+          value,
+          onChange: (e) => onChange(e.target.value),
+          onKeyPress: handleKeyPress,
+          placeholder: attachedImages.length > 0 ? "Add a message..." : placeholder,
+          disabled: isDisabled,
+          rows: 1,
+          className: "max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-24 text-foreground min-h-[52px] max-h-[120px]"
+        }
+      ),
+      /* @__PURE__ */ jsxs4("div", { className: "absolute right-2 bottom-0 flex items-center gap-1 h-full", children: [
+        /* @__PURE__ */ jsx10(
+          "button",
+          {
+            onClick: () => fileInputRef.current?.click(),
+            disabled: isDisabled,
+            className: "h-10 w-10 rounded-md transition-colors flex items-center justify-center hover:bg-muted text-muted-foreground",
+            title: "Attach image",
+            children: /* @__PURE__ */ jsx10(ImageIcon, { className: "h-5 w-5" })
+          }
+        ),
+        /* @__PURE__ */ jsx10(
+          "button",
+          {
+            onClick: isStreaming ? handleStop : handleSend,
+            disabled: !hasContent && !isStreaming,
+            className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : hasContent && !disabled ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"}`,
+            children: isStreaming ? /* @__PURE__ */ jsx10(Square, { className: "h-5 w-5" }) : /* @__PURE__ */ jsx10(Send, { className: "h-5 w-5" })
+          }
+        )
+      ] })
+    ] }),
     /* @__PURE__ */ jsx10(
       "input",
       {
@@ -3177,9 +3132,11 @@ function Chat({
   beforeSendMessage,
   onModelChange
 }) {
-  const [input, setInput] = useState9("");
-  const [expandedTools, setExpandedTools] = useState9(/* @__PURE__ */ new Set());
+  const [input, setInput] = useState8("");
+  const [expandedTools, setExpandedTools] = useState8(/* @__PURE__ */ new Set());
   const messagesEndRef = useRef5(null);
+  const [attachedImages, setAttachedImages] = useState8([]);
+  const [isDragOver, setIsDragOver] = useState8(false);
   const {
     sendMessage,
     stopStreaming,
@@ -3201,6 +3158,50 @@ function Chat({
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore((state) => state.streamingIndicator);
   const currentThought = useChatStateStore((state) => state.currentThought);
+  const addImages = useCallback6(async (files) => {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    for (const file of imageFiles) {
+      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const preview = URL.createObjectURL(file);
+      const newImage = {
+        id,
+        file,
+        preview,
+        name: file.name
+      };
+      setAttachedImages((prev) => [...prev, newImage]);
+    }
+  }, []);
+  const removeImage = useCallback6((id) => {
+    setAttachedImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+  }, []);
+  const handleDragOver = useCallback6((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+  const handleDragLeave = useCallback6((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  }, []);
+  const handleDrop = useCallback6((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      addImages(files);
+    }
+  }, [addImages]);
   const handleSendMessage = useCallback6(async (initialContent) => {
     let content = initialContent;
     if (beforeSendMessage) {
@@ -3209,8 +3210,12 @@ function Chat({
     if (typeof content === "string" && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
     setInput("");
+    setAttachedImages((prev) => {
+      prev.forEach((img) => URL.revokeObjectURL(img.preview));
+      return [];
+    });
     await sendMessage(content);
-  }, [sendMessage]);
+  }, [sendMessage, beforeSendMessage]);
   const handleStopStreaming = useCallback6(() => {
     stopStreaming();
   }, [stopStreaming]);
@@ -3309,39 +3314,52 @@ function Chat({
     }
     return null;
   };
-  return /* @__PURE__ */ jsxs21("div", { className: `flex flex-col h-full ${getThemeClasses()}`, children: [
-    /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
-      error && /* @__PURE__ */ jsx32("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs21("div", { className: "text-destructive text-xs", children: [
-        /* @__PURE__ */ jsx32("strong", { children: "Error:" }),
-        " ",
-        error.message
-      ] }) }),
-      renderMessages(),
-      renderThinkingIndicator(),
-      /* @__PURE__ */ jsx32("div", { ref: messagesEndRef })
-    ] }) }),
-    /* @__PURE__ */ jsx32("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
-      models && models.length > 0 && /* @__PURE__ */ jsxs21("div", { className: "mb-4 flex items-center gap-2", children: [
-        /* @__PURE__ */ jsx32("span", { className: "text-sm text-muted-foreground", children: "Model:" }),
-        /* @__PURE__ */ jsxs21(Select, { value: selectedModelId, onValueChange: onModelChange, children: [
-          /* @__PURE__ */ jsx32(SelectTrigger, { className: "w-64", children: /* @__PURE__ */ jsx32(SelectValue, { placeholder: "Select a model" }) }),
-          /* @__PURE__ */ jsx32(SelectContent, { children: models.map((model) => /* @__PURE__ */ jsx32(SelectItem, { value: model.id, children: model.name }, model.id)) })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsx32(
-        ChatInput,
-        {
-          value: input,
-          onChange: setInput,
-          onSend: handleSendMessage,
-          onStop: handleStopStreaming,
-          placeholder: "Type your message...",
-          disabled: isLoading || hasPendingToolCalls(),
-          isStreaming
-        }
-      )
-    ] }) })
-  ] });
+  return /* @__PURE__ */ jsxs21(
+    "div",
+    {
+      className: `flex flex-col h-full ${getThemeClasses()} relative`,
+      onDragOver: handleDragOver,
+      onDragLeave: handleDragLeave,
+      onDrop: handleDrop,
+      children: [
+        isDragOver && /* @__PURE__ */ jsx32("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed", children: /* @__PURE__ */ jsx32("div", { className: "text-primary font-medium text-lg", children: "Drop images anywhere to upload" }) }),
+        /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
+          error && /* @__PURE__ */ jsx32("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs21("div", { className: "text-destructive text-xs", children: [
+            /* @__PURE__ */ jsx32("strong", { children: "Error:" }),
+            " ",
+            error.message
+          ] }) }),
+          renderMessages(),
+          renderThinkingIndicator(),
+          /* @__PURE__ */ jsx32("div", { ref: messagesEndRef })
+        ] }) }),
+        /* @__PURE__ */ jsx32("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
+          models && models.length > 0 && /* @__PURE__ */ jsxs21("div", { className: "mb-4 flex items-center gap-2", children: [
+            /* @__PURE__ */ jsx32("span", { className: "text-sm text-muted-foreground", children: "Model:" }),
+            /* @__PURE__ */ jsxs21(Select, { value: selectedModelId, onValueChange: onModelChange, children: [
+              /* @__PURE__ */ jsx32(SelectTrigger, { className: "w-64", children: /* @__PURE__ */ jsx32(SelectValue, { placeholder: "Select a model" }) }),
+              /* @__PURE__ */ jsx32(SelectContent, { children: models.map((model) => /* @__PURE__ */ jsx32(SelectItem, { value: model.id, children: model.name }, model.id)) })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsx32(
+            ChatInput,
+            {
+              value: input,
+              onChange: setInput,
+              onSend: handleSendMessage,
+              onStop: handleStopStreaming,
+              placeholder: "Type your message...",
+              disabled: isLoading || hasPendingToolCalls(),
+              isStreaming,
+              attachedImages,
+              onRemoveImage: removeImage,
+              onAddImages: addImages
+            }
+          )
+        ] }) })
+      ]
+    }
+  );
 }
 
 // src/components/AgentList.tsx
@@ -3380,7 +3398,7 @@ var AgentSelect = ({
 import { jsx as jsx35, jsxs as jsxs24 } from "react/jsx-runtime";
 
 // src/components/AppSidebar.tsx
-import { useState as useState11, useCallback as useCallback8 } from "react";
+import { useState as useState10, useCallback as useCallback8 } from "react";
 import { MoreHorizontal, Trash2, Edit3, Bot as Bot3, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader24 } from "lucide-react";
 
 // src/components/ui/sidebar.tsx
@@ -4366,9 +4384,9 @@ var ThreadItem = ({
   onDelete,
   onRename
 }) => {
-  const [isEditing, setIsEditing] = useState11(false);
-  const [editTitle, setEditTitle] = useState11(thread.title || "New Chat");
-  const [showMenu, setShowMenu] = useState11(false);
+  const [isEditing, setIsEditing] = useState10(false);
+  const [editTitle, setEditTitle] = useState10(thread.title || "New Chat");
+  const [showMenu, setShowMenu] = useState10(false);
   const handleRename = useCallback8(() => {
     if (editTitle.trim() && editTitle !== thread.title) {
       onRename(editTitle.trim());
@@ -4837,7 +4855,7 @@ import { X as X3, CheckCircle as CheckCircle8, AlertCircle as AlertCircle3, Aler
 import { jsx as jsx48, jsxs as jsxs32 } from "react/jsx-runtime";
 
 // src/hooks/useChatMessages.ts
-import { useCallback as useCallback9, useEffect as useEffect14, useState as useState12, useRef as useRef6 } from "react";
+import { useCallback as useCallback9, useEffect as useEffect14, useState as useState11, useRef as useRef6 } from "react";
 
 // ../core/src/encoder.ts
 function convertA2AMessageToDistri(a2aMessage) {
@@ -5045,9 +5063,9 @@ function useChatMessages({
   useEffect14(() => {
     onErrorRef.current = onError;
   }, [onError]);
-  const [messages, setMessages] = useState12(initialMessages);
-  const [isLoading, setIsLoading] = useState12(false);
-  const [error, setError] = useState12(null);
+  const [messages, setMessages] = useState11(initialMessages);
+  const [isLoading, setIsLoading] = useState11(false);
+  const [error, setError] = useState11(null);
   useEffect14(() => {
     if (initialMessages.length > 0) {
       setMessages(initialMessages);

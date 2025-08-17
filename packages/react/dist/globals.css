@@ -1116,6 +1116,9 @@ body {
 .border-t {
   border-top-width: 1px;
 }
+.border-dashed {
+  border-style: dashed;
+}
 .border-none {
   border-style: none;
 }
@@ -1276,9 +1279,6 @@ body {
 }
 .bg-primary\/10 {
   background-color: hsl(var(--primary) / 0.1);
-}
-.bg-primary\/5 {
-  background-color: hsl(var(--primary) / 0.05);
 }
 .bg-purple-500 {
   --tw-bg-opacity: 1;
