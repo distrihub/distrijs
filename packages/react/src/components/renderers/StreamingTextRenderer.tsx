@@ -58,7 +58,7 @@ interface StreamingTextRendererProps {
   className?: string;
 }
 
-export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
+const StreamingTextRendererBase: React.FC<StreamingTextRendererProps> = ({
   text,
   isStreaming = false,
   className = ""
@@ -216,5 +216,9 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
     </div>
   );
 };
+
+export const StreamingTextRenderer = React.memo(StreamingTextRendererBase, (prev, next) => {
+  return prev.text === next.text && prev.isStreaming === next.isStreaming && prev.className === next.className;
+});
 
 export default StreamingTextRenderer;
