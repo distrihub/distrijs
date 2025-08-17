@@ -65,6 +65,8 @@ export function Chat({
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastRenderStateRef = useRef<{ count: number; lastId?: string; lastLen: number }>({ count: 0, lastLen: 0 });
 
 
   const {
@@ -122,10 +124,51 @@ export function Chat({
     });
   }, []);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // Helper to check if user is near the bottom
+  const isNearBottom = useCallback((el: HTMLElement | null, threshold: number = 80) => {
+    if (!el) return false;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distanceFromBottom <= threshold;
+  }, []);
+
+  // Compute text length of the last message for smarter auto-scroll
+  const getLastMessageTextLength = useCallback(() => {
+    const last = messages[messages.length - 1] as any;
+    if (!last || !last.parts) return 0;
+    let total = 0;
+    for (const part of last.parts) {
+      if (part?.type === 'text') {
+        const data = (part as { type: 'text'; data: string }).data || '';
+        total += data.length;
+      }
+    }
+    return total;
   }, [messages]);
+
+  // Auto-scroll to bottom only when user is near bottom and content grows
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const last = messages[messages.length - 1] as any;
+    const lastId = (last && (last.id as string)) || undefined;
+    const lastLen = getLastMessageTextLength();
+    const hasChanged =
+      lastRenderStateRef.current.count !== messages.length ||
+      lastRenderStateRef.current.lastId !== lastId ||
+      lastRenderStateRef.current.lastLen !== lastLen;
+
+    if (hasChanged && isNearBottom(el)) {
+      // Instant scroll to reduce layout thrash during streaming
+      el.scrollTop = el.scrollHeight;
+    }
+
+    lastRenderStateRef.current = {
+      count: messages.length,
+      lastId,
+      lastLen,
+    };
+  }, [messages, getLastMessageTextLength, isNearBottom]);
 
   // Auto-expand tools that are running or have errors
   useEffect(() => {
@@ -160,9 +203,10 @@ export function Chat({
 
     // Render all messages using MessageRenderer
     messages.forEach((message: any, index: number) => {
+      const messageKey = (message && (message.id as string)) || `message-${index}`;
       const renderedMessage = (
         <MessageRenderer
-          key={`message-${index}`}
+          key={messageKey}
           message={message}
           index={index}
           isExpanded={expandedTools.has(message.id || `message-${index}`)}
@@ -238,7 +282,7 @@ export function Chat({
 
   return (
     <div className={`flex flex-col h-full ${getThemeClasses()}`}>
-      <div className="flex-1 overflow-y-auto bg-background text-foreground">
+      <div className="flex-1 overflow-y-auto bg-background text-foreground" ref={scrollContainerRef}>
         {/* Center container with max width and padding like ChatGPT */}
         <div className="max-w-4xl mx-auto px-4 py-8">
           {error && (

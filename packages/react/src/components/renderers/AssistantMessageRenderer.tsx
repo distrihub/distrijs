@@ -13,7 +13,7 @@ export interface AssistantMessageRendererProps {
   name?: string;
 }
 
-export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> = ({
+const AssistantMessageRendererBase: React.FC<AssistantMessageRendererProps> = ({
   message,
   className = '',
 }) => {
@@ -43,4 +43,21 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
       </div>
     </div>
   );
-}; 
+};
+
+export const AssistantMessageRenderer = React.memo(AssistantMessageRendererBase, (prev, next) => {
+  const prevMsg = prev.message as any;
+  const nextMsg = next.message as any;
+  const prevText = (prevMsg?.parts || [])
+    .filter((p: any) => p?.type === 'text')
+    .map((p: any) => p.data || '')
+    .join('');
+  const nextText = (nextMsg?.parts || [])
+    .filter((p: any) => p?.type === 'text')
+    .map((p: any) => p.data || '')
+    .join('');
+
+  if (prevText !== nextText) return false;
+  if (prev.className !== next.className) return false;
+  return true;
+}); 

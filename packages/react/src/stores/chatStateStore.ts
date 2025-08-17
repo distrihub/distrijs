@@ -261,17 +261,24 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           if (existingIndex >= 0) {
             const existing = messages[existingIndex] as DistriMessage;
-            let textPart = existing.parts.find(p => p.type === 'text') as { type: 'text'; data: string } | undefined;
 
-            if (!textPart) {
-              textPart = { type: 'text', data: '' };
-              existing.parts.push(textPart);
+            // Build a new parts array immutably and update the text part
+            const partsCopy = Array.isArray(existing.parts) ? [...existing.parts] : [];
+            let textPartIndex = partsCopy.findIndex(p => p.type === 'text');
+            if (textPartIndex === -1) {
+              partsCopy.push({ type: 'text', data: '' } as any);
+              textPartIndex = partsCopy.length - 1;
             }
+            const prevText = (partsCopy[textPartIndex] as any).data || '';
+            const newText = prevText + delta;
+            partsCopy[textPartIndex] = { ...(partsCopy[textPartIndex] as any), data: newText };
 
-            textPart.data += delta;
+            // Replace the message with a new object so React can detect changes per-row
+            const updatedMessage: DistriMessage = { ...existing, parts: partsCopy };
+            messages[existingIndex] = updatedMessage;
 
             // Extract thought content from accumulated text and update current thought
-            const thoughtContent = extractThoughtContent(textPart.data);
+            const thoughtContent = extractThoughtContent(newText);
             if (thoughtContent) {
               get().setCurrentThought(thoughtContent);
             }
@@ -281,7 +288,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               const currentStep = get().steps.get(stepId);
               if (currentStep && currentStep.status === 'running') {
                 get().updateStep(stepId, {
-                  title: `${currentStep.title || 'Writing'} (${textPart.data.length} chars)`,
+                  title: `${currentStep.title || 'Writing'} (${newText.length} chars)`,
                 });
               }
             }

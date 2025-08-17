@@ -452,13 +452,18 @@ var useChatStateStore = create((set, get) => ({
           );
           if (existingIndex >= 0) {
             const existing = messages[existingIndex];
-            let textPart = existing.parts.find((p) => p.type === "text");
-            if (!textPart) {
-              textPart = { type: "text", data: "" };
-              existing.parts.push(textPart);
+            const partsCopy = Array.isArray(existing.parts) ? [...existing.parts] : [];
+            let textPartIndex = partsCopy.findIndex((p) => p.type === "text");
+            if (textPartIndex === -1) {
+              partsCopy.push({ type: "text", data: "" });
+              textPartIndex = partsCopy.length - 1;
             }
-            textPart.data += delta;
-            const thoughtContent = extractThoughtContent(textPart.data);
+            const prevText = partsCopy[textPartIndex].data || "";
+            const newText = prevText + delta;
+            partsCopy[textPartIndex] = { ...partsCopy[textPartIndex], data: newText };
+            const updatedMessage = { ...existing, parts: partsCopy };
+            messages[existingIndex] = updatedMessage;
+            const thoughtContent = extractThoughtContent(newText);
             if (thoughtContent) {
               get().setCurrentThought(thoughtContent);
             }
@@ -466,7 +471,7 @@ var useChatStateStore = create((set, get) => ({
               const currentStep = get().steps.get(stepId);
               if (currentStep && currentStep.status === "running") {
                 get().updateStep(stepId, {
-                  title: `${currentStep.title || "Writing"} (${textPart.data.length} chars)`
+                  title: `${currentStep.title || "Writing"} (${newText.length} chars)`
                 });
               }
             }
@@ -1893,6 +1898,7 @@ var ChatInput = ({
 };
 
 // src/components/renderers/MessageRenderer.tsx
+import React14 from "react";
 import { isDistriMessage as isDistriMessage3, isDistriEvent as isDistriEvent2, isDistriArtifact as isDistriArtifact2 } from "@distri/core";
 
 // src/components/renderers/UserMessageRenderer.tsx
@@ -2084,8 +2090,11 @@ var UserMessageRenderer = ({
   ] });
 };
 
+// src/components/renderers/AssistantMessageRenderer.tsx
+import React12 from "react";
+
 // src/components/renderers/StreamingTextRenderer.tsx
-import { useMemo } from "react";
+import React11, { useMemo } from "react";
 import ReactMarkdown2 from "react-markdown";
 import { Prism as SyntaxHighlighter2 } from "react-syntax-highlighter";
 import { tomorrow as tomorrow2 } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -2119,7 +2128,7 @@ ${thoughtText}
   processed = processed.replace(/\n\s*\n\s*\n/g, "\n\n").trim();
   return processed;
 }
-var StreamingTextRenderer = ({
+var StreamingTextRendererBase = ({
   text,
   isStreaming = false,
   className = ""
@@ -2206,10 +2215,13 @@ var StreamingTextRenderer = ({
     isStreaming && /* @__PURE__ */ jsx16("span", { className: "inline-block w-0.5 h-4 bg-primary animate-pulse ml-1 transition-opacity duration-200" })
   ] });
 };
+var StreamingTextRenderer = React11.memo(StreamingTextRendererBase, (prev, next) => {
+  return prev.text === next.text && prev.isStreaming === next.isStreaming && prev.className === next.className;
+});
 
 // src/components/renderers/AssistantMessageRenderer.tsx
 import { jsx as jsx17, jsxs as jsxs8 } from "react/jsx-runtime";
-var AssistantMessageRenderer = ({
+var AssistantMessageRendererBase = ({
   message,
   className = ""
 }) => {
@@ -2229,6 +2241,15 @@ var AssistantMessageRenderer = ({
     content.imageParts && content.imageParts.length > 0 && /* @__PURE__ */ jsx17(ImageRenderer, { imageParts: content.imageParts })
   ] }) });
 };
+var AssistantMessageRenderer = React12.memo(AssistantMessageRendererBase, (prev, next) => {
+  const prevMsg = prev.message;
+  const nextMsg = next.message;
+  const prevText = (prevMsg?.parts || []).filter((p) => p?.type === "text").map((p) => p.data || "").join("");
+  const nextText = (nextMsg?.parts || []).filter((p) => p?.type === "text").map((p) => p.data || "").join("");
+  if (prevText !== nextText) return false;
+  if (prev.className !== next.className) return false;
+  return true;
+});
 
 // src/components/renderers/ToolMessageRenderer.tsx
 import { Wrench as Wrench2 } from "lucide-react";
@@ -2499,9 +2520,9 @@ function Badge({ className, variant, ...props }) {
 }
 
 // src/components/ui/card.tsx
-import * as React12 from "react";
+import * as React13 from "react";
 import { jsx as jsx23 } from "react/jsx-runtime";
-var Card = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
+var Card = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
   "div",
   {
     ref,
@@ -2513,7 +2534,7 @@ var Card = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ 
   }
 ));
 Card.displayName = "Card";
-var CardHeader = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
+var CardHeader = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
   "div",
   {
     ref,
@@ -2522,7 +2543,7 @@ var CardHeader = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE
   }
 ));
 CardHeader.displayName = "CardHeader";
-var CardTitle = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
+var CardTitle = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
   "h3",
   {
     ref,
@@ -2534,7 +2555,7 @@ var CardTitle = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE_
   }
 ));
 CardTitle.displayName = "CardTitle";
-var CardDescription = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
+var CardDescription = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
   "p",
   {
     ref,
@@ -2543,9 +2564,9 @@ var CardDescription = React12.forwardRef(({ className, ...props }, ref) => /* @_
   }
 ));
 CardDescription.displayName = "CardDescription";
-var CardContent = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23("div", { ref, className: cn("p-6 pt-0", className), ...props }));
+var CardContent = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23("div", { ref, className: cn("p-6 pt-0", className), ...props }));
 CardContent.displayName = "CardContent";
-var CardFooter = React12.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
+var CardFooter = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx23(
   "div",
   {
     ref,
@@ -2759,7 +2780,7 @@ var RendererWrapper = ({
   children,
   className = ""
 }) => /* @__PURE__ */ jsx28("div", { className: `max-w-3xl mx-auto w-full ${className}`, children });
-function MessageRenderer({
+function MessageRendererBase({
   message,
   index,
   isExpanded = false,
@@ -2962,6 +2983,29 @@ function MessageRenderer({
   }
   return null;
 }
+function areTextPartsEqual(a, b) {
+  if (a === b) return true;
+  const aTexts = (a || []).filter((p) => p?.type === "text").map((p) => p.data || "").join("");
+  const bTexts = (b || []).filter((p) => p?.type === "text").map((p) => p.data || "").join("");
+  return aTexts === bTexts;
+}
+var MessageRenderer = React14.memo(MessageRendererBase, (prev, next) => {
+  const prevMsg = prev.message;
+  const nextMsg = next.message;
+  if ((prevMsg?.id || prev.index) !== (nextMsg?.id || next.index)) return false;
+  if (prevMsg?.role !== nextMsg?.role) return false;
+  if (!!prev.isExpanded !== !!next.isExpanded) return false;
+  const prevParts = prevMsg?.parts;
+  const nextParts = nextMsg?.parts;
+  if ((prevParts?.length || 0) !== (nextParts?.length || 0)) return false;
+  if (!areTextPartsEqual(prevParts, nextParts)) return false;
+  if (!prevParts && !nextParts) {
+    const prevType = prevMsg?.type;
+    const nextType = nextMsg?.type;
+    if (prevType !== nextType) return false;
+  }
+  return true;
+});
 
 // src/components/renderers/ThinkingRenderer.tsx
 import { Brain, Sparkles } from "lucide-react";
@@ -3044,14 +3088,14 @@ var TypingIndicator = () => {
 };
 
 // src/components/ui/select.tsx
-import * as React13 from "react";
+import * as React15 from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check as Check2, ChevronDown as ChevronDown2, ChevronUp } from "lucide-react";
 import { jsx as jsx31, jsxs as jsxs20 } from "react/jsx-runtime";
 var Select = SelectPrimitive.Root;
 var SelectGroup = SelectPrimitive.Group;
 var SelectValue = SelectPrimitive.Value;
-var SelectTrigger = React13.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs20(
+var SelectTrigger = React15.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs20(
   SelectPrimitive.Trigger,
   {
     ref,
@@ -3067,7 +3111,7 @@ var SelectTrigger = React13.forwardRef(({ className, children, ...props }, ref) 
   }
 ));
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
-var SelectScrollUpButton = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
+var SelectScrollUpButton = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
   SelectPrimitive.ScrollUpButton,
   {
     ref,
@@ -3080,7 +3124,7 @@ var SelectScrollUpButton = React13.forwardRef(({ className, ...props }, ref) => 
   }
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
-var SelectScrollDownButton = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
+var SelectScrollDownButton = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
   SelectPrimitive.ScrollDownButton,
   {
     ref,
@@ -3093,7 +3137,7 @@ var SelectScrollDownButton = React13.forwardRef(({ className, ...props }, ref) =
   }
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
-var SelectContent = React13.forwardRef(({ className, children, position = "popper", ...props }, ref) => /* @__PURE__ */ jsx31(SelectPrimitive.Portal, { children: /* @__PURE__ */ jsxs20(
+var SelectContent = React15.forwardRef(({ className, children, position = "popper", ...props }, ref) => /* @__PURE__ */ jsx31(SelectPrimitive.Portal, { children: /* @__PURE__ */ jsxs20(
   SelectPrimitive.Content,
   {
     ref,
@@ -3121,7 +3165,7 @@ var SelectContent = React13.forwardRef(({ className, children, position = "poppe
   }
 ) }));
 SelectContent.displayName = SelectPrimitive.Content.displayName;
-var SelectLabel = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
+var SelectLabel = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
   SelectPrimitive.Label,
   {
     ref,
@@ -3130,7 +3174,7 @@ var SelectLabel = React13.forwardRef(({ className, ...props }, ref) => /* @__PUR
   }
 ));
 SelectLabel.displayName = SelectPrimitive.Label.displayName;
-var SelectItem = React13.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs20(
+var SelectItem = React15.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs20(
   SelectPrimitive.Item,
   {
     ref,
@@ -3146,7 +3190,7 @@ var SelectItem = React13.forwardRef(({ className, children, ...props }, ref) => 
   }
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
-var SelectSeparator = React13.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
+var SelectSeparator = React15.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx31(
   SelectPrimitive.Separator,
   {
     ref,
@@ -3180,6 +3224,8 @@ function Chat({
   const [input, setInput] = useState9("");
   const [expandedTools, setExpandedTools] = useState9(/* @__PURE__ */ new Set());
   const messagesEndRef = useRef5(null);
+  const scrollContainerRef = useRef5(null);
+  const lastRenderStateRef = useRef5({ count: 0, lastLen: 0 });
   const {
     sendMessage,
     stopStreaming,
@@ -3225,9 +3271,39 @@ function Chat({
       return newSet;
     });
   }, []);
-  useEffect11(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const isNearBottom = useCallback6((el, threshold = 80) => {
+    if (!el) return false;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distanceFromBottom <= threshold;
+  }, []);
+  const getLastMessageTextLength = useCallback6(() => {
+    const last = messages[messages.length - 1];
+    if (!last || !last.parts) return 0;
+    let total = 0;
+    for (const part of last.parts) {
+      if (part?.type === "text") {
+        const data = part.data || "";
+        total += data.length;
+      }
+    }
+    return total;
   }, [messages]);
+  useEffect11(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const last = messages[messages.length - 1];
+    const lastId = last && last.id || void 0;
+    const lastLen = getLastMessageTextLength();
+    const hasChanged = lastRenderStateRef.current.count !== messages.length || lastRenderStateRef.current.lastId !== lastId || lastRenderStateRef.current.lastLen !== lastLen;
+    if (hasChanged && isNearBottom(el)) {
+      el.scrollTop = el.scrollHeight;
+    }
+    lastRenderStateRef.current = {
+      count: messages.length,
+      lastId,
+      lastLen
+    };
+  }, [messages, getLastMessageTextLength, isNearBottom]);
   useEffect11(() => {
     const newExpanded = new Set(expandedTools);
     let hasChanges = false;
@@ -3251,6 +3327,7 @@ function Chat({
   const renderMessages = () => {
     const elements = [];
     messages.forEach((message, index) => {
+      const messageKey = message && message.id || `message-${index}`;
       const renderedMessage = /* @__PURE__ */ jsx32(
         MessageRenderer,
         {
@@ -3262,7 +3339,7 @@ function Chat({
             toggleToolExpansion(messageId);
           }
         },
-        `message-${index}`
+        messageKey
       );
       if (renderedMessage !== null) {
         elements.push(renderedMessage);
@@ -3310,7 +3387,7 @@ function Chat({
     return null;
   };
   return /* @__PURE__ */ jsxs21("div", { className: `flex flex-col h-full ${getThemeClasses()}`, children: [
-    /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
+    /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", ref: scrollContainerRef, children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
       error && /* @__PURE__ */ jsx32("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs21("div", { className: "text-destructive text-xs", children: [
         /* @__PURE__ */ jsx32("strong", { children: "Error:" }),
         " ",
@@ -3345,7 +3422,7 @@ function Chat({
 }
 
 // src/components/AgentList.tsx
-import React15 from "react";
+import React17 from "react";
 import { RefreshCw, Play, Bot } from "lucide-react";
 import { jsx as jsx33, jsxs as jsxs22 } from "react/jsx-runtime";
 
@@ -3384,16 +3461,16 @@ import { useState as useState11, useCallback as useCallback8 } from "react";
 import { MoreHorizontal, Trash2, Edit3, Bot as Bot3, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader24 } from "lucide-react";
 
 // src/components/ui/sidebar.tsx
-import * as React19 from "react";
+import * as React21 from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva as cva3 } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
 
 // src/components/ui/separator.tsx
-import * as React16 from "react";
+import * as React18 from "react";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
 import { jsx as jsx36 } from "react/jsx-runtime";
-var Separator2 = React16.forwardRef(
+var Separator2 = React18.forwardRef(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => /* @__PURE__ */ jsx36(
     SeparatorPrimitive.Root,
     {
@@ -3412,14 +3489,14 @@ var Separator2 = React16.forwardRef(
 Separator2.displayName = SeparatorPrimitive.Root.displayName;
 
 // src/components/ui/sheet.tsx
-import * as React17 from "react";
+import * as React19 from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { cva as cva2 } from "class-variance-authority";
 import { X as X2 } from "lucide-react";
 import { jsx as jsx37, jsxs as jsxs25 } from "react/jsx-runtime";
 var Sheet = SheetPrimitive.Root;
 var SheetPortal = SheetPrimitive.Portal;
-var SheetOverlay = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx37(
+var SheetOverlay = React19.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx37(
   SheetPrimitive.Overlay,
   {
     className: cn(
@@ -3447,7 +3524,7 @@ var sheetVariants = cva2(
     }
   }
 );
-var SheetContent = React17.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxs25(SheetPortal, { children: [
+var SheetContent = React19.forwardRef(({ side = "right", className, children, ...props }, ref) => /* @__PURE__ */ jsxs25(SheetPortal, { children: [
   /* @__PURE__ */ jsx37(SheetOverlay, {}),
   /* @__PURE__ */ jsxs25(
     SheetPrimitive.Content,
@@ -3494,7 +3571,7 @@ var SheetFooter = ({
   }
 );
 SheetFooter.displayName = "SheetFooter";
-var SheetTitle = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx37(
+var SheetTitle = React19.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx37(
   SheetPrimitive.Title,
   {
     ref,
@@ -3503,7 +3580,7 @@ var SheetTitle = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE
   }
 ));
 SheetTitle.displayName = SheetPrimitive.Title.displayName;
-var SheetDescription = React17.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx37(
+var SheetDescription = React19.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx37(
   SheetPrimitive.Description,
   {
     ref,
@@ -3529,13 +3606,13 @@ function Skeleton({
 }
 
 // src/components/ui/tooltip.tsx
-import * as React18 from "react";
+import * as React20 from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { jsx as jsx39 } from "react/jsx-runtime";
 var TooltipProvider = TooltipPrimitive.Provider;
 var Tooltip = TooltipPrimitive.Root;
 var TooltipTrigger = TooltipPrimitive.Trigger;
-var TooltipContent = React18.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx39(
+var TooltipContent = React20.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx39(
   TooltipPrimitive.Content,
   {
     ref,
@@ -3557,18 +3634,18 @@ var SIDEBAR_WIDTH = "16rem";
 var SIDEBAR_WIDTH_MOBILE = "18rem";
 var SIDEBAR_WIDTH_ICON = "3rem";
 var SIDEBAR_KEYBOARD_SHORTCUT = "b";
-var SidebarContext = React19.createContext(null);
+var SidebarContext = React21.createContext(null);
 function useSidebar() {
-  const context = React19.useContext(SidebarContext);
+  const context = React21.useContext(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
   return context;
 }
-var SidebarProvider = React19.forwardRef(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
-  const [_open, _setOpen] = React19.useState(defaultOpen);
+var SidebarProvider = React21.forwardRef(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
+  const [_open, _setOpen] = React21.useState(defaultOpen);
   const open = openProp ?? _open;
-  const setOpen = React19.useCallback(
+  const setOpen = React21.useCallback(
     (value) => {
       const openState = typeof value === "function" ? value(open) : value;
       if (setOpenProp) {
@@ -3580,9 +3657,9 @@ var SidebarProvider = React19.forwardRef(({ defaultOpen = true, open: openProp, 
     },
     [setOpenProp, open]
   );
-  const [openMobile, setOpenMobile] = React19.useState(false);
-  const [isMobile, setIsMobile] = React19.useState(false);
-  React19.useEffect(() => {
+  const [openMobile, setOpenMobile] = React21.useState(false);
+  const [isMobile, setIsMobile] = React21.useState(false);
+  React21.useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
       if (window.innerWidth < 768 && open) {
@@ -3593,13 +3670,13 @@ var SidebarProvider = React19.forwardRef(({ defaultOpen = true, open: openProp, 
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, [setOpen, open]);
-  React19.useEffect(() => {
+  React21.useEffect(() => {
     const savedState = localStorage.getItem(SIDEBAR_COOKIE_NAME);
     if (savedState !== null) {
       setOpen(savedState === "true");
     }
   }, [setOpen]);
-  React19.useEffect(() => {
+  React21.useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
@@ -3609,11 +3686,11 @@ var SidebarProvider = React19.forwardRef(({ defaultOpen = true, open: openProp, 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, setOpen]);
-  const toggleSidebar = React19.useCallback(() => {
+  const toggleSidebar = React21.useCallback(() => {
     return isMobile ? setOpenMobile((open2) => !open2) : setOpen((open2) => !open2);
   }, [isMobile, setOpen, setOpenMobile]);
   const state = open ? "expanded" : "collapsed";
-  const contextValue = React19.useMemo(
+  const contextValue = React21.useMemo(
     () => ({
       state,
       open,
@@ -3644,7 +3721,7 @@ var SidebarProvider = React19.forwardRef(({ defaultOpen = true, open: openProp, 
   ) }) });
 });
 SidebarProvider.displayName = "SidebarProvider";
-var Sidebar = React19.forwardRef(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
+var Sidebar = React21.forwardRef(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
   if (collapsible === "none") {
     return /* @__PURE__ */ jsx40(
@@ -3722,7 +3799,7 @@ var Sidebar = React19.forwardRef(({ side = "left", variant = "sidebar", collapsi
   );
 });
 Sidebar.displayName = "Sidebar";
-var SidebarTrigger = React19.forwardRef(({ className, onClick, ...props }, ref) => {
+var SidebarTrigger = React21.forwardRef(({ className, onClick, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
   return /* @__PURE__ */ jsxs26(
     Button,
@@ -3745,7 +3822,7 @@ var SidebarTrigger = React19.forwardRef(({ className, onClick, ...props }, ref) 
   );
 });
 SidebarTrigger.displayName = "SidebarTrigger";
-var SidebarRail = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarRail = React21.forwardRef(({ className, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
   return /* @__PURE__ */ jsx40(
     "button",
@@ -3770,7 +3847,7 @@ var SidebarRail = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarRail.displayName = "SidebarRail";
-var SidebarInset = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarInset = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "main",
     {
@@ -3785,7 +3862,7 @@ var SidebarInset = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarInset.displayName = "SidebarInset";
-var SidebarHeader = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarHeader = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "div",
     {
@@ -3797,7 +3874,7 @@ var SidebarHeader = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarHeader.displayName = "SidebarHeader";
-var SidebarFooter = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarFooter = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "div",
     {
@@ -3809,7 +3886,7 @@ var SidebarFooter = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarFooter.displayName = "SidebarFooter";
-var SidebarSeparator = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarSeparator = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     Separator2,
     {
@@ -3821,7 +3898,7 @@ var SidebarSeparator = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarSeparator.displayName = "SidebarSeparator";
-var SidebarContent = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarContent = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "div",
     {
@@ -3836,7 +3913,7 @@ var SidebarContent = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarContent.displayName = "SidebarContent";
-var SidebarGroup = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarGroup = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "div",
     {
@@ -3848,7 +3925,7 @@ var SidebarGroup = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarGroup.displayName = "SidebarGroup";
-var SidebarGroupLabel = React19.forwardRef(({ className, asChild = false, ...props }, ref) => {
+var SidebarGroupLabel = React21.forwardRef(({ className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "div";
   return /* @__PURE__ */ jsx40(
     Comp,
@@ -3865,7 +3942,7 @@ var SidebarGroupLabel = React19.forwardRef(({ className, asChild = false, ...pro
   );
 });
 SidebarGroupLabel.displayName = "SidebarGroupLabel";
-var SidebarGroupAction = React19.forwardRef(({ className, asChild = false, ...props }, ref) => {
+var SidebarGroupAction = React21.forwardRef(({ className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
   return /* @__PURE__ */ jsx40(
     Comp,
@@ -3884,7 +3961,7 @@ var SidebarGroupAction = React19.forwardRef(({ className, asChild = false, ...pr
   );
 });
 SidebarGroupAction.displayName = "SidebarGroupAction";
-var SidebarGroupContent = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarGroupContent = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "div",
     {
@@ -3896,7 +3973,7 @@ var SidebarGroupContent = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarGroupContent.displayName = "SidebarGroupContent";
-var SidebarMenu = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarMenu = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "ul",
     {
@@ -3908,7 +3985,7 @@ var SidebarMenu = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarMenu.displayName = "SidebarMenu";
-var SidebarMenuItem = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarMenuItem = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "li",
     {
@@ -3940,7 +4017,7 @@ var sidebarMenuButtonVariants = cva3(
     }
   }
 );
-var SidebarMenuButton = React19.forwardRef(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
+var SidebarMenuButton = React21.forwardRef(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
   const { isMobile, state } = useSidebar();
   const button = /* @__PURE__ */ jsx40(
@@ -3976,7 +4053,7 @@ var SidebarMenuButton = React19.forwardRef(({ asChild = false, isActive = false,
   ] });
 });
 SidebarMenuButton.displayName = "SidebarMenuButton";
-var SidebarMenuAction = React19.forwardRef(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
+var SidebarMenuAction = React21.forwardRef(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
   return /* @__PURE__ */ jsx40(
     Comp,
@@ -3999,7 +4076,7 @@ var SidebarMenuAction = React19.forwardRef(({ className, asChild = false, showOn
   );
 });
 SidebarMenuAction.displayName = "SidebarMenuAction";
-var SidebarMenuBadge = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarMenuBadge = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "div",
     {
@@ -4019,8 +4096,8 @@ var SidebarMenuBadge = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarMenuBadge.displayName = "SidebarMenuBadge";
-var SidebarMenuSkeleton = React19.forwardRef(({ className, showIcon = false, ...props }, ref) => {
-  const width = React19.useMemo(() => {
+var SidebarMenuSkeleton = React21.forwardRef(({ className, showIcon = false, ...props }, ref) => {
+  const width = React21.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
   }, []);
   return /* @__PURE__ */ jsxs26(
@@ -4047,7 +4124,7 @@ var SidebarMenuSkeleton = React19.forwardRef(({ className, showIcon = false, ...
   );
 });
 SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton";
-var SidebarMenuSub = React19.forwardRef(({ className, ...props }, ref) => {
+var SidebarMenuSub = React21.forwardRef(({ className, ...props }, ref) => {
   return /* @__PURE__ */ jsx40(
     "ul",
     {
@@ -4063,11 +4140,11 @@ var SidebarMenuSub = React19.forwardRef(({ className, ...props }, ref) => {
   );
 });
 SidebarMenuSub.displayName = "SidebarMenuSub";
-var SidebarMenuSubItem = React19.forwardRef(({ ...props }, ref) => {
+var SidebarMenuSubItem = React21.forwardRef(({ ...props }, ref) => {
   return /* @__PURE__ */ jsx40("li", { ref, ...props });
 });
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
-var SidebarMenuSubButton = React19.forwardRef(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
+var SidebarMenuSubButton = React21.forwardRef(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
   const Comp = asChild ? Slot : "a";
   return /* @__PURE__ */ jsx40(
     Comp,
@@ -4091,9 +4168,9 @@ var SidebarMenuSubButton = React19.forwardRef(({ asChild = false, size = "md", i
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 // src/components/ui/input.tsx
-import * as React20 from "react";
+import * as React22 from "react";
 import { jsx as jsx41 } from "react/jsx-runtime";
-var Input = React20.forwardRef(
+var Input = React22.forwardRef(
   ({ className, type, ...props }, ref) => {
     return /* @__PURE__ */ jsx41(
       "input",
@@ -4112,14 +4189,14 @@ var Input = React20.forwardRef(
 Input.displayName = "Input";
 
 // src/components/ui/dialog.tsx
-import * as React21 from "react";
+import * as React23 from "react";
 import { jsx as jsx42, jsxs as jsxs27 } from "react/jsx-runtime";
-var Dialog = React21.createContext({});
+var Dialog = React23.createContext({});
 var DialogRoot = ({ open, onOpenChange, children }) => {
   return /* @__PURE__ */ jsx42(Dialog.Provider, { value: { open, onOpenChange }, children });
 };
-var DialogTrigger = React21.forwardRef(({ className, children, ...props }, ref) => {
-  const context = React21.useContext(Dialog);
+var DialogTrigger = React23.forwardRef(({ className, children, ...props }, ref) => {
+  const context = React23.useContext(Dialog);
   return /* @__PURE__ */ jsx42(
     "button",
     {
@@ -4132,8 +4209,8 @@ var DialogTrigger = React21.forwardRef(({ className, children, ...props }, ref) 
   );
 });
 DialogTrigger.displayName = "DialogTrigger";
-var DialogContent = React21.forwardRef(({ className, children, ...props }, ref) => {
-  const context = React21.useContext(Dialog);
+var DialogContent = React23.forwardRef(({ className, children, ...props }, ref) => {
+  const context = React23.useContext(Dialog);
   if (!context.open) return null;
   return /* @__PURE__ */ jsx42("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", children: /* @__PURE__ */ jsxs27(
     "div",
@@ -4176,7 +4253,7 @@ var DialogContent = React21.forwardRef(({ className, children, ...props }, ref) 
   ) });
 });
 DialogContent.displayName = "DialogContent";
-var DialogHeader = React21.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx42(
+var DialogHeader = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx42(
   "div",
   {
     ref,
@@ -4188,7 +4265,7 @@ var DialogHeader = React21.forwardRef(({ className, ...props }, ref) => /* @__PU
   }
 ));
 DialogHeader.displayName = "DialogHeader";
-var DialogTitle = React21.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx42(
+var DialogTitle = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx42(
   "h3",
   {
     ref,
@@ -4202,9 +4279,9 @@ var DialogTitle = React21.forwardRef(({ className, ...props }, ref) => /* @__PUR
 DialogTitle.displayName = "DialogTitle";
 
 // src/components/ui/textarea.tsx
-import * as React22 from "react";
+import * as React24 from "react";
 import { jsx as jsx43 } from "react/jsx-runtime";
-var Textarea = React22.forwardRef(
+var Textarea = React24.forwardRef(
   ({ className, ...props }, ref) => {
     return /* @__PURE__ */ jsx43(
       "textarea",
@@ -4222,7 +4299,7 @@ var Textarea = React22.forwardRef(
 Textarea.displayName = "Textarea";
 
 // src/components/ui/dropdown-menu.tsx
-import * as React23 from "react";
+import * as React25 from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check as Check3, ChevronRight as ChevronRight2, Circle } from "lucide-react";
 import { jsx as jsx44, jsxs as jsxs28 } from "react/jsx-runtime";
@@ -4232,7 +4309,7 @@ var DropdownMenuGroup = DropdownMenuPrimitive.Group;
 var DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 var DropdownMenuSub = DropdownMenuPrimitive.Sub;
 var DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
-var DropdownMenuSubTrigger = React23.forwardRef(({ className, inset, children, ...props }, ref) => /* @__PURE__ */ jsxs28(
+var DropdownMenuSubTrigger = React25.forwardRef(({ className, inset, children, ...props }, ref) => /* @__PURE__ */ jsxs28(
   DropdownMenuPrimitive.SubTrigger,
   {
     ref,
@@ -4249,7 +4326,7 @@ var DropdownMenuSubTrigger = React23.forwardRef(({ className, inset, children, .
   }
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
-var DropdownMenuSubContent = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx44(
+var DropdownMenuSubContent = React25.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx44(
   DropdownMenuPrimitive.SubContent,
   {
     ref,
@@ -4261,7 +4338,7 @@ var DropdownMenuSubContent = React23.forwardRef(({ className, ...props }, ref) =
   }
 ));
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
-var DropdownMenuContent = React23.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx44(DropdownMenuPrimitive.Portal, { children: /* @__PURE__ */ jsx44(
+var DropdownMenuContent = React25.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsx44(DropdownMenuPrimitive.Portal, { children: /* @__PURE__ */ jsx44(
   DropdownMenuPrimitive.Content,
   {
     ref,
@@ -4275,7 +4352,7 @@ var DropdownMenuContent = React23.forwardRef(({ className, sideOffset = 4, ...pr
   }
 ) }));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
-var DropdownMenuItem = React23.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx44(
+var DropdownMenuItem = React25.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx44(
   DropdownMenuPrimitive.Item,
   {
     ref,
@@ -4288,7 +4365,7 @@ var DropdownMenuItem = React23.forwardRef(({ className, inset, ...props }, ref) 
   }
 ));
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
-var DropdownMenuCheckboxItem = React23.forwardRef(({ className, children, checked, ...props }, ref) => /* @__PURE__ */ jsxs28(
+var DropdownMenuCheckboxItem = React25.forwardRef(({ className, children, checked, ...props }, ref) => /* @__PURE__ */ jsxs28(
   DropdownMenuPrimitive.CheckboxItem,
   {
     ref,
@@ -4305,7 +4382,7 @@ var DropdownMenuCheckboxItem = React23.forwardRef(({ className, children, checke
   }
 ));
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
-var DropdownMenuRadioItem = React23.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs28(
+var DropdownMenuRadioItem = React25.forwardRef(({ className, children, ...props }, ref) => /* @__PURE__ */ jsxs28(
   DropdownMenuPrimitive.RadioItem,
   {
     ref,
@@ -4321,7 +4398,7 @@ var DropdownMenuRadioItem = React23.forwardRef(({ className, children, ...props 
   }
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
-var DropdownMenuLabel = React23.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx44(
+var DropdownMenuLabel = React25.forwardRef(({ className, inset, ...props }, ref) => /* @__PURE__ */ jsx44(
   DropdownMenuPrimitive.Label,
   {
     ref,
@@ -4334,7 +4411,7 @@ var DropdownMenuLabel = React23.forwardRef(({ className, inset, ...props }, ref)
   }
 ));
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
-var DropdownMenuSeparator = React23.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx44(
+var DropdownMenuSeparator = React25.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsx44(
   DropdownMenuPrimitive.Separator,
   {
     ref,
@@ -4811,12 +4888,12 @@ var TaskExecutionRenderer = ({
 };
 
 // src/components/ThemeToggle.tsx
-import React26 from "react";
+import React28 from "react";
 import { Moon, Sun } from "lucide-react";
 import { jsx as jsx47, jsxs as jsxs31 } from "react/jsx-runtime";
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const dropdownRef = React26.useRef(null);
+  const dropdownRef = React28.useRef(null);
   return /* @__PURE__ */ jsx47("div", { className: "relative", ref: dropdownRef, children: /* @__PURE__ */ jsxs31(
     "button",
     {
@@ -5093,7 +5170,7 @@ function useChatMessages({
 }
 
 // src/utils/toolWrapper.ts
-import React28 from "react";
+import React30 from "react";
 function wrapFnToolAsUiTool(fnTool, options = {}) {
   const { autoExecute = false } = options;
   return {
@@ -5102,7 +5179,7 @@ function wrapFnToolAsUiTool(fnTool, options = {}) {
     description: fnTool.description,
     input_schema: fnTool.input_schema,
     component: (props) => {
-      return React28.createElement(DefaultToolActions, {
+      return React30.createElement(DefaultToolActions, {
         ...props,
         tool: { ...fnTool, autoExecute: fnTool.autoExecute || autoExecute }
       });

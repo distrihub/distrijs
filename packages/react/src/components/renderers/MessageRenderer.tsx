@@ -28,7 +28,7 @@ const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string 
   </div>
 );
 
-export function MessageRenderer({
+function MessageRendererBase({
   message,
   index,
   isExpanded = false,
@@ -335,3 +335,37 @@ export function MessageRenderer({
   // Fallback - should never reach here
   return null;
 }
+
+function areTextPartsEqual(a?: any[], b?: any[]): boolean {
+  if (a === b) return true;
+  const aTexts = (a || []).filter(p => p?.type === 'text').map(p => (p as any).data || '').join('');
+  const bTexts = (b || []).filter(p => p?.type === 'text').map(p => (p as any).data || '').join('');
+  return aTexts === bTexts;
+}
+
+export const MessageRenderer = React.memo(MessageRendererBase, (prev, next) => {
+  const prevMsg = prev.message as any;
+  const nextMsg = next.message as any;
+
+  // Different message identity or role changes should re-render
+  if ((prevMsg?.id || prev.index) !== (nextMsg?.id || next.index)) return false;
+  if (prevMsg?.role !== nextMsg?.role) return false;
+
+  // Expansion state relevant to this row
+  if (!!prev.isExpanded !== !!next.isExpanded) return false;
+
+  // If parts arrays changed in count or text content length, re-render
+  const prevParts = prevMsg?.parts as any[] | undefined;
+  const nextParts = nextMsg?.parts as any[] | undefined;
+  if ((prevParts?.length || 0) !== (nextParts?.length || 0)) return false;
+  if (!areTextPartsEqual(prevParts, nextParts)) return false;
+
+  // For events/artifacts without parts, rely on shallow equality of serialized type+data sizes
+  if (!prevParts && !nextParts) {
+    const prevType = prevMsg?.type;
+    const nextType = nextMsg?.type;
+    if (prevType !== nextType) return false;
+  }
+
+  return true;
+});
