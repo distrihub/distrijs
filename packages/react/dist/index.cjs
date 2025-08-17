@@ -558,7 +558,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   addMessage: (message) => {
     const isDebugEnabled = get().debug;
     set((state) => {
-      const messages = [...state.messages];
       if ((0, import_core.isDistriEvent)(message)) {
         const event = message;
         if (event.type === "text_message_start") {
@@ -574,7 +573,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             step_id: stepId,
             is_final: isFinal
           };
-          messages.push(newDistriMessage);
+          const messages = [...state.messages, newDistriMessage];
           if (stepId) {
             const existingStep = get().steps.get(stepId);
             if (existingStep) {
@@ -584,19 +583,27 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               });
             }
           }
+          return { ...state, messages };
         } else if (event.type === "text_message_content") {
           const messageId = event.data.message_id;
           const stepId = event.data.step_id;
           const delta = event.data.delta;
-          const existingIndex = messages.findIndex(
+          const existingIndex = state.messages.findIndex(
             (m) => (0, import_core.isDistriMessage)(m) && m.id === messageId
           );
           if (existingIndex >= 0) {
-            const existing = messages[existingIndex];
-            let textPart = existing.parts.find((p) => p.type === "text");
+            const existingMessage = state.messages[existingIndex];
+            let textPart = existingMessage.parts.find((p) => p.type === "text");
             if (!textPart) {
               textPart = { type: "text", data: "" };
-              existing.parts.push(textPart);
+              const updatedMessage = {
+                ...existingMessage,
+                parts: [...existingMessage.parts, textPart]
+              };
+              const messages2 = state.messages.map(
+                (msg, idx) => idx === existingIndex ? updatedMessage : msg
+              );
+              return { ...state, messages: messages2 };
             }
             textPart.data += delta;
             const thoughtContent = extractThoughtContent(textPart.data);
@@ -611,11 +618,16 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
                 });
               }
             }
+            const messages = state.messages.map(
+              (msg, idx) => idx === existingIndex ? { ...existingMessage } : msg
+            );
+            return { ...state, messages };
           } else {
             if (isDebugEnabled) {
               console.warn("\u274C Cannot find streaming message to append to:", messageId);
-              console.log("\u{1F4CB} Available message IDs:", messages.filter(import_core.isDistriMessage).map((m) => m.id));
+              console.log("\u{1F4CB} Available message IDs:", state.messages.filter(import_core.isDistriMessage).map((m) => m.id));
             }
+            return state;
           }
         } else if (event.type === "text_message_end") {
           const stepId = event.data.step_id;
@@ -629,6 +641,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             }
           }
           get().setCurrentThought(void 0);
+          return state;
         } else {
           const stateOnlyEvents = [
             "run_started",
@@ -642,13 +655,15 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             "tool_results"
           ];
           if (!stateOnlyEvents.includes(event.type)) {
-            messages.push(message);
+            const messages = [...state.messages, message];
+            return { ...state, messages };
           }
+          return state;
         }
       } else {
-        messages.push(message);
+        const messages = [...state.messages, message];
+        return { ...state, messages };
       }
-      return { ...state, messages };
     });
   },
   resolveToolCalls: () => {
@@ -1821,12 +1836,13 @@ var ChatInput = ({
   placeholder = "Type your message...",
   disabled = false,
   isStreaming = false,
-  className = ""
+  className = "",
+  attachedImages = [],
+  onRemoveImage,
+  onAddImages
 }) => {
   const textareaRef = (0, import_react12.useRef)(null);
   const fileInputRef = (0, import_react12.useRef)(null);
-  const [attachedImages, setAttachedImages] = (0, import_react12.useState)([]);
-  const [isDragOver, setIsDragOver] = (0, import_react12.useState)(false);
   (0, import_react12.useEffect)(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -1848,55 +1864,13 @@ var ChatInput = ({
       reader.readAsDataURL(file);
     });
   }, []);
-  const addImages = (0, import_react12.useCallback)(async (files) => {
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    for (const file of imageFiles) {
-      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-      const preview = URL.createObjectURL(file);
-      const newImage = {
-        id,
-        file,
-        preview,
-        name: file.name
-      };
-      setAttachedImages((prev) => [...prev, newImage]);
-    }
-  }, []);
-  const removeImage = (0, import_react12.useCallback)((id) => {
-    setAttachedImages((prev) => {
-      const image = prev.find((img) => img.id === id);
-      if (image) {
-        URL.revokeObjectURL(image.preview);
-      }
-      return prev.filter((img) => img.id !== id);
-    });
-  }, []);
-  const handleDragOver = (0, import_react12.useCallback)((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  }, []);
-  const handleDragLeave = (0, import_react12.useCallback)((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  }, []);
-  const handleDrop = (0, import_react12.useCallback)((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      addImages(files);
-    }
-  }, [addImages]);
   const handleFileSelect = (0, import_react12.useCallback)((e) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      addImages(files);
+    if (files && files.length > 0 && onAddImages) {
+      onAddImages(files);
     }
     e.target.value = "";
-  }, [addImages]);
+  }, [onAddImages]);
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -1931,10 +1905,6 @@ var ChatInput = ({
         onSend(value);
       }
       onChange("");
-      setAttachedImages((prev) => {
-        prev.forEach((img) => URL.revokeObjectURL(img.preview));
-        return [];
-      });
     } catch (error) {
       console.error("Error processing images:", error);
     }
@@ -1946,11 +1916,6 @@ var ChatInput = ({
   };
   const hasContent = value.trim().length > 0 || attachedImages.length > 0;
   const isDisabled = disabled || isStreaming;
-  (0, import_react12.useEffect)(() => {
-    return () => {
-      attachedImages.forEach((img) => URL.revokeObjectURL(img.preview));
-    };
-  }, []);
   return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: `relative flex min-h-14 w-full items-end ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "relative flex w-full flex-auto flex-col", children: [
     attachedImages.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "flex flex-wrap gap-2 mb-2 mx-5", children: attachedImages.map((image) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "relative group", children: [
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
@@ -1964,59 +1929,49 @@ var ChatInput = ({
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
         "button",
         {
-          onClick: () => removeImage(image.id),
+          onClick: () => onRemoveImage?.(image.id),
           className: "absolute -top-1 -right-1 w-5 h-5 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
           children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.X, { className: "w-3 h-3" })
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg truncate", children: image.name })
     ] }, image.id)) }),
-    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
-      "div",
-      {
-        className: `relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full ${isDragOver ? "border-primary border-2 bg-primary/5" : ""}`,
-        onDragOver: handleDragOver,
-        onDragLeave: handleDragLeave,
-        onDrop: handleDrop,
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-            "textarea",
-            {
-              ref: textareaRef,
-              value,
-              onChange: (e) => onChange(e.target.value),
-              onKeyPress: handleKeyPress,
-              placeholder: attachedImages.length > 0 ? "Add a message..." : placeholder,
-              disabled: isDisabled,
-              rows: 1,
-              className: "max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-24 text-foreground min-h-[52px] max-h-[120px]"
-            }
-          ),
-          isDragOver && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "absolute inset-0 flex items-center justify-center bg-primary/10 rounded-lg", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "text-primary font-medium", children: "Drop images here" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "absolute right-2 bottom-0 flex items-center gap-1 h-full", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-              "button",
-              {
-                onClick: () => fileInputRef.current?.click(),
-                disabled: isDisabled,
-                className: "h-10 w-10 rounded-md transition-colors flex items-center justify-center hover:bg-muted text-muted-foreground",
-                title: "Attach image",
-                children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.ImageIcon, { className: "h-5 w-5" })
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-              "button",
-              {
-                onClick: isStreaming ? handleStop : handleSend,
-                disabled: !hasContent && !isStreaming,
-                className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : hasContent && !disabled ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"}`,
-                children: isStreaming ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.Square, { className: "h-5 w-5" }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.Send, { className: "h-5 w-5" })
-              }
-            )
-          ] })
-        ]
-      }
-    ),
+    /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+        "textarea",
+        {
+          ref: textareaRef,
+          value,
+          onChange: (e) => onChange(e.target.value),
+          onKeyPress: handleKeyPress,
+          placeholder: attachedImages.length > 0 ? "Add a message..." : placeholder,
+          disabled: isDisabled,
+          rows: 1,
+          className: "max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-24 text-foreground min-h-[52px] max-h-[120px]"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "absolute right-2 bottom-0 flex items-center gap-1 h-full", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+          "button",
+          {
+            onClick: () => fileInputRef.current?.click(),
+            disabled: isDisabled,
+            className: "h-10 w-10 rounded-md transition-colors flex items-center justify-center hover:bg-muted text-muted-foreground",
+            title: "Attach image",
+            children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.ImageIcon, { className: "h-5 w-5" })
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+          "button",
+          {
+            onClick: isStreaming ? handleStop : handleSend,
+            disabled: !hasContent && !isStreaming,
+            className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : hasContent && !disabled ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"}`,
+            children: isStreaming ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.Square, { className: "h-5 w-5" }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_lucide_react5.Send, { className: "h-5 w-5" })
+          }
+        )
+      ] })
+    ] }),
     /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
       "input",
       {
@@ -3319,6 +3274,8 @@ function Chat({
   const [input, setInput] = (0, import_react14.useState)("");
   const [expandedTools, setExpandedTools] = (0, import_react14.useState)(/* @__PURE__ */ new Set());
   const messagesEndRef = (0, import_react14.useRef)(null);
+  const [attachedImages, setAttachedImages] = (0, import_react14.useState)([]);
+  const [isDragOver, setIsDragOver] = (0, import_react14.useState)(false);
   const {
     sendMessage,
     stopStreaming,
@@ -3340,6 +3297,50 @@ function Chat({
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore((state) => state.streamingIndicator);
   const currentThought = useChatStateStore((state) => state.currentThought);
+  const addImages = (0, import_react14.useCallback)(async (files) => {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    for (const file of imageFiles) {
+      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const preview = URL.createObjectURL(file);
+      const newImage = {
+        id,
+        file,
+        preview,
+        name: file.name
+      };
+      setAttachedImages((prev) => [...prev, newImage]);
+    }
+  }, []);
+  const removeImage = (0, import_react14.useCallback)((id) => {
+    setAttachedImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+  }, []);
+  const handleDragOver = (0, import_react14.useCallback)((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+  const handleDragLeave = (0, import_react14.useCallback)((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  }, []);
+  const handleDrop = (0, import_react14.useCallback)((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      addImages(files);
+    }
+  }, [addImages]);
   const handleSendMessage = (0, import_react14.useCallback)(async (initialContent) => {
     let content = initialContent;
     if (beforeSendMessage) {
@@ -3348,8 +3349,12 @@ function Chat({
     if (typeof content === "string" && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
     setInput("");
+    setAttachedImages((prev) => {
+      prev.forEach((img) => URL.revokeObjectURL(img.preview));
+      return [];
+    });
     await sendMessage(content);
-  }, [sendMessage]);
+  }, [sendMessage, beforeSendMessage]);
   const handleStopStreaming = (0, import_react14.useCallback)(() => {
     stopStreaming();
   }, [stopStreaming]);
@@ -3448,39 +3453,52 @@ function Chat({
     }
     return null;
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: `flex flex-col h-full ${getThemeClasses()}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
-      error && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "text-destructive text-xs", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("strong", { children: "Error:" }),
-        " ",
-        error.message
-      ] }) }),
-      renderMessages(),
-      renderThinkingIndicator(),
-      /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { ref: messagesEndRef })
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
-      models && models.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "mb-4 flex items-center gap-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "text-sm text-muted-foreground", children: "Model:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)(Select, { value: selectedModelId, onValueChange: onModelChange, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectTrigger, { className: "w-64", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectValue, { placeholder: "Select a model" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectContent, { children: models.map((model) => /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectItem, { value: model.id, children: model.name }, model.id)) })
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(
-        ChatInput,
-        {
-          value: input,
-          onChange: setInput,
-          onSend: handleSendMessage,
-          onStop: handleStopStreaming,
-          placeholder: "Type your message...",
-          disabled: isLoading || hasPendingToolCalls(),
-          isStreaming
-        }
-      )
-    ] }) })
-  ] });
+  return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)(
+    "div",
+    {
+      className: `flex flex-col h-full ${getThemeClasses()} relative`,
+      onDragOver: handleDragOver,
+      onDragLeave: handleDragLeave,
+      onDrop: handleDrop,
+      children: [
+        isDragOver && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "text-primary font-medium text-lg", children: "Drop images anywhere to upload" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
+          error && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "text-destructive text-xs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("strong", { children: "Error:" }),
+            " ",
+            error.message
+          ] }) }),
+          renderMessages(),
+          renderThinkingIndicator(),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { ref: messagesEndRef })
+        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
+          models && models.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { className: "mb-4 flex items-center gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("span", { className: "text-sm text-muted-foreground", children: "Model:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)(Select, { value: selectedModelId, onValueChange: onModelChange, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectTrigger, { className: "w-64", children: /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectValue, { placeholder: "Select a model" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectContent, { children: models.map((model) => /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(SelectItem, { value: model.id, children: model.name }, model.id)) })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(
+            ChatInput,
+            {
+              value: input,
+              onChange: setInput,
+              onSend: handleSendMessage,
+              onStop: handleStopStreaming,
+              placeholder: "Type your message...",
+              disabled: isLoading || hasPendingToolCalls(),
+              isStreaming,
+              attachedImages,
+              onRemoveImage: removeImage,
+              onAddImages: addImages
+            }
+          )
+        ] }) })
+      ]
+    }
+  );
 }
 
 // src/components/AgentList.tsx

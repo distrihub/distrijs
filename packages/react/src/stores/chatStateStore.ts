@@ -213,8 +213,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     const isDebugEnabled = get().debug;
 
     set((state: ChatState) => {
-      const messages = [...state.messages]; // Create a shallow copy of the array
-
       if (isDistriEvent(message)) {
         const event = message as DistriEvent;
 
@@ -234,7 +232,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             is_final: isFinal
           };
 
-          messages.push(newDistriMessage);
+          // Create new messages array with the new message
+          const messages = [...state.messages, newDistriMessage];
 
           // Update existing step to show it's now generating text (if step exists)
           if (stepId) {
@@ -247,6 +246,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             }
           }
 
+          return { ...state, messages };
+
         } else if (event.type === 'text_message_content') {
           // Find existing message and append delta to text part
           const messageId = event.data.message_id;
@@ -255,19 +256,30 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           // Silent processing - no logs for content streaming
 
-          const existingIndex = messages.findIndex(
+          const existingIndex = state.messages.findIndex(
             m => isDistriMessage(m) && (m as DistriMessage).id === messageId
           );
 
           if (existingIndex >= 0) {
-            const existing = messages[existingIndex] as DistriMessage;
-            let textPart = existing.parts.find(p => p.type === 'text') as { type: 'text'; data: string } | undefined;
+            const existingMessage = state.messages[existingIndex] as DistriMessage;
+            let textPart = existingMessage.parts.find(p => p.type === 'text') as { type: 'text'; data: string } | undefined;
 
             if (!textPart) {
               textPart = { type: 'text', data: '' };
-              existing.parts.push(textPart);
+              // Create new parts array with the new text part
+              const updatedMessage = {
+                ...existingMessage,
+                parts: [...existingMessage.parts, textPart]
+              };
+              // Create new messages array with only the updated message replaced
+              const messages = state.messages.map((msg, idx) => 
+                idx === existingIndex ? updatedMessage : msg
+              );
+              
+              return { ...state, messages };
             }
 
+            // Update the text part in place (this is safe since we're about to replace the message)
             textPart.data += delta;
 
             // Extract thought content from accumulated text and update current thought
@@ -285,12 +297,20 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                 });
               }
             }
+
+            // Create new messages array with only the updated message replaced
+            const messages = state.messages.map((msg, idx) => 
+              idx === existingIndex ? { ...existingMessage } : msg
+            );
+
+            return { ...state, messages };
           } else {
             // Only log errors for streaming issues
             if (isDebugEnabled) {
               console.warn('❌ Cannot find streaming message to append to:', messageId);
-              console.log('📋 Available message IDs:', messages.filter(isDistriMessage).map(m => (m as DistriMessage).id));
+              console.log('📋 Available message IDs:', state.messages.filter(isDistriMessage).map(m => (m as DistriMessage).id));
             }
+            return state; // No change needed
           }
 
         } else if (event.type === 'text_message_end') {
@@ -310,6 +330,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Clear current thought when message is complete
           get().setCurrentThought(undefined);
 
+          return state; // No message array change needed
+
         } else {
           // Don't add state-only events to messages (they only update store state)
           const stateOnlyEvents = [
@@ -321,14 +343,16 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           if (!stateOnlyEvents.includes(event.type)) {
             // For other event types, just append
-            messages.push(message);
+            const messages = [...state.messages, message];
+            return { ...state, messages };
           }
+          return state; // No change needed for state-only events
         }
       } else {
         // For DistriMessage or DistriArtifact, just add directly
-        messages.push(message);
+        const messages = [...state.messages, message];
+        return { ...state, messages };
       }
-      return { ...state, messages };
     });
   },
 
