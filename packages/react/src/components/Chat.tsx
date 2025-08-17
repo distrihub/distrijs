@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { DistriChatMessage, DistriPart } from '@distri/core';
-import { ChatInput } from './ChatInput';
+import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
@@ -65,6 +65,10 @@ export function Chat({
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Image upload state moved from ChatInput
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
 
 
   const {
@@ -92,6 +96,61 @@ export function Chat({
   const currentThought = useChatStateStore(state => state.currentThought);
 
 
+  // Image upload functions moved from ChatInput
+  const addImages = useCallback(async (files: FileList | File[]) => {
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+
+    for (const file of imageFiles) {
+      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const preview = URL.createObjectURL(file);
+
+      const newImage: AttachedImage = {
+        id,
+        file,
+        preview,
+        name: file.name
+      };
+
+      setAttachedImages(prev => [...prev, newImage]);
+    }
+  }, []);
+
+  const removeImage = useCallback((id: string) => {
+    setAttachedImages(prev => {
+      const image = prev.find(img => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview);
+      }
+      return prev.filter(img => img.id !== id);
+    });
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only hide drag over if we're leaving the chat container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      addImages(files);
+    }
+  }, [addImages]);
+
   const handleSendMessage = useCallback(async (initialContent: string | DistriPart[]) => {
 
     let content = initialContent;
@@ -103,8 +162,13 @@ export function Chat({
     if (Array.isArray(content) && content.length === 0) return;
 
     setInput('');
+    // Clear attached images when sending
+    setAttachedImages(prev => {
+      prev.forEach(img => URL.revokeObjectURL(img.preview));
+      return [];
+    });
     await sendMessage(content);
-  }, [sendMessage]);
+  }, [sendMessage, beforeSendMessage]);
 
   const handleStopStreaming = useCallback(() => {
     stopStreaming();
@@ -237,7 +301,19 @@ export function Chat({
 
 
   return (
-    <div className={`flex flex-col h-full ${getThemeClasses()}`}>
+    <div 
+      className={`flex flex-col h-full ${getThemeClasses()} relative`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Global drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed">
+          <div className="text-primary font-medium text-lg">Drop images anywhere to upload</div>
+        </div>
+      )}
+      
       <div className="flex-1 overflow-y-auto bg-background text-foreground">
         {/* Center container with max width and padding like ChatGPT */}
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -286,6 +362,9 @@ export function Chat({
             placeholder="Type your message..."
             disabled={isLoading || hasPendingToolCalls()}
             isStreaming={isStreaming}
+            attachedImages={attachedImages}
+            onRemoveImage={removeImage}
+            onAddImages={addImages}
           />
         </div>
       </div>
