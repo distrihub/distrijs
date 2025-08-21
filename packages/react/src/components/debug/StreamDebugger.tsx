@@ -109,7 +109,7 @@ export const StreamDebugger: React.FC<StreamDebuggerProps> = ({
                   </span>
                   {' '}
                   <span className={log.type === 'warn' ? 'text-yellow-400' : 'text-green-400'}>
-                    {log.args.map((arg: any, i: number) =>
+                    {log.args.map((arg: any, _i: number) =>
                       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                     ).join(' ')}
                   </span>

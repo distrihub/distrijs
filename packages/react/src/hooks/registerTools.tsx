@@ -11,7 +11,7 @@ export interface UseToolsOptions {
   wrapOptions?: WrapToolOptions;
 }
 
-export function registerTools({ agent, tools, wrapOptions = {} }: UseToolsOptions) {
+export function useRegisterTools({ agent, tools, wrapOptions = {} }: UseToolsOptions) {
   const lastAgentIdRef = useRef<string | null>(null);
   const setWrapOptions = useChatStateStore(state => state.setWrapOptions);
 
@@ -32,8 +32,6 @@ export function registerTools({ agent, tools, wrapOptions = {} }: UseToolsOption
     agent.setTools(tools);
 
     lastAgentIdRef.current = agent.id;
-    console.log(`✓ Set tools for agent ${agent.id}`);
-    console.log(`Tools Map contains ${tools.agent_tools.size} agent(s):`, Array.from(tools.agent_tools.keys()));
   }, [agent?.id, tools, wrapOptions, setWrapOptions]);
 }
 

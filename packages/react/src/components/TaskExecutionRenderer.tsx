@@ -84,7 +84,7 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
         const distriEvent = event as DistriEvent;
         
         switch (distriEvent.type) {
-          case 'run_started':
+          case 'run_started': {
             const runStepId = 'run_start';
             if (!stepMap.has(runStepId)) {
               stepOrder.push(runStepId);
@@ -96,8 +96,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               status: 'completed',
             });
             break;
+          }
 
-          case 'plan_started':
+          case 'plan_started': {
             const planStartId = 'plan_start';
             if (!stepMap.has(planStartId)) {
               stepOrder.push(planStartId);
@@ -109,8 +110,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               status: 'running',
             });
             break;
+          }
 
-          case 'plan_finished':
+          case 'plan_finished': {
             const planFinishId = 'plan_start'; // Update the existing plan step
             const planStep = stepMap.get(planFinishId);
             if (planStep) {
@@ -121,8 +123,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               }
             }
             break;
+          }
 
-          case 'tool_call_start':
+          case 'tool_call_start': {
             const startData = distriEvent.data as any;
             const toolStartId = `tool_${startData.tool_call_id}`;
             
@@ -137,8 +140,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               status: 'running',
             });
             break;
+          }
 
-          case 'tool_call_end':
+          case 'tool_call_end': {
             const endData = distriEvent.data as any;
             const toolEndId = `tool_${endData.tool_call_id}`;
             
@@ -147,8 +151,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               existingStep.status = 'completed';
             }
             break;
+          }
 
-          case 'tool_call_result':
+          case 'tool_call_result': {
             const resultData = distriEvent.data as any;
             const toolResultId = `tool_${resultData.tool_call_id}`;
             
@@ -162,8 +167,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               resultStep.status = 'completed';
             }
             break;
+          }
 
-          case 'task_artifact':
+          case 'task_artifact': {
             const artifactData = distriEvent.data as any;
             const artifactId = `artifact_${artifactData.artifact_id}`;
             
@@ -181,8 +187,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
                 'Artifact generated',
             });
             break;
+          }
 
-          case 'text_message_start':
+          case 'text_message_start': {
             const msgStartData = distriEvent.data as any;
             const msgStartId = `message_${msgStartData.message_id}`;
             
@@ -198,8 +205,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               content: '',
             });
             break;
+          }
 
-          case 'text_message_content':
+          case 'text_message_content': {
             const msgContentData = distriEvent.data as any;
             const msgContentId = `message_${msgContentData.message_id}`;
             
@@ -208,8 +216,9 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               msgStep.content = (msgStep.content || '') + msgContentData.delta;
             }
             break;
+          }
 
-          case 'text_message_end':
+          case 'text_message_end': {
             const msgEndData = distriEvent.data as any;
             const msgEndId = `message_${msgEndData.message_id}`;
             
@@ -218,6 +227,7 @@ export const TaskExecutionRenderer: React.FC<TaskExecutionRendererProps> = ({
               msgEndStep.status = 'completed';
             }
             break;
+          }
 
           case 'run_finished':
             // Mark all remaining running steps as completed

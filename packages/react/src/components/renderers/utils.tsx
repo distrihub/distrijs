@@ -1,9 +1,7 @@
 import React from 'react';
 import { DistriMessage, DistriEvent, DistriArtifact, ImagePart } from '@distri/core';
-// @ts-ignore
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-// @ts-ignore  
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Prism as _SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark as _oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import TextRenderer from './TextRenderer';
 
 export interface ExtractedContent {
@@ -41,7 +39,7 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
       ?.filter(p => p.type === 'image') as ImagePart[] || [];
 
     // Check for rich content in text
-    hasMarkdown = /[*_`#\[\]()>]/.test(text);
+    hasMarkdown = /[*_`#[\]()>]/.test(text);
     hasCode = /```|`/.test(text);
     hasLinks = /\[.*?\]\(.*?\)|https?:\/\/[^\s]+/.test(text);
     hasImages = /!\[.*?\]\(.*?\)/.test(text) || imageParts.length > 0;

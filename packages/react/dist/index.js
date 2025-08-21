@@ -792,9 +792,8 @@ var useChatStateStore = create((set, get) => ({
   initToolCall: (toolCall, timestamp, isFromStream = false) => {
     set((state) => {
       const newState = { ...state };
-      let distriTool;
       const tools = state.getAllTools();
-      distriTool = tools.find((t) => t.name === toolCall.tool_name);
+      const distriTool = tools.find((t) => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || "Unknown Tool",
@@ -890,7 +889,7 @@ var useChatStateStore = create((set, get) => ({
         tool: distriTool
       });
     } else if (distriTool?.type === "function") {
-      let fnTool = distriTool;
+      const fnTool = distriTool;
       fnTool.autoExecute = fnTool.autoExecute === true;
       component = React6.createElement(DefaultToolActions, {
         toolCall,
@@ -1044,7 +1043,7 @@ var useChatStateStore = create((set, get) => ({
   },
   getAllTools: () => {
     const state = get();
-    let tools = state.tools?.tools || [];
+    const tools = state.tools?.tools || [];
     for (const [, toolList] of state.tools?.agent_tools || []) {
       tools.push(...toolList);
     }
@@ -1055,7 +1054,6 @@ var useChatStateStore = create((set, get) => ({
     set({ agent });
   },
   setTools: (tools) => {
-    console.log("\u{1F527} Setting tools in store (Map format):", tools);
     set({
       tools: {
         tools: tools.tools,
@@ -1073,7 +1071,7 @@ var useChatStateStore = create((set, get) => ({
 
 // src/hooks/registerTools.tsx
 import { jsx as jsx7 } from "react/jsx-runtime";
-function registerTools({ agent, tools, wrapOptions = {} }) {
+function useRegisterTools({ agent, tools, wrapOptions = {} }) {
   const lastAgentIdRef = useRef(null);
   const setWrapOptions = useChatStateStore((state) => state.setWrapOptions);
   useEffect4(() => {
@@ -1086,8 +1084,6 @@ function registerTools({ agent, tools, wrapOptions = {} }) {
     setWrapOptions(wrapOptions);
     agent.setTools(tools);
     lastAgentIdRef.current = agent.id;
-    console.log(`\u2713 Set tools for agent ${agent.id}`);
-    console.log(`Tools Map contains ${tools.agent_tools.size} agent(s):`, Array.from(tools.agent_tools.keys()));
   }, [agent?.id, tools, wrapOptions, setWrapOptions]);
 }
 
@@ -1115,7 +1111,7 @@ function useChat({
     run_id: void 0,
     getMetadata: getMetadataRef.current
   }), [threadId]);
-  registerTools({ agent, tools, wrapOptions });
+  useRegisterTools({ agent, tools, wrapOptions });
   const chatState = useChatStateStore();
   const isLoading = useChatStateStore((state) => state.isLoading);
   const isStreaming = useChatStateStore((state) => state.isStreaming);
@@ -1281,6 +1277,8 @@ function useChat({
             error: result.error
           }
         }));
+        const toolResultMessage = DistriClient.initDistriMessage("user", toolResultParts);
+        processMessage(toolResultMessage, false);
         await sendMessageStream(toolResultParts, "user");
         chatState.clearToolResults();
       } catch (err) {
@@ -1290,7 +1288,7 @@ function useChat({
         setStreaming(false);
       }
     }
-  }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);
+  }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading, processMessage]);
   const handleExternalToolResponsesRef = useRef2(handleExternalToolResponses);
   useEffect5(() => {
     handleExternalToolResponsesRef.current = handleExternalToolResponses;
@@ -1953,7 +1951,7 @@ function extractContent(message) {
     const textParts = distriMessage.parts?.filter((p) => p.type === "text" && p.data)?.map((p) => p.data)?.filter((text2) => text2 && text2.trim()) || [];
     text = textParts.join(" ").trim();
     imageParts = distriMessage.parts?.filter((p) => p.type === "image") || [];
-    hasMarkdown = /[*_`#\[\]()>]/.test(text);
+    hasMarkdown = /[*_`#[\]()>]/.test(text);
     hasCode = /```|`/.test(text);
     hasLinks = /\[.*?\]\(.*?\)|https?:\/\/[^\s]+/.test(text);
     hasImages = /!\[.*?\]\(.*?\)/.test(text) || imageParts.length > 0;
@@ -2779,7 +2777,7 @@ function MessageRenderer({
         return null;
       case "text_message_end":
         return null;
-      case "step_started":
+      case "step_started": {
         const stepId = event.data.step_id;
         const step = steps.get(stepId);
         if (step) {
@@ -2791,9 +2789,10 @@ function MessageRenderer({
           ) }, `step-${stepId}`);
         }
         return null;
+      }
       case "step_completed":
         return null;
-      case "tool_call_start":
+      case "tool_call_start": {
         const toolCallStartId = event.data.tool_call_id;
         const toolCallStartState = toolCalls.get(toolCallStartId);
         if (toolCallStartState?.status === "running") {
@@ -2807,6 +2806,7 @@ function MessageRenderer({
           ] }) }, `tool-call-start-${index}`);
         }
         return null;
+      }
       case "tool_call_end":
         return null;
       case "tool_call_result":
@@ -3323,7 +3323,7 @@ function Chat({
       onDrop: handleDrop,
       children: [
         isDragOver && /* @__PURE__ */ jsx32("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed", children: /* @__PURE__ */ jsx32("div", { className: "text-primary font-medium text-lg", children: "Drop images anywhere to upload" }) }),
-        /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8", children: [
+        /* @__PURE__ */ jsx32("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs21("div", { className: "max-w-4xl mx-auto px-4 py-8 text-sm space-y-4", children: [
           error && /* @__PURE__ */ jsx32("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs21("div", { className: "text-destructive text-xs", children: [
             /* @__PURE__ */ jsx32("strong", { children: "Error:" }),
             " ",
@@ -4628,7 +4628,7 @@ var TaskExecutionRenderer = ({
       } else {
         const distriEvent = event;
         switch (distriEvent.type) {
-          case "run_started":
+          case "run_started": {
             const runStepId = "run_start";
             if (!stepMap.has(runStepId)) {
               stepOrder.push(runStepId);
@@ -4640,7 +4640,8 @@ var TaskExecutionRenderer = ({
               status: "completed"
             });
             break;
-          case "plan_started":
+          }
+          case "plan_started": {
             const planStartId = "plan_start";
             if (!stepMap.has(planStartId)) {
               stepOrder.push(planStartId);
@@ -4652,7 +4653,8 @@ var TaskExecutionRenderer = ({
               status: "running"
             });
             break;
-          case "plan_finished":
+          }
+          case "plan_finished": {
             const planFinishId = "plan_start";
             const planStep = stepMap.get(planFinishId);
             if (planStep) {
@@ -4663,7 +4665,8 @@ var TaskExecutionRenderer = ({
               }
             }
             break;
-          case "tool_call_start":
+          }
+          case "tool_call_start": {
             const startData = distriEvent.data;
             const toolStartId = `tool_${startData.tool_call_id}`;
             if (!stepMap.has(toolStartId)) {
@@ -4676,7 +4679,8 @@ var TaskExecutionRenderer = ({
               status: "running"
             });
             break;
-          case "tool_call_end":
+          }
+          case "tool_call_end": {
             const endData = distriEvent.data;
             const toolEndId = `tool_${endData.tool_call_id}`;
             const existingStep = stepMap.get(toolEndId);
@@ -4684,7 +4688,8 @@ var TaskExecutionRenderer = ({
               existingStep.status = "completed";
             }
             break;
-          case "tool_call_result":
+          }
+          case "tool_call_result": {
             const resultData = distriEvent.data;
             const toolResultId = `tool_${resultData.tool_call_id}`;
             const resultStep = stepMap.get(toolResultId);
@@ -4697,7 +4702,8 @@ var TaskExecutionRenderer = ({
               resultStep.status = "completed";
             }
             break;
-          case "task_artifact":
+          }
+          case "task_artifact": {
             const artifactData = distriEvent.data;
             const artifactId = `artifact_${artifactData.artifact_id}`;
             if (!stepMap.has(artifactId)) {
@@ -4711,7 +4717,8 @@ var TaskExecutionRenderer = ({
               content: artifactData.resolution ? JSON.stringify(artifactData.resolution, null, 2) : "Artifact generated"
             });
             break;
-          case "text_message_start":
+          }
+          case "text_message_start": {
             const msgStartData = distriEvent.data;
             const msgStartId = `message_${msgStartData.message_id}`;
             if (!stepMap.has(msgStartId)) {
@@ -4725,7 +4732,8 @@ var TaskExecutionRenderer = ({
               content: ""
             });
             break;
-          case "text_message_content":
+          }
+          case "text_message_content": {
             const msgContentData = distriEvent.data;
             const msgContentId = `message_${msgContentData.message_id}`;
             const msgStep = stepMap.get(msgContentId);
@@ -4733,7 +4741,8 @@ var TaskExecutionRenderer = ({
               msgStep.content = (msgStep.content || "") + msgContentData.delta;
             }
             break;
-          case "text_message_end":
+          }
+          case "text_message_end": {
             const msgEndData = distriEvent.data;
             const msgEndId = `message_${msgEndData.message_id}`;
             const msgEndStep = stepMap.get(msgEndId);
@@ -4741,6 +4750,7 @@ var TaskExecutionRenderer = ({
               msgEndStep.status = "completed";
             }
             break;
+          }
           case "run_finished":
             stepMap.forEach((step) => {
               if (step.status === "running") {
@@ -4879,6 +4889,14 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
+        }
+      };
+    case "run_error":
+      return {
+        type: "run_error",
+        data: {
+          message: statusUpdate.error,
+          code: statusUpdate.code
         }
       };
     case "run_finished":

@@ -1,6 +1,6 @@
 import { Artifact, Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriArtifact, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -37,6 +37,15 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           taskId: statusUpdate.taskId
         }
       } as RunStartedEvent;
+
+    case 'run_error':
+      return {
+        type: 'run_error',
+        data: {
+          message: statusUpdate.error,
+          code: statusUpdate.code
+        }
+      } as RunErrorEvent;
 
     case 'run_finished':
       return {

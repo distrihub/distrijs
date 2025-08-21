@@ -118,8 +118,8 @@ export class Agent {
 
 
     return (async function* () {
-      let events = [];
-      let mappedEvents = [];
+      const events = [];
+      const mappedEvents = [];
       for await (const event of a2aStream) {
         events.push(event);
         const converted = decodeA2AStreamEvent(event);
