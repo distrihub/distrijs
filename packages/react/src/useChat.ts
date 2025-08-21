@@ -5,7 +5,7 @@ import {
   InvokeContext,
   convertDistriMessageToA2A,
 } from '@distri/core';
-import { registerTools } from './hooks/registerTools';
+import { useRegisterTools } from './hooks/registerTools';
 import { useChatStateStore } from './stores/chatStateStore';
 import { ToolsConfig } from '@distri/core';
 
@@ -66,7 +66,7 @@ export function useChat({
   }), [threadId]);
 
   // Register tools with agent
-  registerTools({ agent, tools, wrapOptions });
+  useRegisterTools({ agent, tools, wrapOptions });
 
   // Chat state management with Zustand - only for processing state
   const chatState = useChatStateStore();
@@ -300,6 +300,12 @@ export function useChat({
           }
         }));
 
+        // Create a tool result message to display in the chat
+        const toolResultMessage = DistriClient.initDistriMessage('user', toolResultParts);
+        
+        // Add the tool result message to the chat interface so it's visible
+        processMessage(toolResultMessage, false);
+
         // Send tool results back to agent
         await sendMessageStream(toolResultParts, 'user');
 
@@ -312,7 +318,7 @@ export function useChat({
         setStreaming(false);
       }
     }
-  }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading]);
+  }, [chatState, sendMessageStream, getExternalToolResponses, setError, isStreaming, isLoading, processMessage]);
 
   // Store handleExternalToolResponses in a ref to avoid dependency issues
   const handleExternalToolResponsesRef = useRef(handleExternalToolResponses);

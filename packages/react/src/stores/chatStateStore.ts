@@ -272,10 +272,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
                 parts: [...existingMessage.parts, textPart]
               };
               // Create new messages array with only the updated message replaced
-              const messages = state.messages.map((msg, idx) => 
+              const messages = state.messages.map((msg, idx) =>
                 idx === existingIndex ? updatedMessage : msg
               );
-              
+
               return { ...state, messages };
             }
 
@@ -299,7 +299,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             }
 
             // Create new messages array with only the updated message replaced
-            const messages = state.messages.map((msg, idx) => 
+            const messages = state.messages.map((msg, idx) =>
               idx === existingIndex ? { ...existingMessage } : msg
             );
 
@@ -684,10 +684,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       const newState = { ...state };
 
       // Determine if tool is external (only if explicitly registered in tools map)
-      let distriTool: DistriAnyTool | undefined;
-
       const tools = state.getAllTools();
-      distriTool = tools.find(t => t.name === toolCall.tool_name);
+      const distriTool = tools.find(t => t.name === toolCall.tool_name);
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || 'Unknown Tool',
@@ -798,7 +796,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       });
     } else if (distriTool?.type === 'function') {
       // For DistriFnTool, automatically create DefaultToolActions component
-      let fnTool = distriTool as DistriFnTool;
+      const fnTool = distriTool as DistriFnTool;
       // Only auto-execute if explicitly set on the tool itself, not from global wrapOptions
       // This ensures tools show confirmation UI by default and only auto-execute when intended
       fnTool.autoExecute = fnTool.autoExecute === true;
@@ -978,7 +976,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   getAllTools: (): DistriAnyTool[] => {
     const state = get();
-    let tools = state.tools?.tools || [];
+    const tools = state.tools?.tools || [];
     for (const [, toolList] of state.tools?.agent_tools || []) {
       tools.push(...toolList);
     }
@@ -990,7 +988,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set({ agent });
   },
   setTools: (tools: ToolsConfig) => {
-    console.log('🔧 Setting tools in store (Map format):', tools);
     set({
       tools: {
         tools: tools.tools as DistriAnyTool[],

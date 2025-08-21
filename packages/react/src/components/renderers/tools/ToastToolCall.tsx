@@ -25,8 +25,8 @@ export const ToastToolCall: React.FC<UiToolProps> = ({
       break;
     default:
       method = toast.info;
-  };
-  let duration = 500;
+  }
+  const duration = 500;
   useEffect(() => {
 
     method(message, {

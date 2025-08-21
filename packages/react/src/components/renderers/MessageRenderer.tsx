@@ -130,7 +130,7 @@ export function MessageRenderer({
         // This is handled by the assistant message renderer
         return null;
 
-      case 'step_started':
+      case 'step_started': {
         // Get step from chat state
         const stepId = event.data.step_id;
         const step = steps.get(stepId);
@@ -144,13 +144,14 @@ export function MessageRenderer({
           );
         }
         return null;
+      }
 
       case 'step_completed':
         // Get step from chat state
 
         return null;
 
-      case 'tool_call_start':
+      case 'tool_call_start': {
         const toolCallStartId = event.data.tool_call_id;
         const toolCallStartState = toolCalls.get(toolCallStartId);
         if (toolCallStartState?.status === 'running') {
@@ -166,6 +167,7 @@ export function MessageRenderer({
           );
         }
         return null;
+      }
 
       case 'tool_call_end':
         return null;

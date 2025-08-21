@@ -315,8 +315,8 @@ export function Chat({
       )}
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground">
-        {/* Center container with max width and padding like ChatGPT */}
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Center container with max width and padding like ChatGPT - smaller default font */}
+        <div className="max-w-4xl mx-auto px-4 py-8 text-sm space-y-4">
           {error && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
               <div className="text-destructive text-xs">
