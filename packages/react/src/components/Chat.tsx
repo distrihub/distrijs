@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { DistriChatMessage, DistriPart } from '@distri/core';
+import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
+import { DistriChatMessage, DistriPart, ToolCall } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -15,6 +15,14 @@ import { ToolsConfig } from '@distri/core';
 export interface ModelOption {
   id: string;
   name: string;
+}
+
+export interface ChatInstance {
+  sendMessage: (content: string | DistriPart[]) => Promise<void>;
+  stopStreaming: () => void;
+  triggerTool: (toolName: string, input: any) => Promise<void>;
+  isStreaming: boolean;
+  isLoading: boolean;
 }
 
 export interface ChatProps {
@@ -35,6 +43,8 @@ export interface ChatProps {
   models?: ModelOption[];
   selectedModelId?: string;
   onModelChange?: (modelId: string) => void;
+  // Callback to get ChatInstance API
+  onChatInstanceReady?: (instance: ChatInstance) => void;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -47,7 +57,7 @@ const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string 
   </div>
 );
 
-export function Chat({
+export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   threadId,
   agent,
   onMessage,
@@ -61,7 +71,8 @@ export function Chat({
   selectedModelId,
   beforeSendMessage,
   onModelChange,
-}: ChatProps) {
+  onChatInstanceReady,
+}, ref) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -101,7 +112,7 @@ export function Chat({
     const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
 
     for (const file of imageFiles) {
-      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const id = Date.now().toString() + Math.random().toString(36).substring(2, 11);
       const preview = URL.createObjectURL(file);
 
       const newImage: AttachedImage = {
@@ -174,6 +185,50 @@ export function Chat({
     stopStreaming();
   }, [stopStreaming]);
 
+  const handleTriggerTool = useCallback(async (toolName: string, input: any) => {
+    // Create a tool call with a unique ID
+    const toolCallId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    
+    const toolCall: ToolCall = {
+      tool_call_id: toolCallId,
+      tool_name: toolName,
+      input: input
+    };
+
+    // Get the chat state to initialize the tool call
+    const chatState = useChatStateStore.getState();
+    
+    // Initialize the tool call in the state store
+    chatState.initializeTool(toolCall);
+    
+    // Send the tool call as a message to continue the conversation
+    const toolCallPart: DistriPart = {
+      type: 'tool_call',
+      data: toolCall
+    };
+
+    await handleSendMessage([toolCallPart]);
+  }, [handleSendMessage]);
+
+  // Create ChatInstance API with useMemo to prevent recreation
+  const chatInstance = useMemo<ChatInstance>(() => ({
+    sendMessage: handleSendMessage,
+    stopStreaming: handleStopStreaming,
+    triggerTool: handleTriggerTool,
+    isStreaming,
+    isLoading
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading]);
+
+  // Expose ChatInstance via ref
+  useImperativeHandle(ref, () => chatInstance, [chatInstance]);
+
+  // Expose ChatInstance via callback
+  useEffect(() => {
+    if (onChatInstanceReady) {
+      onChatInstanceReady(chatInstance);
+    }
+  }, [onChatInstanceReady, chatInstance]);
+
   const toggleToolExpansion = useCallback((toolId: string) => {
     setExpandedTools(prev => {
       const newSet = new Set(prev);
@@ -208,7 +263,7 @@ export function Chat({
     if (hasChanges) {
       setExpandedTools(newExpanded);
     }
-  }, [toolCalls]); // Remove expandedTools from dependencies
+  }, [toolCalls, expandedTools]);
 
   // Determine theme classes
   const getThemeClasses = () => {
@@ -372,4 +427,4 @@ export function Chat({
 
     </div>
   );
-}
+});
