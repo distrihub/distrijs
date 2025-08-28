@@ -3256,7 +3256,7 @@ var RendererWrapper2 = ({
   children,
   className = ""
 }) => /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: `max-w-3xl mx-auto w-full ${className}`, children });
-function Chat({
+var Chat = (0, import_react14.forwardRef)(function Chat2({
   threadId,
   agent,
   onMessage,
@@ -3269,8 +3269,9 @@ function Chat({
   models,
   selectedModelId,
   beforeSendMessage,
-  onModelChange
-}) {
+  onModelChange,
+  onChatInstanceReady
+}, ref) {
   const [input, setInput] = (0, import_react14.useState)("");
   const [expandedTools, setExpandedTools] = (0, import_react14.useState)(/* @__PURE__ */ new Set());
   const messagesEndRef = (0, import_react14.useRef)(null);
@@ -3300,7 +3301,7 @@ function Chat({
   const addImages = (0, import_react14.useCallback)(async (files) => {
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
     for (const file of imageFiles) {
-      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const id = Date.now().toString() + Math.random().toString(36).substring(2, 11);
       const preview = URL.createObjectURL(file);
       const newImage = {
         id,
@@ -3358,6 +3359,34 @@ function Chat({
   const handleStopStreaming = (0, import_react14.useCallback)(() => {
     stopStreaming();
   }, [stopStreaming]);
+  const handleTriggerTool = (0, import_react14.useCallback)(async (toolName, input2) => {
+    const toolCallId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const toolCall = {
+      tool_call_id: toolCallId,
+      tool_name: toolName,
+      input: input2
+    };
+    const chatState = useChatStateStore.getState();
+    chatState.initializeTool(toolCall);
+    const toolCallPart = {
+      type: "tool_call",
+      data: toolCall
+    };
+    await handleSendMessage([toolCallPart]);
+  }, [handleSendMessage]);
+  const chatInstance = (0, import_react14.useMemo)(() => ({
+    sendMessage: handleSendMessage,
+    stopStreaming: handleStopStreaming,
+    triggerTool: handleTriggerTool,
+    isStreaming,
+    isLoading
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading]);
+  (0, import_react14.useImperativeHandle)(ref, () => chatInstance, [chatInstance]);
+  (0, import_react14.useEffect)(() => {
+    if (onChatInstanceReady) {
+      onChatInstanceReady(chatInstance);
+    }
+  }, [onChatInstanceReady, chatInstance]);
   const toggleToolExpansion = (0, import_react14.useCallback)((toolId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
@@ -3386,7 +3415,7 @@ function Chat({
     if (hasChanges) {
       setExpandedTools(newExpanded);
     }
-  }, [toolCalls]);
+  }, [toolCalls, expandedTools]);
   const getThemeClasses = () => {
     if (theme === "dark") return "dark";
     if (theme === "light") return "";
@@ -3499,7 +3528,7 @@ function Chat({
       ]
     }
   );
-}
+});
 
 // src/components/AgentList.tsx
 var import_react15 = __toESM(require("react"), 1);

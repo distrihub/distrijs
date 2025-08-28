@@ -21,6 +21,12 @@ This is a TypeScript monorepo using Turbo and PNPM workspaces.
 - `pnpm type-check` - TypeScript type checking across workspace
 - `pnpm clean` - Clean all build artifacts
 
+**Single Package Linting:**
+Navigate to specific package directory for focused linting:
+- `cd packages/react && pnpm lint` - Lint only react package
+- `cd packages/core && pnpm lint` - Lint only core package
+- `cd packages/components && pnpm lint` - Lint only components package
+
 **Single Package Development:**
 Navigate to specific package directory and use local scripts:
 - `cd packages/core && pnpm build`

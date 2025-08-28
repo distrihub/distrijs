@@ -1681,7 +1681,7 @@ function useThreads() {
 }
 
 // src/components/Chat.tsx
-import { useState as useState8, useCallback as useCallback6, useRef as useRef5, useEffect as useEffect11 } from "react";
+import { useState as useState8, useCallback as useCallback6, useRef as useRef5, useEffect as useEffect11, useImperativeHandle, forwardRef as forwardRef6, useMemo as useMemo2 } from "react";
 
 // src/components/ChatInput.tsx
 import { useRef as useRef4, useEffect as useEffect10, useCallback as useCallback5 } from "react";
@@ -3117,7 +3117,7 @@ var RendererWrapper2 = ({
   children,
   className = ""
 }) => /* @__PURE__ */ jsx32("div", { className: `max-w-3xl mx-auto w-full ${className}`, children });
-function Chat({
+var Chat = forwardRef6(function Chat2({
   threadId,
   agent,
   onMessage,
@@ -3130,8 +3130,9 @@ function Chat({
   models,
   selectedModelId,
   beforeSendMessage,
-  onModelChange
-}) {
+  onModelChange,
+  onChatInstanceReady
+}, ref) {
   const [input, setInput] = useState8("");
   const [expandedTools, setExpandedTools] = useState8(/* @__PURE__ */ new Set());
   const messagesEndRef = useRef5(null);
@@ -3161,7 +3162,7 @@ function Chat({
   const addImages = useCallback6(async (files) => {
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
     for (const file of imageFiles) {
-      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const id = Date.now().toString() + Math.random().toString(36).substring(2, 11);
       const preview = URL.createObjectURL(file);
       const newImage = {
         id,
@@ -3219,6 +3220,34 @@ function Chat({
   const handleStopStreaming = useCallback6(() => {
     stopStreaming();
   }, [stopStreaming]);
+  const handleTriggerTool = useCallback6(async (toolName, input2) => {
+    const toolCallId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const toolCall = {
+      tool_call_id: toolCallId,
+      tool_name: toolName,
+      input: input2
+    };
+    const chatState = useChatStateStore.getState();
+    chatState.initializeTool(toolCall);
+    const toolCallPart = {
+      type: "tool_call",
+      data: toolCall
+    };
+    await handleSendMessage([toolCallPart]);
+  }, [handleSendMessage]);
+  const chatInstance = useMemo2(() => ({
+    sendMessage: handleSendMessage,
+    stopStreaming: handleStopStreaming,
+    triggerTool: handleTriggerTool,
+    isStreaming,
+    isLoading
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading]);
+  useImperativeHandle(ref, () => chatInstance, [chatInstance]);
+  useEffect11(() => {
+    if (onChatInstanceReady) {
+      onChatInstanceReady(chatInstance);
+    }
+  }, [onChatInstanceReady, chatInstance]);
   const toggleToolExpansion = useCallback6((toolId) => {
     setExpandedTools((prev) => {
       const newSet = new Set(prev);
@@ -3247,7 +3276,7 @@ function Chat({
     if (hasChanges) {
       setExpandedTools(newExpanded);
     }
-  }, [toolCalls]);
+  }, [toolCalls, expandedTools]);
   const getThemeClasses = () => {
     if (theme === "dark") return "dark";
     if (theme === "light") return "";
@@ -3360,7 +3389,7 @@ function Chat({
       ]
     }
   );
-}
+});
 
 // src/components/AgentList.tsx
 import React15 from "react";
@@ -4576,7 +4605,7 @@ function AppSidebar({
 }
 
 // src/components/TaskExecutionRenderer.tsx
-import { useMemo as useMemo3 } from "react";
+import { useMemo as useMemo4 } from "react";
 import { isDistriMessage as isDistriMessage4 } from "@distri/core";
 import { CheckCircle as CheckCircle7, Clock as Clock3, AlertCircle as AlertCircle2, Loader2 as Loader25 } from "lucide-react";
 import { jsx as jsx46, jsxs as jsxs30 } from "react/jsx-runtime";
@@ -4584,7 +4613,7 @@ var TaskExecutionRenderer = ({
   events,
   className = ""
 }) => {
-  const steps = useMemo3(() => {
+  const steps = useMemo4(() => {
     const stepMap = /* @__PURE__ */ new Map();
     const stepOrder = [];
     events.forEach((event) => {
