@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { Send, Square, ImageIcon, X } from 'lucide-react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { Send, Square, ImageIcon, X, Mic, MicOff, Radio } from 'lucide-react';
 import { DistriPart } from '@distri/core';
+import { VoiceInput } from './VoiceInput';
 
 export interface AttachedImage {
   id: string;
@@ -22,6 +23,15 @@ export interface ChatInputProps {
   attachedImages?: AttachedImage[];
   onRemoveImage?: (id: string) => void;
   onAddImages?: (files: FileList | File[]) => void;
+  // Voice recording props
+  voiceEnabled?: boolean;
+  onVoiceRecord?: (audioBlob: Blob) => void;
+  // Streaming voice props
+  onStartStreamingVoice?: () => void;
+  isStreamingVoice?: boolean;
+  // Speech recognition props
+  useSpeechRecognition?: boolean;
+  onSpeechTranscript?: (text: string) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -36,9 +46,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   attachedImages = [],
   onRemoveImage,
   onAddImages,
+  voiceEnabled = false,
+  onVoiceRecord,
+  onStartStreamingVoice,
+  isStreamingVoice = false,
+  useSpeechRecognition = false,
+  onSpeechTranscript,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -73,6 +92,75 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     // Reset input value so same file can be selected again
     e.target.value = '';
   }, [onAddImages]);
+
+  // Voice recording functionality
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+      const chunks: BlobPart[] = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        if (onVoiceRecord) {
+          onVoiceRecord(audioBlob);
+        }
+        // Stop all tracks to release the microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start recording timer
+      const timer = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+      // Store timer ID for cleanup
+      (mediaRecorder as any)._timer = timer;
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  }, [onVoiceRecord]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      // Clear timer
+      if ((mediaRecorderRef.current as any)._timer) {
+        clearInterval((mediaRecorderRef.current as any)._timer);
+      }
+
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setRecordingTime(0);
+    }
+  }, [isRecording]);
+
+  const handleVoiceToggle = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  const handleSpeechTranscript = useCallback((transcript: string) => {
+    // Set the transcript as the input value
+    onChange(transcript);
+    // Also call the optional callback
+    onSpeechTranscript?.(transcript);
+  }, [onChange, onSpeechTranscript]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -126,13 +214,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [value, attachedImages, disabled, isStreaming, onSend, onChange, convertFileToBase64]);
 
   const handleStop = () => {
+    console.log('handleStop called:', { isStreaming, onStop: !!onStop });
     if (isStreaming && onStop) {
       onStop();
     }
   };
 
   const hasContent = value.trim().length > 0 || attachedImages.length > 0;
-  const isDisabled = disabled || isStreaming;
+  const isDisabled = disabled; // Remove isStreaming from disabled condition
 
   return (
     <div className={`relative flex min-h-14 w-full items-end ${className}`}>
@@ -170,7 +259,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             placeholder={attachedImages.length > 0 ? "Add a message..." : placeholder}
             disabled={isDisabled}
             rows={1}
-            className="max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 pr-24 text-foreground min-h-[52px] max-h-[120px]"
+            className={`max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 text-foreground min-h-[52px] max-h-[120px] ${voiceEnabled || useSpeechRecognition ? 'pr-32' : 'pr-24'}`}
           />
 
           <div className="absolute right-2 bottom-0 flex items-center gap-1 h-full">
@@ -184,10 +273,60 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <ImageIcon className="h-5 w-5" />
             </button>
 
+            {/* Voice input options */}
+            {useSpeechRecognition && (
+              <VoiceInput
+                onTranscript={handleSpeechTranscript}
+                disabled={isDisabled || isStreaming}
+                onError={(error) => console.error('Voice input error:', error)}
+                useBrowserSpeechRecognition={true}
+                language="en-US"
+                interimResults={true}
+              />
+            )}
+
+            {/* Legacy voice recording and streaming buttons */}
+            {voiceEnabled && !useSpeechRecognition && (
+              <>
+                {/* Regular voice recording button */}
+                <button
+                  onClick={handleVoiceToggle}
+                  disabled={isDisabled || isStreaming || isStreamingVoice}
+                  className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center relative ${isRecording
+                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse'
+                    : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  title={isRecording ? `Recording... ${recordingTime}s` : "Record voice message"}
+                >
+                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  {isRecording && recordingTime > 0 && (
+                    <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-black text-white px-1 py-0.5 rounded">
+                      {recordingTime}s
+                    </span>
+                  )}
+                </button>
+
+                {/* Streaming voice conversation button */}
+                {onStartStreamingVoice && (
+                  <button
+                    onClick={onStartStreamingVoice}
+                    disabled={isDisabled || isStreaming || isRecording}
+                    className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreamingVoice
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white animate-pulse'
+                      : 'hover:bg-muted text-muted-foreground'
+                      }`}
+                    title={isStreamingVoice ? "Streaming voice conversation active" : "Start streaming voice conversation"}
+                  >
+                    <Radio className="h-5 w-5" />
+                  </button>
+                )}
+              </>
+            )}
+
             {/* Send/Stop button */}
             <button
               onClick={isStreaming ? handleStop : handleSend}
-              disabled={!hasContent && !isStreaming}
+              disabled={isStreaming ? false : (!hasContent || isDisabled)}
               className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming
                 ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                 : hasContent && !disabled

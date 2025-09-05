@@ -6,6 +6,7 @@ A Google Maps integration sample for the Distri Framework using react-google-map
 
 - **Interactive Maps**: Full Google Maps integration with custom tools
 - **AI Chat Interface**: Chat with an AI assistant that can interact with the map
+- **🎤 Voice Support**: Toggle voice recording for hands-free map navigation
 - **Header Navigation**: Clean header with app title and conversation toggle
 - **Conversations Sidebar**: Right sidebar to view and manage recent conversations
 - **Thread Management**: Create, rename, and delete conversation threads
@@ -41,6 +42,8 @@ pnpm dev
 
 - `VITE_GOOGLE_MAPS_API_KEY`: Your Google Maps API key
 - `VITE_DISTRI_API_URL`: Distri API server URL (defaults to localhost:8080)
+
+Note: Voice support API keys are configured in the backend server, not the frontend.
 
 ## Dependencies
 

@@ -137,6 +137,10 @@ interface ChatInstance {
     triggerTool: (toolName: string, input: any) => Promise<void>;
     isStreaming: boolean;
     isLoading: boolean;
+    startStreamingVoice?: () => void;
+    stopStreamingVoice?: () => void;
+    isStreamingVoice?: boolean;
+    streamingTranscript?: string;
 }
 interface ChatProps {
     threadId: string;
@@ -153,6 +157,13 @@ interface ChatProps {
     selectedModelId?: string;
     onModelChange?: (modelId: string) => void;
     onChatInstanceReady?: (instance: ChatInstance) => void;
+    voiceEnabled?: boolean;
+    useSpeechRecognition?: boolean;
+    ttsConfig?: {
+        model: 'openai' | 'gemini';
+        voice?: string;
+        speed?: number;
+    };
 }
 declare const Chat: React__default.ForwardRefExoticComponent<ChatProps & React__default.RefAttributes<ChatInstance>>;
 
@@ -201,8 +212,26 @@ interface ChatInputProps {
     attachedImages?: AttachedImage[];
     onRemoveImage?: (id: string) => void;
     onAddImages?: (files: FileList | File[]) => void;
+    voiceEnabled?: boolean;
+    onVoiceRecord?: (audioBlob: Blob) => void;
+    onStartStreamingVoice?: () => void;
+    isStreamingVoice?: boolean;
+    useSpeechRecognition?: boolean;
+    onSpeechTranscript?: (text: string) => void;
 }
 declare const ChatInput: React__default.FC<ChatInputProps>;
+
+interface VoiceInputProps {
+    onTranscript: (text: string) => void;
+    onError?: (error: string) => void;
+    className?: string;
+    disabled?: boolean;
+    language?: string;
+    interimResults?: boolean;
+    useBrowserSpeechRecognition?: boolean;
+    baseUrl?: string;
+}
+declare const VoiceInput: React__default.FC<VoiceInputProps>;
 
 interface TaskExecutionRendererProps {
     events: (DistriMessage | DistriEvent)[];
@@ -254,6 +283,61 @@ interface UseChatMessagesReturn {
     error: Error | null;
 }
 declare function useChatMessages({ initialMessages, agent, threadId, onError, }?: UseChatMessagesOptions): UseChatMessagesReturn;
+
+interface TtsRequest {
+    text: string;
+    model: 'openai' | 'gemini';
+    voice?: string;
+    speed?: number;
+}
+interface TtsConfig {
+    baseUrl?: string;
+    apiKey?: string;
+}
+interface StreamingTtsOptions {
+    onAudioChunk?: (audioData: Uint8Array) => void;
+    onTextChunk?: (text: string, isFinal: boolean) => void;
+    onError?: (error: Error) => void;
+    onStart?: () => void;
+    onEnd?: () => void;
+    voice?: string;
+    speed?: number;
+}
+declare const useTts: (config?: TtsConfig) => {
+    synthesize: (request: TtsRequest) => Promise<Blob>;
+    getAvailableVoices: () => Promise<any>;
+    playAudio: (audioBlob: Blob) => Promise<void>;
+    streamingPlayAudio: (audioChunks: Uint8Array[]) => Promise<void>;
+    startStreamingTts: (options?: StreamingTtsOptions) => {
+        sendText: (text: string) => void;
+        stop: () => void;
+    };
+    stopStreamingTts: () => void;
+    isSynthesizing: boolean;
+};
+
+interface SpeechToTextConfig {
+    baseUrl?: string;
+    model?: 'whisper-1';
+    language?: string;
+    temperature?: number;
+}
+interface StreamingTranscriptionOptions {
+    onTranscript?: (text: string, isFinal: boolean) => void;
+    onError?: (error: Error) => void;
+    onStart?: () => void;
+    onEnd?: () => void;
+}
+declare const useSpeechToText: (config?: SpeechToTextConfig) => {
+    transcribe: (audioBlob: Blob) => Promise<string>;
+    startStreamingTranscription: (options?: StreamingTranscriptionOptions) => {
+        sendAudio: (audioData: ArrayBuffer) => void;
+        sendText: (text: string) => void;
+        stop: () => void;
+    };
+    stopStreamingTranscription: () => void;
+    isTranscribing: boolean;
+};
 
 interface StreamDebugOptions {
     logEvents?: boolean;
@@ -597,4 +681,4 @@ interface UserMessageRendererProps {
 }
 declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
-export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, DebugRenderer, type DebugRendererProps, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, PlanRenderer, type PlanRendererProps, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, StepBasedRenderer, type StepBasedRendererProps, StepRenderer, type StepRendererProps, type StreamDebugOptions, type StreamingIndicator, StreamingTextRenderer, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, ToolCallRenderer, type ToolCallRendererProps, type ToolCallStatus, ToolMessageRenderer, type ToolMessageRendererProps, ToolResultRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, type WrapToolOptions, debugStreamEvents, extractContent, quickDebugMessage, renderTextContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useDistri, useDistriClient, useSidebar, useTheme, useThreads, wrapFnToolAsUiTool, wrapTools };
+export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, DebugRenderer, type DebugRendererProps, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, PlanRenderer, type PlanRendererProps, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, type SpeechToTextConfig, StepBasedRenderer, type StepBasedRendererProps, StepRenderer, type StepRendererProps, type StreamDebugOptions, type StreamingIndicator, StreamingTextRenderer, type StreamingTranscriptionOptions, type StreamingTtsOptions, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, ToolCallRenderer, type ToolCallRendererProps, type ToolCallStatus, ToolMessageRenderer, type ToolMessageRendererProps, ToolResultRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, type WrapToolOptions, debugStreamEvents, extractContent, quickDebugMessage, renderTextContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };
