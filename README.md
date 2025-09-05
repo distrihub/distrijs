@@ -14,6 +14,30 @@ DistriJS is a comprehensive TypeScript/JavaScript framework for building AI agen
 - **AG-UI Compatible**: Follows the same patterns as AG-UI for familiar developer experience
 - **No More External Tool Events**: Streamlined event handling without complex external tool managers
 
+## 🎤 Voice Support (NEW!)
+
+DistriJS now includes comprehensive voice interaction capabilities:
+
+- **🎙️ Speech-to-Text**: Record voice messages that are automatically transcribed using OpenAI Whisper
+- **🔊 Text-to-Speech**: Convert AI responses to speech with OpenAI TTS or Gemini TTS
+- **⚡ Real-time Processing**: Seamless voice interactions with minimal latency
+- **🎛️ Configurable**: Multiple TTS providers, voices, and speed settings
+
+```tsx
+<Chat
+  agent={agent}
+  threadId="conversation-1"
+  voiceEnabled={true}
+  ttsConfig={{
+    model: 'openai',
+    voice: 'alloy',
+    speed: 1.0
+  }}
+/>
+```
+
+👉 **[See Voice Support Guide](VOICE_SUPPORT.md)** for complete setup instructions.
+
 ## 🏗️ Architecture
 
 ```

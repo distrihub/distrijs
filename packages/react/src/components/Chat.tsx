@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useChatStateStore } from '../stores/chatStateStore';
 import { WrapToolOptions } from '../utils/toolWrapper';
 import { ToolsConfig } from '@distri/core';
+import { useSpeechToText } from '../hooks/useSpeechToText';
+import { useTts } from '../hooks/useTts';
 
 export interface ModelOption {
   id: string;
@@ -23,6 +25,11 @@ export interface ChatInstance {
   triggerTool: (toolName: string, input: any) => Promise<void>;
   isStreaming: boolean;
   isLoading: boolean;
+  // Streaming voice capabilities
+  startStreamingVoice?: () => void;
+  stopStreamingVoice?: () => void;
+  isStreamingVoice?: boolean;
+  streamingTranscript?: string;
 }
 
 export interface ChatProps {
@@ -45,6 +52,14 @@ export interface ChatProps {
   onModelChange?: (modelId: string) => void;
   // Callback to get ChatInstance API
   onChatInstanceReady?: (instance: ChatInstance) => void;
+  // Voice support
+  voiceEnabled?: boolean;
+  useSpeechRecognition?: boolean;
+  ttsConfig?: {
+    model: 'openai' | 'gemini';
+    voice?: string;
+    speed?: number;
+  };
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -72,14 +87,31 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   beforeSendMessage,
   onModelChange,
   onChatInstanceReady,
+  voiceEnabled = false,
+  useSpeechRecognition = false,
+  ttsConfig,
 }, ref) {
   const [input, setInput] = useState('');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Pending message state - single message with accumulated parts
+  const [pendingMessage, setPendingMessage] = useState<DistriPart[] | null>(null);
+
   // Image upload state moved from ChatInput
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Voice functionality hooks
+  const speechToText = useSpeechToText({
+    model: 'whisper-1',
+  });
+  const tts = useTts();
+
+  // Streaming voice state
+  const [isStreamingVoice, setIsStreamingVoice] = useState(false);
+  const [streamingTranscript, setStreamingTranscript] = useState('');
+  const [audioChunks, setAudioChunks] = useState<Uint8Array[]>([]);
 
 
   const {
@@ -162,8 +194,16 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     }
   }, [addImages]);
 
-  const handleSendMessage = useCallback(async (initialContent: string | DistriPart[]) => {
 
+  // Helper to convert content to parts
+  const contentToParts = useCallback((content: string | DistriPart[]): DistriPart[] => {
+    if (typeof content === 'string') {
+      return [{ type: 'text', data: content }];
+    }
+    return content;
+  }, []);
+
+  const handleSendMessage = useCallback(async (initialContent: string | DistriPart[]) => {
     let content = initialContent;
     if (beforeSendMessage) {
       content = await beforeSendMessage(content);
@@ -173,22 +213,33 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     if (Array.isArray(content) && content.length === 0) return;
 
     setInput('');
-    // Clear attached images when sending
+    // Clear attached images when sending/queuing
     setAttachedImages(prev => {
       prev.forEach(img => URL.revokeObjectURL(img.preview));
       return [];
     });
-    await sendMessage(content);
-  }, [sendMessage, beforeSendMessage]);
+
+    // If streaming, add to pending message parts instead of sending immediately
+    if (isStreaming) {
+      const newParts = contentToParts(content);
+      setPendingMessage(prev => prev ? [...prev, ...newParts] : newParts);
+    } else {
+      await sendMessage(content);
+    }
+  }, [sendMessage, beforeSendMessage, isStreaming, contentToParts]);
 
   const handleStopStreaming = useCallback(() => {
+    console.log('handleStopStreaming called, about to call stopStreaming()');
     stopStreaming();
+    
+    // Reset all streaming states in the store
+    useChatStateStore.getState().resetStreamingStates();
   }, [stopStreaming]);
 
   const handleTriggerTool = useCallback(async (toolName: string, input: any) => {
     // Create a tool call with a unique ID
     const toolCallId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-    
+
     const toolCall: ToolCall = {
       tool_call_id: toolCallId,
       tool_name: toolName,
@@ -197,10 +248,10 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
     // Get the chat state to initialize the tool call
     const chatState = useChatStateStore.getState();
-    
+
     // Initialize the tool call in the state store
     chatState.initializeTool(toolCall);
-    
+
     // Send the tool call as a message to continue the conversation
     const toolCallPart: DistriPart = {
       type: 'tool_call',
@@ -210,14 +261,162 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     await handleSendMessage([toolCallPart]);
   }, [handleSendMessage]);
 
+  // Enhanced voice recording with streaming support
+  const handleVoiceRecord = useCallback(async (audioBlob: Blob) => {
+    try {
+      if (!voiceEnabled || !speechToText) {
+        console.error('Voice recording not properly configured');
+        return;
+      }
+
+      // Transcribe the audio to text via backend
+      const transcription = await speechToText.transcribe(audioBlob);
+
+      if (transcription.trim()) {
+        // Set the transcribed text as input
+        setInput(transcription);
+
+        // Optionally auto-send the message
+        await handleSendMessage(transcription);
+      }
+    } catch (error) {
+      console.error('Voice transcription failed:', error);
+      if (onError) {
+        onError(error as Error);
+      }
+    }
+  }, [voiceEnabled, speechToText, handleSendMessage, onError]);
+
+  // Start streaming voice conversation
+  const startStreamingVoice = useCallback(() => {
+    if (!voiceEnabled || isStreamingVoice) return;
+
+    setIsStreamingVoice(true);
+    setStreamingTranscript('');
+    setAudioChunks([]);
+
+    try {
+      // Start streaming transcription
+      speechToText.startStreamingTranscription({
+        onTranscript: (text: string, isFinal: boolean) => {
+          setStreamingTranscript(text);
+          if (isFinal && text.trim()) {
+            // Send the final transcription and get AI response
+            handleSendMessage(text);
+            setStreamingTranscript('');
+          }
+        },
+        onError: (error: Error) => {
+          console.error('Streaming transcription error:', error);
+          if (onError) onError(error);
+          setIsStreamingVoice(false);
+        },
+        onEnd: () => {
+          setIsStreamingVoice(false);
+        }
+      });
+
+      // Start streaming TTS for AI responses
+      tts.startStreamingTts({
+        voice: ttsConfig?.voice || 'alloy',
+        speed: ttsConfig?.speed || 1.0,
+        onAudioChunk: (audioData: Uint8Array) => {
+          setAudioChunks(prev => [...prev, audioData]);
+        },
+        onTextChunk: (text: string, _isFinal: boolean) => {
+          // Show the AI's text response as it's being generated
+          console.log('AI speaking:', text);
+        },
+        onError: (error: Error) => {
+          console.error('Streaming TTS error:', error);
+          if (onError) onError(error);
+        },
+        onEnd: () => {
+          // Play accumulated audio chunks
+          if (audioChunks.length > 0) {
+            tts.streamingPlayAudio(audioChunks).catch(console.error);
+          }
+          setAudioChunks([]);
+        }
+      });
+
+    } catch (error) {
+      console.error('Failed to start streaming voice:', error);
+      if (onError) onError(error as Error);
+      setIsStreamingVoice(false);
+    }
+  }, [voiceEnabled, isStreamingVoice, speechToText, tts, ttsConfig, handleSendMessage, onError, audioChunks]);
+
+  // Stop streaming voice conversation
+  const stopStreamingVoice = useCallback(() => {
+    if (!isStreamingVoice) return;
+
+    speechToText.stopStreamingTranscription();
+    tts.stopStreamingTts();
+    setIsStreamingVoice(false);
+    setStreamingTranscript('');
+    setAudioChunks([]);
+  }, [isStreamingVoice, speechToText, tts]);
+
+  // Handle speech transcript from VoiceInput component
+  const handleSpeechTranscript = useCallback(async (transcript: string) => {
+    if (transcript.trim()) {
+      // Send the transcribed text as a message
+      await handleSendMessage(transcript);
+    }
+  }, [handleSendMessage]);
+
+  // Auto-send pending message when streaming ends
+  useEffect(() => {
+    const sendPendingMessage = async () => {
+      if (!isStreaming && pendingMessage && pendingMessage.length > 0) {
+        console.log('Streaming ended, sending pending message parts:', pendingMessage);
+        const messageToSend = [...pendingMessage];
+        setPendingMessage(null);
+        
+        // Send the accumulated message parts
+        try {
+          await sendMessage(messageToSend);
+        } catch (error) {
+          console.error('Failed to send pending message:', error);
+        }
+      }
+    };
+
+    sendPendingMessage();
+  }, [isStreaming, pendingMessage, sendMessage]);
+
+  // Auto-play TTS for AI messages when voiceEnabled and ttsConfig are provided
+  useEffect(() => {
+    if (!voiceEnabled || !ttsConfig || isStreamingVoice) return;
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && 'role' in lastMessage && lastMessage.role === 'assistant' && 'content' in lastMessage && typeof lastMessage.content === 'string') {
+      // Synthesize and play the AI's response
+      tts.synthesize({
+        text: lastMessage.content,
+        model: ttsConfig.model || 'openai',
+        voice: ttsConfig.voice,
+        speed: ttsConfig.speed,
+      })
+        .then(audioBlob => tts.playAudio(audioBlob))
+        .catch(error => console.error('TTS playback failed:', error));
+    }
+  }, [messages, voiceEnabled, ttsConfig, tts, isStreamingVoice]);
+
   // Create ChatInstance API with useMemo to prevent recreation
   const chatInstance = useMemo<ChatInstance>(() => ({
     sendMessage: handleSendMessage,
     stopStreaming: handleStopStreaming,
     triggerTool: handleTriggerTool,
     isStreaming,
-    isLoading
-  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading]);
+    isLoading,
+    // Streaming voice capabilities
+    startStreamingVoice: voiceEnabled ? startStreamingVoice : undefined,
+    stopStreamingVoice: voiceEnabled ? stopStreamingVoice : undefined,
+    isStreamingVoice: voiceEnabled ? isStreamingVoice : undefined,
+    streamingTranscript: voiceEnabled ? streamingTranscript : undefined,
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, voiceEnabled, startStreamingVoice, stopStreamingVoice, isStreamingVoice, streamingTranscript]);
 
   // Expose ChatInstance via ref
   useImperativeHandle(ref, () => chatInstance, [chatInstance]);
@@ -354,6 +553,57 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     return null;
   };
 
+  // Render pending message
+  const renderPendingMessage = () => {
+    if (!pendingMessage || pendingMessage.length === 0) return null;
+
+    const partCount = pendingMessage.length;
+
+    return (
+      <RendererWrapper key="pending-message">
+        <div className="border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-r-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mt-2"></div>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                Message queued ({partCount} part{partCount > 1 ? 's' : ''})
+              </h3>
+              <div className="mt-2">
+                <div className="text-sm text-yellow-700 dark:text-yellow-300 bg-white dark:bg-gray-800 p-2 rounded border">
+                  {pendingMessage.map((part, partIndex) => {
+                    if (part.type === 'text') {
+                      return (
+                        <span key={partIndex} className="block mb-1">
+                          {part.data}
+                        </span>
+                      );
+                    } else if (part.type === 'image' && typeof part.data === 'object' && part.data !== null && 'name' in part.data) {
+                      return (
+                        <span key={partIndex} className="inline-block text-xs text-muted-foreground bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mr-2 mb-1">
+                          📷 {part.data.name}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span key={partIndex} className="inline-block text-xs text-muted-foreground bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mr-2 mb-1">
+                        [{part.type}]
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-yellow-600 dark:text-yellow-400">
+                Will be sent automatically when AI response is complete
+              </p>
+            </div>
+          </div>
+        </div>
+      </RendererWrapper>
+    );
+  };
+
 
   return (
     <div
@@ -383,6 +633,8 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
           {renderMessages()}
           {/* Render thinking indicator at the end */}
           {renderThinkingIndicator()}
+          {/* Render pending message after thinking indicator */}
+          {renderPendingMessage()}
 
           <div ref={messagesEndRef} />
         </div>
@@ -409,22 +661,55 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             </div>
           )}
 
+          {/* Streaming voice indicator */}
+          {voiceEnabled && (isStreamingVoice || streamingTranscript) && (
+            <div className="mb-4 p-3 bg-muted/50 border border-muted rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {isStreamingVoice ? 'Listening...' : 'Processing...'}
+                </span>
+                {isStreamingVoice && (
+                  <button
+                    onClick={stopStreamingVoice}
+                    className="ml-auto text-xs px-2 py-1 bg-destructive text-destructive-foreground rounded"
+                  >
+                    Stop
+                  </button>
+                )}
+              </div>
+              {streamingTranscript && (
+                <p className="text-sm text-foreground font-mono">
+                  "{streamingTranscript}"
+                </p>
+              )}
+            </div>
+          )}
+
           <ChatInput
             value={input}
             onChange={setInput}
             onSend={handleSendMessage}
             onStop={handleStopStreaming}
-            placeholder="Type your message..."
-            disabled={isLoading || hasPendingToolCalls()}
+            placeholder={isStreamingVoice ? "Voice mode active..." : isStreaming ? "Message will be queued..." : "Type your message..."}
+            disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
             isStreaming={isStreaming}
             attachedImages={attachedImages}
             onRemoveImage={removeImage}
             onAddImages={addImages}
+            voiceEnabled={voiceEnabled}
+            onVoiceRecord={handleVoiceRecord}
+            // Pass streaming voice functions to ChatInput
+            onStartStreamingVoice={voiceEnabled ? startStreamingVoice : undefined}
+            isStreamingVoice={isStreamingVoice}
+            // Speech recognition props
+            useSpeechRecognition={useSpeechRecognition}
+            onSpeechTranscript={handleSpeechTranscript}
           />
-        </div>
-      </div>
+        </div >
+      </div >
 
 
-    </div>
+    </div >
   );
 });

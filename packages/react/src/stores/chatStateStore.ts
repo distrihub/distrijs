@@ -121,6 +121,7 @@ export interface ChatStateStore extends ChatState {
   clearAllStates: () => void;
   clearTask: (taskId: string) => void;
   completeRunningSteps: () => void;
+  resetStreamingStates: () => void;
 
   // Tool call management
   initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean) => void;
@@ -897,6 +898,16 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           endTime: now,
         });
       }
+    });
+  },
+
+  // Reset streaming and thinking states when streaming is stopped
+  resetStreamingStates: () => {
+    console.log('🔄 Resetting streaming states');
+    set({
+      isStreaming: false,
+      streamingIndicator: undefined,
+      currentThought: undefined,
     });
   },
 
