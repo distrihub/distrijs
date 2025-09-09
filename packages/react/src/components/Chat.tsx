@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { DistriChatMessage, DistriPart, ToolCall } from '@distri/core';
+import { Agent, DistriChatMessage, DistriPart, ToolCall } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -34,7 +34,7 @@ export interface ChatInstance {
 
 export interface ChatProps {
   threadId: string;
-  agent?: any;
+  agent?: Agent;
   onMessage?: (message: DistriChatMessage) => void;
   beforeSendMessage?: (content: string | DistriPart[]) => Promise<string | DistriPart[]>;
   onError?: (error: Error) => void;

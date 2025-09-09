@@ -382,6 +382,7 @@ interface AgentDefinition {
     skills?: AgentSkill[];
     /** List of sub-agents that this agent can transfer control to */
     sub_agents?: string[];
+    agentType?: string;
 }
 interface McpDefinition {
     /** The filter applied to the tools in this MCP definition. */
@@ -615,6 +616,7 @@ declare class Agent {
     get id(): string;
     get name(): string;
     get description(): string | undefined;
+    get agentType(): string | undefined;
     get iconUrl(): string | undefined;
     /**
      * Fetch messages for a thread (public method for useChat)
