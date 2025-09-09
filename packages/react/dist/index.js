@@ -3219,18 +3219,6 @@ function MessageRenderer({
       case "step_completed":
         return null;
       case "tool_call_start": {
-        const toolCallStartId = event.data.tool_call_id;
-        const toolCallStartState = toolCalls.get(toolCallStartId);
-        if (toolCallStartState?.status === "running") {
-          return /* @__PURE__ */ jsx29(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ jsxs18("div", { className: "flex items-center space-x-2 p-2 bg-muted rounded", children: [
-            /* @__PURE__ */ jsx29("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-primary" }),
-            /* @__PURE__ */ jsxs18("span", { className: "text-sm", children: [
-              "Calling tool: ",
-              event.data?.tool_call_name || "unknown",
-              " \u23F3"
-            ] })
-          ] }) }, `tool-call-start-${index}`);
-        }
         return null;
       }
       case "tool_call_end":

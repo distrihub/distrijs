@@ -144,7 +144,7 @@ interface ChatInstance {
 }
 interface ChatProps {
     threadId: string;
-    agent?: any;
+    agent?: Agent$1;
     onMessage?: (message: DistriChatMessage) => void;
     beforeSendMessage?: (content: string | DistriPart[]) => Promise<string | DistriPart[]>;
     onError?: (error: Error) => void;

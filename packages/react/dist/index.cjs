@@ -3359,18 +3359,6 @@ function MessageRenderer({
       case "step_completed":
         return null;
       case "tool_call_start": {
-        const toolCallStartId = event.data.tool_call_id;
-        const toolCallStartState = toolCalls.get(toolCallStartId);
-        if (toolCallStartState?.status === "running") {
-          return /* @__PURE__ */ (0, import_jsx_runtime29.jsx)(RendererWrapper, { className: "py-6", children: /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("div", { className: "flex items-center space-x-2 p-2 bg-muted rounded", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-primary" }),
-            /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("span", { className: "text-sm", children: [
-              "Calling tool: ",
-              event.data?.tool_call_name || "unknown",
-              " \u23F3"
-            ] })
-          ] }) }, `tool-call-start-${index}`);
-        }
         return null;
       }
       case "tool_call_end":

@@ -1121,6 +1121,9 @@ var Agent = class _Agent {
   get description() {
     return this.agentDefinition.description;
   }
+  get agentType() {
+    return this.agentDefinition.agentType;
+  }
   get iconUrl() {
     return this.agentDefinition.icon_url;
   }

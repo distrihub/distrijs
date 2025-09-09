@@ -260,6 +260,9 @@ export interface AgentDefinition {
   /** List of sub-agents that this agent can transfer control to */
   sub_agents?: string[];
 
+
+  agentType?: string;
+
 }
 
 export interface McpDefinition {
