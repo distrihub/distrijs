@@ -1,7 +1,4 @@
 import React from 'react';
-import { Brain, Sparkles } from 'lucide-react';
-import { LoadingShimmer } from './LoadingShimmer';
-
 
 export type StreamingIndicator = 'typing' | 'thinking' | 'generating';
 export interface ThinkingRendererProps {
@@ -12,57 +9,36 @@ export interface ThinkingRendererProps {
   thoughtText?: string;
 }
 
+export const LoadingShimmer = ({ text, className }: { text: string, className?: string }) => {
+  return (<div className={`w-full ${className || ''}`}>
+
+    <span className="font-medium text-shimmer">
+      {text}
+    </span>
+    <style>{`
+          @keyframes shimmer {
+            0% { background-position: -150% 0; }
+            100% { background-position: 150% 0; }
+          }
+          .text-shimmer {
+            background: linear-gradient(90deg, hsl(var(--muted-foreground)) 0%, hsl(var(--primary)) 50%, hsl(var(--muted-foreground)) 100%);
+            background-size: 150% 100%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 2s ease-in-out infinite;
+          }
+        `}</style>
+  </div>
+  )
+}
 export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
-  indicator,
   className = '',
-  thoughtText,
 }) => {
-  const getThinkingComponent = () => {
-    switch (indicator) {
-      case 'typing':
-        return (
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>
-              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
-              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
-            </div>
-          </div>
-        );
-      case 'generating':
-        return (
-          <div className="flex items-center gap-2 mb-3">
-            <LoadingShimmer text="Generating response" className="text-sm" />
-          </div>
-        );
-      case 'thinking':
-        return (
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="h-3 w-3 text-primary" />
-            <LoadingShimmer 
-              text={thoughtText || "Thinking..."} 
-              className="text-sm" 
-            />
-          </div>
-        );
 
-      default:
-        return (
-          <div className="flex items-center gap-2 mb-3">
-            <Brain className="h-3 w-3 text-muted-foreground" />
-            <LoadingShimmer 
-              text={thoughtText || "Thinking..."} 
-              className="text-sm" 
-            />
-          </div>
-        );
-    }
-  };
-
-  const component = getThinkingComponent();
-
+  const component = LoadingShimmer({ text: 'Thinking...' });
   return (
-    <div className={`flex items-start gap-3 py-6 ${className}`}>
+    <div className={`flex items-start gap-3 py-3 ${className}`}>
       <div className="w-full">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {component}

@@ -3,7 +3,7 @@ import { DistriMessage, isDistriMessage } from '@distri/core';
 import { useChatStateStore, StepState } from '../../stores/chatStateStore';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { UserMessageRenderer } from './UserMessageRenderer';
-import { LoadingShimmer } from './LoadingShimmer';
+import { LoadingShimmer } from './ThinkingRenderer';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export interface StepBasedRendererProps {
@@ -78,11 +78,11 @@ const StepIndicator: React.FC<{ step: StepState }> = ({ step }) => {
   );
 };
 
-export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({ 
+export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
   message
 }) => {
   const steps = useChatStateStore(state => state.steps);
-  
+
   if (!isDistriMessage(message)) {
     return null;
   }
@@ -99,11 +99,11 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
   // For assistant messages, show step-based rendering
   if (distriMessage.role === 'assistant') {
     return (
-      <div className="flex items-start gap-4 py-6">
+      <div className="flex items-start gap-4">
         <div className="w-full">
           {/* Step indicator */}
           {step && <StepIndicator step={step} />}
-          
+
           {/* Message content with smooth streaming */}
           <div className="transition-all duration-200 ease-in-out">
             <AssistantMessageRenderer message={distriMessage} />

@@ -27,6 +27,7 @@ export * from './types';
 export * from './hooks/useChatMessages';
 export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
+export * from './stores/chatStateStore';
 
 // Utility exports
 export * from './utils/toolWrapper';

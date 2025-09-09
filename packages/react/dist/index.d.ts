@@ -1,7 +1,8 @@
-import { ToolResult, DistriFnTool, DistriBaseTool, ToolCall, Agent as Agent$1, DistriChatMessage, ToolsConfig, DistriPart, AgentDefinition, DistriThread, DistriMessage, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact, ImagePart } from '@distri/core';
+import { ToolCall, ToolResult, PlanStep, DistriChatMessage, Agent as Agent$1, ToolsConfig, DistriFnTool, DistriBaseTool, DistriPart, AgentDefinition, DistriThread, DistriMessage, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact, ImagePart } from '@distri/core';
+import * as zustand from 'zustand';
+import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as React$1 from 'react';
 import React__default, { ReactNode } from 'react';
-import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as class_variance_authority_types from 'class-variance-authority/types';
 import { VariantProps } from 'class-variance-authority';
 import * as _radix_ui_react_separator from '@radix-ui/react-separator';
@@ -18,8 +19,36 @@ interface ThinkingRendererProps {
     name?: string;
     thoughtText?: string;
 }
+declare const LoadingShimmer: ({ text, className }: {
+    text: string;
+    className?: string;
+}) => react_jsx_runtime.JSX.Element;
 declare const ThinkingRenderer: React__default.FC<ThinkingRendererProps>;
 
+interface TaskState {
+    id: string;
+    runId?: string;
+    planId?: string;
+    title: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    startTime?: number;
+    endTime?: number;
+    toolCalls?: ToolCall[];
+    results?: ToolResult[];
+    error?: string;
+    metadata?: Record<string, unknown>;
+}
+interface PlanState {
+    id: string;
+    runId?: string;
+    taskId?: string;
+    steps: PlanStep[];
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    startTime?: number;
+    endTime?: number;
+    reasoning?: string;
+    thinkingDuration?: number;
+}
 interface StepState {
     id: string;
     title: string;
@@ -41,6 +70,73 @@ interface ToolCallState {
     isExternal?: boolean;
     isLiveStream?: boolean;
 }
+interface ChatState {
+    isStreaming: boolean;
+    isLoading: boolean;
+    error: Error | null;
+    debug: boolean;
+    tasks: Map<string, TaskState>;
+    plans: Map<string, PlanState>;
+    steps: Map<string, StepState>;
+    toolCalls: Map<string, ToolCallState>;
+    currentRunId?: string;
+    currentTaskId?: string;
+    currentPlanId?: string;
+    messages: DistriChatMessage[];
+    streamingIndicator: StreamingIndicator | undefined;
+    currentThought?: string;
+    agent?: Agent$1;
+    tools?: {
+        tools: DistriAnyTool[];
+        agent_tools: Map<string, DistriAnyTool[]>;
+    };
+    wrapOptions?: {
+        autoExecute?: boolean;
+    };
+    onAllToolsCompleted?: (() => void) | undefined;
+    getAllTools: () => DistriAnyTool[];
+}
+interface ChatStateStore extends ChatState {
+    setStreaming: (isStreaming: boolean) => void;
+    setLoading: (isLoading: boolean) => void;
+    setError: (error: Error | null) => void;
+    setDebug: (debug: boolean) => void;
+    setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
+    setCurrentThought: (thought: string | undefined) => void;
+    addMessage: (message: DistriChatMessage) => void;
+    processMessage: (message: DistriChatMessage, isFromStream?: boolean) => void;
+    clearAllStates: () => void;
+    clearTask: (taskId: string) => void;
+    completeRunningSteps: () => void;
+    resetStreamingStates: () => void;
+    initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean) => void;
+    updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
+    getToolCallById: (toolCallId: string) => ToolCallState | null;
+    getPendingToolCalls: () => ToolCallState[];
+    getCompletedToolCalls: () => ToolCallState[];
+    completeTool: (toolCall: ToolCall, result: ToolResult) => Promise<void>;
+    initializeTool: (toolCall: ToolCall) => void;
+    hasPendingToolCalls: () => boolean;
+    clearToolResults: () => void;
+    getExternalToolResponses: () => ToolResult[];
+    getCurrentTask: () => TaskState | null;
+    getCurrentPlan: () => PlanState | null;
+    getCurrentTasks: () => TaskState[];
+    getTaskById: (taskId: string) => TaskState | null;
+    getPlanById: (planId: string) => PlanState | null;
+    resolveToolCalls: () => void;
+    updateTask: (taskId: string, updates: Partial<TaskState>) => void;
+    updatePlan: (planId: string, updates: Partial<PlanState>) => void;
+    updateStep: (stepId: string, updates: Partial<StepState>) => void;
+    triggerTools: () => void;
+    setAgent: (agent: Agent$1) => void;
+    setTools: (tools: ToolsConfig) => void;
+    setWrapOptions: (options: {
+        autoExecute?: boolean;
+    }) => void;
+    setOnAllToolsCompleted: (callback: (() => void) | undefined) => void;
+}
+declare const useChatStateStore: zustand.UseBoundStore<zustand.StoreApi<ChatStateStore>>;
 
 type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
 type DistriAnyTool = DistriFnTool | DistriUiTool;
@@ -157,6 +253,7 @@ interface ChatProps {
     selectedModelId?: string;
     onModelChange?: (modelId: string) => void;
     onChatInstanceReady?: (instance: ChatInstance) => void;
+    onChatStateChange?: (state: ChatState) => void;
     voiceEnabled?: boolean;
     useSpeechRecognition?: boolean;
     ttsConfig?: {
@@ -535,24 +632,11 @@ interface AssistantMessageRendererProps {
 }
 declare const AssistantMessageRenderer: React__default.FC<AssistantMessageRendererProps>;
 
-interface DebugRendererProps {
-    message: DistriEvent | DistriArtifact;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const DebugRenderer: React__default.FC<DebugRendererProps>;
-
 interface ImageRendererProps {
     imageParts: ImagePart[];
     className?: string;
 }
 declare const ImageRenderer: React__default.FC<ImageRendererProps>;
-
-interface LoadingShimmerProps {
-    text: string;
-    className?: string;
-}
-declare const LoadingShimmer: React__default.FC<LoadingShimmerProps>;
 
 interface MessageRendererProps {
     message: DistriChatMessage;
@@ -560,25 +644,12 @@ interface MessageRendererProps {
     isExpanded?: boolean;
     onToggle?: () => void;
 }
-declare function MessageRenderer({ message, index, isExpanded, onToggle }: MessageRendererProps): React__default.ReactNode;
-
-interface PlanRendererProps {
-    message: DistriArtifact;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const PlanRenderer: React__default.FC<PlanRendererProps>;
+declare function MessageRenderer({ message, index, }: MessageRendererProps): React__default.ReactNode;
 
 interface StepBasedRendererProps {
     message: DistriMessage;
 }
 declare const StepBasedRenderer: React__default.FC<StepBasedRendererProps>;
-
-interface StepRendererProps {
-    step: StepState;
-    className?: string;
-}
-declare const StepRenderer: React__default.FC<StepRendererProps>;
 
 interface StreamingTextRendererProps {
     text: string;
@@ -598,23 +669,6 @@ interface ExtractedContent {
 }
 declare function extractContent(message: DistriMessage | DistriEvent | DistriArtifact): ExtractedContent;
 declare function renderTextContent(content: ExtractedContent): React__default.ReactNode;
-
-interface ToolCallRendererProps {
-    toolCall: ToolCallState;
-    isExpanded: boolean;
-    onToggle: () => void;
-    className?: string;
-    avatar?: React__default.ReactNode;
-    name?: string;
-}
-declare const ToolCallRenderer: React__default.FC<ToolCallRendererProps>;
-
-interface ToolMessageRendererProps {
-    message: DistriMessage;
-    className?: string;
-    avatar?: React__default.ReactNode;
-}
-declare const ToolMessageRenderer: React__default.FC<ToolMessageRendererProps>;
 
 interface ToolResultRendererProps {
     toolCallId: string;
@@ -636,4 +690,4 @@ interface UserMessageRendererProps {
 }
 declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
-export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, DebugRenderer, type DebugRendererProps, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, PlanRenderer, type PlanRendererProps, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, type SpeechToTextConfig, StepBasedRenderer, type StepBasedRendererProps, StepRenderer, type StepRendererProps, type StreamingIndicator, StreamingTextRenderer, type StreamingTranscriptionOptions, type StreamingTtsOptions, TaskExecutionRenderer, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, ToolCallRenderer, type ToolCallRendererProps, type ToolCallStatus, ToolMessageRenderer, type ToolMessageRendererProps, ToolResultRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, type WrapToolOptions, extractContent, renderTextContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };
+export { AgentSelect, AppSidebar, ArtifactRenderer, type ArtifactRendererProps, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, type ChatState, type ChatStateStore, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, type PlanState, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, type SpeechToTextConfig, StepBasedRenderer, type StepBasedRendererProps, type StepState, type StreamingIndicator, StreamingTextRenderer, type StreamingTranscriptionOptions, type StreamingTtsOptions, TaskExecutionRenderer, type TaskState, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, type ToolCallState, type ToolCallStatus, ToolResultRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, type WrapToolOptions, extractContent, renderTextContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useChatStateStore, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };

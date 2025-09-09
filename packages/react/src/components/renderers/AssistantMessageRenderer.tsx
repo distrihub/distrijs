@@ -19,28 +19,27 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
 }) => {
   const steps = useChatStateStore(state => state.steps);
   const content = extractContent(message);
-  
+
   // Check if this message is currently streaming
   const stepId = (message as DistriMessage).step_id;
   const step = stepId ? steps.get(stepId) : null;
   const isStreaming = step?.status === 'running';
 
   return (
-    <div className={`flex items-start gap-4 ${className}`}>
-      <div className="w-full">
-        {/* Text content */}
-        {content.text && (
-          <StreamingTextRenderer
-            text={content.text}
-            isStreaming={isStreaming}
-          />
-        )}
-        
-        {/* Image content */}
-        {content.imageParts && content.imageParts.length > 0 && (
-          <ImageRenderer imageParts={content.imageParts} />
-        )}
-      </div>
+    <div className={`${className} w-full`}>
+      {/* Text content */}
+      {content.text && (
+        <StreamingTextRenderer
+          text={content.text}
+          isStreaming={isStreaming}
+        />
+      )}
+
+      {/* Image content */}
+      {content.imageParts && content.imageParts.length > 0 && (
+        <ImageRenderer imageParts={content.imageParts} />
+      )}
     </div>
+
   );
 }; 

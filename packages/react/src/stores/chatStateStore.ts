@@ -340,7 +340,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             'run_started', 'run_finished', 'run_error',
             'plan_started', 'plan_finished',
             'step_started', 'step_completed',
-            'tool_calls', 'tool_results'
+            'tool_results'
           ];
 
           if (!stateOnlyEvents.includes(event.type)) {
@@ -410,29 +410,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             currentRunId: runId,
             currentTaskId: taskId
           });
-
-          // Show "Agent is starting..." indicator
           get().setStreamingIndicator('typing');
           set({ isStreaming: true });
-
-          if (isDebugEnabled) {
-            console.log('🏪 STORE AFTER run_started:', {
-              streamingIndicator: get().streamingIndicator,
-              isStreaming: get().isStreaming,
-              currentRunId: get().currentRunId,
-              currentTaskId: get().currentTaskId
-            });
-          }
           break;
 
         case 'run_finished':
           const runFinishedEvent = event as RunFinishedEvent;
-          const finishedRunId = runFinishedEvent.data.runId;
           const finishedTaskId = runFinishedEvent.data.taskId;
-
-          if (isDebugEnabled) {
-            console.log('🏪 run_finished with IDs:', { runId: finishedRunId, taskId: finishedTaskId });
-          }
           get().resolveToolCalls();
 
           // Update the specific task that finished
@@ -442,10 +426,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
-
-          // Tool calls are now resolved immediately when tool_calls event arrives, not here
-          console.log('🔧 Run finished - tool calls should already be resolved from tool_calls event');
-
           // Clear all indicators and stop loading when run is finished
           get().setStreamingIndicator(undefined);
           get().setCurrentThought(undefined);
@@ -477,10 +457,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           const currentRunId = get().currentRunId;
           const currentTaskId = get().currentTaskId;
 
-          if (isDebugEnabled) {
-            console.log('🏪 plan_started for run/task:', { currentRunId, currentTaskId });
-          }
-
           get().updatePlan(planId, {
             id: planId,
             runId: currentRunId,     // Link to the current run
@@ -490,17 +466,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             startTime: timestamp,
           });
           set({ currentPlanId: planId });
-          // Switch to planning indicator and stop streaming
-          get().setStreamingIndicator('thinking');
-
-          if (isDebugEnabled) {
-            console.log('🏪 STORE AFTER plan_started:', {
-              streamingIndicator: get().streamingIndicator,
-              currentPlanId: get().currentPlanId,
-              currentRunId: get().currentRunId,
-              currentTaskId: get().currentTaskId
-            });
-          }
           break;
 
         case 'plan_finished':
@@ -514,10 +479,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               thinkingDuration,
             });
           }
-          // Clear planning indicator and stop loading when plan is finished
-          get().setStreamingIndicator(undefined);
-          get().setCurrentThought(undefined);
-          set({ isLoading: false });
           break;
 
         case 'tool_call_start':
@@ -552,18 +513,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
 
         case 'text_message_start':
-          // Start generating response indicator and streaming
-          get().setStreamingIndicator('typing');
-
-          if (isDebugEnabled) {
-            console.log('🏪 STORE AFTER text_message_start:', {
-              streamingIndicator: get().streamingIndicator
-            });
-          }
           break;
 
         case 'text_message_content':
-          get().setStreamingIndicator(undefined);
+          // Don't clear typing indicator here - let it remain visible while content is streaming
           break;
 
         case 'text_message_end':
@@ -578,7 +531,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             status: 'running',
             startTime: timestamp,
           });
-          get().setStreamingIndicator('generating');
           break;
 
         case 'step_completed':
@@ -587,7 +539,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             status: 'completed',
             endTime: timestamp,
           });
-          get().setStreamingIndicator(undefined);
           break;
 
         case 'tool_calls':
