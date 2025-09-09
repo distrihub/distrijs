@@ -379,7 +379,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     if (isDistriEvent(message)) {
       const event = message as DistriEvent;
 
-      if (message.type !== 'text_message_content') {
+      if (isDebugEnabled && message.type !== 'text_message_content') {
         console.log('🏪 EVENT:', message);
       }
 

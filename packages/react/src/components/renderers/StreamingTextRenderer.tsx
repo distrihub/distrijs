@@ -73,7 +73,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
     }
 
     return (
-      <div className={`prose prose-sm max-w-none ${className}`}>
+      <div className={`prose prose-sm max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         <ReactMarkdown
           rehypePlugins={[rehypeRaw]}
           remarkPlugins={[remarkGfm]}
@@ -108,14 +108,25 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                 const isInline = !match;
 
                 return !isInline && language ? (
-                  <SyntaxHighlighter
-                    style={tomorrow}
-                    language={language}
-                    PreTag="div"
-                    className="!mt-0 !mb-0 rounded-md"
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
+                  <div className="w-full max-w-full overflow-hidden" style={{ maxWidth: '100%' }}>
+                    <SyntaxHighlighter
+                      style={tomorrow}
+                      language={language}
+                      PreTag="div"
+                      className="!mt-0 !mb-0 rounded-md text-sm"
+                      wrapLongLines={true}
+                      customStyle={{
+                        wordBreak: 'break-all',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        maxWidth: '100%',
+                        width: '100%',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  </div>
                 ) : (
                   <code className="bg-muted px-2 py-1 rounded text-sm font-mono text-foreground">
                     {children}
@@ -161,7 +172,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                 <em className="italic text-foreground">{children}</em>
               ),
               pre: ({ children }: { children: React.ReactNode }) => (
-                <pre className="bg-muted border border-border rounded-md p-3 overflow-x-auto mb-4">
+                <pre className="w-full bg-muted border border-border rounded-md p-3 overflow-x-auto break-words whitespace-pre-wrap mb-4 block">
                   {children}
                 </pre>
               ),

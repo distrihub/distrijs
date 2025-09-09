@@ -66,7 +66,7 @@ export function ToolResultRenderer({
         {result && (
           <div className="text-sm">
             <strong>Result:</strong>
-            <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-y-auto">
+            <pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-auto break-words">
               {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
             </pre>
           </div>
@@ -76,7 +76,7 @@ export function ToolResultRenderer({
         {error && (
           <div className="text-sm">
             <strong>Error:</strong>
-            <pre className="whitespace-pre-wrap text-xs bg-destructive/10 p-2 rounded mt-1 text-destructive">
+            <pre className="whitespace-pre-wrap text-xs bg-destructive/10 p-2 rounded mt-1 text-destructive overflow-auto break-words">
               {error}
             </pre>
           </div>

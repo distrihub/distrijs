@@ -1159,8 +1159,6 @@ var Agent = class _Agent {
           yield converted;
         }
       }
-      console.log("All events", events);
-      console.log("Mapped events", mappedEvents);
     }();
   }
   /**

@@ -2,6 +2,7 @@ import React from 'react';
 import { DistriArtifact, DistriMessage } from '@distri/core';
 import { extractContent } from './utils';
 import { StreamingTextRenderer } from './StreamingTextRenderer';
+import TextRenderer from './TextRenderer';
 import { ImageRenderer } from './ImageRenderer';
 import { useChatStateStore } from '../../stores/chatStateStore';
 
@@ -29,10 +30,14 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
     <div className={`${className} w-full`}>
       {/* Text content */}
       {content.text && (
-        <StreamingTextRenderer
-          text={content.text}
-          isStreaming={isStreaming}
-        />
+        isStreaming ? (
+          <StreamingTextRenderer
+            text={content.text}
+            isStreaming={isStreaming}
+          />
+        ) : (
+          <TextRenderer content={content} />
+        )
       )}
 
       {/* Image content */}

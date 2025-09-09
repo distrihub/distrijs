@@ -1,7 +1,8 @@
 import React from 'react';
 import { DistriMessage } from '@distri/core';
-import { extractContent, renderTextContent } from './utils';
+import { extractContent } from './utils';
 import { ImageRenderer } from './ImageRenderer';
+import TextRenderer from './TextRenderer';
 
 export interface UserMessageRendererProps {
   message: DistriMessage;
@@ -21,9 +22,7 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({
         <div className="max-w-[80%] bg-muted/60 text-foreground rounded-2xl px-4 py-3 border">
           {/* Text content */}
           {content.text && (
-            <div className="prose prose-sm max-w-none">
-              {renderTextContent(content)}
-            </div>
+            <TextRenderer content={content} />
           )}
 
           {/* Image content */}
