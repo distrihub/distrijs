@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ToolCallsEvent } from '@distri/core';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { LoadingShimmer } from './ThinkingRenderer';
@@ -45,15 +44,6 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
 
   // Tool calls should be in data.tool_calls after encoder conversion
   const toolCalls = event.data?.tool_calls || [];
-
-  // Debug logging to see what's happening
-  console.log('🔧 ToolExecutionRenderer received:', {
-    eventType: event.type,
-    eventData: event.data,
-    eventMetadata: event.metadata,
-    toolCalls,
-    toolCallStates: Array.from(toolCallStates.entries())
-  });
 
   if (toolCalls.length === 0) {
     console.log('🔧 No tool calls found in event data or metadata');
@@ -114,7 +104,7 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
               {/* Collapsible Results */}
               {isExpanded && (
                 <div className="border border-muted rounded-lg p-3 bg-muted/25">
-                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-x-auto">
+                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words">
                     {toolCallState.result ?
                       JSON.stringify(toolCallState.result, null, 2) :
                       'No result available'

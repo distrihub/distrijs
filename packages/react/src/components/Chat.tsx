@@ -482,7 +482,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   };
 
   // Render messages using the new MessageRenderer
-  const renderMessages = () => {
+  const renderMessages = (): React.ReactNode[] => {
     const elements: React.ReactNode[] = [];
 
     // Render all messages using MessageRenderer
@@ -506,6 +506,28 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       }
     });
 
+    return elements;
+  };
+
+  const renderExternalToolCalls = () => {
+    const elements: React.ReactNode[] = [];
+    // Render standalone tool calls that aren't part of any message
+    const externalToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
+      (toolCall.status === 'pending' || toolCall.status === 'running') && toolCall.isExternal && toolCall.component
+    );
+
+    if (externalToolCalls.length > 0) {
+      console.log('🔧 Found external tool calls:', externalToolCalls.length, externalToolCalls.map(tc => ({ name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
+    }
+
+    externalToolCalls.forEach((toolCall) => {
+      // Render the tool call component directly
+      elements.push(
+        <RendererWrapper key={`external-tool-${toolCall.tool_call_id}`}>
+          {toolCall.component}
+        </RendererWrapper>
+      );
+    });
     return elements;
   };
 
@@ -608,6 +630,8 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
           )}
           {/* Render all messages and state */}
           {renderMessages()}
+
+          {renderExternalToolCalls()}
           {/* Render thinking indicator at the end */}
           {renderThinkingIndicator()}
           {/* Render pending message after thinking indicator */}

@@ -319,21 +319,6 @@ export function useChat({
     handleExternalToolResponsesRef.current = handleExternalToolResponses;
   }, [handleExternalToolResponses]);
 
-  // Set up callback for when all external tools complete (only once)
-  useEffect(() => {
-    const callback = async () => {
-      if (handleExternalToolResponsesRef.current) {
-        await handleExternalToolResponsesRef.current();
-      }
-    };
-    chatState.setOnAllToolsCompleted(callback);
-
-    // Cleanup the callback on unmount
-    return () => {
-      chatState.setOnAllToolsCompleted(undefined);
-    };
-  }, []); // Empty dependency array - only run once
-
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();

@@ -1,8 +1,4 @@
-import React from 'react';
 import { DistriMessage, DistriEvent, DistriArtifact, ImagePart } from '@distri/core';
-import { Prism as _SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark as _oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import TextRenderer from './TextRenderer';
 
 export interface ExtractedContent {
   text: string;
@@ -67,10 +63,3 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
   };
 }
 
-export function renderTextContent(content: ExtractedContent): React.ReactNode {
-  const { text } = content;
-
-  if (!text || !text.trim()) return null;
-
-  return <TextRenderer content={content} />;
-}

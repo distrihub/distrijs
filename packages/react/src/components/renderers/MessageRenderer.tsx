@@ -11,13 +11,15 @@ export interface MessageRendererProps {
   onToggle?: () => void;
 }
 
-// Wrapper component to ensure consistent width and centering
+// Wrapper component to ensure full width with max constraint for readability
 const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
   className = ''
 }) => (
-  <div className={`max-w-3xl mx-auto w-full ${className}`}>
-    {children}
+  <div className={`w-full px-4 overflow-hidden ${className}`} style={{ maxWidth: '100%', wordBreak: 'break-word' }}>
+    <div className="w-full max-w-4xl mx-auto overflow-hidden" style={{ maxWidth: 'min(100%, 56rem)', wordBreak: 'break-word' }}>
+      {children}
+    </div>
   </div>
 );
 
@@ -109,8 +111,6 @@ export function MessageRenderer({
         return null;
 
       case 'tool_calls':
-        console.log('🔧 MessageRenderer tool_calls case - event:', event);
-        console.log('🔧 MessageRenderer tool_calls case - toolCallsState size:', toolCallsState.size);
         return (
           <RendererWrapper key={`tool-execution-start-${index}`}>
             <ToolExecutionRenderer

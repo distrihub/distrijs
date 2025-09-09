@@ -18,7 +18,7 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
 
   // Render as markdown with syntax highlighting
   return (
-    <div className={`prose prose-sm max-w-none ${className}`}>
+    <div className={`prose prose-sm max-w-none overflow-hidden break-words ${className}`} style={{wordBreak: 'break-word', overflowWrap: 'break-word'}}>
       <ReactMarkdown
         rehypePlugins={[rehypeRaw]}
         remarkPlugins={[remarkGfm]}
@@ -30,14 +30,25 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
             const isInline = !match;
 
             return !isInline && language ? (
-              <SyntaxHighlighter
-                style={tomorrow}
-                language={language}
-                PreTag="div"
-                className="!mt-0 !mb-0"
-              >
-                {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>
+              <div className="w-full max-w-full overflow-hidden" style={{maxWidth: '100%'}}>
+                <SyntaxHighlighter
+                  style={tomorrow}
+                  language={language}
+                  PreTag="div"
+                  className="!mt-0 !mb-0 text-sm"
+                  wrapLongLines={true}
+                  customStyle={{
+                    wordBreak: 'break-all',
+                    overflowWrap: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    maxWidth: '100%',
+                    width: '100%',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              </div>
             ) : (
               <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">
                 {children}
