@@ -302,7 +302,7 @@ export function useChat({
 
         // Create a tool result message to display in the chat
         const toolResultMessage = DistriClient.initDistriMessage('user', toolResultParts);
-        
+
         // Add the tool result message to the chat interface so it's visible
         processMessage(toolResultMessage, false);
 

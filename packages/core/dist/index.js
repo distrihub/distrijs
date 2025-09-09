@@ -1164,26 +1164,27 @@ var Agent = class _Agent {
    * Enhance message params with tool definitions
    */
   enhanceParamsWithTools(params) {
-    return {
-      ...params,
-      metadata: {
-        ...params.metadata,
-        tools: {
-          tools: this.tools.tools.map((tool) => ({
+    const metadata = {
+      ...params.metadata,
+      tools: {
+        tools: this.tools.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.input_schema
+        })),
+        agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => [
+          agentName,
+          tools.map((tool) => ({
             name: tool.name,
             description: tool.description,
             input_schema: tool.input_schema
-          })),
-          agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => [
-            agentName,
-            tools.map((tool) => ({
-              name: tool.name,
-              description: tool.description,
-              input_schema: tool.input_schema
-            }))
-          ]))
-        }
+          }))
+        ]))
       }
+    };
+    return {
+      ...params,
+      metadata
     };
   }
   /**

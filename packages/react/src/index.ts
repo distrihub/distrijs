@@ -30,7 +30,6 @@ export * from './hooks/useSpeechToText';
 
 // Utility exports
 export * from './utils/toolWrapper';
-export * from './utils/debugStream';
 
 // UI Component exports (for customization)
 export * from './components/ui';

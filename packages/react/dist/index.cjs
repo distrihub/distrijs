@@ -130,9 +130,7 @@ __export(index_exports, {
   TypingIndicator: () => TypingIndicator,
   UserMessageRenderer: () => UserMessageRenderer,
   VoiceInput: () => VoiceInput,
-  debugStreamEvents: () => debugStreamEvents,
   extractContent: () => extractContent,
-  quickDebugMessage: () => quickDebugMessage,
   renderTextContent: () => renderTextContent,
   useAgent: () => useAgent,
   useAgentDefinitions: () => useAgentDefinitions,
@@ -513,6 +511,7 @@ function extractThoughtContent(text) {
 
 // src/stores/chatStateStore.ts
 var import_react4 = __toESM(require("react"), 1);
+var import_sonner2 = require("sonner");
 var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   isStreaming: false,
   isLoading: false,
@@ -686,14 +685,8 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     get().addMessage(message);
     if ((0, import_core.isDistriEvent)(message)) {
       const event = message;
-      if (isDebugEnabled && ["run_started", "run_finished", "plan_started", "plan_finished", "text_message_start"].includes(event.type)) {
-        console.log("\u{1F3EA} STORE BEFORE:", {
-          eventType: event.type,
-          streamingIndicator: get().streamingIndicator,
-          isStreaming: get().isStreaming,
-          currentTaskId: get().currentTaskId,
-          currentPlanId: get().currentPlanId
-        });
+      if (message.type !== "text_message_content") {
+        console.log("\u{1F3EA} EVENT:", message);
       }
       switch (message.type) {
         case "run_started":
@@ -735,6 +728,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           if (isDebugEnabled) {
             console.log("\u{1F3EA} run_finished with IDs:", { runId: finishedRunId, taskId: finishedTaskId });
           }
+          get().resolveToolCalls();
           if (finishedTaskId) {
             get().updateTask(finishedTaskId, {
               status: "completed",
@@ -756,7 +750,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               error: message.data?.message || "Unknown error"
             });
           }
-          console.log("\u{1F527} Run error - tool calls should already be resolved from tool_calls event");
+          get().resolveToolCalls();
           get().setStreamingIndicator(void 0);
           get().setCurrentThought(void 0);
           set({ isStreaming: false });
@@ -876,8 +870,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
               }, timestamp, isFromStream);
             });
             console.log("\u{1F527} Tool calls after init:", Array.from(get().toolCalls.entries()));
-            console.log("\u{1F527} Resolving tool calls immediately on tool_calls event");
-            get().resolveToolCalls();
           }
           break;
         case "tool_results":
@@ -971,6 +963,12 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       endTime: Date.now(),
       error: result.error || void 0
     });
+    if (result.error) {
+      import_sonner2.toast.error("Tool Error", {
+        description: result.error,
+        duration: 5e3
+      });
+    }
     const state = get();
     const pendingExternalTools = Array.from(state.toolCalls.values()).filter(
       (tc) => tc.isExternal && (tc.status === "pending" || tc.status === "running")
@@ -6104,171 +6102,6 @@ function wrapTools(tools, options = {}) {
   });
 }
 
-// src/utils/debugStream.ts
-var import_core9 = require("@distri/core");
-async function debugStreamEvents(agent, message, options = {}) {
-  const {
-    logEvents = true,
-    logMessages = true,
-    logTiming = true,
-    onEvent
-  } = options;
-  console.log("\u{1F9EA} Starting stream debug for message:", message);
-  const startTime = Date.now();
-  let eventCount = 0;
-  const events = [];
-  try {
-    const userMessage = {
-      messageId: "debug-msg-" + Date.now(),
-      role: "user",
-      parts: [{ kind: "text", text: message }],
-      kind: "message",
-      contextId: "debug-context",
-      taskId: "debug-task"
-    };
-    console.log("\u{1F4E4} Sending message to agent...");
-    const stream = await agent.invokeStream({
-      message: userMessage,
-      metadata: {}
-    });
-    console.log("\u{1F4E1} Stream started, listening for events...");
-    for await (const event of stream) {
-      eventCount++;
-      const eventTime = Date.now() - startTime;
-      events.push(event);
-      if (logEvents) {
-        console.log(`
-\u{1F4E5} Event ${eventCount} (${eventTime}ms):`, {
-          type: event.type || "message",
-          id: event.id || "no-id",
-          role: event.role || "no-role",
-          isEvent: (0, import_core9.isDistriEvent)(event),
-          isMessage: (0, import_core9.isDistriMessage)(event),
-          isArtifact: (0, import_core9.isDistriArtifact)(event)
-        });
-      }
-      if ((0, import_core9.isDistriEvent)(event)) {
-        const distriEvent = event;
-        if (logEvents) {
-          console.log(`   \u{1F50D} Event data:`, distriEvent.data);
-        }
-        if (distriEvent.type === "text_message_start") {
-          console.log(`   \u{1F680} Started streaming message: ${distriEvent.data.message_id}`);
-        } else if (distriEvent.type === "text_message_content") {
-          const data = distriEvent.data;
-          console.log(`   \u{1F4DD} Content delta: "${data.delta}" (${data.delta?.length} chars)`);
-        } else if (distriEvent.type === "text_message_end") {
-          console.log(`   \u{1F3C1} Finished streaming message: ${distriEvent.data.message_id}`);
-        } else if (distriEvent.type === "tool_calls") {
-          const data = distriEvent.data;
-          console.log(`   \u{1F527} Tool calls: ${data.tool_calls?.length} tools`);
-          data.tool_calls?.forEach((tool, i) => {
-            console.log(`      ${i + 1}. ${tool.tool_name} (${tool.tool_call_id})`);
-          });
-        } else if (distriEvent.type === "tool_results") {
-          const data = distriEvent.data;
-          console.log(`   \u2705 Tool results: ${data.results?.length} results`);
-          data.results?.forEach((result, i) => {
-            console.log(`      ${i + 1}. ${result.tool_name}: ${result.success ? "success" : "failed"}`);
-          });
-        }
-      } else if ((0, import_core9.isDistriMessage)(event)) {
-        const distriMessage = event;
-        if (logMessages) {
-          const textContent = distriMessage.parts?.filter((p) => p.type === "text")?.map((p) => p.data)?.join(" ") || "";
-          console.log(`   \u{1F4AC} Message: ${distriMessage.role} - "${textContent.substring(0, 100)}${textContent.length > 100 ? "..." : ""}"`);
-        }
-      }
-      onEvent?.(event, eventCount);
-    }
-    const totalTime = Date.now() - startTime;
-    if (logTiming) {
-      console.log(`
-\u23F1\uFE0F  Stream completed in ${totalTime}ms`);
-      console.log(`\u{1F4CA} Total events: ${eventCount}`);
-    }
-    const analysis = analyzeEvents(events);
-    console.log("\n\u{1F4C8} Event Analysis:");
-    console.log("   Event types:", analysis.eventTypes);
-    console.log("   Messages:", analysis.messageCount);
-    console.log("   Streaming events:", analysis.streamingEvents);
-    console.log("   Tool events:", analysis.toolEvents);
-    if (analysis.issues.length > 0) {
-      console.log("\n\u26A0\uFE0F  Potential issues:");
-      analysis.issues.forEach((issue) => console.log(`   - ${issue}`));
-    }
-    return {
-      events,
-      eventCount,
-      totalTime,
-      analysis
-    };
-  } catch (error) {
-    console.error("\u274C Stream debug failed:", error);
-    throw error;
-  }
-}
-function analyzeEvents(events) {
-  const eventTypes = {};
-  let messageCount = 0;
-  const streamingEvents = [];
-  const toolEvents = [];
-  const issues = [];
-  const streamingMessages = /* @__PURE__ */ new Map();
-  events.forEach((event) => {
-    if ((0, import_core9.isDistriEvent)(event)) {
-      const type = event.type;
-      eventTypes[type] = (eventTypes[type] || 0) + 1;
-      if (type.startsWith("text_message_")) {
-        streamingEvents.push(event);
-        const messageId = event.data.message_id;
-        if (!streamingMessages.has(messageId)) {
-          streamingMessages.set(messageId, { content: 0 });
-        }
-        const msgData = streamingMessages.get(messageId);
-        if (type === "text_message_start") {
-          msgData.start = true;
-        } else if (type === "text_message_content") {
-          msgData.content++;
-        } else if (type === "text_message_end") {
-          msgData.end = true;
-        }
-      }
-      if (type.includes("tool")) {
-        toolEvents.push(event);
-      }
-    } else if ((0, import_core9.isDistriMessage)(event)) {
-      messageCount++;
-    }
-  });
-  streamingMessages.forEach((data, messageId) => {
-    if (data.start && !data.end) {
-      issues.push(`Streaming message ${messageId} started but never ended`);
-    }
-    if (!data.start && data.content > 0) {
-      issues.push(`Streaming message ${messageId} has content but no start event`);
-    }
-    if (data.content === 0 && data.start) {
-      issues.push(`Streaming message ${messageId} started but has no content events`);
-    }
-  });
-  return {
-    eventTypes,
-    messageCount,
-    streamingEvents: streamingEvents.length,
-    toolEvents: toolEvents.length,
-    streamingMessages: Object.fromEntries(streamingMessages),
-    issues
-  };
-}
-async function quickDebugMessage(agent, message) {
-  return debugStreamEvents(agent, message, {
-    logEvents: true,
-    logMessages: true,
-    logTiming: true
-  });
-}
-
 // src/components/renderers/ArtifactRenderer.tsx
 var import_jsx_runtime50 = require("react/jsx-runtime");
 function ArtifactRenderer({ message, chatState: _chatState, className = "", avatar }) {
@@ -6436,9 +6269,7 @@ function renderGenericArtifact(genericArtifact, _chatState, className, avatar) {
   TypingIndicator,
   UserMessageRenderer,
   VoiceInput,
-  debugStreamEvents,
   extractContent,
-  quickDebugMessage,
   renderTextContent,
   useAgent,
   useAgentDefinitions,

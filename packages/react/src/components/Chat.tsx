@@ -231,7 +231,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const handleStopStreaming = useCallback(() => {
     console.log('handleStopStreaming called, about to call stopStreaming()');
     stopStreaming();
-    
+
     // Reset all streaming states in the store
     useChatStateStore.getState().resetStreamingStates();
   }, [stopStreaming]);
@@ -373,7 +373,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
         console.log('Streaming ended, sending pending message parts:', pendingMessage);
         const messageToSend = [...pendingMessage];
         setPendingMessage(null);
-        
+
         // Send the accumulated message parts
         try {
           await sendMessage(messageToSend);
