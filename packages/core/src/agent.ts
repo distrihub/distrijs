@@ -137,27 +137,27 @@ export class Agent {
    * Enhance message params with tool definitions
    */
   private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
-
-    return {
-      ...params,
-      metadata: {
-        ...params.metadata,
-        tools: {
-          tools: this.tools.tools.map(tool => ({
+    const metadata = {
+      ...params.metadata,
+      tools: {
+        tools: this.tools.tools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.input_schema,
+        } as DistriBaseTool)),
+        agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => ([
+          agentName,
+          tools.map(tool => ({
             name: tool.name,
             description: tool.description,
             input_schema: tool.input_schema,
           } as DistriBaseTool)),
-          agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => ([
-            agentName,
-            tools.map(tool => ({
-              name: tool.name,
-              description: tool.description,
-              input_schema: tool.input_schema,
-            } as DistriBaseTool)),
-          ]))),
-        }
+        ]))),
       }
+    };
+    return {
+      ...params,
+      metadata
     };
   }
 

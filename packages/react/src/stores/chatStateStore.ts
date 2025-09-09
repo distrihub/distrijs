@@ -21,6 +21,7 @@ import { DefaultToolActions } from '../components/renderers/tools/DefaultToolAct
 import { MissingTool } from '../components/renderers/tools/MissingTool';
 import { extractThoughtContent } from '../utils/extractThought';
 import React from 'react';
+import { toast } from 'sonner';
 
 // State types
 export interface TaskState {
@@ -378,15 +379,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     if (isDistriEvent(message)) {
       const event = message as DistriEvent;
 
-      // Debug store state changes for visual indicators
-      if (isDebugEnabled && ['run_started', 'run_finished', 'plan_started', 'plan_finished', 'text_message_start'].includes(event.type)) {
-        console.log('🏪 STORE BEFORE:', {
-          eventType: event.type,
-          streamingIndicator: get().streamingIndicator,
-          isStreaming: get().isStreaming,
-          currentTaskId: get().currentTaskId,
-          currentPlanId: get().currentPlanId
-        });
+      if (message.type !== 'text_message_content') {
+        console.log('🏪 EVENT:', message);
       }
 
       switch (message.type) {
@@ -439,6 +433,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           if (isDebugEnabled) {
             console.log('🏪 run_finished with IDs:', { runId: finishedRunId, taskId: finishedTaskId });
           }
+          get().resolveToolCalls();
 
           // Update the specific task that finished
           if (finishedTaskId) {
@@ -469,8 +464,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
-          // Tool calls are now resolved immediately when tool_calls event arrives, not here
-          console.log('🔧 Run error - tool calls should already be resolved from tool_calls event');
+          get().resolveToolCalls();
 
           // Clear all indicators and stop loading when run errors
           get().setStreamingIndicator(undefined);
@@ -553,6 +547,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               status: 'completed',
               endTime: timestamp,
             });
+
           }
           break;
 
@@ -609,9 +604,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
             console.log('🔧 Tool calls after init:', Array.from(get().toolCalls.entries()));
 
-            // Immediately resolve/initialize tools when tool_calls event arrives (not on run_finished)
-            console.log('🔧 Resolving tool calls immediately on tool_calls event');
-            get().resolveToolCalls();
+
           }
           break;
 
@@ -722,6 +715,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       endTime: Date.now(),
       error: result.error || undefined,
     });
+
+    if (result.error) {
+      toast.error('Tool Error', {
+        description: result.error,
+        duration: 5000,
+      });
+    }
 
     // Check if all external tools are completed after this completion
     const state = get();
