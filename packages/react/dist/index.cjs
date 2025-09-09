@@ -678,7 +678,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     get().addMessage(message);
     if ((0, import_core.isDistriEvent)(message)) {
       const event = message;
-      if (message.type !== "text_message_content") {
+      if (isDebugEnabled && message.type !== "text_message_content") {
         console.log("\u{1F3EA} EVENT:", message);
       }
       switch (message.type) {
@@ -1202,6 +1202,7 @@ function useChat({
   agent,
   tools,
   wrapOptions,
+  beforeSendMessage,
   initialMessages
 }) {
   const abortControllerRef = (0, import_react6.useRef)(null);
@@ -1292,8 +1293,11 @@ function useChat({
     abortControllerRef.current = new AbortController();
     try {
       const parts = typeof content === "string" ? [{ type: "text", data: content }] : content;
-      const distriMessage = import_core2.DistriClient.initDistriMessage("user", parts);
+      let distriMessage = import_core2.DistriClient.initDistriMessage("user", parts);
       processMessage(distriMessage, false);
+      if (beforeSendMessage) {
+        distriMessage = await beforeSendMessage(distriMessage);
+      }
       const context = createInvokeContext();
       const a2aMessage = (0, import_core3.convertDistriMessageToA2A)(distriMessage, context);
       const contextMetadata = await getMetadataRef.current?.() || {};
@@ -3314,7 +3318,8 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
     getMetadata,
     tools,
     wrapOptions,
-    initialMessages
+    initialMessages,
+    beforeSendMessage
   });
   const toolCalls = useChatStateStore((state) => state.toolCalls);
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
@@ -3378,9 +3383,6 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
   }, []);
   const handleSendMessage = (0, import_react18.useCallback)(async (initialContent) => {
     let content = initialContent;
-    if (beforeSendMessage) {
-      content = await beforeSendMessage(content);
-    }
     if (typeof content === "string" && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
     setInput("");

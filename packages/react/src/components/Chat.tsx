@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriPart, ToolCall } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, ToolCall } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -35,7 +35,7 @@ export interface ChatProps {
   threadId: string;
   agent?: Agent;
   onMessage?: (message: DistriChatMessage) => void;
-  beforeSendMessage?: (content: string | DistriPart[]) => Promise<string | DistriPart[]>;
+  beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
   tools?: ToolsConfig;
@@ -132,6 +132,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     tools,
     wrapOptions,
     initialMessages,
+    beforeSendMessage,
   });
 
   // Get reactive state from store
@@ -214,9 +215,6 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
   const handleSendMessage = useCallback(async (initialContent: string | DistriPart[]) => {
     let content = initialContent;
-    if (beforeSendMessage) {
-      content = await beforeSendMessage(content);
-    }
 
     if (typeof content === 'string' && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
@@ -515,10 +513,6 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     const externalToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
       (toolCall.status === 'pending' || toolCall.status === 'running') && toolCall.isExternal && toolCall.component
     );
-
-    if (externalToolCalls.length > 0) {
-      console.log('🔧 Found external tool calls:', externalToolCalls.length, externalToolCalls.map(tc => ({ name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
-    }
 
     externalToolCalls.forEach((toolCall) => {
       // Render the tool call component directly
