@@ -1,4 +1,4 @@
-import { ToolCall, ToolResult, PlanStep, DistriChatMessage, Agent as Agent$1, ToolsConfig, DistriFnTool, DistriBaseTool, DistriPart, AgentDefinition, DistriThread, DistriMessage, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact, ImagePart } from '@distri/core';
+import { ToolCall, ToolResult, PlanStep, DistriChatMessage, Agent as Agent$1, ToolsConfig, DistriFnTool, DistriBaseTool, DistriMessage, DistriPart, AgentDefinition, DistriThread, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact, ImagePart } from '@distri/core';
 import * as zustand from 'zustand';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as React$1 from 'react';
@@ -172,6 +172,7 @@ interface UseChatOptions {
     tools?: ToolsConfig;
     wrapOptions?: WrapToolOptions;
     initialMessages?: (DistriChatMessage)[];
+    beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
 }
 interface UseChatReturn {
     messages: (DistriChatMessage)[];
@@ -184,7 +185,7 @@ interface UseChatReturn {
     stopStreaming: () => void;
     addMessage: (message: DistriChatMessage) => void;
 }
-declare function useChat({ threadId, onError, getMetadata, agent, tools, wrapOptions, initialMessages, }: UseChatOptions): UseChatReturn;
+declare function useChat({ threadId, onError, getMetadata, agent, tools, wrapOptions, beforeSendMessage, initialMessages, }: UseChatOptions): UseChatReturn;
 
 interface UseAgentOptions {
     agentIdOrDef: string | AgentDefinition;
@@ -242,7 +243,7 @@ interface ChatProps {
     threadId: string;
     agent?: Agent$1;
     onMessage?: (message: DistriChatMessage) => void;
-    beforeSendMessage?: (content: string | DistriPart[]) => Promise<string | DistriPart[]>;
+    beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
     tools?: ToolsConfig;

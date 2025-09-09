@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriChatMessage, DistriClient } from '@distri/core';
+import { Agent, DistriChatMessage, DistriClient, DistriMessage } from '@distri/core';
 import {
   DistriPart,
   InvokeContext,
@@ -21,6 +21,7 @@ export interface UseChatOptions {
   tools?: ToolsConfig;
   wrapOptions?: WrapToolOptions;
   initialMessages?: (DistriChatMessage)[];
+  beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
 }
 
 export interface UseChatReturn {
@@ -42,6 +43,7 @@ export function useChat({
   agent,
   tools,
   wrapOptions,
+  beforeSendMessage,
   initialMessages,
 }: UseChatOptions): UseChatReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -176,10 +178,14 @@ export function useChat({
         ? [{ type: 'text', data: content }]
         : content;
 
-      const distriMessage = DistriClient.initDistriMessage('user', parts);
+      let distriMessage = DistriClient.initDistriMessage('user', parts);
 
       // Add user message immediately - not from stream, user initiated
       processMessage(distriMessage, false);
+        
+      if (beforeSendMessage) {
+        distriMessage = await beforeSendMessage(distriMessage);
+      }
 
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);

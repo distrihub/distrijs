@@ -542,7 +542,7 @@ var useChatStateStore = create((set, get) => ({
     get().addMessage(message);
     if (isDistriEvent(message)) {
       const event = message;
-      if (message.type !== "text_message_content") {
+      if (isDebugEnabled && message.type !== "text_message_content") {
         console.log("\u{1F3EA} EVENT:", message);
       }
       switch (message.type) {
@@ -1066,6 +1066,7 @@ function useChat({
   agent,
   tools,
   wrapOptions,
+  beforeSendMessage,
   initialMessages
 }) {
   const abortControllerRef = useRef2(null);
@@ -1156,8 +1157,11 @@ function useChat({
     abortControllerRef.current = new AbortController();
     try {
       const parts = typeof content === "string" ? [{ type: "text", data: content }] : content;
-      const distriMessage = DistriClient.initDistriMessage("user", parts);
+      let distriMessage = DistriClient.initDistriMessage("user", parts);
       processMessage(distriMessage, false);
+      if (beforeSendMessage) {
+        distriMessage = await beforeSendMessage(distriMessage);
+      }
       const context = createInvokeContext();
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
       const contextMetadata = await getMetadataRef.current?.() || {};
@@ -3180,7 +3184,8 @@ var Chat = forwardRef4(function Chat2({
     getMetadata,
     tools,
     wrapOptions,
-    initialMessages
+    initialMessages,
+    beforeSendMessage
   });
   const toolCalls = useChatStateStore((state) => state.toolCalls);
   const hasPendingToolCalls = useChatStateStore((state) => state.hasPendingToolCalls);
@@ -3244,9 +3249,6 @@ var Chat = forwardRef4(function Chat2({
   }, []);
   const handleSendMessage = useCallback9(async (initialContent) => {
     let content = initialContent;
-    if (beforeSendMessage) {
-      content = await beforeSendMessage(content);
-    }
     if (typeof content === "string" && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
     setInput("");
