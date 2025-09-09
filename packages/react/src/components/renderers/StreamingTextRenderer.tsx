@@ -123,13 +123,13 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                 );
               },
               p: ({ children }: { children: React.ReactNode }) => (
-                <p className="mb-3 last:mb-0 leading-relaxed text-foreground">{children}</p>
+                <p className="mb-4 last:mb-0 leading-relaxed text-foreground">{children}</p>
               ),
               ul: ({ children }: { children: React.ReactNode }) => (
-                <ul className="list-disc list-inside mb-3 space-y-1 text-foreground">{children}</ul>
+                <ul className="list-disc list-inside mb-4 space-y-1 text-foreground">{children}</ul>
               ),
               ol: ({ children }: { children: React.ReactNode }) => (
-                <ol className="list-decimal list-inside mb-3 space-y-1 text-foreground">{children}</ol>
+                <ol className="list-decimal list-inside mb-4 space-y-1 text-foreground">{children}</ol>
               ),
               blockquote: ({ children }: { children: React.ReactNode }) => (
                 <blockquote className="border-l-4 border-border pl-4 italic text-muted-foreground my-3">
@@ -137,16 +137,16 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                 </blockquote>
               ),
               h1: ({ children }: { children: React.ReactNode }) => (
-                <h1 className="text-xl font-bold mb-3 text-foreground">{children}</h1>
+                <h1 className="text-xl font-bold mb-4 text-foreground">{children}</h1>
               ),
               h2: ({ children }: { children: React.ReactNode }) => (
-                <h2 className="text-lg font-bold mb-3 text-foreground">{children}</h2>
+                <h2 className="text-lg font-bold mb-4 text-foreground">{children}</h2>
               ),
               h3: ({ children }: { children: React.ReactNode }) => (
-                <h3 className="text-base font-bold mb-2 text-foreground">{children}</h3>
+                <h3 className="text-base font-bold mb-4 text-foreground">{children}</h3>
               ),
               h4: ({ children }: { children: React.ReactNode }) => (
-                <h4 className="text-sm font-semibold mb-2 text-foreground">{children}</h4>
+                <h4 className="text-sm font-semibold mb-4 text-foreground">{children}</h4>
               ),
               h5: ({ children }: { children: React.ReactNode }) => (
                 <h5 className="text-sm font-semibold mb-1 text-foreground">{children}</h5>
@@ -161,12 +161,12 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                 <em className="italic text-foreground">{children}</em>
               ),
               pre: ({ children }: { children: React.ReactNode }) => (
-                <pre className="bg-muted border border-border rounded-md p-3 overflow-x-auto mb-3">
+                <pre className="bg-muted border border-border rounded-md p-3 overflow-x-auto mb-4">
                   {children}
                 </pre>
               ),
               table: ({ children }: { children: React.ReactNode }) => (
-                <div className="overflow-x-auto mb-3">
+                <div className="overflow-x-auto mb-4">
                   <table className="min-w-full border-collapse border border-border">
                     {children}
                   </table>

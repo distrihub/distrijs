@@ -94,14 +94,7 @@ export function useChat({
       // Process initial messages as historical (not from stream)
       initialMessages.forEach(message => chatState.processMessage(message, false));
 
-      // Ensure streaming states are cleared after processing initial messages
-      // (in case initial messages contain incomplete streaming sequences)
-      setTimeout(() => {
-        chatState.completeRunningSteps();
-        if (cleanupRef.current) {
-          cleanupRef.current();
-        }
-      }, 100);
+
     }
   }, [initialMessages]); // Only depend on initialMessages for static behavior
 

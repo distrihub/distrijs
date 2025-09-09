@@ -5,10 +5,9 @@ import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { TypingIndicator } from './renderers/TypingIndicator';
-import { ToolCallRenderer } from './renderers/ToolCallRenderer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-import { useChatStateStore } from '../stores/chatStateStore';
+import { ChatState, useChatStateStore } from '../stores/chatStateStore';
 import { WrapToolOptions } from '../utils/toolWrapper';
 import { ToolsConfig } from '@distri/core';
 import { useSpeechToText } from '../hooks/useSpeechToText';
@@ -52,6 +51,8 @@ export interface ChatProps {
   onModelChange?: (modelId: string) => void;
   // Callback to get ChatInstance API
   onChatInstanceReady?: (instance: ChatInstance) => void;
+
+  onChatStateChange?: (state: ChatState) => void;
   // Voice support
   voiceEnabled?: boolean;
   useSpeechRecognition?: boolean;
@@ -87,6 +88,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   beforeSendMessage,
   onModelChange,
   onChatInstanceReady,
+  onChatStateChange,
   voiceEnabled = false,
   useSpeechRecognition = false,
   ttsConfig,
@@ -120,7 +122,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     isStreaming,
     isLoading,
     error,
-    messages,
+    messages
   } = useChat({
     threadId,
     agent,
@@ -137,6 +139,13 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
   const currentThought = useChatStateStore(state => state.currentThought);
+
+  const currentState = useChatStateStore(state => state);
+  useEffect(() => {
+    if (onChatStateChange) {
+      onChatStateChange(currentState);
+    }
+  }, [currentState, onChatStateChange]);
 
 
   // Image upload functions moved from ChatInput
@@ -497,38 +506,6 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       }
     });
 
-    // Render standalone tool calls that aren't part of any message
-    const standaloneToolCalls = Array.from(toolCalls.values()).filter(toolCall =>
-      toolCall.status === 'pending' || toolCall.status === 'running'
-    );
-
-    if (standaloneToolCalls.length > 0) {
-      console.log('🔧 Found standalone tool calls:', standaloneToolCalls.length, standaloneToolCalls.map(tc => ({ name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
-    }
-
-    standaloneToolCalls.forEach((toolCall) => {
-      if (toolCall.component) {
-        // Render the tool call component directly
-        elements.push(
-          <RendererWrapper key={`standalone-tool-${toolCall.tool_call_id}`}>
-            {toolCall.component}
-          </RendererWrapper>
-        );
-      } else {
-        // Fallback: render with ToolCallRenderer
-        console.log('🔧 Rendering standalone tool call with ToolCallRenderer:', toolCall.tool_name);
-        elements.push(
-          <RendererWrapper key={`standalone-fallback-${toolCall.tool_call_id}`}>
-            <ToolCallRenderer
-              toolCall={toolCall}
-              isExpanded={expandedTools.has(toolCall.tool_call_id)}
-              onToggle={() => toggleToolExpansion(toolCall.tool_call_id)}
-            />
-          </RendererWrapper>
-        );
-      }
-    });
-
     return elements;
   };
 
@@ -621,7 +598,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground">
         {/* Center container with max width and padding like ChatGPT - smaller default font */}
-        <div className="max-w-4xl mx-auto px-4 py-8 text-sm space-y-4">
+        <div className="max-w-4xl mx-auto px-2 py-4 text-sm space-y-2">
           {error && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
               <div className="text-destructive text-xs">
