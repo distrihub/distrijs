@@ -2199,14 +2199,6 @@ var ChatInput = ({
     onChange(transcript);
     onSpeechTranscript?.(transcript);
   }, [onChange, onSpeechTranscript]);
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if ((value.trim() || attachedImages.length > 0) && !disabled && !isStreaming) {
-        handleSend();
-      }
-    }
-  };
   const handleSend = (0, import_react14.useCallback)(async () => {
     if (!value.trim() && attachedImages.length === 0 || disabled || isStreaming) {
       return;
@@ -2245,8 +2237,8 @@ var ChatInput = ({
   };
   const hasContent = value.trim().length > 0 || attachedImages.length > 0;
   const isDisabled = disabled;
-  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: `relative flex min-h-14 w-full items-end ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "relative flex w-full flex-auto flex-col", children: [
-    attachedImages.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "flex flex-wrap gap-2 mb-2 mx-5", children: attachedImages.map((image) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "relative group", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: `relative w-full ${className}`, children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "flex flex-col w-full", children: [
+    attachedImages.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "flex flex-wrap gap-2 mb-2 mx-3 sm:mx-5", children: attachedImages.map((image) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "relative group", children: [
       /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
         "img",
         {
@@ -2265,27 +2257,34 @@ var ChatInput = ({
       ),
       /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg truncate", children: image.name })
     ] }, image.id)) }),
-    /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "mx-3 sm:mx-5 rounded-2xl border border-input bg-input p-2", children: /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "flex items-end gap-2", children: [
       /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
         "textarea",
         {
           ref: textareaRef,
           value,
           onChange: (e) => onChange(e.target.value),
-          onKeyPress: handleKeyPress,
+          onKeyDown: (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if ((value.trim() || attachedImages.length > 0) && !disabled && !isStreaming) {
+                handleSend();
+              }
+            }
+          },
           placeholder: attachedImages.length > 0 ? "Add a message..." : placeholder,
           disabled: isDisabled,
           rows: 1,
-          className: `max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 text-foreground min-h-[52px] max-h-[120px] ${voiceEnabled || useSpeechRecognition2 ? "pr-32" : "pr-24"}`
+          className: "flex-1 resize-none bg-transparent outline-none border-none leading-6 text-sm text-foreground placeholder:text-muted-foreground max-h-[40dvh] overflow-auto px-2 py-2"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "absolute right-2 bottom-0 flex items-center gap-1 h-full", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "flex items-center gap-1 shrink-0", children: [
         /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
           "button",
           {
             onClick: () => fileInputRef.current?.click(),
             disabled: isDisabled,
-            className: "h-10 w-10 rounded-md transition-colors flex items-center justify-center hover:bg-muted text-muted-foreground",
+            className: "h-10 w-10 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center",
             title: "Attach image",
             children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.ImageIcon, { className: "h-5 w-5" })
           }
@@ -2302,20 +2301,14 @@ var ChatInput = ({
           }
         ),
         voiceEnabled && !useSpeechRecognition2 && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(import_jsx_runtime11.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
             "button",
             {
               onClick: handleVoiceToggle,
               disabled: isDisabled || isStreaming || isStreamingVoice,
-              className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center relative ${isRecording ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse" : "hover:bg-muted text-muted-foreground"}`,
+              className: `h-10 w-10 rounded-md flex items-center justify-center ${isRecording ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-muted text-muted-foreground"}`,
               title: isRecording ? `Recording... ${recordingTime}s` : "Record voice message",
-              children: [
-                isRecording ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.MicOff, { className: "h-5 w-5" }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.Mic, { className: "h-5 w-5" }),
-                isRecording && recordingTime > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("span", { className: "absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-black text-white px-1 py-0.5 rounded", children: [
-                  recordingTime,
-                  "s"
-                ] })
-              ]
+              children: isRecording ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.MicOff, { className: "h-5 w-5" }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.Mic, { className: "h-5 w-5" })
             }
           ),
           onStartStreamingVoice && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
@@ -2323,7 +2316,7 @@ var ChatInput = ({
             {
               onClick: onStartStreamingVoice,
               disabled: isDisabled || isStreaming || isRecording,
-              className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreamingVoice ? "bg-blue-600 hover:bg-blue-700 text-white animate-pulse" : "hover:bg-muted text-muted-foreground"}`,
+              className: `h-10 w-10 rounded-md flex items-center justify-center ${isStreamingVoice ? "bg-blue-600 text-white animate-pulse" : "hover:bg-muted text-muted-foreground"}`,
               title: isStreamingVoice ? "Streaming voice conversation active" : "Start streaming voice conversation",
               children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.Radio, { className: "h-5 w-5" })
             }
@@ -2334,12 +2327,13 @@ var ChatInput = ({
           {
             onClick: isStreaming ? handleStop : handleSend,
             disabled: isStreaming ? false : !hasContent || isDisabled,
-            className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : hasContent && !disabled ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"}`,
+            className: `h-10 w-10 rounded-full flex items-center justify-center ${isStreaming ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : hasContent && !disabled ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground"}`,
+            title: isStreaming ? "Stop" : "Send",
             children: isStreaming ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.Square, { className: "h-5 w-5" }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(import_lucide_react6.Send, { className: "h-5 w-5" })
           }
         )
       ] })
-    ] }),
+    ] }) }),
     /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
       "input",
       {
@@ -3573,7 +3567,7 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
   }, [toolCalls, expandedTools]);
   const getThemeClasses = () => {
     if (theme === "dark") return "dark";
-    if (theme === "light") return "";
+    if (theme === "light") return "light";
     return "";
   };
   const renderMessages = () => {
@@ -3603,9 +3597,6 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
     const externalToolCalls = Array.from(toolCalls.values()).filter(
       (toolCall) => (toolCall.status === "pending" || toolCall.status === "running") && toolCall.isExternal && toolCall.component
     );
-    if (externalToolCalls.length > 0) {
-      console.log("\u{1F527} Found external tool calls:", externalToolCalls.length, externalToolCalls.map((tc) => ({ name: tc.tool_name, status: tc.status, hasComponent: !!tc.component })));
-    }
     externalToolCalls.forEach((toolCall) => {
       elements.push(
         /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RendererWrapper2, { children: toolCall.component }, `external-tool-${toolCall.tool_call_id}`)
@@ -3680,18 +3671,18 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
           renderPendingMessage(),
           /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { ref: messagesEndRef })
         ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "border-t border-border bg-background", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-4", children: [
-          models && models.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mb-4 flex items-center gap-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-sm text-muted-foreground", children: "Model:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("footer", { className: "\n  sticky bottom-0 inset-x-0 z-30\n  border-t border-border\n  bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60\n  pb-[env(safe-area-inset-bottom)]\n", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "max-w-4xl mx-auto w-full px-4 py-3 sm:py-4 space-y-3", children: [
+          models && models.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-sm text-muted-foreground shrink-0", children: "Model:" }),
             /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Select, { value: selectedModelId, onValueChange: onModelChange, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SelectTrigger, { className: "w-64", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SelectValue, { placeholder: "Select a model" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SelectTrigger, { className: "w-64 max-w-full", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SelectValue, { placeholder: "Select a model" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SelectContent, { children: models.map((model) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(SelectItem, { value: model.id, children: model.name }, model.id)) })
             ] })
           ] }),
-          voiceEnabled && (isStreamingVoice || streamingTranscript) && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "mb-4 p-3 bg-muted/50 border border-muted rounded-lg", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center gap-2 mb-2", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "w-2 h-2 bg-red-500 rounded-full animate-pulse" }),
-              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-sm font-medium text-muted-foreground", children: isStreamingVoice ? "Listening..." : "Processing..." }),
+          voiceEnabled && (isStreamingVoice || streamingTranscript) && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-3 bg-muted/50 border border-muted rounded-lg", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-2 h-2 rounded-full bg-red-500 animate-pulse" }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "text-sm font-medium text-muted-foreground", children: isStreamingVoice ? "Listening\u2026" : "Processing\u2026" }),
               isStreamingVoice && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
                 "button",
                 {
@@ -3701,10 +3692,10 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
                 }
               )
             ] }),
-            streamingTranscript && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { className: "text-sm text-foreground font-mono", children: [
-              '"',
+            streamingTranscript && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { className: "mt-2 text-sm text-foreground font-mono break-words", children: [
+              "\u201C",
               streamingTranscript,
-              '"'
+              "\u201D"
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
@@ -3714,7 +3705,7 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
               onChange: setInput,
               onSend: handleSendMessage,
               onStop: handleStopStreaming,
-              placeholder: isStreamingVoice ? "Voice mode active..." : isStreaming ? "Message will be queued..." : "Type your message...",
+              placeholder: isStreamingVoice ? "Voice mode active\u2026" : isStreaming ? "Message will be queued\u2026" : "Type your message\u2026",
               disabled: isLoading || hasPendingToolCalls() || isStreamingVoice,
               isStreaming,
               attachedImages,
@@ -3725,7 +3716,8 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
               onStartStreamingVoice: voiceEnabled ? startStreamingVoice : void 0,
               isStreamingVoice,
               useSpeechRecognition: useSpeechRecognition2,
-              onSpeechTranscript: handleSpeechTranscript
+              onSpeechTranscript: handleSpeechTranscript,
+              className: "w-full"
             }
           )
         ] }) })

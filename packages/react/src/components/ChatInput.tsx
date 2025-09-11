@@ -162,15 +162,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     onSpeechTranscript?.(transcript);
   }, [onChange, onSpeechTranscript]);
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if ((value.trim() || attachedImages.length > 0) && !disabled && !isStreaming) {
-        handleSend();
-      }
-    }
-  };
-
   const handleSend = useCallback(async () => {
     if ((!value.trim() && attachedImages.length === 0) || disabled || isStreaming) {
       return;
@@ -224,11 +215,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const isDisabled = disabled; // Remove isStreaming from disabled condition
 
   return (
-    <div className={`relative flex min-h-14 w-full items-end ${className}`}>
-      <div className="relative flex w-full flex-auto flex-col">
-        {/* Image previews */}
+    <div className={`relative w-full ${className}`}>
+      <div className="flex flex-col w-full">
+        {/* Image previews (unchanged) */}
         {attachedImages.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2 mx-5">
+          <div className="flex flex-wrap gap-2 mb-2 mx-3 sm:mx-5">
             {attachedImages.map((image) => (
               <div key={image.id} className="relative group">
                 <img
@@ -250,96 +241,94 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         )}
 
-        <div className="relative mx-5 flex min-h-14 flex-auto rounded-lg border border-input bg-input items-start h-full">
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={attachedImages.length > 0 ? "Add a message..." : placeholder}
-            disabled={isDisabled}
-            rows={1}
-            className={`max-h-[25dvh] flex-1 resize-none border-none outline-none bg-transparent placeholder:text-muted-foreground focus:ring-0 overflow-auto text-sm p-4 text-foreground min-h-[52px] max-h-[120px] ${voiceEnabled || useSpeechRecognition ? 'pr-32' : 'pr-24'}`}
-          />
-
-          <div className="absolute right-2 bottom-0 flex items-center gap-1 h-full">
-            {/* Image upload button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
+        {/* Input bar */}
+        <div className="mx-3 sm:mx-5 rounded-2xl border border-input bg-input p-2">
+          <div className="flex items-end gap-2">
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if ((value.trim() || attachedImages.length > 0) && !disabled && !isStreaming) {
+                    handleSend();
+                  }
+                }
+              }}
+              placeholder={attachedImages.length > 0 ? 'Add a message...' : placeholder}
               disabled={isDisabled}
-              className="h-10 w-10 rounded-md transition-colors flex items-center justify-center hover:bg-muted text-muted-foreground"
-              title="Attach image"
-            >
-              <ImageIcon className="h-5 w-5" />
-            </button>
+              rows={1}
+              className="flex-1 resize-none bg-transparent outline-none border-none leading-6 text-sm text-foreground placeholder:text-muted-foreground max-h-[40dvh] overflow-auto px-2 py-2"
+            />
 
-            {/* Voice input options */}
-            {useSpeechRecognition && (
-              <VoiceInput
-                onTranscript={handleSpeechTranscript}
-                disabled={isDisabled || isStreaming}
-                onError={(error) => console.error('Voice input error:', error)}
-                useBrowserSpeechRecognition={true}
-                language="en-US"
-                interimResults={true}
-              />
-            )}
+            {/* Controls (never overlap the text) */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isDisabled}
+                className="h-10 w-10 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center"
+                title="Attach image"
+              >
+                <ImageIcon className="h-5 w-5" />
+              </button>
 
-            {/* Legacy voice recording and streaming buttons */}
-            {voiceEnabled && !useSpeechRecognition && (
-              <>
-                {/* Regular voice recording button */}
-                <button
-                  onClick={handleVoiceToggle}
-                  disabled={isDisabled || isStreaming || isStreamingVoice}
-                  className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center relative ${isRecording
-                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse'
-                    : 'hover:bg-muted text-muted-foreground'
-                    }`}
-                  title={isRecording ? `Recording... ${recordingTime}s` : "Record voice message"}
-                >
-                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                  {isRecording && recordingTime > 0 && (
-                    <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-black text-white px-1 py-0.5 rounded">
-                      {recordingTime}s
-                    </span>
-                  )}
-                </button>
-
-                {/* Streaming voice conversation button */}
-                {onStartStreamingVoice && (
-                  <button
-                    onClick={onStartStreamingVoice}
-                    disabled={isDisabled || isStreaming || isRecording}
-                    className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreamingVoice
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white animate-pulse'
-                      : 'hover:bg-muted text-muted-foreground'
-                      }`}
-                    title={isStreamingVoice ? "Streaming voice conversation active" : "Start streaming voice conversation"}
-                  >
-                    <Radio className="h-5 w-5" />
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* Send/Stop button */}
-            <button
-              onClick={isStreaming ? handleStop : handleSend}
-              disabled={isStreaming ? false : (!hasContent || isDisabled)}
-              className={`h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isStreaming
-                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                : hasContent && !disabled
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted'
-                }`}
-            >
-              {isStreaming ? (
-                <Square className="h-5 w-5" />
-              ) : (
-                <Send className="h-5 w-5" />
+              {useSpeechRecognition && (
+                <VoiceInput
+                  onTranscript={handleSpeechTranscript}
+                  disabled={isDisabled || isStreaming}
+                  onError={(error) => console.error('Voice input error:', error)}
+                  useBrowserSpeechRecognition={true}
+                  language="en-US"
+                  interimResults={true}
+                />
               )}
-            </button>
+
+              {voiceEnabled && !useSpeechRecognition && (
+                <>
+                  <button
+                    onClick={handleVoiceToggle}
+                    disabled={isDisabled || isStreaming || isStreamingVoice}
+                    className={`h-10 w-10 rounded-md flex items-center justify-center ${isRecording
+                        ? 'bg-destructive text-destructive-foreground animate-pulse'
+                        : 'hover:bg-muted text-muted-foreground'
+                      }`}
+                    title={isRecording ? `Recording... ${recordingTime}s` : 'Record voice message'}
+                  >
+                    {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </button>
+
+                  {onStartStreamingVoice && (
+                    <button
+                      onClick={onStartStreamingVoice}
+                      disabled={isDisabled || isStreaming || isRecording}
+                      className={`h-10 w-10 rounded-md flex items-center justify-center ${isStreamingVoice
+                          ? 'bg-blue-600 text-white animate-pulse'
+                          : 'hover:bg-muted text-muted-foreground'
+                        }`}
+                      title={isStreamingVoice ? 'Streaming voice conversation active' : 'Start streaming voice conversation'}
+                    >
+                      <Radio className="h-5 w-5" />
+                    </button>
+                  )}
+                </>
+              )}
+
+              <button
+                onClick={isStreaming ? handleStop : handleSend}
+                disabled={isStreaming ? false : (!hasContent || isDisabled)}
+                className={`h-10 w-10 rounded-full flex items-center justify-center ${isStreaming
+                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                    : hasContent && !disabled
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                title={isStreaming ? 'Stop' : 'Send'}
+              >
+                {isStreaming ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -355,4 +344,5 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       </div>
     </div>
   );
+
 };
