@@ -474,7 +474,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   // Determine theme classes
   const getThemeClasses = () => {
     if (theme === 'dark') return 'dark';
-    if (theme === 'light') return '';
+    if (theme === 'light') return 'light';
     // For 'auto', we'll let the system handle it
     return '';
   };
@@ -635,14 +635,21 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
         </div>
       </div>
 
-      <div className="border-t border-border bg-background">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          {/* Model selector dropdown */}
+      {/* Sticky composer like ChatGPT */}
+      <footer className="
+  sticky bottom-0 inset-x-0 z-30
+  border-t border-border
+  bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60
+  pb-[env(safe-area-inset-bottom)]
+">
+        <div className="max-w-4xl mx-auto w-full px-4 py-3 sm:py-4 space-y-3">
+
+          {/* Model selector (wraps on small screens) */}
           {models && models.length > 0 && (
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Model:</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground shrink-0">Model:</span>
               <Select value={selectedModelId} onValueChange={onModelChange}>
-                <SelectTrigger className="w-64">
+                <SelectTrigger className="w-64 max-w-full">
                   <SelectValue placeholder="Select a model" />
                 </SelectTrigger>
                 <SelectContent>
@@ -656,13 +663,13 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             </div>
           )}
 
-          {/* Streaming voice indicator */}
+          {/* Streaming voice indicator (non-overlapping, full-width) */}
           {voiceEnabled && (isStreamingVoice || streamingTranscript) && (
-            <div className="mb-4 p-3 bg-muted/50 border border-muted rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <div className="p-3 bg-muted/50 border border-muted rounded-lg">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  {isStreamingVoice ? 'Listening...' : 'Processing...'}
+                  {isStreamingVoice ? 'Listening…' : 'Processing…'}
                 </span>
                 {isStreamingVoice && (
                   <button
@@ -674,19 +681,26 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
                 )}
               </div>
               {streamingTranscript && (
-                <p className="text-sm text-foreground font-mono">
-                  "{streamingTranscript}"
+                <p className="mt-2 text-sm text-foreground font-mono break-words">
+                  “{streamingTranscript}”
                 </p>
               )}
             </div>
           )}
 
+          {/* Chat input (uses the non-overlapping layout from previous message) */}
           <ChatInput
             value={input}
             onChange={setInput}
             onSend={handleSendMessage}
             onStop={handleStopStreaming}
-            placeholder={isStreamingVoice ? "Voice mode active..." : isStreaming ? "Message will be queued..." : "Type your message..."}
+            placeholder={
+              isStreamingVoice
+                ? 'Voice mode active…'
+                : isStreaming
+                  ? 'Message will be queued…'
+                  : 'Type your message…'
+            }
             disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
             isStreaming={isStreaming}
             attachedImages={attachedImages}
@@ -694,15 +708,14 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             onAddImages={addImages}
             voiceEnabled={voiceEnabled}
             onVoiceRecord={handleVoiceRecord}
-            // Pass streaming voice functions to ChatInput
             onStartStreamingVoice={voiceEnabled ? startStreamingVoice : undefined}
             isStreamingVoice={isStreamingVoice}
-            // Speech recognition props
             useSpeechRecognition={useSpeechRecognition}
             onSpeechTranscript={handleSpeechTranscript}
+            className="w-full"
           />
-        </div >
-      </div >
+        </div>
+      </footer>
 
 
     </div >
