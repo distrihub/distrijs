@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistriMessage, DistriPart, ToolCall, ToolResult } from '@distri/core';
+import { DistriMessage, DistriPart, ToolCall, ToolResult, extractToolResultData } from '@distri/core';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { CheckCircle, Clock, AlertCircle, Play } from 'lucide-react';
@@ -43,14 +43,16 @@ export const ExecutionSteps: React.FC<ExecutionStepsProps> = ({ messages, classN
           const existingStep = stepsMap.get(toolResult.tool_call_id);
           if (existingStep) {
             existingStep.tool_result = toolResult;
-            existingStep.status = toolResult.success ? 'completed' : 'error';
+            const resultData = extractToolResultData(toolResult);
+            existingStep.status = resultData?.success ? 'completed' : 'error';
           } else {
             // Create a new step for orphaned tool results
+            const resultData = extractToolResultData(toolResult);
             const step: ExecutionStep = {
               id: toolResult.tool_call_id,
               type: 'tool_result',
               tool_result: toolResult,
-              status: toolResult.success ? 'completed' : 'error',
+              status: resultData?.success ? 'completed' : 'error',
               timestamp: message.created_at,
             };
             allSteps.push(step);
@@ -159,7 +161,7 @@ export const ExecutionSteps: React.FC<ExecutionStepsProps> = ({ messages, classN
               <div className="space-y-2 mt-2">
                 <div className="text-xs text-gray-600">Result:</div>
                 <div className="text-xs bg-gray-50 p-2 rounded overflow-x-auto max-h-32 overflow-y-auto">
-                  {formatToolResult(step.tool_result.result)}
+                  {formatToolResult(extractToolResultData(step.tool_result)?.result)}
                 </div>
               </div>
             )}

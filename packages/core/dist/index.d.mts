@@ -271,6 +271,7 @@ type DistriStreamEvent = DistriMessage | DistriEvent | DistriArtifact;
 interface InvokeContext {
     thread_id: string;
     run_id?: string;
+    task_id?: string;
     getMetadata?: () => any;
 }
 /**
@@ -284,7 +285,7 @@ type ToolCallPart = {
     type: 'tool_call';
     data: ToolCall;
 };
-type ToolResultPart = {
+type ToolResultRefPart = {
     type: 'tool_result';
     data: ToolResult;
 };
@@ -294,9 +295,13 @@ type ImagePart = {
 };
 type DataPart = {
     type: 'data';
-    data: any;
+    data: ToolResultData | string | number | boolean | null | object;
 };
-type DistriPart = TextPart | ToolCallPart | ToolResultPart | ImagePart | DataPart;
+type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart | DataPart;
+/**
+ * Union type for parts that can appear in ToolResult (frontend or backend format)
+ */
+type ToolResultPart = DistriPart | BackendPart;
 /**
  * File type for images
  */
@@ -346,15 +351,43 @@ interface ToolCall {
     input: any;
 }
 /**
- * Tool result for responding to tool calls
+ * Backend part structure (from Rust Vec<Part>)
+ */
+interface BackendPart {
+    part_type: 'data';
+    data: string;
+}
+/**
+ * Tool result structure that can come from backend or frontend
  */
 interface ToolResult {
-    tool_call_id: string;
-    tool_name: string;
-    result: string | number | boolean | null;
+    readonly tool_call_id: string;
+    readonly tool_name: string;
+    readonly parts: readonly ToolResultPart[];
+}
+/**
+ * Tool result data that goes inside the parts array
+ */
+interface ToolResultData {
+    result: string | number | boolean | null | object;
     success: boolean;
     error?: string;
 }
+/**
+ * Type-safe helper to create a successful ToolResult
+ * Uses proper DistriPart structure - conversion to backend format happens in encoder
+ */
+declare function createSuccessfulToolResult(toolCallId: string, toolName: string, result: string | number | boolean | null | object): ToolResult;
+/**
+ * Type-safe helper to create a failed ToolResult
+ * Uses proper DistriPart structure - conversion to backend format happens in encoder
+ */
+declare function createFailedToolResult(toolCallId: string, toolName: string, error: string, result?: string | number | boolean | null | object): ToolResult;
+/**
+ * Type-safe helper to extract ToolResultData from a ToolResult
+ * Handles both frontend DistriPart format and backend BackendPart format
+ */
+declare function extractToolResultData(toolResult: ToolResult): ToolResultData | null;
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
  */
@@ -469,6 +502,10 @@ declare class ApiError extends DistriError {
 declare class ConnectionError extends DistriError {
     constructor(message: string, details?: any);
 }
+/**
+ * Helper to convert BackendPart to DistriPart for consistent frontend usage
+ */
+declare function normalizeToolResult(toolResult: ToolResult): ToolResult;
 
 type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Task;
 declare function isDistriMessage(event: DistriStreamEvent): event is DistriMessage;
@@ -693,4 +730,4 @@ declare function extractToolCallsFromDistriMessage(message: DistriMessage): any[
  */
 declare function extractToolResultsFromDistriMessage(message: DistriMessage): any[];
 
-export { A2AProtocolError, type A2AStreamEventData, type ActionPlanStep, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type AssistantWithToolCalls, type BasePlanStep, type BatchToolCallsStep, type ChatProps, type CodePlanStep, ConnectionError, type ConnectionStatus, type DataPart, type DistriArtifact, type DistriBaseTool, type DistriChatMessage, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriPlan, type DistriStreamEvent, type DistriThread, type FeedbackReceivedEvent, type FileBytes, type FileType, type FileUrl, type FinalResultPlanStep, type GenericArtifact, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type LlmPlanStep, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanAction, type PlanFinishedEvent, type PlanPrunedEvent, type PlanStartedEvent, type PlanStep, type ReactStep, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type StepCompletedEvent, type StepStartedEvent, type TaskArtifactEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type ThoughtPlanStep, type ThoughtStep, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolCallsEvent, type ToolHandler, type ToolRejectedEvent, type ToolResult, type ToolResultPart, type ToolResults, type ToolResultsEvent, type ToolsConfig, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultsFromDistriMessage, isDistriArtifact, isDistriEvent, isDistriMessage, isDistriPlan, processA2AMessagesData, processA2AStreamData, uuidv4 };
+export { A2AProtocolError, type A2AStreamEventData, type ActionPlanStep, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type AssistantWithToolCalls, type BackendPart, type BasePlanStep, type BatchToolCallsStep, type ChatProps, type CodePlanStep, ConnectionError, type ConnectionStatus, type DataPart, type DistriArtifact, type DistriBaseTool, type DistriChatMessage, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriPlan, type DistriStreamEvent, type DistriThread, type FeedbackReceivedEvent, type FileBytes, type FileType, type FileUrl, type FinalResultPlanStep, type GenericArtifact, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type LlmPlanStep, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanAction, type PlanFinishedEvent, type PlanPrunedEvent, type PlanStartedEvent, type PlanStep, type ReactStep, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type StepCompletedEvent, type StepStartedEvent, type TaskArtifactEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type ThoughtPlanStep, type ThoughtStep, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolCallsEvent, type ToolHandler, type ToolRejectedEvent, type ToolResult, type ToolResultData, type ToolResultPart, type ToolResultRefPart, type ToolResults, type ToolResultsEvent, type ToolsConfig, convertA2AArtifactToDistri, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, createFailedToolResult, createSuccessfulToolResult, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultData, extractToolResultsFromDistriMessage, isDistriArtifact, isDistriEvent, isDistriMessage, isDistriPlan, normalizeToolResult, processA2AMessagesData, processA2AStreamData, uuidv4 };

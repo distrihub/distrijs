@@ -14,6 +14,8 @@ import {
   RunStartedEvent,
   RunFinishedEvent,
   ToolsConfig,
+  extractToolResultData,
+  normalizeToolResult,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -86,7 +88,7 @@ export interface ChatState {
   steps: Map<string, StepState>;
   toolCalls: Map<string, ToolCallState>;
   currentRunId?: string;    // From AgentEvent runId
-  currentTaskId?: string;   // From AgentEvent taskId
+  currentTaskId?: string;   // From A2A status-update taskId - this is what we send back
   currentPlanId?: string;   // Generated locally
   messages: DistriChatMessage[];
 
@@ -405,7 +407,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
-          // Track current IDs
           set({
             currentRunId: runId,
             currentTaskId: taskId
@@ -440,7 +441,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             get().updateTask(errorTaskId, {
               status: 'failed',
               endTime: timestamp,
-              error: message.data?.message || 'Unknown error',
+              error: (message.data as { message?: string })?.message || 'Unknown error',
             });
           }
 
@@ -545,7 +546,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Handle direct tool calls event
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
             console.log('🔧 Processing tool_calls event:', message.data.tool_calls);
-            message.data.tool_calls.forEach(toolCall => {
+            message.data.tool_calls.forEach((toolCall: ToolCall) => {
               console.log('🔧 Creating tool call:', toolCall.tool_name, toolCall.tool_call_id);
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
@@ -562,15 +563,20 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'tool_results':
           // Handle direct tool results event
           if (message.data.results && Array.isArray(message.data.results)) {
-            message.data.results.forEach(result => {
+            message.data.results.forEach((result: { tool_call_id: string; tool_name: string; result: any; error?: string; success?: boolean }) => {
               get().updateToolCallStatus(result.tool_call_id, {
                 status: result.success !== false ? 'completed' : 'error',
                 result: {
                   tool_call_id: result.tool_call_id,
                   tool_name: result.tool_name,
-                  result: result.result,
-                  error: result.error,
-                  success: result.success !== false,
+                  parts: [{
+                    type: 'data' as const,
+                    data: {
+                      result: result.result,
+                      error: result.error,
+                      success: result.success !== false,
+                    }
+                  }]
                 },
                 error: result.error,
                 endTime: timestamp,
@@ -660,22 +666,34 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
 
   completeTool: async (toolCall: ToolCall, result: ToolResult) => {
+    console.log('completeTool', toolCall, result);
+
+    // Normalize the tool result to handle backend format
+    const normalizedResult = normalizeToolResult(result);
+
+    // Extract success/error from the parts structure using type-safe helper
+    const resultData = extractToolResultData(normalizedResult);
+    const success = resultData?.success ?? false;
+
+    const error = resultData?.error;
+
     get().updateToolCallStatus(toolCall.tool_call_id, {
-      status: result.success ? 'completed' : 'error',
-      result: result,
+      status: success ? 'completed' : 'error',
+      result: normalizedResult,
       endTime: Date.now(),
-      error: result.error || undefined,
+      error: error || undefined,
     });
 
-    if (result.error) {
+    if (error) {
       toast.error('Tool Error', {
-        description: result.error,
+        description: error,
         duration: 5000,
       });
     }
 
     // Check if all external tools are completed after this completion
     const state = get();
+    console.log('state.toolCalls', state.toolCalls);
     const pendingExternalTools = Array.from(state.toolCalls.values()).filter(
       tc => tc.isExternal && (tc.status === 'pending' || tc.status === 'running')
     );
@@ -689,6 +707,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
 
   initializeTool: (toolCall: ToolCall) => {
+    console.log('initializeTool', toolCall);
     const state = get();
     let distriTool: DistriAnyTool | undefined;
     if (state.tools) {
@@ -796,9 +815,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     return completedToolCalls.map(toolCallState => ({
       tool_call_id: toolCallState.tool_call_id,
       tool_name: toolCallState.tool_name,
-      result: toolCallState.result?.result,
-      error: toolCallState.result?.error,
-      success: toolCallState.result?.success,
+      parts: toolCallState.result?.parts || [{
+        type: 'data' as const,
+        data: { result: null, error: 'No result', success: false }
+      }]
     } as ToolResult));
   },
 

@@ -97,7 +97,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Pending message state - single message with accumulated parts
+  // Pending message state single message with accumulated parts
   const [pendingMessage, setPendingMessage] = useState<DistriPart[] | null>(null);
 
   // Image upload state moved from ChatInput
@@ -525,6 +525,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     return elements;
   };
 
+
   // Render thinking indicator separately at the end
   const renderThinkingIndicator = () => {
     if (streamingIndicator === 'typing') {
@@ -613,7 +614,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       )}
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground">
-        {/* Center container with max width and padding like ChatGPT - smaller default font */}
+        {/* Center container with max width and padding like ChatGPT smaller default font */}
         <div className="max-w-4xl mx-auto px-2 py-4 text-sm space-y-2">
           {error && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">

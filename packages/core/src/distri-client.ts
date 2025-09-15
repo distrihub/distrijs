@@ -138,6 +138,7 @@ export class DistriClient {
    * Send a streaming message to an agent
    */
   async * sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData> {
+    console.log('sendMessageStream', agentId, params);
     try {
       const client = this.getA2AClient(agentId);
       yield* await client.sendMessageStream(params);

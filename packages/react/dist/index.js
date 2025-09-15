@@ -87,16 +87,19 @@ Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
 // src/components/renderers/tools/ApprovalToolCall.tsx
 import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { createSuccessfulToolResult } from "@distri/core";
 import { jsx as jsx3, jsxs } from "react/jsx-runtime";
 
 // src/components/renderers/tools/ToastToolCall.tsx
 import { useEffect as useEffect2 } from "react";
+import { createSuccessfulToolResult as createSuccessfulToolResult2 } from "@distri/core";
 import { toast } from "sonner";
 import { Fragment, jsx as jsx4 } from "react/jsx-runtime";
 
 // src/components/renderers/tools/DefaultToolActions.tsx
 import { useState as useState2, useEffect as useEffect3 } from "react";
 import { Wrench, CheckCircle as CheckCircle2, XCircle as XCircle2, Loader2 } from "lucide-react";
+import { createSuccessfulToolResult as createSuccessfulToolResult3, createFailedToolResult } from "@distri/core";
 import { jsx as jsx5, jsxs as jsxs2 } from "react/jsx-runtime";
 var DefaultToolActions = ({
   toolCall,
@@ -157,26 +160,23 @@ var DefaultToolActions = ({
     try {
       const result = await tool.handler(toolCall.input);
       if (!tool.is_final) {
-        const toolResult = {
-          tool_call_id: toolCall.tool_call_id,
-          tool_name: toolName,
-          result: typeof result === "string" ? result : JSON.stringify(result),
-          success: true,
-          error: void 0
-        };
+        const toolResult = createSuccessfulToolResult3(
+          toolCall.tool_call_id,
+          toolName,
+          typeof result === "string" ? result : JSON.stringify(result)
+        );
         await completeTool(toolResult);
       } else {
         console.log("Tool is final, no action required");
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const toolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolName,
-        result: "Tool execution failed" + errorMessage,
-        success: false,
-        error: errorMessage
-      };
+      const toolResult = createFailedToolResult(
+        toolCall.tool_call_id,
+        toolName,
+        errorMessage,
+        "Tool execution failed"
+      );
       await completeTool(toolResult);
     } finally {
       setIsProcessing(false);
@@ -188,13 +188,12 @@ var DefaultToolActions = ({
       saveApprovalPreference(toolName, false);
     }
     setHasExecuted(true);
-    const toolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolName,
-      result: "Tool execution cancelled by user",
-      success: false,
-      error: "User cancelled the operation"
-    };
+    const toolResult = createFailedToolResult(
+      toolCall.tool_call_id,
+      toolName,
+      "User cancelled the operation",
+      "Tool execution cancelled by user"
+    );
     completeTool(toolResult);
   };
   if (hasExecuted && !isProcessing) {
@@ -292,6 +291,7 @@ var DefaultToolActions = ({
 
 // src/components/renderers/tools/MissingTool.tsx
 import { AlertTriangle as AlertTriangle2, XCircle as XCircle3 } from "lucide-react";
+import { createFailedToolResult as createFailedToolResult2 } from "@distri/core";
 import { jsx as jsx6, jsxs as jsxs3 } from "react/jsx-runtime";
 var MissingTool = ({
   toolCall,
@@ -300,13 +300,12 @@ var MissingTool = ({
   const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
   const toolName = toolCall.tool_name;
   const handleDismiss = () => {
-    const toolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolName,
-      result: `Tool '${toolName}' is not available`,
-      success: false,
-      error: `Tool '${toolName}' not found in external tools`
-    };
+    const toolResult = createFailedToolResult2(
+      toolCall.tool_call_id,
+      toolName,
+      `Tool '${toolName}' not found in external tools`,
+      `Tool '${toolName}' is not available`
+    );
     completeTool(toolResult);
   };
   return /* @__PURE__ */ jsxs3("div", { className: "border rounded-lg p-4 bg-destructive/5 border-destructive/20", children: [
@@ -351,7 +350,9 @@ import { create } from "zustand";
 import {
   isDistriEvent,
   isDistriArtifact,
-  isDistriMessage
+  isDistriMessage,
+  extractToolResultData,
+  normalizeToolResult
 } from "@distri/core";
 
 // src/utils/extractThought.ts
@@ -700,9 +701,14 @@ var useChatStateStore = create((set, get) => ({
                 result: {
                   tool_call_id: result.tool_call_id,
                   tool_name: result.tool_name,
-                  result: result.result,
-                  error: result.error,
-                  success: result.success !== false
+                  parts: [{
+                    type: "data",
+                    data: {
+                      result: result.result,
+                      error: result.error,
+                      success: result.success !== false
+                    }
+                  }]
                 },
                 error: result.error,
                 endTime: timestamp
@@ -777,19 +783,25 @@ var useChatStateStore = create((set, get) => ({
     });
   },
   completeTool: async (toolCall, result) => {
+    console.log("completeTool", toolCall, result);
+    const normalizedResult = normalizeToolResult(result);
+    const resultData = extractToolResultData(normalizedResult);
+    const success = resultData?.success ?? false;
+    const error = resultData?.error;
     get().updateToolCallStatus(toolCall.tool_call_id, {
-      status: result.success ? "completed" : "error",
-      result,
+      status: success ? "completed" : "error",
+      result: normalizedResult,
       endTime: Date.now(),
-      error: result.error || void 0
+      error: error || void 0
     });
-    if (result.error) {
+    if (error) {
       toast2.error("Tool Error", {
-        description: result.error,
+        description: error,
         duration: 5e3
       });
     }
     const state = get();
+    console.log("state.toolCalls", state.toolCalls);
     const pendingExternalTools = Array.from(state.toolCalls.values()).filter(
       (tc) => tc.isExternal && (tc.status === "pending" || tc.status === "running")
     );
@@ -800,6 +812,7 @@ var useChatStateStore = create((set, get) => ({
     }
   },
   initializeTool: (toolCall) => {
+    console.log("initializeTool", toolCall);
     const state = get();
     let distriTool;
     if (state.tools) {
@@ -891,9 +904,10 @@ var useChatStateStore = create((set, get) => ({
     return completedToolCalls.map((toolCallState) => ({
       tool_call_id: toolCallState.tool_call_id,
       tool_name: toolCallState.tool_name,
-      result: toolCallState.result?.result,
-      error: toolCallState.result?.error,
-      success: toolCallState.result?.success
+      parts: toolCallState.result?.parts || [{
+        type: "data",
+        data: { result: null, error: "No result", success: false }
+      }]
     }));
   },
   getToolCallById: (toolCallId) => {
@@ -1078,13 +1092,14 @@ function useChat({
   useEffect5(() => {
     getMetadataRef.current = getMetadata;
   }, [getMetadata]);
-  const createInvokeContext = useCallback(() => ({
-    thread_id: threadId,
-    run_id: void 0,
-    getMetadata: getMetadataRef.current
-  }), [threadId]);
   useRegisterTools({ agent, tools, wrapOptions });
   const chatState = useChatStateStore();
+  const createInvokeContext = useCallback(() => ({
+    thread_id: threadId,
+    run_id: chatState.currentRunId,
+    task_id: chatState.currentTaskId,
+    getMetadata: getMetadataRef.current
+  }), [threadId, chatState.currentRunId, chatState.currentTaskId]);
   const isLoading = useChatStateStore((state) => state.isLoading);
   const isStreaming = useChatStateStore((state) => state.isStreaming);
   const {
@@ -1167,7 +1182,10 @@ function useChat({
       const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: contextMetadata
+        metadata: {
+          ...contextMetadata,
+          task_id: chatState.currentTaskId
+        }
       });
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
@@ -1207,7 +1225,10 @@ function useChat({
       const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: { ...contextMetadata }
+        metadata: {
+          ...contextMetadata,
+          task_id: chatState.currentTaskId
+        }
       });
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
@@ -1238,13 +1259,7 @@ function useChat({
       try {
         const toolResultParts = externalResponses.map((result) => ({
           type: "tool_result",
-          data: {
-            tool_call_id: result.tool_call_id,
-            tool_name: result.tool_name,
-            result: result.result,
-            success: result.success,
-            error: result.error
-          }
+          data: result
         }));
         const toolResultMessage = DistriClient.initDistriMessage("user", toolResultParts);
         processMessage(toolResultMessage, false);
@@ -1266,6 +1281,17 @@ function useChat({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+  }, []);
+  useEffect5(() => {
+    const callback = async () => {
+      if (handleExternalToolResponsesRef.current) {
+        await handleExternalToolResponsesRef.current();
+      }
+    };
+    chatState.setOnAllToolsCompleted(callback);
+    return () => {
+      chatState.setOnAllToolsCompleted(void 0);
+    };
   }, []);
   const messages = useChatStateStore((state) => state.messages);
   return {
@@ -5193,46 +5219,56 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
   }
   const metadata = statusUpdate.metadata;
   switch (metadata.type) {
-    case "run_started":
-      return {
+    case "run_started": {
+      const result = {
         type: "run_started",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-    case "run_error":
-      return {
+      return result;
+    }
+    case "run_error": {
+      const result = {
         type: "run_error",
         data: {
           message: statusUpdate.error,
           code: statusUpdate.code
         }
       };
-    case "run_finished":
-      return {
+      return result;
+    }
+    case "run_finished": {
+      const result = {
         type: "run_finished",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-    case "plan_started":
-      return {
+      return result;
+    }
+    case "plan_started": {
+      const result = {
         type: "plan_started",
         data: {
           initial_plan: metadata.initial_plan
         }
       };
-    case "plan_finished":
-      return {
+      return result;
+    }
+    case "plan_finished": {
+      const result = {
         type: "plan_finished",
         data: {
           total_steps: metadata.total_steps
         }
       };
-    case "step_started":
-      return {
+      return result;
+    }
+    case "step_started": {
+      const result = {
         type: "step_started",
         data: {
           step_id: metadata.step_id,
@@ -5240,8 +5276,10 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-    case "step_completed":
-      return {
+      return result;
+    }
+    case "step_completed": {
+      const result = {
         type: "step_completed",
         data: {
           step_id: metadata.step_id,
@@ -5249,66 +5287,89 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-    case "tool_execution_start":
-      return {
+      return result;
+    }
+    case "tool_execution_start": {
+      const result = {
         type: "tool_call_start",
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || "Tool",
-          parent_message_id: statusUpdate.taskId,
-          is_external: true
+          parent_message_id: statusUpdate.taskId
         }
       };
-    case "tool_execution_end":
-      return {
+      return result;
+    }
+    case "tool_execution_end": {
+      const result = {
         type: "tool_call_end",
         data: {
           tool_call_id: metadata.tool_call_id
         }
       };
-    case "text_message_start":
-      return {
+      return result;
+    }
+    case "text_message_start": {
+      const result = {
         type: "text_message_start",
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || "",
           role: metadata.role === "assistant" ? "assistant" : "user"
         }
       };
-    case "text_message_content":
-      return {
+      return result;
+    }
+    case "text_message_content": {
+      const result = {
         type: "text_message_content",
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || "",
           delta: metadata.delta || ""
         }
       };
-    case "text_message_end":
-      return {
+      return result;
+    }
+    case "text_message_end": {
+      const result = {
         type: "text_message_end",
         data: {
-          message_id: metadata.message_id
+          message_id: metadata.message_id,
+          step_id: metadata.step_id || ""
         }
       };
-    case "tool_calls":
-      return {
+      return result;
+    }
+    case "tool_calls": {
+      const result = {
         type: "tool_calls",
         data: {
           tool_calls: metadata.tool_calls || []
         }
       };
-    case "tool_results":
-      return {
+      return result;
+    }
+    case "tool_results": {
+      const result = {
         type: "tool_results",
         data: {
           results: metadata.results || []
         }
       };
-    default:
+      return result;
+    }
+    default: {
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      return {
+      const result = {
         type: "run_started",
-        data: { metadata }
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       };
+      return result;
+    }
   }
 }
 function convertA2AArtifactToDistri(artifact) {
@@ -5351,9 +5412,6 @@ function decodeA2AStreamEvent(event) {
   if (event.kind === "status-update") {
     return convertA2AStatusUpdateToDistri(event);
   }
-  if (event.kind === "artifact-update") {
-    return convertA2AArtifactToDistri(event);
-  }
   return null;
 }
 function convertA2APartToDistri(a2aPart) {
@@ -5362,9 +5420,11 @@ function convertA2APartToDistri(a2aPart) {
       return { type: "text", data: a2aPart.text };
     case "file":
       if ("uri" in a2aPart.file) {
-        return { type: "image", data: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+        const fileUrl = { mime_type: a2aPart.file.mimeType || "application/octet-stream", url: a2aPart.file.uri || "" };
+        return { type: "image", data: fileUrl };
       } else {
-        return { type: "image", data: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+        const fileBytes = { mime_type: a2aPart.file.mimeType || "application/octet-stream", data: a2aPart.file.bytes || "" };
+        return { type: "image", data: fileBytes };
       }
     case "data":
       switch (a2aPart.data.part_type) {

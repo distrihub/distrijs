@@ -3,6 +3,111 @@ var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { en
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/types.ts
+function createSuccessfulToolResult(toolCallId, toolName, result) {
+  return {
+    tool_call_id: toolCallId,
+    tool_name: toolName,
+    parts: [{
+      type: "data",
+      data: {
+        result,
+        success: true,
+        error: void 0
+      }
+    }]
+  };
+}
+function createFailedToolResult(toolCallId, toolName, error, result) {
+  return {
+    tool_call_id: toolCallId,
+    tool_name: toolName,
+    parts: [{
+      type: "data",
+      data: {
+        result: result ?? `Tool execution failed: ${error}`,
+        success: false,
+        error
+      }
+    }]
+  };
+}
+function isDataPart(part) {
+  return typeof part === "object" && part !== null && "type" in part && part.type === "data" && "data" in part;
+}
+function isBackendPart(part) {
+  return typeof part === "object" && part !== null && "part_type" in part && part.part_type === "data" && "data" in part && typeof part.data === "string";
+}
+function isToolResultData(data) {
+  return typeof data === "object" && data !== null && "success" in data && typeof data.success === "boolean";
+}
+function extractToolResultData(toolResult) {
+  if (!toolResult.parts || !Array.isArray(toolResult.parts) || toolResult.parts.length === 0) {
+    return null;
+  }
+  const firstPart = toolResult.parts[0];
+  if (isDataPart(firstPart)) {
+    const data = firstPart.data;
+    if (isToolResultData(data)) {
+      return {
+        result: data.result,
+        success: data.success,
+        error: data.error
+      };
+    }
+    if (typeof data === "string") {
+      try {
+        const parsed = JSON.parse(data);
+        if (isToolResultData(parsed)) {
+          return {
+            result: parsed.result,
+            success: parsed.success,
+            error: parsed.error
+          };
+        }
+        return {
+          result: parsed,
+          success: true,
+          error: void 0
+        };
+      } catch {
+        return {
+          result: data,
+          success: true,
+          error: void 0
+        };
+      }
+    }
+    return {
+      result: data,
+      success: true,
+      error: void 0
+    };
+  }
+  if (isBackendPart(firstPart)) {
+    try {
+      const parsed = JSON.parse(firstPart.data);
+      if (isToolResultData(parsed)) {
+        return {
+          result: parsed.result,
+          success: parsed.success,
+          error: parsed.error
+        };
+      }
+      return {
+        result: parsed,
+        success: true,
+        error: void 0
+      };
+    } catch {
+      return {
+        result: firstPart.data,
+        success: true,
+        error: void 0
+      };
+    }
+  }
+  return null;
+}
 var DistriError = class extends Error {
   constructor(message, code, details) {
     super(message);
@@ -30,6 +135,30 @@ var ConnectionError = class extends DistriError {
     this.name = "ConnectionError";
   }
 };
+function normalizeToolResult(toolResult) {
+  const normalizedParts = toolResult.parts.map((part) => {
+    if (isBackendPart(part)) {
+      try {
+        const parsed = JSON.parse(part.data);
+        return {
+          type: "data",
+          data: parsed
+        };
+      } catch {
+        return {
+          type: "data",
+          data: part.data
+        };
+      }
+    }
+    return part;
+  });
+  return {
+    tool_call_id: toolResult.tool_call_id,
+    tool_name: toolResult.tool_name,
+    parts: normalizedParts
+  };
+}
 function isDistriMessage(event) {
   return "id" in event && "role" in event && "parts" in event;
 }
@@ -429,46 +558,56 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
   }
   const metadata = statusUpdate.metadata;
   switch (metadata.type) {
-    case "run_started":
-      return {
+    case "run_started": {
+      const result = {
         type: "run_started",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-    case "run_error":
-      return {
+      return result;
+    }
+    case "run_error": {
+      const result = {
         type: "run_error",
         data: {
           message: statusUpdate.error,
           code: statusUpdate.code
         }
       };
-    case "run_finished":
-      return {
+      return result;
+    }
+    case "run_finished": {
+      const result = {
         type: "run_finished",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-    case "plan_started":
-      return {
+      return result;
+    }
+    case "plan_started": {
+      const result = {
         type: "plan_started",
         data: {
           initial_plan: metadata.initial_plan
         }
       };
-    case "plan_finished":
-      return {
+      return result;
+    }
+    case "plan_finished": {
+      const result = {
         type: "plan_finished",
         data: {
           total_steps: metadata.total_steps
         }
       };
-    case "step_started":
-      return {
+      return result;
+    }
+    case "step_started": {
+      const result = {
         type: "step_started",
         data: {
           step_id: metadata.step_id,
@@ -476,8 +615,10 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-    case "step_completed":
-      return {
+      return result;
+    }
+    case "step_completed": {
+      const result = {
         type: "step_completed",
         data: {
           step_id: metadata.step_id,
@@ -485,66 +626,89 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-    case "tool_execution_start":
-      return {
+      return result;
+    }
+    case "tool_execution_start": {
+      const result = {
         type: "tool_call_start",
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || "Tool",
-          parent_message_id: statusUpdate.taskId,
-          is_external: true
+          parent_message_id: statusUpdate.taskId
         }
       };
-    case "tool_execution_end":
-      return {
+      return result;
+    }
+    case "tool_execution_end": {
+      const result = {
         type: "tool_call_end",
         data: {
           tool_call_id: metadata.tool_call_id
         }
       };
-    case "text_message_start":
-      return {
+      return result;
+    }
+    case "text_message_start": {
+      const result = {
         type: "text_message_start",
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || "",
           role: metadata.role === "assistant" ? "assistant" : "user"
         }
       };
-    case "text_message_content":
-      return {
+      return result;
+    }
+    case "text_message_content": {
+      const result = {
         type: "text_message_content",
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || "",
           delta: metadata.delta || ""
         }
       };
-    case "text_message_end":
-      return {
+      return result;
+    }
+    case "text_message_end": {
+      const result = {
         type: "text_message_end",
         data: {
-          message_id: metadata.message_id
+          message_id: metadata.message_id,
+          step_id: metadata.step_id || ""
         }
       };
-    case "tool_calls":
-      return {
+      return result;
+    }
+    case "tool_calls": {
+      const result = {
         type: "tool_calls",
         data: {
           tool_calls: metadata.tool_calls || []
         }
       };
-    case "tool_results":
-      return {
+      return result;
+    }
+    case "tool_results": {
+      const result = {
         type: "tool_results",
         data: {
           results: metadata.results || []
         }
       };
-    default:
+      return result;
+    }
+    default: {
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      return {
+      const result = {
         type: "run_started",
-        data: { metadata }
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       };
+      return result;
+    }
   }
 }
 function convertA2AArtifactToDistri(artifact) {
@@ -587,9 +751,6 @@ function decodeA2AStreamEvent(event) {
   if (event.kind === "status-update") {
     return convertA2AStatusUpdateToDistri(event);
   }
-  if (event.kind === "artifact-update") {
-    return convertA2AArtifactToDistri(event);
-  }
   return null;
 }
 function processA2AStreamData(streamData) {
@@ -618,9 +779,11 @@ function convertA2APartToDistri(a2aPart) {
       return { type: "text", data: a2aPart.text };
     case "file":
       if ("uri" in a2aPart.file) {
-        return { type: "image", data: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+        const fileUrl = { mime_type: a2aPart.file.mimeType || "application/octet-stream", url: a2aPart.file.uri || "" };
+        return { type: "image", data: fileUrl };
       } else {
-        return { type: "image", data: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+        const fileBytes = { mime_type: a2aPart.file.mimeType || "application/octet-stream", data: a2aPart.file.bytes || "" };
+        return { type: "image", data: fileBytes };
       }
     case "data":
       switch (a2aPart.data.part_type) {
@@ -657,7 +820,7 @@ function convertDistriMessageToA2A(distriMessage, context) {
     parts: distriMessage.parts.map(convertDistriPartToA2A),
     kind: "message",
     contextId: context.thread_id,
-    taskId: context.run_id
+    taskId: context.task_id || context.run_id || void 0
   };
 }
 function convertDistriPartToA2A(distriPart) {
@@ -669,26 +832,62 @@ function convertDistriPartToA2A(distriPart) {
       break;
     case "image":
       if ("url" in distriPart.data) {
-        result = { kind: "file", file: { mimeType: distriPart.data.mime_type, uri: distriPart.data.url } };
+        const fileUri = { mimeType: distriPart.data.mime_type, uri: distriPart.data.url };
+        result = { kind: "file", file: fileUri };
       } else {
-        result = { kind: "file", file: { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data } };
+        const fileBytes = { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data };
+        result = { kind: "file", file: fileBytes };
       }
       break;
     case "tool_call":
-      result = { kind: "data", data: { part_type: "tool_call", ...distriPart.data } };
+      result = {
+        kind: "data",
+        data: {
+          part_type: "tool_call",
+          data: distriPart.data
+        }
+      };
       break;
-    case "tool_result":
+    case "tool_result": {
+      const toolResult = distriPart.data;
+      const parts = toolResult.parts.map((part) => {
+        if ("type" in part && part.type === "data") {
+          return {
+            part_type: "data",
+            data: part.data
+          };
+        } else if ("part_type" in part) {
+          return part;
+        } else {
+          return {
+            part_type: "data",
+            data: part
+          };
+        }
+      });
       result = {
         kind: "data",
         data: {
           part_type: "tool_result",
-          ...distriPart.data
+          data: {
+            tool_call_id: toolResult.tool_call_id,
+            tool_name: toolResult.tool_name,
+            parts
+          }
         }
       };
       break;
-    case "data":
-      result = { kind: "data", data: distriPart.data };
+    }
+    case "data": {
+      const dataValue = distriPart.data;
+      if (dataValue === null || typeof dataValue !== "object" || Array.isArray(dataValue)) {
+        result = { kind: "data", data: { value: dataValue } };
+      } else {
+        const dataObj = dataValue;
+        result = { kind: "data", data: dataObj };
+      }
       break;
+    }
   }
   console.log("Converted A2A Part:", JSON.stringify(result, null, 2));
   return result;
@@ -808,6 +1007,7 @@ var DistriClient = class {
    * Send a streaming message to an agent
    */
   async *sendMessageStream(agentId, params) {
+    console.log("sendMessageStream", agentId, params);
     try {
       const client = this.getA2AClient(agentId);
       yield* await client.sendMessageStream(params);
@@ -1092,7 +1292,6 @@ var Agent = class _Agent {
    */
   async invoke(params) {
     const enhancedParams = this.enhanceParamsWithTools(params);
-    console.log("enhancedParams", enhancedParams);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams);
   }
   /**
@@ -1100,7 +1299,6 @@ var Agent = class _Agent {
    */
   async invokeStream(params) {
     const enhancedParams = this.enhanceParamsWithTools(params);
-    console.log("enhancedParams", enhancedParams);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
     return async function* () {
       const events = [];
@@ -1125,14 +1323,16 @@ var Agent = class _Agent {
         tools: this.tools.tools.map((tool) => ({
           name: tool.name,
           description: tool.description,
-          input_schema: tool.input_schema
+          input_schema: tool.input_schema,
+          is_final: tool.is_final
         })),
         agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => [
           agentName,
           tools.map((tool) => ({
             name: tool.name,
             description: tool.description,
-            input_schema: tool.input_schema
+            input_schema: tool.input_schema,
+            is_final: tool.is_final
           }))
         ]))
       }
@@ -1170,14 +1370,18 @@ export {
   convertA2AStatusUpdateToDistri,
   convertDistriMessageToA2A,
   convertDistriPartToA2A,
+  createFailedToolResult,
+  createSuccessfulToolResult,
   decodeA2AStreamEvent,
   extractTextFromDistriMessage,
   extractToolCallsFromDistriMessage,
+  extractToolResultData,
   extractToolResultsFromDistriMessage,
   isDistriArtifact,
   isDistriEvent,
   isDistriMessage,
   isDistriPlan,
+  normalizeToolResult,
   processA2AMessagesData,
   processA2AStreamData,
   uuidv4

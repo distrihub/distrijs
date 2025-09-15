@@ -144,8 +144,8 @@ module.exports = __toCommonJS(index_exports);
 
 // src/useChat.ts
 var import_react6 = require("react");
-var import_core2 = require("@distri/core");
-var import_core3 = require("@distri/core");
+var import_core6 = require("@distri/core");
+var import_core7 = require("@distri/core");
 
 // src/hooks/registerTools.tsx
 var import_react5 = require("react");
@@ -227,16 +227,19 @@ Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
 // src/components/renderers/tools/ApprovalToolCall.tsx
 var import_lucide_react2 = require("lucide-react");
+var import_core = require("@distri/core");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 
 // src/components/renderers/tools/ToastToolCall.tsx
 var import_react2 = require("react");
+var import_core2 = require("@distri/core");
 var import_sonner = require("sonner");
 var import_jsx_runtime4 = require("react/jsx-runtime");
 
 // src/components/renderers/tools/DefaultToolActions.tsx
 var import_react3 = require("react");
 var import_lucide_react3 = require("lucide-react");
+var import_core3 = require("@distri/core");
 var import_jsx_runtime5 = require("react/jsx-runtime");
 var DefaultToolActions = ({
   toolCall,
@@ -297,26 +300,23 @@ var DefaultToolActions = ({
     try {
       const result = await tool.handler(toolCall.input);
       if (!tool.is_final) {
-        const toolResult = {
-          tool_call_id: toolCall.tool_call_id,
-          tool_name: toolName,
-          result: typeof result === "string" ? result : JSON.stringify(result),
-          success: true,
-          error: void 0
-        };
+        const toolResult = (0, import_core3.createSuccessfulToolResult)(
+          toolCall.tool_call_id,
+          toolName,
+          typeof result === "string" ? result : JSON.stringify(result)
+        );
         await completeTool(toolResult);
       } else {
         console.log("Tool is final, no action required");
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const toolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolName,
-        result: "Tool execution failed" + errorMessage,
-        success: false,
-        error: errorMessage
-      };
+      const toolResult = (0, import_core3.createFailedToolResult)(
+        toolCall.tool_call_id,
+        toolName,
+        errorMessage,
+        "Tool execution failed"
+      );
       await completeTool(toolResult);
     } finally {
       setIsProcessing(false);
@@ -328,13 +328,12 @@ var DefaultToolActions = ({
       saveApprovalPreference(toolName, false);
     }
     setHasExecuted(true);
-    const toolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolName,
-      result: "Tool execution cancelled by user",
-      success: false,
-      error: "User cancelled the operation"
-    };
+    const toolResult = (0, import_core3.createFailedToolResult)(
+      toolCall.tool_call_id,
+      toolName,
+      "User cancelled the operation",
+      "Tool execution cancelled by user"
+    );
     completeTool(toolResult);
   };
   if (hasExecuted && !isProcessing) {
@@ -432,6 +431,7 @@ var DefaultToolActions = ({
 
 // src/components/renderers/tools/MissingTool.tsx
 var import_lucide_react4 = require("lucide-react");
+var import_core4 = require("@distri/core");
 var import_jsx_runtime6 = require("react/jsx-runtime");
 var MissingTool = ({
   toolCall,
@@ -440,13 +440,12 @@ var MissingTool = ({
   const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
   const toolName = toolCall.tool_name;
   const handleDismiss = () => {
-    const toolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolName,
-      result: `Tool '${toolName}' is not available`,
-      success: false,
-      error: `Tool '${toolName}' not found in external tools`
-    };
+    const toolResult = (0, import_core4.createFailedToolResult)(
+      toolCall.tool_call_id,
+      toolName,
+      `Tool '${toolName}' not found in external tools`,
+      `Tool '${toolName}' is not available`
+    );
     completeTool(toolResult);
   };
   return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "border rounded-lg p-4 bg-destructive/5 border-destructive/20", children: [
@@ -488,7 +487,7 @@ var MissingTool = ({
 
 // src/stores/chatStateStore.ts
 var import_zustand = require("zustand");
-var import_core = require("@distri/core");
+var import_core5 = require("@distri/core");
 
 // src/utils/extractThought.ts
 function extractThoughtContent(text) {
@@ -554,7 +553,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
   addMessage: (message) => {
     const isDebugEnabled = get().debug;
     set((state) => {
-      if ((0, import_core.isDistriEvent)(message)) {
+      if ((0, import_core5.isDistriEvent)(message)) {
         const event = message;
         if (event.type === "text_message_start") {
           const messageId = event.data.message_id;
@@ -585,7 +584,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           const stepId = event.data.step_id;
           const delta = event.data.delta;
           const existingIndex = state.messages.findIndex(
-            (m) => (0, import_core.isDistriMessage)(m) && m.id === messageId
+            (m) => (0, import_core5.isDistriMessage)(m) && m.id === messageId
           );
           if (existingIndex >= 0) {
             const existingMessage = state.messages[existingIndex];
@@ -621,7 +620,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           } else {
             if (isDebugEnabled) {
               console.warn("\u274C Cannot find streaming message to append to:", messageId);
-              console.log("\u{1F4CB} Available message IDs:", state.messages.filter(import_core.isDistriMessage).map((m) => m.id));
+              console.log("\u{1F4CB} Available message IDs:", state.messages.filter(import_core5.isDistriMessage).map((m) => m.id));
             }
             return state;
           }
@@ -676,7 +675,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       console.log(message);
     }
     get().addMessage(message);
-    if ((0, import_core.isDistriEvent)(message)) {
+    if ((0, import_core5.isDistriEvent)(message)) {
       const event = message;
       if (isDebugEnabled && message.type !== "text_message_content") {
         console.log("\u{1F3EA} EVENT:", message);
@@ -836,9 +835,14 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
                 result: {
                   tool_call_id: result.tool_call_id,
                   tool_name: result.tool_name,
-                  result: result.result,
-                  error: result.error,
-                  success: result.success !== false
+                  parts: [{
+                    type: "data",
+                    data: {
+                      result: result.result,
+                      error: result.error,
+                      success: result.success !== false
+                    }
+                  }]
                 },
                 error: result.error,
                 endTime: timestamp
@@ -852,7 +856,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           break;
       }
     }
-    if ((0, import_core.isDistriArtifact)(message)) {
+    if ((0, import_core5.isDistriArtifact)(message)) {
       switch (message.type) {
         case "plan":
           const planId = message.id;
@@ -913,19 +917,25 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     });
   },
   completeTool: async (toolCall, result) => {
+    console.log("completeTool", toolCall, result);
+    const normalizedResult = (0, import_core5.normalizeToolResult)(result);
+    const resultData = (0, import_core5.extractToolResultData)(normalizedResult);
+    const success = resultData?.success ?? false;
+    const error = resultData?.error;
     get().updateToolCallStatus(toolCall.tool_call_id, {
-      status: result.success ? "completed" : "error",
-      result,
+      status: success ? "completed" : "error",
+      result: normalizedResult,
       endTime: Date.now(),
-      error: result.error || void 0
+      error: error || void 0
     });
-    if (result.error) {
+    if (error) {
       import_sonner2.toast.error("Tool Error", {
-        description: result.error,
+        description: error,
         duration: 5e3
       });
     }
     const state = get();
+    console.log("state.toolCalls", state.toolCalls);
     const pendingExternalTools = Array.from(state.toolCalls.values()).filter(
       (tc) => tc.isExternal && (tc.status === "pending" || tc.status === "running")
     );
@@ -936,6 +946,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     }
   },
   initializeTool: (toolCall) => {
+    console.log("initializeTool", toolCall);
     const state = get();
     let distriTool;
     if (state.tools) {
@@ -1027,9 +1038,10 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     return completedToolCalls.map((toolCallState) => ({
       tool_call_id: toolCallState.tool_call_id,
       tool_name: toolCallState.tool_name,
-      result: toolCallState.result?.result,
-      error: toolCallState.result?.error,
-      success: toolCallState.result?.success
+      parts: toolCallState.result?.parts || [{
+        type: "data",
+        data: { result: null, error: "No result", success: false }
+      }]
     }));
   },
   getToolCallById: (toolCallId) => {
@@ -1214,13 +1226,14 @@ function useChat({
   (0, import_react6.useEffect)(() => {
     getMetadataRef.current = getMetadata;
   }, [getMetadata]);
-  const createInvokeContext = (0, import_react6.useCallback)(() => ({
-    thread_id: threadId,
-    run_id: void 0,
-    getMetadata: getMetadataRef.current
-  }), [threadId]);
   useRegisterTools({ agent, tools, wrapOptions });
   const chatState = useChatStateStore();
+  const createInvokeContext = (0, import_react6.useCallback)(() => ({
+    thread_id: threadId,
+    run_id: chatState.currentRunId,
+    task_id: chatState.currentTaskId,
+    getMetadata: getMetadataRef.current
+  }), [threadId, chatState.currentRunId, chatState.currentTaskId]);
   const isLoading = useChatStateStore((state) => state.isLoading);
   const isStreaming = useChatStateStore((state) => state.isStreaming);
   const {
@@ -1293,17 +1306,20 @@ function useChat({
     abortControllerRef.current = new AbortController();
     try {
       const parts = typeof content === "string" ? [{ type: "text", data: content }] : content;
-      let distriMessage = import_core2.DistriClient.initDistriMessage("user", parts);
+      let distriMessage = import_core6.DistriClient.initDistriMessage("user", parts);
       processMessage(distriMessage, false);
       if (beforeSendMessage) {
         distriMessage = await beforeSendMessage(distriMessage);
       }
       const context = createInvokeContext();
-      const a2aMessage = (0, import_core3.convertDistriMessageToA2A)(distriMessage, context);
+      const a2aMessage = (0, import_core7.convertDistriMessageToA2A)(distriMessage, context);
       const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: contextMetadata
+        metadata: {
+          ...contextMetadata,
+          task_id: chatState.currentTaskId
+        }
       });
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
@@ -1336,14 +1352,17 @@ function useChat({
     abortControllerRef.current = new AbortController();
     try {
       const parts = typeof content === "string" ? [{ type: "text", data: content }] : content;
-      const distriMessage = import_core2.DistriClient.initDistriMessage(role, parts);
+      const distriMessage = import_core6.DistriClient.initDistriMessage(role, parts);
       processMessage(distriMessage, false);
       const context = createInvokeContext();
-      const a2aMessage = (0, import_core3.convertDistriMessageToA2A)(distriMessage, context);
+      const a2aMessage = (0, import_core7.convertDistriMessageToA2A)(distriMessage, context);
       const contextMetadata = await getMetadataRef.current?.() || {};
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: { ...contextMetadata }
+        metadata: {
+          ...contextMetadata,
+          task_id: chatState.currentTaskId
+        }
       });
       for await (const event of stream) {
         if (abortControllerRef.current?.signal.aborted) {
@@ -1374,15 +1393,9 @@ function useChat({
       try {
         const toolResultParts = externalResponses.map((result) => ({
           type: "tool_result",
-          data: {
-            tool_call_id: result.tool_call_id,
-            tool_name: result.tool_name,
-            result: result.result,
-            success: result.success,
-            error: result.error
-          }
+          data: result
         }));
-        const toolResultMessage = import_core2.DistriClient.initDistriMessage("user", toolResultParts);
+        const toolResultMessage = import_core6.DistriClient.initDistriMessage("user", toolResultParts);
         processMessage(toolResultMessage, false);
         await sendMessageStream(toolResultParts, "user");
         chatState.clearToolResults();
@@ -1403,6 +1416,17 @@ function useChat({
       abortControllerRef.current.abort();
     }
   }, []);
+  (0, import_react6.useEffect)(() => {
+    const callback = async () => {
+      if (handleExternalToolResponsesRef.current) {
+        await handleExternalToolResponsesRef.current();
+      }
+    };
+    chatState.setOnAllToolsCompleted(callback);
+    return () => {
+      chatState.setOnAllToolsCompleted(void 0);
+    };
+  }, []);
   const messages = useChatStateStore((state) => state.messages);
   return {
     isStreaming,
@@ -1419,11 +1443,11 @@ function useChat({
 
 // src/useAgent.ts
 var import_react9 = __toESM(require("react"), 1);
-var import_core5 = require("@distri/core");
+var import_core9 = require("@distri/core");
 
 // src/DistriProvider.tsx
 var import_react8 = require("react");
-var import_core4 = require("@distri/core");
+var import_core8 = require("@distri/core");
 
 // src/components/ThemeProvider.tsx
 var import_react7 = require("react");
@@ -1492,7 +1516,7 @@ function DistriProvider({ config, children, defaultTheme = "dark" }) {
     let currentClient = null;
     try {
       debug(config, "[DistriProvider] Initializing client with config:", config);
-      currentClient = new import_core4.DistriClient(config);
+      currentClient = new import_core8.DistriClient(config);
       setClient(currentClient);
       setError(null);
       setIsLoading(false);
@@ -1564,7 +1588,7 @@ function useAgent({
         agentRef.current = null;
         setAgent(null);
       }
-      const newAgent = await import_core5.Agent.create(agentIdOrDef, client);
+      const newAgent = await import_core9.Agent.create(agentIdOrDef, client);
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
       setAgent(newAgent);
@@ -2349,7 +2373,7 @@ var ChatInput = ({
 };
 
 // src/components/renderers/MessageRenderer.tsx
-var import_core7 = require("@distri/core");
+var import_core11 = require("@distri/core");
 
 // src/components/renderers/utils.tsx
 function extractContent(message) {
@@ -2499,7 +2523,7 @@ var UserMessageRenderer = ({
 };
 
 // src/components/renderers/StepBasedRenderer.tsx
-var import_core6 = require("@distri/core");
+var import_core10 = require("@distri/core");
 
 // src/components/renderers/StreamingTextRenderer.tsx
 var import_react15 = require("react");
@@ -2746,7 +2770,7 @@ var StepBasedRenderer = ({
   message
 }) => {
   const steps = useChatStateStore((state) => state.steps);
-  if (!(0, import_core6.isDistriMessage)(message)) {
+  if (!(0, import_core10.isDistriMessage)(message)) {
     return null;
   }
   const distriMessage = message;
@@ -2875,7 +2899,7 @@ function MessageRenderer({
   index
 }) {
   const toolCallsState = useChatStateStore((state) => state.toolCalls);
-  if ((0, import_core7.isDistriMessage)(message)) {
+  if ((0, import_core11.isDistriMessage)(message)) {
     const distriMessage = message;
     const textContent = distriMessage.parts.filter((part) => part.type === "text").map((part) => part.data).join("").trim();
     const imageParts = distriMessage.parts.filter((part) => part.type === "image");
@@ -2883,7 +2907,7 @@ function MessageRenderer({
       return null;
     }
   }
-  if ((0, import_core7.isDistriMessage)(message)) {
+  if ((0, import_core11.isDistriMessage)(message)) {
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
@@ -2904,7 +2928,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if ((0, import_core7.isDistriEvent)(message)) {
+  if ((0, import_core11.isDistriEvent)(message)) {
     const event = message;
     switch (event.type) {
       case "run_started":
@@ -5021,7 +5045,7 @@ function AppSidebar({
 
 // src/components/TaskExecutionRenderer.tsx
 var import_react21 = require("react");
-var import_core8 = require("@distri/core");
+var import_core12 = require("@distri/core");
 var import_lucide_react16 = require("lucide-react");
 var import_jsx_runtime39 = require("react/jsx-runtime");
 var TaskExecutionRenderer = ({
@@ -5032,7 +5056,7 @@ var TaskExecutionRenderer = ({
     const stepMap = /* @__PURE__ */ new Map();
     const stepOrder = [];
     events.forEach((event) => {
-      if ((0, import_core8.isDistriMessage)(event)) {
+      if ((0, import_core12.isDistriMessage)(event)) {
         const message = event;
         const stepId = `message_${message.id}`;
         if (!stepMap.has(stepId)) {
@@ -5327,46 +5351,56 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
   }
   const metadata = statusUpdate.metadata;
   switch (metadata.type) {
-    case "run_started":
-      return {
+    case "run_started": {
+      const result = {
         type: "run_started",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-    case "run_error":
-      return {
+      return result;
+    }
+    case "run_error": {
+      const result = {
         type: "run_error",
         data: {
           message: statusUpdate.error,
           code: statusUpdate.code
         }
       };
-    case "run_finished":
-      return {
+      return result;
+    }
+    case "run_finished": {
+      const result = {
         type: "run_finished",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-    case "plan_started":
-      return {
+      return result;
+    }
+    case "plan_started": {
+      const result = {
         type: "plan_started",
         data: {
           initial_plan: metadata.initial_plan
         }
       };
-    case "plan_finished":
-      return {
+      return result;
+    }
+    case "plan_finished": {
+      const result = {
         type: "plan_finished",
         data: {
           total_steps: metadata.total_steps
         }
       };
-    case "step_started":
-      return {
+      return result;
+    }
+    case "step_started": {
+      const result = {
         type: "step_started",
         data: {
           step_id: metadata.step_id,
@@ -5374,8 +5408,10 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-    case "step_completed":
-      return {
+      return result;
+    }
+    case "step_completed": {
+      const result = {
         type: "step_completed",
         data: {
           step_id: metadata.step_id,
@@ -5383,66 +5419,89 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-    case "tool_execution_start":
-      return {
+      return result;
+    }
+    case "tool_execution_start": {
+      const result = {
         type: "tool_call_start",
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || "Tool",
-          parent_message_id: statusUpdate.taskId,
-          is_external: true
+          parent_message_id: statusUpdate.taskId
         }
       };
-    case "tool_execution_end":
-      return {
+      return result;
+    }
+    case "tool_execution_end": {
+      const result = {
         type: "tool_call_end",
         data: {
           tool_call_id: metadata.tool_call_id
         }
       };
-    case "text_message_start":
-      return {
+      return result;
+    }
+    case "text_message_start": {
+      const result = {
         type: "text_message_start",
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || "",
           role: metadata.role === "assistant" ? "assistant" : "user"
         }
       };
-    case "text_message_content":
-      return {
+      return result;
+    }
+    case "text_message_content": {
+      const result = {
         type: "text_message_content",
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || "",
           delta: metadata.delta || ""
         }
       };
-    case "text_message_end":
-      return {
+      return result;
+    }
+    case "text_message_end": {
+      const result = {
         type: "text_message_end",
         data: {
-          message_id: metadata.message_id
+          message_id: metadata.message_id,
+          step_id: metadata.step_id || ""
         }
       };
-    case "tool_calls":
-      return {
+      return result;
+    }
+    case "tool_calls": {
+      const result = {
         type: "tool_calls",
         data: {
           tool_calls: metadata.tool_calls || []
         }
       };
-    case "tool_results":
-      return {
+      return result;
+    }
+    case "tool_results": {
+      const result = {
         type: "tool_results",
         data: {
           results: metadata.results || []
         }
       };
-    default:
+      return result;
+    }
+    default: {
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      return {
+      const result = {
         type: "run_started",
-        data: { metadata }
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
       };
+      return result;
+    }
   }
 }
 function convertA2AArtifactToDistri(artifact) {
@@ -5485,9 +5544,6 @@ function decodeA2AStreamEvent(event) {
   if (event.kind === "status-update") {
     return convertA2AStatusUpdateToDistri(event);
   }
-  if (event.kind === "artifact-update") {
-    return convertA2AArtifactToDistri(event);
-  }
   return null;
 }
 function convertA2APartToDistri(a2aPart) {
@@ -5496,9 +5552,11 @@ function convertA2APartToDistri(a2aPart) {
       return { type: "text", data: a2aPart.text };
     case "file":
       if ("uri" in a2aPart.file) {
-        return { type: "image", data: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } };
+        const fileUrl = { mime_type: a2aPart.file.mimeType || "application/octet-stream", url: a2aPart.file.uri || "" };
+        return { type: "image", data: fileUrl };
       } else {
-        return { type: "image", data: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } };
+        const fileBytes = { mime_type: a2aPart.file.mimeType || "application/octet-stream", data: a2aPart.file.bytes || "" };
+        return { type: "image", data: fileBytes };
       }
     case "data":
       switch (a2aPart.data.part_type) {

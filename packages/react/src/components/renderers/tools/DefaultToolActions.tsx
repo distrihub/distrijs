@@ -3,7 +3,7 @@ import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { Wrench, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { UiToolProps } from '@/types';
-import { ToolResult, DistriFnTool } from '@distri/core';
+import { createSuccessfulToolResult, createFailedToolResult, DistriFnTool } from '@distri/core';
 
 export interface DefaultToolActionsProps extends UiToolProps {
   tool: DistriFnTool;
@@ -90,13 +90,11 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
       const result = await tool.handler(toolCall.input);
 
       if (!tool.is_final) {
-        const toolResult: ToolResult = {
-          tool_call_id: toolCall.tool_call_id,
-          tool_name: toolName,
-          result: typeof result === 'string' ? result : JSON.stringify(result),
-          success: true,
-          error: undefined
-        };
+        const toolResult = createSuccessfulToolResult(
+          toolCall.tool_call_id,
+          toolName,
+          typeof result === 'string' ? result : JSON.stringify(result)
+        );
 
         await completeTool(toolResult);
       } else {
@@ -104,13 +102,12 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const toolResult: ToolResult = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolName,
-        result: 'Tool execution failed' + errorMessage,
-        success: false,
-        error: errorMessage
-      };
+      const toolResult = createFailedToolResult(
+        toolCall.tool_call_id,
+        toolName,
+        errorMessage,
+        'Tool execution failed'
+      );
 
       await completeTool(toolResult);
     } finally {
@@ -128,13 +125,12 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
     setHasExecuted(true);
 
-    const toolResult: ToolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolName,
-      result: 'Tool execution cancelled by user',
-      success: false,
-      error: 'User cancelled the operation'
-    };
+    const toolResult = createFailedToolResult(
+      toolCall.tool_call_id,
+      toolName,
+      'User cancelled the operation',
+      'Tool execution cancelled by user'
+    );
 
     completeTool(toolResult);
   };

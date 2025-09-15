@@ -107,7 +107,6 @@ export class Agent {
   public async invoke(params: MessageSendParams): Promise<Message> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
-    console.log('enhancedParams', enhancedParams);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams) as Message;
   }
 
@@ -117,7 +116,6 @@ export class Agent {
   public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriChatMessage>> {
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params);
-    console.log('enhancedParams', enhancedParams);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
 
 
@@ -146,14 +144,16 @@ export class Agent {
           name: tool.name,
           description: tool.description,
           input_schema: tool.input_schema,
-        } as DistriBaseTool)),
+          is_final: tool.is_final
+        })),
         agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => ([
           agentName,
           tools.map(tool => ({
             name: tool.name,
             description: tool.description,
             input_schema: tool.input_schema,
-          } as DistriBaseTool)),
+            is_final: tool.is_final
+          })),
         ]))),
       }
     };

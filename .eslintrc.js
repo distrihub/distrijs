@@ -57,7 +57,22 @@ module.exports = {
         "react-hooks/exhaustive-deps": "warn",
         "prefer-const": "error",
         "no-case-declarations": "error",
-        "no-useless-escape": "error"
+        "no-useless-escape": "error",
+        // Custom rule to prevent direct ToolResult creation
+        "@typescript-eslint/prefer-ts-expect-error": "off",
+        // Ban dangerous patterns
+        "@typescript-eslint/ban-ts-comment": ["error", {
+            "ts-expect-error": "allow-with-description",
+            "ts-ignore": true,
+            "ts-nocheck": true,
+            "ts-check": false,
+            "minimumDescriptionLength": 10
+        }],
+        // Enforce consistent type assertions
+        "@typescript-eslint/consistent-type-assertions": ["error", {
+            "assertionStyle": "as",
+            "objectLiteralTypeAssertions": "never"
+        }]
     },
     "ignorePatterns": [
         "dist/",
