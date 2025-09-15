@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertTriangle, XCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { UiToolProps } from '@/types';
-import { ToolResult } from '@distri/core';
+import { createFailedToolResult } from '@distri/core';
 
 export const MissingTool: React.FC<UiToolProps> = ({
   toolCall,
@@ -12,13 +12,12 @@ export const MissingTool: React.FC<UiToolProps> = ({
   const toolName = toolCall.tool_name;
 
   const handleDismiss = () => {
-    const toolResult: ToolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolName,
-      result: `Tool '${toolName}' is not available`,
-      success: false,
-      error: `Tool '${toolName}' not found in external tools`
-    };
+    const toolResult = createFailedToolResult(
+      toolCall.tool_call_id,
+      toolName,
+      `Tool '${toolName}' not found in external tools`,
+      `Tool '${toolName}' is not available`
+    );
 
     completeTool(toolResult);
   };

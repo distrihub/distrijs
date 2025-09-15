@@ -29,137 +29,172 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
   const metadata = statusUpdate.metadata;
 
   switch (metadata.type) {
-    case 'run_started':
-      return {
+    case 'run_started': {
+      const result: RunStartedEvent = {
         type: 'run_started',
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
-      } as RunStartedEvent;
+      };
+      return result;
+    }
 
-    case 'run_error':
-      return {
+    case 'run_error': {
+      const result: RunErrorEvent = {
         type: 'run_error',
         data: {
           message: statusUpdate.error,
           code: statusUpdate.code
         }
-      } as RunErrorEvent;
+      };
+      return result;
+    }
 
-    case 'run_finished':
-      return {
+    case 'run_finished': {
+      const result: RunFinishedEvent = {
         type: 'run_finished',
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
-      } as RunFinishedEvent;
+      };
+      return result;
+    }
 
-    case 'plan_started':
-      return {
+    case 'plan_started': {
+      const result: PlanStartedEvent = {
         type: 'plan_started',
         data: {
           initial_plan: metadata.initial_plan
         }
-      } as PlanStartedEvent;
+      };
+      return result;
+    }
 
-    case 'plan_finished':
-      return {
+    case 'plan_finished': {
+      const result: PlanFinishedEvent = {
         type: 'plan_finished',
         data: {
           total_steps: metadata.total_steps
         }
-      } as PlanFinishedEvent;
+      };
+      return result;
+    }
 
-    case 'step_started':
-      return {
+    case 'step_started': {
+      const result: any = {
         type: 'step_started',
         data: {
           step_id: metadata.step_id,
           step_title: metadata.step_title || 'Processing',
           step_index: metadata.step_index || 0
         }
-      } as any;
+      };
+      return result;
+    }
 
-    case 'step_completed':
-      return {
+    case 'step_completed': {
+      const result: any = {
         type: 'step_completed',
         data: {
           step_id: metadata.step_id,
           step_title: metadata.step_title || 'Processing',
           step_index: metadata.step_index || 0
         }
-      } as any;
+      };
+      return result;
+    }
 
-    case 'tool_execution_start':
-      return {
+    case 'tool_execution_start': {
+      const result: ToolCallStartEvent = {
         type: 'tool_call_start',
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || 'Tool',
-          parent_message_id: statusUpdate.taskId,
-          is_external: true
+          parent_message_id: statusUpdate.taskId
         }
-      } as ToolCallStartEvent;
+      };
+      return result;
+    }
 
-    case 'tool_execution_end':
-      return {
+    case 'tool_execution_end': {
+      const result: ToolCallEndEvent = {
         type: 'tool_call_end',
         data: {
           tool_call_id: metadata.tool_call_id
         }
-      } as ToolCallEndEvent;
+      };
+      return result;
+    }
 
-    case 'text_message_start':
-      return {
+    case 'text_message_start': {
+      const result: TextMessageStartEvent = {
         type: 'text_message_start',
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || '',
           role: metadata.role === 'assistant' ? 'assistant' : 'user'
         }
-      } as TextMessageStartEvent;
+      };
+      return result;
+    }
 
-    case 'text_message_content':
-      return {
+    case 'text_message_content': {
+      const result: TextMessageContentEvent = {
         type: 'text_message_content',
         data: {
           message_id: metadata.message_id,
+          step_id: metadata.step_id || '',
           delta: metadata.delta || ''
         }
-      } as TextMessageContentEvent;
+      };
+      return result;
+    }
 
-    case 'text_message_end':
-      return {
+    case 'text_message_end': {
+      const result: TextMessageEndEvent = {
         type: 'text_message_end',
         data: {
-          message_id: metadata.message_id
+          message_id: metadata.message_id,
+          step_id: metadata.step_id || ''
         }
-      } as TextMessageEndEvent;
+      };
+      return result;
+    }
 
-    case 'tool_calls':
-      return {
+    case 'tool_calls': {
+      const result: ToolCallsEvent = {
         type: 'tool_calls',
         data: {
           tool_calls: metadata.tool_calls || []
         }
-      } as ToolCallsEvent;
+      };
+      return result;
+    }
 
-    case 'tool_results':
-      return {
+    case 'tool_results': {
+      const result: ToolResultsEvent = {
         type: 'tool_results',
         data: {
           results: metadata.results || []
         }
-      } as ToolResultsEvent;
+      };
+      return result;
+    }
 
-    default:
+    default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      return {
+      const result: RunStartedEvent = {
         type: 'run_started',
-        data: { metadata }
-      } as RunStartedEvent;
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId
+        }
+      };
+      return result;
+    }
   }
 }
 
@@ -213,7 +248,6 @@ export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact |
  * Enhanced decoder for A2A stream events that properly handles all event types
  */
 export function decodeA2AStreamEvent(event: any): DistriChatMessage | null {
-
   // Handle artifacts (without kind field)
   if (event.artifactId && event.parts) {
     return convertA2AArtifactToDistri(event);
@@ -227,11 +261,6 @@ export function decodeA2AStreamEvent(event: any): DistriChatMessage | null {
   // Handle status updates with proper conversion
   if (event.kind === 'status-update') {
     return convertA2AStatusUpdateToDistri(event);
-  }
-
-  // Handle artifact updates  
-  if (event.kind === 'artifact-update') {
-    return convertA2AArtifactToDistri(event);
   }
 
 
@@ -282,10 +311,12 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
       return { type: 'text', data: a2aPart.text };
     case 'file':
       if ('uri' in a2aPart.file) {
-        return { type: 'image', data: { mime_type: a2aPart.file.mimeType, url: a2aPart.file.uri } as FileUrl };
+        const fileUrl: FileUrl = { mime_type: a2aPart.file.mimeType || 'application/octet-stream', url: a2aPart.file.uri || '' };
+        return { type: 'image', data: fileUrl };
       }
       else {
-        return { type: 'image', data: { mime_type: a2aPart.file.mimeType, data: a2aPart.file.bytes } as FileBytes };
+        const fileBytes: FileBytes = { mime_type: a2aPart.file.mimeType || 'application/octet-stream', data: a2aPart.file.bytes || '' };
+        return { type: 'image', data: fileBytes };
       }
     case 'data':
       switch (a2aPart.data.part_type) {
@@ -330,7 +361,7 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
     parts: distriMessage.parts.map(convertDistriPartToA2A),
     kind: 'message',
     contextId: context.thread_id,
-    taskId: context.run_id,
+    taskId: context.task_id || context.run_id || undefined,
   };
 }
 
@@ -348,25 +379,71 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       break;
     case 'image':
       if ('url' in distriPart.data) {
-        result = { kind: 'file', file: { mimeType: distriPart.data.mime_type, uri: distriPart.data.url } as FileWithUri };
+        const fileUri: FileWithUri = { mimeType: distriPart.data.mime_type, uri: distriPart.data.url };
+        result = { kind: 'file', file: fileUri };
       } else {
-        result = { kind: 'file', file: { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data } as FileWithBytes };
+        const fileBytes: FileWithBytes = { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data };
+        result = { kind: 'file', file: fileBytes };
       }
       break;
     case 'tool_call':
-      result = { kind: 'data', data: { part_type: 'tool_call', ...distriPart.data } };
-      break;
-    case 'tool_result':
       result = {
-        kind: 'data', data: {
-          part_type: 'tool_result',
-          ...distriPart.data
+        kind: 'data',
+        data: {
+          part_type: 'tool_call',
+          data: distriPart.data
         }
-      } as Part;
+      };
       break;
-    case 'data':
-      result = { kind: 'data', data: distriPart.data };
+    case 'tool_result': {
+      // Convert ToolResult to proper ToolResponse structure with parts
+      const toolResult = distriPart.data as ToolResult;
+
+      // Convert ToolResult parts to proper Part format
+      const parts = toolResult.parts.map(part => {
+        if ('type' in part && part.type === 'data') {
+          // Convert DistriPart data to Part::Data format
+          return {
+            part_type: 'data',
+            data: part.data
+          };
+        } else if ('part_type' in part) {
+          // Already in correct format
+          return part;
+        } else {
+          // Fallback - wrap as data part
+          return {
+            part_type: 'data',
+            data: part
+          };
+        }
+      });
+
+      result = {
+        kind: 'data',
+        data: {
+          part_type: 'tool_result',
+          data: {
+            tool_call_id: toolResult.tool_call_id,
+            tool_name: toolResult.tool_name,
+            parts: parts
+          }
+        }
+      };
       break;
+    }
+    case 'data': {
+      // A2A DataPart expects data to be an object with string keys
+      // Convert null/primitive values to an object structure
+      const dataValue = distriPart.data;
+      if (dataValue === null || typeof dataValue !== 'object' || Array.isArray(dataValue)) {
+        result = { kind: 'data', data: { value: dataValue } };
+      } else {
+        const dataObj: { [k: string]: unknown } = dataValue as { [k: string]: unknown };
+        result = { kind: 'data', data: dataObj };
+      }
+      break;
+    }
   }
 
   console.log('Converted A2A Part:', JSON.stringify(result, null, 2));

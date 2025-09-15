@@ -3,7 +3,7 @@ import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { UiToolProps } from '@/types';
-import { ToolResult, ToolCall } from '@distri/core';
+import { createSuccessfulToolResult, ToolCall } from '@distri/core';
 
 export const ApprovalToolCall: React.FC<UiToolProps> = ({
   toolCall,
@@ -58,13 +58,11 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
       saveApprovalPreference(toolCall.tool_name, approved);
     }
 
-    const result: ToolResult = {
-      tool_call_id: toolCall.tool_call_id,
-      tool_name: toolCall.tool_name,
-      result: `${toolCall.tool_name} ${approved ? 'approved' : 'denied'} by user`,
-      success: true,
-      error: undefined
-    };
+    const result = createSuccessfulToolResult(
+      toolCall.tool_call_id,
+      toolCall.tool_name,
+      `${toolCall.tool_name} ${approved ? 'approved' : 'denied'} by user`
+    );
 
     completeTool(result);
   };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAgent, useChat } from '../../index';
+import { isDistriMessage } from '@distri/core';
 
 interface StreamDebuggerProps {
   agentIdOrDef: string;
@@ -11,7 +12,7 @@ export const StreamDebugger: React.FC<StreamDebuggerProps> = ({
   className = ''
 }) => {
   const { agent, loading: agentLoading } = useAgent({ agentIdOrDef });
-  const { messages, sendMessage, isLoading } = useChat({ agent: agent });
+  const { messages, sendMessage, isLoading } = useChat({ agent: agent || undefined, threadId: 'debug-thread' });
   const [debugLogs, setDebugLogs] = useState<any[]>([]);
   const [testMessage, setTestMessage] = useState("Tell me about the founders of LangDB");
 
@@ -129,18 +130,18 @@ export const StreamDebugger: React.FC<StreamDebuggerProps> = ({
               messages.map((message, index) => (
                 <div key={index} className="mb-3 p-2 border-l-2 border-blue-200">
                   <div className="text-xs text-gray-500 mb-1">
-                    Message {index + 1} - {message?.role} - {message?.id}
+                    Message {index + 1} - {isDistriMessage(message) ? `${message.role} - ${message.id}` : 'Event'}
                   </div>
                   <div className="text-sm">
-                    {message.parts?.map((part: any, partIndex: number) => (
+                    {isDistriMessage(message) && message.parts?.map((part: any, partIndex: number) => (
                       <div key={partIndex}>
                         <span className="text-xs bg-gray-100 px-1 rounded">{part.type}</span>
                         {part.type === 'text' && (
-                          <div className="mt-1">{part.text}</div>
+                          <div className="mt-1">{part.data}</div>
                         )}
                         {part.type === 'tool_call' && (
                           <div className="mt-1 text-blue-600">
-                            Tool: {part.tool_call?.tool_name}
+                            Tool: {part.data?.tool_name}
                           </div>
                         )}
                       </div>

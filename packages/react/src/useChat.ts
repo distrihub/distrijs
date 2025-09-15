@@ -60,18 +60,19 @@ export function useChat({
     getMetadataRef.current = getMetadata;
   }, [getMetadata]);
 
-  // Create InvokeContext for message construction
-  const createInvokeContext = useCallback((): InvokeContext => ({
-    thread_id: threadId,
-    run_id: undefined,
-    getMetadata: getMetadataRef.current
-  }), [threadId]);
-
   // Register tools with agent
   useRegisterTools({ agent, tools, wrapOptions });
 
   // Chat state management with Zustand - only for processing state
   const chatState = useChatStateStore();
+
+  // Create InvokeContext for message construction
+  const createInvokeContext = useCallback((): InvokeContext => ({
+    thread_id: threadId,
+    run_id: chatState.currentRunId,
+    task_id: chatState.currentTaskId,
+    getMetadata: getMetadataRef.current
+  }), [threadId, chatState.currentRunId, chatState.currentTaskId]);
 
   const isLoading = useChatStateStore(state => state.isLoading);
   const isStreaming = useChatStateStore(state => state.isStreaming);
@@ -182,7 +183,7 @@ export function useChat({
 
       // Add user message immediately - not from stream, user initiated
       processMessage(distriMessage, false);
-        
+
       if (beforeSendMessage) {
         distriMessage = await beforeSendMessage(distriMessage);
       }
@@ -194,7 +195,10 @@ export function useChat({
       // Start streaming
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: contextMetadata
+        metadata: {
+          ...contextMetadata,
+          task_id: chatState.currentTaskId
+        }
       });
 
       for await (const event of stream) {
@@ -250,7 +254,10 @@ export function useChat({
       // Start streaming
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: { ...contextMetadata }
+        metadata: {
+          ...contextMetadata,
+          task_id: chatState.currentTaskId
+        }
       });
 
       for await (const event of stream) {
@@ -290,13 +297,7 @@ export function useChat({
         // Construct tool result parts
         const toolResultParts: DistriPart[] = externalResponses.map(result => ({
           type: 'tool_result',
-          data: {
-            tool_call_id: result.tool_call_id,
-            tool_name: result.tool_name,
-            result: result.result,
-            success: result.success,
-            error: result.error
-          }
+          data: result
         }));
 
         // Create a tool result message to display in the chat
@@ -330,6 +331,21 @@ export function useChat({
       abortControllerRef.current.abort();
     }
   }, []);
+
+  // Set up callback for when all external tools complete (only once)
+  useEffect(() => {
+    const callback = async () => {
+      if (handleExternalToolResponsesRef.current) {
+        await handleExternalToolResponsesRef.current();
+      }
+    };
+    chatState.setOnAllToolsCompleted(callback);
+
+    // Cleanup the callback on unmount
+    return () => {
+      chatState.setOnAllToolsCompleted(undefined);
+    };
+  }, []); // Empty dependency array - only run once
 
   const messages = useChatStateStore(state => state.messages);
 
