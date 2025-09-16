@@ -5,7 +5,6 @@ export * from './distri-client';
 export * from './agent';
 export {
   convertA2AMessageToDistri,
-  convertA2AArtifactToDistri,
   convertA2AStatusUpdateToDistri,
   convertA2APartToDistri,
   convertDistriMessageToA2A,

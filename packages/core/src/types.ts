@@ -43,16 +43,6 @@ export interface ToolResults {
   reason: string | null;
 }
 
-export interface GenericArtifact {
-  id: string;
-  type: 'artifact';
-  timestamp: number;
-  data: any;
-  artifactId: string;
-  name: string;
-  description: string | null;
-}
-
 export interface DistriPlan {
   id: string;
   type: 'plan';
@@ -121,9 +111,7 @@ export interface ReactStep extends BasePlanStep {
   action: string;
 }
 
-export type DistriArtifact = AssistantWithToolCalls | ToolResults | GenericArtifact | DistriPlan;
-
-export type DistriStreamEvent = DistriMessage | DistriEvent | DistriArtifact;
+export type DistriStreamEvent = DistriMessage | DistriEvent;
 
 
 
@@ -171,14 +159,6 @@ export interface FileUrl {
 }
 export type FileType = FileBytes | FileUrl;
 
-
-
-export type ToolsConfig = {
-  tools: DistriBaseTool[];
-  agent_tools: Map<string, DistriBaseTool[]>;
-}
-
-
 /**
  * Tool definition interface following AG-UI pattern
  */
@@ -186,9 +166,10 @@ export interface DistriBaseTool {
   name: string;
   type: 'function' | 'ui';
   description: string;
-  input_schema: object; // JSON Schema
+  parameters: object; // JSON Schema
   is_final?: boolean;
   autoExecute?: boolean;
+  isExternal?: boolean; // True if frontend handles execution, false if backend handles it
 }
 
 export interface DistriFnTool extends DistriBaseTool {
@@ -462,7 +443,10 @@ export interface AgentDefinition {
 
   agentType?: string;
 
+  tools?: DistriBaseTool[];
+
 }
+
 
 export interface McpDefinition {
   /** The filter applied to the tools in this MCP definition. */
@@ -623,12 +607,4 @@ export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
   return 'type' in event && 'data' in event;
 }
 
-export function isDistriPlan(event: DistriStreamEvent): event is DistriPlan {
-  return 'steps' in event && Array.isArray(event.steps) && 'reasoning' in event;
-}
-
-export function isDistriArtifact(event: DistriStreamEvent): event is DistriArtifact {
-  return 'type' in event && 'timestamp' in event && 'id' in event;
-}
-
-export type DistriChatMessage = DistriEvent | DistriMessage | DistriArtifact;
+export type DistriChatMessage = DistriEvent | DistriMessage;

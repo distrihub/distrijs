@@ -20,7 +20,7 @@ export function wrapFnToolAsUiTool(
     name: fnTool.name,
     type: 'ui',
     description: fnTool.description,
-    input_schema: fnTool.input_schema,
+    parameters: fnTool.parameters,
     component: (props: UiToolProps) => {
       return React.createElement(DefaultToolActions, {
         ...props,

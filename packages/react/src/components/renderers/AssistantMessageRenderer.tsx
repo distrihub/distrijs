@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistriArtifact, DistriMessage } from '@distri/core';
+import { DistriMessage, DistriEvent } from '@distri/core';
 import { extractContent } from './utils';
 import { StreamingTextRenderer } from './StreamingTextRenderer';
 import TextRenderer from './TextRenderer';
@@ -8,7 +8,7 @@ import { useChatStateStore } from '../../stores/chatStateStore';
 
 
 export interface AssistantMessageRendererProps {
-  message: DistriMessage | DistriArtifact;
+  message: DistriMessage | DistriEvent;
   className?: string;
   avatar?: React.ReactNode;
   name?: string;

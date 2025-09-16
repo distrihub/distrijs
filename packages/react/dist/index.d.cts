@@ -1,4 +1,4 @@
-import { ToolCall, ToolResult, PlanStep, DistriChatMessage, Agent as Agent$1, ToolsConfig, DistriFnTool, DistriBaseTool, DistriMessage, DistriPart, AgentDefinition, DistriThread, DistriEvent, DistriClientConfig, DistriClient, DistriArtifact, ImagePart } from '@distri/core';
+import { ToolResult, ToolCall, PlanStep, DistriChatMessage, Agent as Agent$1, DistriFnTool, DistriBaseTool, DistriMessage, DistriPart, AgentDefinition, DistriThread, DistriEvent, DistriClientConfig, DistriClient, ImagePart } from '@distri/core';
 import * as zustand from 'zustand';
 import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as React$1 from 'react';
@@ -69,6 +69,7 @@ interface ToolCallState {
     component?: React__default.ReactNode;
     isExternal?: boolean;
     isLiveStream?: boolean;
+    resultSent?: boolean;
 }
 interface ChatState {
     isStreaming: boolean;
@@ -86,15 +87,12 @@ interface ChatState {
     streamingIndicator: StreamingIndicator | undefined;
     currentThought?: string;
     agent?: Agent$1;
-    tools?: {
-        tools: DistriAnyTool[];
-        agent_tools: Map<string, DistriAnyTool[]>;
-    };
+    externalTools?: DistriAnyTool[];
     wrapOptions?: {
         autoExecute?: boolean;
     };
     onAllToolsCompleted?: (() => void) | undefined;
-    getAllTools: () => DistriAnyTool[];
+    getAllExternalTools: () => DistriAnyTool[];
 }
 interface ChatStateStore extends ChatState {
     setStreaming: (isStreaming: boolean) => void;
@@ -130,7 +128,7 @@ interface ChatStateStore extends ChatState {
     updateStep: (stepId: string, updates: Partial<StepState>) => void;
     triggerTools: () => void;
     setAgent: (agent: Agent$1) => void;
-    setTools: (tools: ToolsConfig) => void;
+    setExternalTools: (tools: DistriAnyTool[]) => void;
     setWrapOptions: (options: {
         autoExecute?: boolean;
     }) => void;
@@ -169,7 +167,7 @@ interface UseChatOptions {
     onMessage?: (message: DistriChatMessage) => void;
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<Record<string, unknown>>;
-    tools?: ToolsConfig;
+    externalTools?: DistriBaseTool[];
     wrapOptions?: WrapToolOptions;
     initialMessages?: (DistriChatMessage)[];
     beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
@@ -185,7 +183,7 @@ interface UseChatReturn {
     stopStreaming: () => void;
     addMessage: (message: DistriChatMessage) => void;
 }
-declare function useChat({ threadId, onError, getMetadata, agent, tools, wrapOptions, beforeSendMessage, initialMessages, }: UseChatOptions): UseChatReturn;
+declare function useChat({ threadId, onError, getMetadata, agent, externalTools, wrapOptions, beforeSendMessage, initialMessages, }: UseChatOptions): UseChatReturn;
 
 interface UseAgentOptions {
     agentIdOrDef: string | AgentDefinition;
@@ -246,7 +244,7 @@ interface ChatProps {
     beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
-    tools?: ToolsConfig;
+    externalTools?: DistriAnyTool[];
     wrapOptions?: WrapToolOptions;
     initialMessages?: (DistriChatMessage)[];
     theme?: 'light' | 'dark' | 'auto';
@@ -618,7 +616,7 @@ declare const DropdownMenuShortcut: {
 };
 
 interface AssistantMessageRendererProps {
-    message: DistriMessage | DistriArtifact;
+    message: DistriMessage | DistriEvent;
     className?: string;
     avatar?: React__default.ReactNode;
     name?: string;
@@ -658,9 +656,9 @@ interface ExtractedContent {
     hasLinks: boolean;
     hasImages: boolean;
     imageParts: ImagePart[];
-    rawContent: DistriMessage | DistriEvent | DistriArtifact;
+    rawContent: DistriMessage | DistriEvent;
 }
-declare function extractContent(message: DistriMessage | DistriEvent | DistriArtifact): ExtractedContent;
+declare function extractContent(message: DistriMessage | DistriEvent): ExtractedContent;
 
 interface ToolResultRendererProps {
     toolCallId: string;

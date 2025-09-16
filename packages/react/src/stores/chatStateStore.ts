@@ -3,7 +3,6 @@ import {
   DistriEvent,
   DistriMessage,
   isDistriEvent,
-  isDistriArtifact,
   Agent,
   ToolCall,
   ToolResult,
@@ -13,7 +12,7 @@ import {
   PlanStep,
   RunStartedEvent,
   RunFinishedEvent,
-  ToolsConfig,
+  RunErrorEvent,
   extractToolResultData,
   normalizeToolResult,
 } from '@distri/core';
@@ -73,6 +72,7 @@ export interface ToolCallState {
   component?: React.ReactNode;
   isExternal?: boolean; // Flag to distinguish external tool calls
   isLiveStream?: boolean; // Flag to distinguish live streaming vs historical tool calls
+  resultSent?: boolean; // Flag to track if result was already sent to agent
 }
 
 export interface ChatState {
@@ -98,13 +98,11 @@ export interface ChatState {
 
   // Tool execution state
   agent?: Agent;
-  tools?: {
-    tools: DistriAnyTool[];
-    agent_tools: Map<string, DistriAnyTool[]>;
-  };
+
+  externalTools?: DistriAnyTool[];
   wrapOptions?: { autoExecute?: boolean };
   onAllToolsCompleted?: (() => void) | undefined;
-  getAllTools: () => DistriAnyTool[];
+  getAllExternalTools: () => DistriAnyTool[];
 }
 
 export interface ChatStateStore extends ChatState {
@@ -155,9 +153,11 @@ export interface ChatStateStore extends ChatState {
 
   // Setup
   setAgent: (agent: Agent) => void;
-  setTools: (tools: ToolsConfig) => void;
+  setExternalTools: (tools: DistriAnyTool[]) => void;
   setWrapOptions: (options: { autoExecute?: boolean }) => void;
   setOnAllToolsCompleted: (callback: (() => void) | undefined) => void;
+
+  // Main task management
 }
 
 export const useChatStateStore = create<ChatStateStore>((set, get) => ({
@@ -407,9 +407,23 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
+          // **FIX**: Don't overwrite currentTaskId if it's already set (preserve main task ID)
+          // Only set currentTaskId if it hasn't been set yet (for backward compatibility)
+          const shouldUpdateTaskId = !get().currentTaskId;
+
+          if (isDebugEnabled) {
+            console.log('🏪 run_started task tracking:', {
+              taskId,
+              runId,
+              existingMainTaskId: get().currentTaskId,
+              shouldUpdateTaskId,
+              willBeMainTask: shouldUpdateTaskId
+            });
+          }
+
           set({
             currentRunId: runId,
-            currentTaskId: taskId
+            currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId
           });
           get().setStreamingIndicator('typing');
           set({ isStreaming: true });
@@ -418,6 +432,16 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'run_finished':
           const runFinishedEvent = event as RunFinishedEvent;
           const finishedTaskId = runFinishedEvent.data.taskId;
+          const currentMainTaskId = get().currentTaskId;
+
+          console.log('🏁 run_finished - RAW EVENT:', {
+            fullEvent: runFinishedEvent,
+            eventData: runFinishedEvent.data,
+            extractedTaskId: finishedTaskId,
+            currentMainTaskId,
+            isMainTask: finishedTaskId === currentMainTaskId
+          });
+
           get().resolveToolCalls();
 
           // Update the specific task that finished
@@ -427,30 +451,45 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
-          // Clear all indicators and stop loading when run is finished
-          get().setStreamingIndicator(undefined);
-          get().setCurrentThought(undefined);
-          set({ isStreaming: false });
+
+          // **FIX**: Don't stop streaming based on task completion - let the backend stream end naturally
+          console.log('📝 Task finished, continuing stream until backend ends:', {
+            finishedTaskId,
+            isMainTask: finishedTaskId === currentMainTaskId
+          });
 
           break;
 
         case 'run_error':
-          console.log('🔧 run_error');
-          const errorTaskId = get().currentTaskId;
+          const runErrorEvent = event as RunErrorEvent;
+          const errorTaskId = runErrorEvent.data.code ? 'subtask' : get().currentTaskId; // Basic heuristic for now
+          const currentMainTaskIdForError = get().currentTaskId;
+
+          console.log('🔧 run_error:', {
+            errorTaskId,
+            currentMainTaskId: currentMainTaskIdForError,
+            isMainTask: errorTaskId === currentMainTaskIdForError
+          });
+
           if (errorTaskId) {
             get().updateTask(errorTaskId, {
               status: 'failed',
               endTime: timestamp,
-              error: (message.data as { message?: string })?.message || 'Unknown error',
+              error: runErrorEvent.data.message || 'Unknown error',
             });
           }
 
           get().resolveToolCalls();
 
-          // Clear all indicators and stop loading when run errors
-          get().setStreamingIndicator(undefined);
-          get().setCurrentThought(undefined);
-          set({ isStreaming: false });
+          // Only clear indicators and stop streaming if this is the main task error
+          if (errorTaskId === currentMainTaskIdForError) {
+            console.log('🛑 Stopping streaming - main task errored');
+            get().setStreamingIndicator(undefined);
+            get().setCurrentThought(undefined);
+            set({ isStreaming: false, isLoading: false });
+          } else {
+            console.log('📝 Sub-task errored, continuing stream');
+          }
           break;
 
         case 'plan_started':
@@ -545,9 +584,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'tool_calls':
           // Handle direct tool calls event
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
-            console.log('🔧 Processing tool_calls event:', message.data.tool_calls);
+            console.log('🔧 Processing tool_calls event:', {
+              taskId: (message.data as any).taskId,
+              tool_calls: message.data.tool_calls,
+              full_message: message.data
+            });
             message.data.tool_calls.forEach((toolCall: ToolCall) => {
-              console.log('🔧 Creating tool call:', toolCall.tool_name, toolCall.tool_call_id);
+              console.log('🔧 Creating tool call:', {
+                tool_name: toolCall.tool_name,
+                tool_call_id: toolCall.tool_call_id,
+                task_id: (message.data as any).taskId
+              });
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
@@ -594,56 +641,43 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
       }
     }
-    // Process artifacts
-    if (isDistriArtifact(message)) {
-      switch (message.type) {
-
-        case 'plan':
-          const planId = message.id;
-          if (planId) {
-            get().updatePlan(planId, {
-              steps: message.steps,
-              reasoning: message.reasoning,
-              status: 'completed',
-              endTime: message.timestamp || timestamp,
-            });
-
-            // Extract tool calls from action steps in the plan
-            if (message.steps && Array.isArray(message.steps)) {
-              message.steps.forEach(step => {
-                if (step.type === 'action' && step.action && step.action.tool_name) {
-                  // Create a tool call from the action
-                  const toolCall = {
-                    tool_call_id: step.id || `tool_${Date.now()}`,
-                    tool_name: step.action.tool_name,
-                    input: step.action.input || {},
-                  };
-
-                  get().initToolCall(toolCall, message.timestamp || timestamp, isFromStream);
-                }
-              });
-            }
-          }
-          get().setStreamingIndicator(undefined);
-          break;
-      }
-    }
   },
 
   initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream: boolean = false) => {
     set((state: ChatState) => {
       const newState = { ...state };
 
-      // Determine if tool is external (only if explicitly registered in tools map)
-      const tools = state.getAllTools();
-      const distriTool = tools.find(t => t.name === toolCall.tool_name);
+      // Find tool in configured tools (both external and backend)
+      const allTools = state.getAllExternalTools();
+      const backendTools = state.agent?.getDefinition?.()?.tools?.map(t => t.name) || [];
+
+      console.log('🔧 Tool resolution:', {
+        requested: toolCall.tool_name,
+        configuredTools: allTools.map(t => ({ name: t.name, isExternal: t.isExternal })),
+        backendTools: backendTools,
+        toolCallId: toolCall.tool_call_id,
+        currentTaskId: state.currentTaskId
+      });
+
+      const configuredTool = allTools.find(t => t.name === toolCall.tool_name);
+      const isBackendTool = backendTools.includes(toolCall.tool_name);
+      const isValidTool = !!configuredTool || isBackendTool;
+
+      console.log('🔧 Tool found:', {
+        isValidTool,
+        isConfiguredTool: !!configuredTool,
+        isExternal: configuredTool?.isExternal,
+        isBackendTool,
+        toolName: toolCall.tool_name
+      });
+
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         tool_name: toolCall.tool_name || 'Unknown Tool',
         input: toolCall.input || {},
         status: 'pending',
         startTime: timestamp || Date.now(),
-        isExternal: !!distriTool,
+        isExternal: configuredTool?.isExternal || false,
         isLiveStream: isFromStream,
       });
       return newState;
@@ -710,17 +744,29 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     console.log('initializeTool', toolCall);
     const state = get();
     let distriTool: DistriAnyTool | undefined;
-    if (state.tools) {
-      // Search through all agent tools to find the tool
-      const tools = state.getAllTools();
+    if (state.externalTools) {
+      // Search through all external tools to find the tool
+      const tools = state.getAllExternalTools();
 
       distriTool = tools.find(t => t.name === toolCall.tool_name);
     }
+
+    // Check if tool exists in backend agent definition
+    const backendTools = state.agent?.getDefinition?.()?.tools || [];
+    const isBackendTool = backendTools.some(t => t.name === toolCall.tool_name);
+
+    console.log('🔧 Tool resolution in initializeTool:', {
+      toolName: toolCall.tool_name,
+      foundInExternal: !!distriTool,
+      isBackendTool,
+      backendToolNames: backendTools.map(t => t.name)
+    });
+
     const commonProps = {
       tool_name: toolCall.tool_name,
       input: toolCall.input,
       startTime: Date.now(),
-      isExternal: true,
+      isExternal: !!distriTool, // Only mark as external if it's actually an external tool
       status: 'running' as ToolCallStatus,
     };
 
@@ -729,9 +775,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     }
     const toolCallState = state.toolCalls.get(toolCall.tool_call_id);
 
-    if (!distriTool) {
-      console.log(`Tool ${toolCall.tool_name} not found in registered tools - creating MissingTool component`);
-      // Create MissingTool component for unknown tools
+    // **FIX**: Don't create MissingTool for backend tools - they're handled by the backend
+    if (!distriTool && !isBackendTool) {
+      console.log(`❌ Tool ${toolCall.tool_name} not found in external tools OR backend agent definition - creating MissingTool component`);
+      // Create MissingTool component for truly unknown tools
       const component = React.createElement(MissingTool, {
         toolCall,
         toolCallState,
@@ -740,7 +787,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           name: toolCall.tool_name,
           type: 'function',
           description: 'Unknown tool',
-          input_schema: {},
+          parameters: {},
           autoExecute: false,
         } as DistriFnTool,
       });
@@ -751,6 +798,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         status: 'error',
         error: 'Tool not found',
         endTime: Date.now(),
+      });
+      return;
+    }
+
+    // **FIX**: If it's a backend tool but not an external tool, just track it without UI component
+    if (!distriTool && isBackendTool) {
+      console.log(`📡 Backend tool ${toolCall.tool_name} - tracking without UI component`);
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        ...commonProps,
+        component: undefined, // No UI component for backend tools
+        status: 'running',
       });
       return;
     }
@@ -795,9 +853,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   clearToolResults: () => {
     set((state: ChatState) => {
       const newState = { ...state };
+      // **FIX**: Don't delete tool calls - they should remain visible in chat history
+      // Just mark them as processed so they don't get sent again
       newState.toolCalls.forEach(toolCall => {
         if (toolCall.status === 'completed' || toolCall.status === 'error') {
-          newState.toolCalls.delete(toolCall.tool_call_id);
+          // Mark as processed but keep in the UI
+          toolCall.resultSent = true;
         }
       });
       return newState;
@@ -809,7 +870,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     const completedToolCalls = Array.from(state.toolCalls.values()).filter(toolCall =>
       (toolCall.status === 'completed' || toolCall.status === 'error') &&
       toolCall.isExternal &&
-      toolCall.result !== undefined // Only return if there's actually a result
+      toolCall.result !== undefined && // Only return if there's actually a result
+      !toolCall.resultSent // **FIX**: Don't return results that were already sent
     );
 
     return completedToolCalls.map(toolCallState => ({
@@ -956,26 +1018,17 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     });
   },
 
-  getAllTools: (): DistriAnyTool[] => {
+  getAllExternalTools: (): DistriAnyTool[] => {
     const state = get();
-    const tools = state.tools?.tools || [];
-    for (const [, toolList] of state.tools?.agent_tools || []) {
-      tools.push(...toolList);
-    }
-    return tools;
+    return state.externalTools || [];
   },
 
   // Setup
   setAgent: (agent: Agent) => {
     set({ agent });
   },
-  setTools: (tools: ToolsConfig) => {
-    set({
-      tools: {
-        tools: tools.tools as DistriAnyTool[],
-        agent_tools: tools.agent_tools as Map<string, DistriAnyTool[]>,
-      }
-    });
+  setExternalTools: (tools: DistriAnyTool[]) => {
+    set({ externalTools: tools });
   },
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {
     set({ wrapOptions });

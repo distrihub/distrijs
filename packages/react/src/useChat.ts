@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriChatMessage, DistriClient, DistriMessage } from '@distri/core';
+import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage } from '@distri/core';
 import {
   DistriPart,
   InvokeContext,
@@ -7,9 +7,9 @@ import {
 } from '@distri/core';
 import { useRegisterTools } from './hooks/registerTools';
 import { useChatStateStore } from './stores/chatStateStore';
-import { ToolsConfig } from '@distri/core';
 
 import { WrapToolOptions } from './utils/toolWrapper';
+import { DistriAnyTool } from './types';
 
 export interface UseChatOptions {
   threadId: string;
@@ -18,7 +18,7 @@ export interface UseChatOptions {
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream
   getMetadata?: () => Promise<Record<string, unknown>>;
-  tools?: ToolsConfig;
+  externalTools?: DistriBaseTool[];
   wrapOptions?: WrapToolOptions;
   initialMessages?: (DistriChatMessage)[];
   beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
@@ -41,7 +41,7 @@ export function useChat({
   onError,
   getMetadata,
   agent,
-  tools,
+  externalTools,
   wrapOptions,
   beforeSendMessage,
   initialMessages,
@@ -61,7 +61,7 @@ export function useChat({
   }, [getMetadata]);
 
   // Register tools with agent
-  useRegisterTools({ agent, tools, wrapOptions });
+  useRegisterTools({ agent, externalTools, wrapOptions });
 
   // Chat state management with Zustand - only for processing state
   const chatState = useChatStateStore();
@@ -84,7 +84,7 @@ export function useChat({
     setLoading,
     setStreaming,
     setAgent,
-    setTools,
+    setExternalTools: setTools,
     getExternalToolResponses,
     hasPendingToolCalls,
   } = chatState;
@@ -114,10 +114,10 @@ export function useChat({
     if (agent) {
       setAgent(agent);
     }
-    if (tools) {
-      setTools(tools);
+    if (externalTools) {
+      setTools(externalTools as DistriAnyTool[]);
     }
-  }, [agent, tools, setAgent, setTools]);
+  }, [agent, externalTools, setAgent, setTools]);
 
   // Store cleanup functions in refs to avoid dependency changes
   const cleanupRef = useRef<() => void>();
@@ -129,12 +129,16 @@ export function useChat({
 
   // Cleanup abort controller on unmount
   useEffect(() => {
+    console.log('🔄 [useChat] useEffect cleanup mounted');
     return () => {
+      console.log('🚨 [useChat] COMPONENT UNMOUNTING - aborting stream and cleaning up!');
       if (abortControllerRef.current) {
+        console.log('🚫 [useChat] Aborting stream due to component unmount');
         abortControllerRef.current.abort();
       }
       // Clear any lingering streaming states on unmount
       if (cleanupRef.current) {
+        console.log('🧹 [useChat] Cleaning up streaming state due to unmount');
         setTimeout(cleanupRef.current, 0);
       }
     };
@@ -145,6 +149,10 @@ export function useChat({
 
   useEffect(() => {
     if (agent?.id !== agentIdRef.current) {
+      console.log('🔄 [useChat] AGENT CHANGED - clearing all state!', {
+        oldId: agentIdRef.current,
+        newId: agent?.id
+      });
       // Agent changed, reset all state
       clearAllStates();
       setError(null);
@@ -165,7 +173,7 @@ export function useChat({
     setLoading(true);
     setStreaming(true);
     setError(null);
-    chatState.setStreamingIndicator(undefined);
+    chatState.setStreamingIndicator('typing');
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -210,15 +218,26 @@ export function useChat({
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Stream was cancelled, don't show error
+        // **FIX**: Clean up streaming state even on abort
+        chatState.setStreamingIndicator(undefined);
+        setStreaming(false);
+        setLoading(false);
         return;
       }
       const error = err instanceof Error ? err : new Error('Failed to send message');
       setError(error);
       onErrorRef.current?.(error);
+
+      // **FIX**: Clear streaming indicators immediately on error
+      chatState.setStreamingIndicator(undefined);
+      setStreaming(false);
+      setLoading(false);
     } finally {
+      console.log('🧹 [useChat sendMessage] Finally block - cleaning up streaming state');
       setLoading(false);
       setStreaming(false);
       abortControllerRef.current = null;
+      console.log('✅ [useChat sendMessage] Streaming cleanup completed');
     }
   }, [agent, createInvokeContext, handleStreamEvent, setLoading, setStreaming, setError]);
 
@@ -269,18 +288,30 @@ export function useChat({
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Stream was cancelled, don't show error
+        // **FIX**: Clean up streaming state even on abort
+        chatState.setStreamingIndicator(undefined);
+        setStreaming(false);
+        setLoading(false);
         return;
       }
       const error = err instanceof Error ? err : new Error('Failed to send message');
       setError(error);
       onErrorRef.current?.(error);
+
+      // **FIX**: Clear streaming indicators immediately on error
+      chatState.setStreamingIndicator(undefined);
+      setStreaming(false);
+      setLoading(false);
     } finally {
-      // Only set loading to false if no pending tool calls
-      if (!hasPendingToolCalls()) {
-        setLoading(false);
-      }
+      console.log('🧹 [useChat sendMessageStream] Finally block - cleaning up streaming state');
+      // **FIX**: When stream ends naturally, force stop all streaming indicators
+      // regardless of pending tool calls, because backend has closed the stream
+      console.log('🛑 [useChat sendMessageStream] Backend stream ended - force stopping all streaming indicators');
+      chatState.setStreamingIndicator(undefined); // Clear typing indicator
+      setLoading(false);
       setStreaming(false);
       abortControllerRef.current = null;
+      console.log('✅ [useChat sendMessageStream] Streaming cleanup completed');
     }
   }, [agent, createInvokeContext, handleStreamEvent, threadId, setLoading, setStreaming, setError, hasPendingToolCalls]);
 
@@ -314,6 +345,11 @@ export function useChat({
       } catch (err) {
         console.error('Failed to send external tool responses:', err);
         setError(err instanceof Error ? err : new Error('Failed to send tool responses'));
+
+        // **FIX**: Clear streaming indicators immediately on error
+        chatState.setStreamingIndicator(undefined);
+        setStreaming(false);
+        setLoading(false);
       } finally {
         setStreaming(false);
       }

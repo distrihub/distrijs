@@ -1,5 +1,5 @@
-import { Artifact, Message, Part } from '@a2a-js/sdk/client';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriArtifact, GenericArtifact, DistriChatMessage, DistriPlan } from './types';
+import { Message, Part } from '@a2a-js/sdk/client';
+import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
@@ -30,60 +30,60 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
 
   switch (metadata.type) {
     case 'run_started': {
-      const result: RunStartedEvent = {
+      const runStartedResult: RunStartedEvent = {
         type: 'run_started',
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-      return result;
+      return runStartedResult;
     }
 
     case 'run_error': {
-      const result: RunErrorEvent = {
+      const runErrorResult: RunErrorEvent = {
         type: 'run_error',
         data: {
           message: statusUpdate.error,
           code: statusUpdate.code
         }
       };
-      return result;
+      return runErrorResult;
     }
 
     case 'run_finished': {
-      const result: RunFinishedEvent = {
+      const runFinishedResult: RunFinishedEvent = {
         type: 'run_finished',
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-      return result;
+      return runFinishedResult;
     }
 
     case 'plan_started': {
-      const result: PlanStartedEvent = {
+      const planStartedResult: PlanStartedEvent = {
         type: 'plan_started',
         data: {
           initial_plan: metadata.initial_plan
         }
       };
-      return result;
+      return planStartedResult;
     }
 
     case 'plan_finished': {
-      const result: PlanFinishedEvent = {
+      const planFinishedResult: PlanFinishedEvent = {
         type: 'plan_finished',
         data: {
           total_steps: metadata.total_steps
         }
       };
-      return result;
+      return planFinishedResult;
     }
 
     case 'step_started': {
-      const result: any = {
+      const stepStartedResult: any = {
         type: 'step_started',
         data: {
           step_id: metadata.step_id,
@@ -91,11 +91,11 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           step_index: metadata.step_index || 0
         }
       };
-      return result;
+      return stepStartedResult;
     }
 
     case 'step_completed': {
-      const result: any = {
+      const stepCompletedResult: any = {
         type: 'step_completed',
         data: {
           step_id: metadata.step_id,
@@ -103,11 +103,11 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           step_index: metadata.step_index || 0
         }
       };
-      return result;
+      return stepCompletedResult;
     }
 
     case 'tool_execution_start': {
-      const result: ToolCallStartEvent = {
+      const toolStartResult: ToolCallStartEvent = {
         type: 'tool_call_start',
         data: {
           tool_call_id: metadata.tool_call_id,
@@ -115,21 +115,21 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           parent_message_id: statusUpdate.taskId
         }
       };
-      return result;
+      return toolStartResult;
     }
 
     case 'tool_execution_end': {
-      const result: ToolCallEndEvent = {
+      const toolEndResult: ToolCallEndEvent = {
         type: 'tool_call_end',
         data: {
           tool_call_id: metadata.tool_call_id
         }
       };
-      return result;
+      return toolEndResult;
     }
 
     case 'text_message_start': {
-      const result: TextMessageStartEvent = {
+      const textStartResult: TextMessageStartEvent = {
         type: 'text_message_start',
         data: {
           message_id: metadata.message_id,
@@ -137,11 +137,11 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           role: metadata.role === 'assistant' ? 'assistant' : 'user'
         }
       };
-      return result;
+      return textStartResult;
     }
 
     case 'text_message_content': {
-      const result: TextMessageContentEvent = {
+      const textContentResult: TextMessageContentEvent = {
         type: 'text_message_content',
         data: {
           message_id: metadata.message_id,
@@ -149,109 +149,59 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           delta: metadata.delta || ''
         }
       };
-      return result;
+      return textContentResult;
     }
 
     case 'text_message_end': {
-      const result: TextMessageEndEvent = {
+      const textEndResult: TextMessageEndEvent = {
         type: 'text_message_end',
         data: {
           message_id: metadata.message_id,
           step_id: metadata.step_id || ''
         }
       };
-      return result;
+      return textEndResult;
     }
 
     case 'tool_calls': {
-      const result: ToolCallsEvent = {
+      const toolCallsResult: ToolCallsEvent = {
         type: 'tool_calls',
         data: {
           tool_calls: metadata.tool_calls || []
         }
       };
-      return result;
+      return toolCallsResult;
     }
 
     case 'tool_results': {
-      const result: ToolResultsEvent = {
+      const toolResultsResult: ToolResultsEvent = {
         type: 'tool_results',
         data: {
           results: metadata.results || []
         }
       };
-      return result;
+      return toolResultsResult;
     }
 
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      const result: RunStartedEvent = {
+      const defaultResult: RunStartedEvent = {
         type: 'run_started',
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-      return result;
+      return defaultResult;
     }
   }
-}
-
-/**
- * Converts A2A artifacts to DistriArtifact, DistriPlan, or DistriMessage based on content
- */
-export function convertA2AArtifactToDistri(artifact: Artifact): DistriArtifact | DistriMessage | null {
-  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
-    return null;
-  }
-
-  const part = artifact.parts[0];
-  if (!part || part.kind !== 'data' || !part.data) {
-    return null;
-  }
-
-  const data = part.data as any;
-
-  // Handle different artifact types based on the data structure
-  // Note: llm_response and tool_results are no longer used as artifacts
-  // They come as direct events (tool_calls, tool_results) instead
-
-  if (data.type === 'plan') {
-    // Convert to DistriPlan for plan artifacts
-    const planResult: DistriPlan = {
-      id: data.id || artifact.artifactId,
-      type: 'plan',
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      reasoning: data.reasoning || '',
-      steps: data.steps || []
-    };
-
-    return planResult;
-  }
-
-  // For other artifact types, create a generic artifact
-  const executionResult: GenericArtifact = {
-    id: artifact.artifactId,
-    type: 'artifact',
-    timestamp: Date.now(),
-    data: data,
-    artifactId: artifact.artifactId,
-    name: artifact.name || '',
-    description: artifact.description || null
-  };
-
-  return executionResult;
 }
 
 /**
  * Enhanced decoder for A2A stream events that properly handles all event types
  */
 export function decodeA2AStreamEvent(event: any): DistriChatMessage | null {
-  // Handle artifacts (without kind field)
-  if (event.artifactId && event.parts) {
-    return convertA2AArtifactToDistri(event);
-  }
 
   // Handle regular messages
   if (event.kind === 'message') {
@@ -271,8 +221,8 @@ export function decodeA2AStreamEvent(event: any): DistriChatMessage | null {
 /**
  * Process A2A stream data (like from stream.json) and convert to DistriMessage/DistriEvent/DistriArtifact array
  */
-export function processA2AStreamData(streamData: any[]): (DistriMessage | DistriEvent | DistriArtifact)[] {
-  const results: (DistriMessage | DistriEvent | DistriArtifact)[] = [];
+export function processA2AStreamData(streamData: any[]): (DistriMessage | DistriEvent)[] {
+  const results: (DistriMessage | DistriEvent)[] = [];
 
   for (const item of streamData) {
     const converted = decodeA2AStreamEvent(item);
