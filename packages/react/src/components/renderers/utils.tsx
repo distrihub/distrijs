@@ -1,4 +1,4 @@
-import { DistriMessage, DistriEvent, DistriArtifact, ImagePart } from '@distri/core';
+import { DistriMessage, DistriEvent, ImagePart } from '@distri/core';
 
 export interface ExtractedContent {
   text: string;
@@ -7,10 +7,10 @@ export interface ExtractedContent {
   hasLinks: boolean;
   hasImages: boolean;
   imageParts: ImagePart[];
-  rawContent: DistriMessage | DistriEvent | DistriArtifact;
+  rawContent: DistriMessage | DistriEvent;
 }
 
-export function extractContent(message: DistriMessage | DistriEvent | DistriArtifact): ExtractedContent {
+export function extractContent(message: DistriMessage | DistriEvent): ExtractedContent {
   let text = '';
   let hasMarkdown = false;
   let hasCode = false;
@@ -39,14 +39,6 @@ export function extractContent(message: DistriMessage | DistriEvent | DistriArti
     hasCode = /```|`/.test(text);
     hasLinks = /\[.*?\]\(.*?\)|https?:\/\/[^\s]+/.test(text);
     hasImages = /!\[.*?\]\(.*?\)/.test(text) || imageParts.length > 0;
-  } else if ('type' in message) {
-    // Handle DistriArtifact
-    const artifact = message as DistriArtifact;
-    if (artifact.type === 'plan') {
-      text = JSON.stringify(artifact, null, 2);
-    } else {
-      text = JSON.stringify(artifact, null, 2);
-    }
   } else {
     // Handle DistriEvent or other types
     text = JSON.stringify(message, null, 2);

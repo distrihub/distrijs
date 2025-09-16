@@ -28,7 +28,6 @@ __export(index_exports, {
   ConnectionError: () => ConnectionError,
   DistriClient: () => DistriClient,
   DistriError: () => DistriError,
-  convertA2AArtifactToDistri: () => convertA2AArtifactToDistri,
   convertA2AMessageToDistri: () => convertA2AMessageToDistri,
   convertA2APartToDistri: () => convertA2APartToDistri,
   convertA2AStatusUpdateToDistri: () => convertA2AStatusUpdateToDistri,
@@ -41,10 +40,8 @@ __export(index_exports, {
   extractToolCallsFromDistriMessage: () => extractToolCallsFromDistriMessage,
   extractToolResultData: () => extractToolResultData,
   extractToolResultsFromDistriMessage: () => extractToolResultsFromDistriMessage,
-  isDistriArtifact: () => isDistriArtifact,
   isDistriEvent: () => isDistriEvent,
   isDistriMessage: () => isDistriMessage,
-  isDistriPlan: () => isDistriPlan,
   normalizeToolResult: () => normalizeToolResult,
   processA2AMessagesData: () => processA2AMessagesData,
   processA2AStreamData: () => processA2AStreamData,
@@ -214,12 +211,6 @@ function isDistriMessage(event) {
 }
 function isDistriEvent(event) {
   return "type" in event && "data" in event;
-}
-function isDistriPlan(event) {
-  return "steps" in event && Array.isArray(event.steps) && "reasoning" in event;
-}
-function isDistriArtifact(event) {
-  return "type" in event && "timestamp" in event && "id" in event;
 }
 
 // ../../node_modules/.pnpm/@a2a-js+sdk@https+++codeload.github.com+v3g42+a2a-js+tar.gz+51444c9/node_modules/@a2a-js/sdk/dist/chunk-CUGIRVQB.js
@@ -609,55 +600,55 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
   const metadata = statusUpdate.metadata;
   switch (metadata.type) {
     case "run_started": {
-      const result = {
+      const runStartedResult = {
         type: "run_started",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-      return result;
+      return runStartedResult;
     }
     case "run_error": {
-      const result = {
+      const runErrorResult = {
         type: "run_error",
         data: {
           message: statusUpdate.error,
           code: statusUpdate.code
         }
       };
-      return result;
+      return runErrorResult;
     }
     case "run_finished": {
-      const result = {
+      const runFinishedResult = {
         type: "run_finished",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-      return result;
+      return runFinishedResult;
     }
     case "plan_started": {
-      const result = {
+      const planStartedResult = {
         type: "plan_started",
         data: {
           initial_plan: metadata.initial_plan
         }
       };
-      return result;
+      return planStartedResult;
     }
     case "plan_finished": {
-      const result = {
+      const planFinishedResult = {
         type: "plan_finished",
         data: {
           total_steps: metadata.total_steps
         }
       };
-      return result;
+      return planFinishedResult;
     }
     case "step_started": {
-      const result = {
+      const stepStartedResult = {
         type: "step_started",
         data: {
           step_id: metadata.step_id,
@@ -665,10 +656,10 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-      return result;
+      return stepStartedResult;
     }
     case "step_completed": {
-      const result = {
+      const stepCompletedResult = {
         type: "step_completed",
         data: {
           step_id: metadata.step_id,
@@ -676,10 +667,10 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           step_index: metadata.step_index || 0
         }
       };
-      return result;
+      return stepCompletedResult;
     }
     case "tool_execution_start": {
-      const result = {
+      const toolStartResult = {
         type: "tool_call_start",
         data: {
           tool_call_id: metadata.tool_call_id,
@@ -687,19 +678,19 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           parent_message_id: statusUpdate.taskId
         }
       };
-      return result;
+      return toolStartResult;
     }
     case "tool_execution_end": {
-      const result = {
+      const toolEndResult = {
         type: "tool_call_end",
         data: {
           tool_call_id: metadata.tool_call_id
         }
       };
-      return result;
+      return toolEndResult;
     }
     case "text_message_start": {
-      const result = {
+      const textStartResult = {
         type: "text_message_start",
         data: {
           message_id: metadata.message_id,
@@ -707,10 +698,10 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           role: metadata.role === "assistant" ? "assistant" : "user"
         }
       };
-      return result;
+      return textStartResult;
     }
     case "text_message_content": {
-      const result = {
+      const textContentResult = {
         type: "text_message_content",
         data: {
           message_id: metadata.message_id,
@@ -718,83 +709,50 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
           delta: metadata.delta || ""
         }
       };
-      return result;
+      return textContentResult;
     }
     case "text_message_end": {
-      const result = {
+      const textEndResult = {
         type: "text_message_end",
         data: {
           message_id: metadata.message_id,
           step_id: metadata.step_id || ""
         }
       };
-      return result;
+      return textEndResult;
     }
     case "tool_calls": {
-      const result = {
+      const toolCallsResult = {
         type: "tool_calls",
         data: {
           tool_calls: metadata.tool_calls || []
         }
       };
-      return result;
+      return toolCallsResult;
     }
     case "tool_results": {
-      const result = {
+      const toolResultsResult = {
         type: "tool_results",
         data: {
           results: metadata.results || []
         }
       };
-      return result;
+      return toolResultsResult;
     }
     default: {
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      const result = {
+      const defaultResult = {
         type: "run_started",
         data: {
           runId: statusUpdate.runId,
           taskId: statusUpdate.taskId
         }
       };
-      return result;
+      return defaultResult;
     }
   }
 }
-function convertA2AArtifactToDistri(artifact) {
-  if (!artifact || !artifact.parts || !Array.isArray(artifact.parts)) {
-    return null;
-  }
-  const part = artifact.parts[0];
-  if (!part || part.kind !== "data" || !part.data) {
-    return null;
-  }
-  const data = part.data;
-  if (data.type === "plan") {
-    const planResult = {
-      id: data.id || artifact.artifactId,
-      type: "plan",
-      timestamp: data.timestamp || data.created_at || Date.now(),
-      reasoning: data.reasoning || "",
-      steps: data.steps || []
-    };
-    return planResult;
-  }
-  const executionResult = {
-    id: artifact.artifactId,
-    type: "artifact",
-    timestamp: Date.now(),
-    data,
-    artifactId: artifact.artifactId,
-    name: artifact.name || "",
-    description: artifact.description || null
-  };
-  return executionResult;
-}
 function decodeA2AStreamEvent(event) {
-  if (event.artifactId && event.parts) {
-    return convertA2AArtifactToDistri(event);
-  }
   if (event.kind === "message") {
     return convertA2AMessageToDistri(event);
   }
@@ -1288,30 +1246,27 @@ function uuidv4() {
 // src/agent.ts
 var Agent = class _Agent {
   constructor(agentDefinition, client) {
-    this.tools = {
-      tools: [],
-      agent_tools: /* @__PURE__ */ new Map()
-    };
+    this.tools = [];
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
   /**
-   * Set the entire agent tools map (for multi-agent scenarios)
+   * Set the tools array
    */
-  setTools(tools) {
+  setExternalTools(tools) {
     this.tools = tools;
   }
   /**
-   * Get all tools for a specific agent
+   * Get all tools
    */
-  getToolsForAgent(agentName) {
-    return this.tools.agent_tools.get(agentName) || [];
+  getExternalTools() {
+    return this.tools;
   }
   /**
-   * Check if tools are registered for a specific agent
+   * Add a single tool
    */
-  hasToolsForAgent(agentName) {
-    return this.tools.agent_tools.has(agentName);
+  addExternalTool(tool) {
+    this.tools.push(tool);
   }
   /**
    * Get agent information
@@ -1330,6 +1285,12 @@ var Agent = class _Agent {
   }
   get iconUrl() {
     return this.agentDefinition.icon_url;
+  }
+  /**
+   * Get the full agent definition (including backend tools)
+   */
+  getDefinition() {
+    return this.agentDefinition;
   }
   /**
    * Fetch messages for a thread (public method for useChat)
@@ -1369,23 +1330,12 @@ var Agent = class _Agent {
   enhanceParamsWithTools(params) {
     const metadata = {
       ...params.metadata,
-      tools: {
-        tools: this.tools.tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          input_schema: tool.input_schema,
-          is_final: tool.is_final
-        })),
-        agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => [
-          agentName,
-          tools.map((tool) => ({
-            name: tool.name,
-            description: tool.description,
-            input_schema: tool.input_schema,
-            is_final: tool.is_final
-          }))
-        ]))
-      }
+      external_tools: this.tools.filter((tool) => tool.isExternal).map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+        is_final: tool.is_final
+      }))
     };
     return {
       ...params,
@@ -1397,6 +1347,15 @@ var Agent = class _Agent {
    */
   static async create(agentIdOrDef, client) {
     const agentDefinition = typeof agentIdOrDef === "string" ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
+    console.log("\u{1F916} Agent definition loaded:", {
+      id: agentDefinition.id,
+      name: agentDefinition.name,
+      tools: agentDefinition.tools?.map((t) => ({
+        name: t.name,
+        type: t.type || "function"
+      })) || [],
+      toolCount: agentDefinition.tools?.length || 0
+    });
     return new _Agent(agentDefinition, client);
   }
   /**
@@ -1415,7 +1374,6 @@ var Agent = class _Agent {
   ConnectionError,
   DistriClient,
   DistriError,
-  convertA2AArtifactToDistri,
   convertA2AMessageToDistri,
   convertA2APartToDistri,
   convertA2AStatusUpdateToDistri,
@@ -1428,10 +1386,8 @@ var Agent = class _Agent {
   extractToolCallsFromDistriMessage,
   extractToolResultData,
   extractToolResultsFromDistriMessage,
-  isDistriArtifact,
   isDistriEvent,
   isDistriMessage,
-  isDistriPlan,
   normalizeToolResult,
   processA2AMessagesData,
   processA2AStreamData,

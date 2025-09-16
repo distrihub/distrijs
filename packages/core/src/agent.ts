@@ -3,7 +3,6 @@ import {
   AgentDefinition,
   DistriBaseTool,
   DistriChatMessage,
-  ToolsConfig
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
@@ -38,10 +37,7 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: AgentDefinition;
-  private tools: ToolsConfig = {
-    tools: [],
-    agent_tools: new Map(),
-  };
+  private tools: DistriBaseTool[] = [];
 
   constructor(agentDefinition: AgentDefinition, client: DistriClient) {
     this.agentDefinition = agentDefinition;
@@ -50,25 +46,24 @@ export class Agent {
 
 
   /**
-   * Set the entire agent tools map (for multi-agent scenarios)
+   * Set the tools array
    */
-  setTools(tools: ToolsConfig): void {
+  setExternalTools(tools: DistriBaseTool[]): void {
     this.tools = tools;
   }
 
   /**
-   * Get all tools for a specific agent
+   * Get all tools
    */
-  getToolsForAgent(agentName: string): DistriBaseTool[] {
-    return this.tools.agent_tools.get(agentName) || [];
+  getExternalTools(): DistriBaseTool[] {
+    return this.tools;
   }
 
-
   /**
-   * Check if tools are registered for a specific agent
+   * Add a single tool
    */
-  hasToolsForAgent(agentName: string): boolean {
-    return this.tools.agent_tools.has(agentName);
+  addExternalTool(tool: DistriBaseTool): void {
+    this.tools.push(tool);
   }
 
   /**
@@ -92,6 +87,13 @@ export class Agent {
 
   get iconUrl(): string | undefined {
     return this.agentDefinition.icon_url;
+  }
+
+  /**
+   * Get the full agent definition (including backend tools)
+   */
+  getDefinition(): AgentDefinition {
+    return this.agentDefinition;
   }
 
   /**
@@ -139,23 +141,12 @@ export class Agent {
   private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
     const metadata = {
       ...params.metadata,
-      tools: {
-        tools: this.tools.tools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          input_schema: tool.input_schema,
-          is_final: tool.is_final
-        })),
-        agent_tools: Object.fromEntries(Array.from(this.tools.agent_tools.entries()).map(([agentName, tools]) => ([
-          agentName,
-          tools.map(tool => ({
-            name: tool.name,
-            description: tool.description,
-            input_schema: tool.input_schema,
-            is_final: tool.is_final
-          })),
-        ]))),
-      }
+      external_tools: this.tools.filter(tool => tool.isExternal).map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+        is_final: tool.is_final
+      }))
     };
     return {
       ...params,
@@ -169,6 +160,15 @@ export class Agent {
    */
   static async create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent> {
     const agentDefinition = typeof agentIdOrDef === 'string' ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
+    console.log('🤖 Agent definition loaded:', {
+      id: agentDefinition.id,
+      name: agentDefinition.name,
+      tools: agentDefinition.tools?.map(t => ({
+        name: t.name,
+        type: t.type || 'function'
+      })) || [],
+      toolCount: agentDefinition.tools?.length || 0
+    });
     return new Agent(agentDefinition, client);
   }
 

@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 import { ChatState, useChatStateStore } from '../stores/chatStateStore';
 import { WrapToolOptions } from '../utils/toolWrapper';
-import { ToolsConfig } from '@distri/core';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
+import { DistriAnyTool } from '@/types';
 
 export interface ModelOption {
   id: string;
@@ -38,7 +38,7 @@ export interface ChatProps {
   beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
-  tools?: ToolsConfig;
+  externalTools?: DistriAnyTool[];
   // Tool wrapping options
   wrapOptions?: WrapToolOptions;
   // Initial messages to use instead of fetching
@@ -79,7 +79,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   onMessage,
   onError,
   getMetadata,
-  tools,
+  externalTools,
   wrapOptions,
   initialMessages,
   theme = 'auto',
@@ -129,7 +129,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     onMessage,
     onError,
     getMetadata,
-    tools,
+    externalTools,
     wrapOptions,
     initialMessages,
     beforeSendMessage,

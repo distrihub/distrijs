@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Agent, ToolsConfig } from '@distri/core';
+import { Agent, DistriBaseTool } from '@distri/core';
 import { DistriUiTool, UiToolProps } from '@/types';
 import { ToastToolCall } from '@/components/renderers/tools';
 import { WrapToolOptions } from '../utils/toolWrapper';
@@ -7,16 +7,16 @@ import { useChatStateStore } from '../stores/chatStateStore';
 
 export interface UseToolsOptions {
   agent?: Agent;
-  tools?: ToolsConfig;
+  externalTools?: DistriBaseTool[];
   wrapOptions?: WrapToolOptions;
 }
 
-export function useRegisterTools({ agent, tools, wrapOptions = {} }: UseToolsOptions) {
+export function useRegisterTools({ agent, externalTools, wrapOptions = {} }: UseToolsOptions) {
   const lastAgentIdRef = useRef<string | null>(null);
   const setWrapOptions = useChatStateStore(state => state.setWrapOptions);
 
   useEffect(() => {
-    if (!agent || !tools) {
+    if (!agent || !externalTools) {
       return;
     }
 
@@ -29,10 +29,10 @@ export function useRegisterTools({ agent, tools, wrapOptions = {} }: UseToolsOpt
     setWrapOptions(wrapOptions);
 
     // Set the tools Map on the agent as-is
-    agent.setTools(tools);
+    agent.setExternalTools(externalTools);
 
     lastAgentIdRef.current = agent.id;
-  }, [agent?.id, tools, wrapOptions, setWrapOptions]);
+  }, [agent?.id, externalTools, wrapOptions, setWrapOptions]);
 }
 
 export const defaultTools: DistriUiTool[] = [
@@ -40,7 +40,7 @@ export const defaultTools: DistriUiTool[] = [
     name: 'toast',
     type: 'ui',
     description: 'Show a toast message',
-    input_schema: {
+    parameters: {
       type: 'object',
       properties: {
         message: { type: 'string' },
