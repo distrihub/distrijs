@@ -357,18 +357,6 @@ var DefaultToolActions = ({
       ] })
     ] });
   }
-  if (isProcessing) {
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "border rounded-lg p-4 bg-background", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2 mb-3", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react3.Loader2, { className: "h-4 w-4 text-primary animate-spin" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "font-medium", children: "Executing Tool..." })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "text-sm text-muted-foreground", children: [
-        "Running: ",
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("code", { className: "bg-muted px-1 rounded", children: toolName })
-      ] })
-    ] });
-  }
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "border rounded-lg p-4 bg-background", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2 mb-3", children: [
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react3.Wrench, { className: "h-4 w-4 text-primary" }),
@@ -488,21 +476,6 @@ var MissingTool = ({
 // src/stores/chatStateStore.ts
 var import_zustand = require("zustand");
 var import_core5 = require("@distri/core");
-
-// src/utils/extractThought.ts
-function extractThoughtContent(text) {
-  if (!text) return null;
-  const agentResponseRegex = /<agent_response[^>]*>([\s\S]*?)<\/agent_response>/gi;
-  const agentResponseMatch = agentResponseRegex.exec(text);
-  if (!agentResponseMatch) return null;
-  const agentResponseContent = agentResponseMatch[1];
-  const thoughtRegex = /<thought[^>]*>([\s\S]*?)<\/thought>/gi;
-  const thoughtMatch = thoughtRegex.exec(agentResponseContent);
-  if (!thoughtMatch) return null;
-  return thoughtMatch[1].trim();
-}
-
-// src/stores/chatStateStore.ts
 var import_react4 = __toESM(require("react"), 1);
 var import_sonner2 = require("sonner");
 var useChatStateStore = (0, import_zustand.create)((set, get) => ({
@@ -551,7 +524,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     }
   },
   addMessage: (message) => {
-    const isDebugEnabled = get().debug;
     set((state) => {
       if ((0, import_core5.isDistriEvent)(message)) {
         const event = message;
@@ -581,7 +553,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           return { ...state, messages };
         } else if (event.type === "text_message_content") {
           const messageId = event.data.message_id;
-          const stepId = event.data.step_id;
           const delta = event.data.delta;
           const existingIndex = state.messages.findIndex(
             (m) => (0, import_core5.isDistriMessage)(m) && m.id === messageId
@@ -589,39 +560,17 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           if (existingIndex >= 0) {
             const existingMessage = state.messages[existingIndex];
             let textPart = existingMessage.parts.find((p) => p.type === "text");
-            if (!textPart) {
-              textPart = { type: "text", data: "" };
-              const updatedMessage = {
-                ...existingMessage,
-                parts: [...existingMessage.parts, textPart]
-              };
-              const messages2 = state.messages.map(
-                (msg, idx) => idx === existingIndex ? updatedMessage : msg
-              );
-              return { ...state, messages: messages2 };
-            }
-            textPart.data += delta;
-            const thoughtContent = extractThoughtContent(textPart.data);
-            if (thoughtContent) {
-              get().setCurrentThought(thoughtContent);
-            }
-            if (stepId) {
-              const currentStep = get().steps.get(stepId);
-              if (currentStep && currentStep.status === "running") {
-                get().updateStep(stepId, {
-                  title: `${currentStep.title || "Writing"} (${textPart.data.length} chars)`
-                });
-              }
-            }
+            textPart = { type: "text", data: delta };
+            const updatedMessage = {
+              ...existingMessage,
+              parts: [...existingMessage.parts, textPart]
+            };
             const messages = state.messages.map(
-              (msg, idx) => idx === existingIndex ? { ...existingMessage } : msg
+              (msg, idx) => idx === existingIndex ? updatedMessage : msg
             );
             return { ...state, messages };
           } else {
-            if (isDebugEnabled) {
-              console.warn("\u274C Cannot find streaming message to append to:", messageId);
-              console.log("\u{1F4CB} Available message IDs:", state.messages.filter(import_core5.isDistriMessage).map((m) => m.id));
-            }
+            console.log("\u{1F527} text message content sent without existing message. This should not happen.", message);
             return state;
           }
         } else if (event.type === "text_message_end") {
@@ -665,6 +614,7 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
     toolCalls.forEach((toolCall) => {
       get().initializeTool(toolCall);
     });
+    return toolCalls.length;
   },
   // State actions
   processMessage: (message, isFromStream = false) => {
@@ -699,15 +649,6 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
             });
           }
           const shouldUpdateTaskId = !get().currentTaskId;
-          if (isDebugEnabled) {
-            console.log("\u{1F3EA} run_started task tracking:", {
-              taskId,
-              runId,
-              existingMainTaskId: get().currentTaskId,
-              shouldUpdateTaskId,
-              willBeMainTask: shouldUpdateTaskId
-            });
-          }
           set({
             currentRunId: runId,
             currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId
@@ -718,35 +659,21 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
         case "run_finished":
           const runFinishedEvent = event;
           const finishedTaskId = runFinishedEvent.data.taskId;
-          const currentMainTaskId = get().currentTaskId;
-          console.log("\u{1F3C1} run_finished - RAW EVENT:", {
-            fullEvent: runFinishedEvent,
-            eventData: runFinishedEvent.data,
-            extractedTaskId: finishedTaskId,
-            currentMainTaskId,
-            isMainTask: finishedTaskId === currentMainTaskId
-          });
-          get().resolveToolCalls();
           if (finishedTaskId) {
             get().updateTask(finishedTaskId, {
               status: "completed",
               endTime: timestamp
             });
           }
-          console.log("\u{1F4DD} Task finished, continuing stream until backend ends:", {
-            finishedTaskId,
-            isMainTask: finishedTaskId === currentMainTaskId
-          });
+          set({ isStreaming: false, isLoading: false });
+          get().setStreamingIndicator(void 0);
+          get().setCurrentThought(void 0);
+          get().resolveToolCalls();
           break;
         case "run_error":
           const runErrorEvent = event;
           const errorTaskId = runErrorEvent.data.code ? "subtask" : get().currentTaskId;
           const currentMainTaskIdForError = get().currentTaskId;
-          console.log("\u{1F527} run_error:", {
-            errorTaskId,
-            currentMainTaskId: currentMainTaskIdForError,
-            isMainTask: errorTaskId === currentMainTaskIdForError
-          });
           if (errorTaskId) {
             get().updateTask(errorTaskId, {
               status: "failed",
@@ -845,24 +772,13 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           break;
         case "tool_calls":
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
-            console.log("\u{1F527} Processing tool_calls event:", {
-              taskId: message.data.taskId,
-              tool_calls: message.data.tool_calls,
-              full_message: message.data
-            });
             message.data.tool_calls.forEach((toolCall) => {
-              console.log("\u{1F527} Creating tool call:", {
-                tool_name: toolCall.tool_name,
-                tool_call_id: toolCall.tool_call_id,
-                task_id: message.data.taskId
-              });
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
                 input: toolCall.input
               }, timestamp, isFromStream);
             });
-            console.log("\u{1F527} Tool calls after init:", Array.from(get().toolCalls.entries()));
           }
           break;
         case "tool_results":
@@ -1309,15 +1225,11 @@ function useChat({
     setLoading(false);
   };
   (0, import_react6.useEffect)(() => {
-    console.log("\u{1F504} [useChat] useEffect cleanup mounted");
     return () => {
-      console.log("\u{1F6A8} [useChat] COMPONENT UNMOUNTING - aborting stream and cleaning up!");
       if (abortControllerRef.current) {
-        console.log("\u{1F6AB} [useChat] Aborting stream due to component unmount");
         abortControllerRef.current.abort();
       }
       if (cleanupRef.current) {
-        console.log("\u{1F9F9} [useChat] Cleaning up streaming state due to unmount");
         setTimeout(cleanupRef.current, 0);
       }
     };
@@ -1325,10 +1237,6 @@ function useChat({
   const agentIdRef = (0, import_react6.useRef)(void 0);
   (0, import_react6.useEffect)(() => {
     if (agent?.id !== agentIdRef.current) {
-      console.log("\u{1F504} [useChat] AGENT CHANGED - clearing all state!", {
-        oldId: agentIdRef.current,
-        newId: agent?.id
-      });
       clearAllStates();
       setError(null);
       agentIdRef.current = agent?.id;
@@ -1399,7 +1307,7 @@ function useChat({
     setLoading(true);
     setStreaming(true);
     setError(null);
-    chatState.setStreamingIndicator(void 0);
+    chatState.setStreamingIndicator("typing");
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -2854,18 +2762,26 @@ var getFriendlyToolMessage = (toolName, input) => {
   switch (toolName) {
     case "search":
       return `Searching "${input?.query || "unknown query"}"`;
-    case "scrape":
-      return `Scraping website "${input?.url || "unknown URL"}"`;
-    case "web_search":
-      return `Searching the web for "${input?.query || "unknown query"}"`;
-    case "read_file":
-      return `Reading file "${input?.file_path || "unknown file"}"`;
-    case "write_file":
-      return `Writing to file "${input?.file_path || "unknown file"}"`;
-    case "list_files":
-      return `Listing files in "${input?.directory || "current directory"}"`;
-    case "run_command":
-      return `Running command "${input?.command || "unknown command"}"`;
+    case "call_search_agent":
+      return `Searching`;
+    case "read_values":
+      return `Reading values`;
+    case "get_sheet_info":
+      return `Getting sheet info`;
+    case "get_context_pack":
+      return `Understanding the spreadsheet`;
+    case "write_values":
+      return `Updating values`;
+    case "clear_values":
+      return `Clearing values`;
+    case "merge_cells":
+      return `Merging cells`;
+    case "call_blink_ops_agent":
+      return `Planning sheet updates`;
+    case "apply_blink_ops":
+      return `Applying sheet updates`;
+    case "final":
+      return `Finalizing`;
     default:
       return `Executing ${toolName}`;
   }
@@ -2969,14 +2885,14 @@ function MessageRenderer({
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
-        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { className: "distri-user-message", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
           UserMessageRenderer,
           {
             message: distriMessage
           }
         ) }, `user-${index}`);
       case "assistant":
-        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { className: "distri-assistant-message", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
           StepBasedRenderer,
           {
             message: distriMessage
@@ -3007,7 +2923,10 @@ function MessageRenderer({
       case "step_completed":
         return null;
       case "tool_calls":
-        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
+        if (toolCallsState.size === 0) {
+          return null;
+        }
+        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { className: "distri-tool-execution-start", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
           ToolExecutionRenderer,
           {
             event,
@@ -3017,7 +2936,7 @@ function MessageRenderer({
       case "tool_results":
         return null;
       case "agent_handover":
-        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { className: "distri-handover", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "text-sm text-muted-foreground", children: [
           /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("strong", { children: "Handover to:" }),
           " ",
           event.data?.to_agent || "unknown agent"
@@ -3025,7 +2944,7 @@ function MessageRenderer({
       case "run_finished":
         return null;
       case "run_error":
-        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(RendererWrapper, { className: "distri-run-error", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
           /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "text-sm text-destructive", children: [
             /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("strong", { children: "Error:" }),
             " ",
@@ -3688,9 +3607,9 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
   };
   const renderThinkingIndicator = () => {
     if (streamingIndicator === "typing") {
-      return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RendererWrapper2, { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TypingIndicator, {}) }, `typing-indicator`);
+      return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RendererWrapper2, { className: "distri-typing-indicator", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(TypingIndicator, {}) }, `typing-indicator`);
     } else if (streamingIndicator) {
-      return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RendererWrapper2, { children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RendererWrapper2, { className: "distri-thinking-indicator", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
         ThinkingRenderer,
         {
           indicator: streamingIndicator,
@@ -3741,7 +3660,7 @@ var Chat = (0, import_react18.forwardRef)(function Chat2({
       onDrop: handleDrop,
       children: [
         isDragOver && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "text-primary font-medium text-lg", children: "Drop images anywhere to upload" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "max-w-4xl mx-auto px-2 py-4 text-sm space-y-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "max-w-4xl mx-auto px-2 py-4 text-sm space-y-1", children: [
           error && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "text-destructive text-xs", children: [
             /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Error:" }),
             " ",

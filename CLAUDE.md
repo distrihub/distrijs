@@ -168,6 +168,19 @@ The `test-event-processing.js` file validates the new event-based architecture:
 - Maintain design consistency with existing shadcn theme system
 - Avoid hardcoded colors - use CSS variables and design tokens
 
+**Mobile-First Responsive Design:**
+- **ALWAYS use responsive sizing classes**: `text-xs sm:text-sm`, `p-2 sm:p-4`, `h-3 w-3 sm:h-4 sm:w-4`
+- **Consistent Header styling**: Use responsive text sizes for headers - `text-sm sm:text-base lg:text-lg`
+- **Icon scaling**: Icons should scale responsively - `h-3 w-3 sm:h-4 sm:w-4` for small icons, `h-6 w-6 sm:h-8 sm:w-8` for large
+- **Spacing optimization**: Use smaller spacing on mobile - `space-y-1 sm:space-y-2`, `gap-3 sm:gap-4 lg:gap-6`
+- **Grid responsiveness**: Start with single column, expand on larger screens - `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
+- **Content padding**: Reduce padding on small screens - `p-2 sm:p-4 lg:p-6`
+- **Button sizing**: Use `size="sm"` for mobile-friendly buttons with responsive text - `text-xs sm:text-sm`
+- **Form elements**: Apply responsive classes to inputs, textareas, selects - `text-xs sm:text-sm`
+- **Card layouts**: Reduce header and content padding for compact design - `p-3 sm:p-4 lg:p-6`, `pb-2 sm:pb-3`, `pt-0`
+- **Badge visibility**: Hide secondary badges on mobile - `hidden sm:inline-flex` for less important badges
+- **Sidebar behavior**: Use `isEmbedded` (not `isMobile`) for auto-close functionality in embedded contexts
+
 **Message Rendering:**
 - `<thought>` tags styled with muted colors and left border
 - Code blocks use syntax highlighting with appropriate themes
@@ -184,6 +197,30 @@ The `test-event-processing.js` file validates the new event-based architecture:
 - **Turbo** for monorepo build orchestration
 - **tsup** for package bundling
 - **ESLint** for code linting
+
+## Header Component Usage
+
+**Consistent Header Styling:**
+```typescript
+// Standard Header pattern with responsive title and Back button
+<Header
+  title="Page Title"           // Keep titles concise for mobile
+  subtitle="Brief description"  // Optional, shortened on mobile
+  rightElement={<Back />}       // Consistent Back button usage
+/>
+```
+
+**Header Guidelines:**
+- Titles should be 2-3 words maximum for mobile compatibility
+- Subtitles should provide context but be brief enough for small screens
+- Use `<Back />` component consistently for navigation
+- Right element should be minimal (single button or small button group)
+
+**Card Component Styling:**
+- Use compact padding: `p-3 sm:p-4 lg:p-6` for main content
+- Header padding: `p-3 sm:p-4 lg:p-6 pb-2 sm:pb-3` with reduced bottom padding
+- Content with header: `pt-0` to remove top padding and create seamless flow
+- Responsive spacing between elements: `space-y-3 sm:space-y-4`
 
 ## Common Development Patterns
 

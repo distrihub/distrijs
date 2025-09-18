@@ -52,7 +52,7 @@ export function MessageRenderer({
     switch (distriMessage.role) {
       case 'user':
         return (
-          <RendererWrapper key={`user-${index}`}>
+          <RendererWrapper key={`user-${index}`} className="distri-user-message">
             <UserMessageRenderer
               message={distriMessage}
             />
@@ -61,7 +61,7 @@ export function MessageRenderer({
 
       case 'assistant':
         return (
-          <RendererWrapper key={`assistant-${index}`}>
+          <RendererWrapper key={`assistant-${index}`} className="distri-assistant-message">
             <StepBasedRenderer
               message={distriMessage}
             />
@@ -111,8 +111,11 @@ export function MessageRenderer({
         return null;
 
       case 'tool_calls':
+        if (toolCallsState.size === 0) {
+          return null;
+        }
         return (
-          <RendererWrapper key={`tool-execution-start-${index}`}>
+          <RendererWrapper key={`tool-execution-start-${index}`} className="distri-tool-execution-start">
             <ToolExecutionRenderer
               event={event}
               toolCallStates={toolCallsState}
@@ -125,7 +128,7 @@ export function MessageRenderer({
 
       case 'agent_handover':
         return (
-          <RendererWrapper key={`handover-${index}`}>
+          <RendererWrapper key={`handover-${index}`} className="distri-handover">
             <div className="p-3 bg-muted rounded border">
               <div className="text-sm text-muted-foreground">
                 <strong>Handover to:</strong> {event.data?.to_agent || 'unknown agent'}
@@ -139,7 +142,7 @@ export function MessageRenderer({
 
       case 'run_error':
         return (
-          <RendererWrapper key={`run-error-${index}`}>
+          <RendererWrapper key={`run-error-${index}`} className="distri-run-error">
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded">
               <div className="text-sm text-destructive">
                 <strong>Error:</strong> {event.data?.message || 'Unknown error occurred'}

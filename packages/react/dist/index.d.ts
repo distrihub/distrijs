@@ -122,7 +122,7 @@ interface ChatStateStore extends ChatState {
     getCurrentTasks: () => TaskState[];
     getTaskById: (taskId: string) => TaskState | null;
     getPlanById: (planId: string) => PlanState | null;
-    resolveToolCalls: () => void;
+    resolveToolCalls: () => number;
     updateTask: (taskId: string, updates: Partial<TaskState>) => void;
     updatePlan: (planId: string, updates: Partial<PlanState>) => void;
     updateStep: (stepId: string, updates: Partial<StepState>) => void;

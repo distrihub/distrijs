@@ -129,16 +129,12 @@ export function useChat({
 
   // Cleanup abort controller on unmount
   useEffect(() => {
-    console.log('🔄 [useChat] useEffect cleanup mounted');
     return () => {
-      console.log('🚨 [useChat] COMPONENT UNMOUNTING - aborting stream and cleaning up!');
       if (abortControllerRef.current) {
-        console.log('🚫 [useChat] Aborting stream due to component unmount');
         abortControllerRef.current.abort();
       }
       // Clear any lingering streaming states on unmount
       if (cleanupRef.current) {
-        console.log('🧹 [useChat] Cleaning up streaming state due to unmount');
         setTimeout(cleanupRef.current, 0);
       }
     };
@@ -149,10 +145,6 @@ export function useChat({
 
   useEffect(() => {
     if (agent?.id !== agentIdRef.current) {
-      console.log('🔄 [useChat] AGENT CHANGED - clearing all state!', {
-        oldId: agentIdRef.current,
-        newId: agent?.id
-      });
       // Agent changed, reset all state
       clearAllStates();
       setError(null);
@@ -247,7 +239,7 @@ export function useChat({
     setLoading(true);
     setStreaming(true);
     setError(null);
-    chatState.setStreamingIndicator(undefined);
+    chatState.setStreamingIndicator('typing');
 
     // Cancel any existing stream
     if (abortControllerRef.current) {

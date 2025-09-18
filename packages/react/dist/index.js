@@ -98,7 +98,7 @@ import { Fragment, jsx as jsx4 } from "react/jsx-runtime";
 
 // src/components/renderers/tools/DefaultToolActions.tsx
 import { useState as useState2, useEffect as useEffect3 } from "react";
-import { Wrench, CheckCircle as CheckCircle2, XCircle as XCircle2, Loader2 } from "lucide-react";
+import { Wrench, CheckCircle as CheckCircle2, XCircle as XCircle2 } from "lucide-react";
 import { createSuccessfulToolResult as createSuccessfulToolResult3, createFailedToolResult } from "@distri/core";
 import { jsx as jsx5, jsxs as jsxs2 } from "react/jsx-runtime";
 var DefaultToolActions = ({
@@ -214,18 +214,6 @@ var DefaultToolActions = ({
       toolCallState?.error && /* @__PURE__ */ jsxs2("div", { className: "mt-2", children: [
         /* @__PURE__ */ jsx5("p", { className: "text-xs text-destructive mb-1", children: "Error:" }),
         /* @__PURE__ */ jsx5("p", { className: "text-xs text-destructive bg-destructive/10 p-2 rounded border", children: toolCallState.error })
-      ] })
-    ] });
-  }
-  if (isProcessing) {
-    return /* @__PURE__ */ jsxs2("div", { className: "border rounded-lg p-4 bg-background", children: [
-      /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2 mb-3", children: [
-        /* @__PURE__ */ jsx5(Loader2, { className: "h-4 w-4 text-primary animate-spin" }),
-        /* @__PURE__ */ jsx5("span", { className: "font-medium", children: "Executing Tool..." })
-      ] }),
-      /* @__PURE__ */ jsxs2("p", { className: "text-sm text-muted-foreground", children: [
-        "Running: ",
-        /* @__PURE__ */ jsx5("code", { className: "bg-muted px-1 rounded", children: toolName })
       ] })
     ] });
   }
@@ -353,21 +341,6 @@ import {
   extractToolResultData,
   normalizeToolResult
 } from "@distri/core";
-
-// src/utils/extractThought.ts
-function extractThoughtContent(text) {
-  if (!text) return null;
-  const agentResponseRegex = /<agent_response[^>]*>([\s\S]*?)<\/agent_response>/gi;
-  const agentResponseMatch = agentResponseRegex.exec(text);
-  if (!agentResponseMatch) return null;
-  const agentResponseContent = agentResponseMatch[1];
-  const thoughtRegex = /<thought[^>]*>([\s\S]*?)<\/thought>/gi;
-  const thoughtMatch = thoughtRegex.exec(agentResponseContent);
-  if (!thoughtMatch) return null;
-  return thoughtMatch[1].trim();
-}
-
-// src/stores/chatStateStore.ts
 import React6 from "react";
 import { toast as toast2 } from "sonner";
 var useChatStateStore = create((set, get) => ({
@@ -416,7 +389,6 @@ var useChatStateStore = create((set, get) => ({
     }
   },
   addMessage: (message) => {
-    const isDebugEnabled = get().debug;
     set((state) => {
       if (isDistriEvent(message)) {
         const event = message;
@@ -446,7 +418,6 @@ var useChatStateStore = create((set, get) => ({
           return { ...state, messages };
         } else if (event.type === "text_message_content") {
           const messageId = event.data.message_id;
-          const stepId = event.data.step_id;
           const delta = event.data.delta;
           const existingIndex = state.messages.findIndex(
             (m) => isDistriMessage(m) && m.id === messageId
@@ -454,39 +425,17 @@ var useChatStateStore = create((set, get) => ({
           if (existingIndex >= 0) {
             const existingMessage = state.messages[existingIndex];
             let textPart = existingMessage.parts.find((p) => p.type === "text");
-            if (!textPart) {
-              textPart = { type: "text", data: "" };
-              const updatedMessage = {
-                ...existingMessage,
-                parts: [...existingMessage.parts, textPart]
-              };
-              const messages2 = state.messages.map(
-                (msg, idx) => idx === existingIndex ? updatedMessage : msg
-              );
-              return { ...state, messages: messages2 };
-            }
-            textPart.data += delta;
-            const thoughtContent = extractThoughtContent(textPart.data);
-            if (thoughtContent) {
-              get().setCurrentThought(thoughtContent);
-            }
-            if (stepId) {
-              const currentStep = get().steps.get(stepId);
-              if (currentStep && currentStep.status === "running") {
-                get().updateStep(stepId, {
-                  title: `${currentStep.title || "Writing"} (${textPart.data.length} chars)`
-                });
-              }
-            }
+            textPart = { type: "text", data: delta };
+            const updatedMessage = {
+              ...existingMessage,
+              parts: [...existingMessage.parts, textPart]
+            };
             const messages = state.messages.map(
-              (msg, idx) => idx === existingIndex ? { ...existingMessage } : msg
+              (msg, idx) => idx === existingIndex ? updatedMessage : msg
             );
             return { ...state, messages };
           } else {
-            if (isDebugEnabled) {
-              console.warn("\u274C Cannot find streaming message to append to:", messageId);
-              console.log("\u{1F4CB} Available message IDs:", state.messages.filter(isDistriMessage).map((m) => m.id));
-            }
+            console.log("\u{1F527} text message content sent without existing message. This should not happen.", message);
             return state;
           }
         } else if (event.type === "text_message_end") {
@@ -530,6 +479,7 @@ var useChatStateStore = create((set, get) => ({
     toolCalls.forEach((toolCall) => {
       get().initializeTool(toolCall);
     });
+    return toolCalls.length;
   },
   // State actions
   processMessage: (message, isFromStream = false) => {
@@ -564,15 +514,6 @@ var useChatStateStore = create((set, get) => ({
             });
           }
           const shouldUpdateTaskId = !get().currentTaskId;
-          if (isDebugEnabled) {
-            console.log("\u{1F3EA} run_started task tracking:", {
-              taskId,
-              runId,
-              existingMainTaskId: get().currentTaskId,
-              shouldUpdateTaskId,
-              willBeMainTask: shouldUpdateTaskId
-            });
-          }
           set({
             currentRunId: runId,
             currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId
@@ -583,35 +524,21 @@ var useChatStateStore = create((set, get) => ({
         case "run_finished":
           const runFinishedEvent = event;
           const finishedTaskId = runFinishedEvent.data.taskId;
-          const currentMainTaskId = get().currentTaskId;
-          console.log("\u{1F3C1} run_finished - RAW EVENT:", {
-            fullEvent: runFinishedEvent,
-            eventData: runFinishedEvent.data,
-            extractedTaskId: finishedTaskId,
-            currentMainTaskId,
-            isMainTask: finishedTaskId === currentMainTaskId
-          });
-          get().resolveToolCalls();
           if (finishedTaskId) {
             get().updateTask(finishedTaskId, {
               status: "completed",
               endTime: timestamp
             });
           }
-          console.log("\u{1F4DD} Task finished, continuing stream until backend ends:", {
-            finishedTaskId,
-            isMainTask: finishedTaskId === currentMainTaskId
-          });
+          set({ isStreaming: false, isLoading: false });
+          get().setStreamingIndicator(void 0);
+          get().setCurrentThought(void 0);
+          get().resolveToolCalls();
           break;
         case "run_error":
           const runErrorEvent = event;
           const errorTaskId = runErrorEvent.data.code ? "subtask" : get().currentTaskId;
           const currentMainTaskIdForError = get().currentTaskId;
-          console.log("\u{1F527} run_error:", {
-            errorTaskId,
-            currentMainTaskId: currentMainTaskIdForError,
-            isMainTask: errorTaskId === currentMainTaskIdForError
-          });
           if (errorTaskId) {
             get().updateTask(errorTaskId, {
               status: "failed",
@@ -710,24 +637,13 @@ var useChatStateStore = create((set, get) => ({
           break;
         case "tool_calls":
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
-            console.log("\u{1F527} Processing tool_calls event:", {
-              taskId: message.data.taskId,
-              tool_calls: message.data.tool_calls,
-              full_message: message.data
-            });
             message.data.tool_calls.forEach((toolCall) => {
-              console.log("\u{1F527} Creating tool call:", {
-                tool_name: toolCall.tool_name,
-                tool_call_id: toolCall.tool_call_id,
-                task_id: message.data.taskId
-              });
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
                 input: toolCall.input
               }, timestamp, isFromStream);
             });
-            console.log("\u{1F527} Tool calls after init:", Array.from(get().toolCalls.entries()));
           }
           break;
         case "tool_results":
@@ -1174,15 +1090,11 @@ function useChat({
     setLoading(false);
   };
   useEffect5(() => {
-    console.log("\u{1F504} [useChat] useEffect cleanup mounted");
     return () => {
-      console.log("\u{1F6A8} [useChat] COMPONENT UNMOUNTING - aborting stream and cleaning up!");
       if (abortControllerRef.current) {
-        console.log("\u{1F6AB} [useChat] Aborting stream due to component unmount");
         abortControllerRef.current.abort();
       }
       if (cleanupRef.current) {
-        console.log("\u{1F9F9} [useChat] Cleaning up streaming state due to unmount");
         setTimeout(cleanupRef.current, 0);
       }
     };
@@ -1190,10 +1102,6 @@ function useChat({
   const agentIdRef = useRef2(void 0);
   useEffect5(() => {
     if (agent?.id !== agentIdRef.current) {
-      console.log("\u{1F504} [useChat] AGENT CHANGED - clearing all state!", {
-        oldId: agentIdRef.current,
-        newId: agent?.id
-      });
       clearAllStates();
       setError(null);
       agentIdRef.current = agent?.id;
@@ -1264,7 +1172,7 @@ function useChat({
     setLoading(true);
     setStreaming(true);
     setError(null);
-    chatState.setStreamingIndicator(void 0);
+    chatState.setStreamingIndicator("typing");
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -1737,7 +1645,7 @@ import { Send, Square, ImageIcon, X, Mic as Mic2, MicOff as MicOff2, Radio } fro
 
 // src/components/VoiceInput.tsx
 import { useState as useState9, useCallback as useCallback6, useEffect as useEffect10 } from "react";
-import { Mic, MicOff, Loader2 as Loader22 } from "lucide-react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 
 // src/hooks/useSpeechToText.ts
@@ -2000,7 +1908,7 @@ var VoiceInput = ({
         disabled: disabled || isTranscribing,
         className: `h-10 w-10 rounded-md transition-colors flex items-center justify-center ${isActive ? "bg-blue-600 hover:bg-blue-700 text-white animate-pulse" : "hover:bg-muted text-muted-foreground"} ${className}`,
         title: isActive ? "Click to stop recording" : useBrowser ? "Click to speak" : "Speech recognition not supported",
-        children: isTranscribing ? /* @__PURE__ */ jsx10(Loader22, { className: "h-5 w-5 animate-spin" }) : isActive ? /* @__PURE__ */ jsx10(MicOff, { className: "h-5 w-5" }) : /* @__PURE__ */ jsx10(Mic, { className: "h-5 w-5" })
+        children: isTranscribing ? /* @__PURE__ */ jsx10(Loader2, { className: "h-5 w-5 animate-spin" }) : isActive ? /* @__PURE__ */ jsx10(MicOff, { className: "h-5 w-5" }) : /* @__PURE__ */ jsx10(Mic, { className: "h-5 w-5" })
       }
     ),
     showModal && /* @__PURE__ */ jsx10("div", { className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50", children: /* @__PURE__ */ jsxs4("div", { className: "bg-background border border-border rounded-lg p-8 max-w-md w-full mx-4 text-center", children: [
@@ -2721,18 +2629,26 @@ var getFriendlyToolMessage = (toolName, input) => {
   switch (toolName) {
     case "search":
       return `Searching "${input?.query || "unknown query"}"`;
-    case "scrape":
-      return `Scraping website "${input?.url || "unknown URL"}"`;
-    case "web_search":
-      return `Searching the web for "${input?.query || "unknown query"}"`;
-    case "read_file":
-      return `Reading file "${input?.file_path || "unknown file"}"`;
-    case "write_file":
-      return `Writing to file "${input?.file_path || "unknown file"}"`;
-    case "list_files":
-      return `Listing files in "${input?.directory || "current directory"}"`;
-    case "run_command":
-      return `Running command "${input?.command || "unknown command"}"`;
+    case "call_search_agent":
+      return `Searching`;
+    case "read_values":
+      return `Reading values`;
+    case "get_sheet_info":
+      return `Getting sheet info`;
+    case "get_context_pack":
+      return `Understanding the spreadsheet`;
+    case "write_values":
+      return `Updating values`;
+    case "clear_values":
+      return `Clearing values`;
+    case "merge_cells":
+      return `Merging cells`;
+    case "call_blink_ops_agent":
+      return `Planning sheet updates`;
+    case "apply_blink_ops":
+      return `Applying sheet updates`;
+    case "final":
+      return `Finalizing`;
     default:
       return `Executing ${toolName}`;
   }
@@ -2836,14 +2752,14 @@ function MessageRenderer({
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
-        return /* @__PURE__ */ jsx20(RendererWrapper, { children: /* @__PURE__ */ jsx20(
+        return /* @__PURE__ */ jsx20(RendererWrapper, { className: "distri-user-message", children: /* @__PURE__ */ jsx20(
           UserMessageRenderer,
           {
             message: distriMessage
           }
         ) }, `user-${index}`);
       case "assistant":
-        return /* @__PURE__ */ jsx20(RendererWrapper, { children: /* @__PURE__ */ jsx20(
+        return /* @__PURE__ */ jsx20(RendererWrapper, { className: "distri-assistant-message", children: /* @__PURE__ */ jsx20(
           StepBasedRenderer,
           {
             message: distriMessage
@@ -2874,7 +2790,10 @@ function MessageRenderer({
       case "step_completed":
         return null;
       case "tool_calls":
-        return /* @__PURE__ */ jsx20(RendererWrapper, { children: /* @__PURE__ */ jsx20(
+        if (toolCallsState.size === 0) {
+          return null;
+        }
+        return /* @__PURE__ */ jsx20(RendererWrapper, { className: "distri-tool-execution-start", children: /* @__PURE__ */ jsx20(
           ToolExecutionRenderer,
           {
             event,
@@ -2884,7 +2803,7 @@ function MessageRenderer({
       case "tool_results":
         return null;
       case "agent_handover":
-        return /* @__PURE__ */ jsx20(RendererWrapper, { children: /* @__PURE__ */ jsx20("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ jsxs13("div", { className: "text-sm text-muted-foreground", children: [
+        return /* @__PURE__ */ jsx20(RendererWrapper, { className: "distri-handover", children: /* @__PURE__ */ jsx20("div", { className: "p-3 bg-muted rounded border", children: /* @__PURE__ */ jsxs13("div", { className: "text-sm text-muted-foreground", children: [
           /* @__PURE__ */ jsx20("strong", { children: "Handover to:" }),
           " ",
           event.data?.to_agent || "unknown agent"
@@ -2892,7 +2811,7 @@ function MessageRenderer({
       case "run_finished":
         return null;
       case "run_error":
-        return /* @__PURE__ */ jsx20(RendererWrapper, { children: /* @__PURE__ */ jsxs13("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
+        return /* @__PURE__ */ jsx20(RendererWrapper, { className: "distri-run-error", children: /* @__PURE__ */ jsxs13("div", { className: "p-3 bg-destructive/10 border border-destructive/20 rounded", children: [
           /* @__PURE__ */ jsxs13("div", { className: "text-sm text-destructive", children: [
             /* @__PURE__ */ jsx20("strong", { children: "Error:" }),
             " ",
@@ -3555,9 +3474,9 @@ var Chat = forwardRef4(function Chat2({
   };
   const renderThinkingIndicator = () => {
     if (streamingIndicator === "typing") {
-      return /* @__PURE__ */ jsx23(RendererWrapper2, { children: /* @__PURE__ */ jsx23(TypingIndicator, {}) }, `typing-indicator`);
+      return /* @__PURE__ */ jsx23(RendererWrapper2, { className: "distri-typing-indicator", children: /* @__PURE__ */ jsx23(TypingIndicator, {}) }, `typing-indicator`);
     } else if (streamingIndicator) {
-      return /* @__PURE__ */ jsx23(RendererWrapper2, { children: /* @__PURE__ */ jsx23(
+      return /* @__PURE__ */ jsx23(RendererWrapper2, { className: "distri-thinking-indicator", children: /* @__PURE__ */ jsx23(
         ThinkingRenderer,
         {
           indicator: streamingIndicator,
@@ -3608,7 +3527,7 @@ var Chat = forwardRef4(function Chat2({
       onDrop: handleDrop,
       children: [
         isDragOver && /* @__PURE__ */ jsx23("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed", children: /* @__PURE__ */ jsx23("div", { className: "text-primary font-medium text-lg", children: "Drop images anywhere to upload" }) }),
-        /* @__PURE__ */ jsx23("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs16("div", { className: "max-w-4xl mx-auto px-2 py-4 text-sm space-y-2", children: [
+        /* @__PURE__ */ jsx23("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs16("div", { className: "max-w-4xl mx-auto px-2 py-4 text-sm space-y-1", children: [
           error && /* @__PURE__ */ jsx23("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs16("div", { className: "text-destructive text-xs", children: [
             /* @__PURE__ */ jsx23("strong", { children: "Error:" }),
             " ",
@@ -3712,7 +3631,7 @@ import { jsx as jsx26, jsxs as jsxs19 } from "react/jsx-runtime";
 
 // src/components/AppSidebar.tsx
 import { useState as useState15, useCallback as useCallback11 } from "react";
-import { MoreHorizontal, Trash2, Edit3, Bot as Bot3, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader23 } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Bot as Bot3, Users, Edit2, RefreshCw as RefreshCw2, Github, Loader2 as Loader22 } from "lucide-react";
 
 // src/components/ui/sidebar.tsx
 import * as React19 from "react";
@@ -4927,7 +4846,7 @@ function AppSidebar({
       open && /* @__PURE__ */ jsxs24(SidebarGroup, { children: [
         /* @__PURE__ */ jsx38(SidebarGroupLabel, { children: "Conversations" }),
         /* @__PURE__ */ jsx38(SidebarGroupContent, { children: /* @__PURE__ */ jsx38(SidebarMenu, { children: threadsLoading ? /* @__PURE__ */ jsxs24(SidebarMenuItem, { children: [
-          /* @__PURE__ */ jsx38(Loader23, { className: "h-4 w-4 animate-spin" }),
+          /* @__PURE__ */ jsx38(Loader22, { className: "h-4 w-4 animate-spin" }),
           /* @__PURE__ */ jsx38("span", { children: "Loading threads..." })
         ] }) : threads.length === 0 ? /* @__PURE__ */ jsx38(SidebarMenuItem, { children: "No conversations yet" }) : threads.map((thread) => /* @__PURE__ */ jsx38(
           ThreadItem,
@@ -4971,7 +4890,7 @@ function AppSidebar({
 // src/components/TaskExecutionRenderer.tsx
 import { useMemo as useMemo4 } from "react";
 import { isDistriMessage as isDistriMessage4 } from "@distri/core";
-import { CheckCircle as CheckCircle5, Clock as Clock3, AlertCircle as AlertCircle2, Loader2 as Loader24 } from "lucide-react";
+import { CheckCircle as CheckCircle5, Clock as Clock3, AlertCircle as AlertCircle2, Loader2 as Loader23 } from "lucide-react";
 import { jsx as jsx39, jsxs as jsxs25 } from "react/jsx-runtime";
 var TaskExecutionRenderer = ({
   events,
@@ -5166,7 +5085,7 @@ var TaskExecutionRenderer = ({
       case "error":
         return /* @__PURE__ */ jsx39(AlertCircle2, { className: "w-4 h-4 text-red-600" });
       case "running":
-        return /* @__PURE__ */ jsx39(Loader24, { className: "w-4 h-4 text-blue-600 animate-spin" });
+        return /* @__PURE__ */ jsx39(Loader23, { className: "w-4 h-4 text-blue-600 animate-spin" });
       default:
         return /* @__PURE__ */ jsx39(Clock3, { className: "w-4 h-4 text-gray-400" });
     }

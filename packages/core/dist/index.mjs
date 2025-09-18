@@ -785,7 +785,6 @@ function convertDistriMessageToA2A(distriMessage, context) {
   };
 }
 function convertDistriPartToA2A(distriPart) {
-  console.log("Converting DistriPart to A2A:", JSON.stringify(distriPart, null, 2));
   let result;
   switch (distriPart.type) {
     case "text":
@@ -850,7 +849,6 @@ function convertDistriPartToA2A(distriPart) {
       break;
     }
   }
-  console.log("Converted A2A Part:", JSON.stringify(result, null, 2));
   return result;
 }
 function extractTextFromDistriMessage(message) {
