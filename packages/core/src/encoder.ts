@@ -319,8 +319,6 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
  * Converts a DistriPart to an A2A Part
  */
 export function convertDistriPartToA2A(distriPart: DistriPart): Part {
-  console.log('Converting DistriPart to A2A:', JSON.stringify(distriPart, null, 2));
-
   let result: Part;
 
   switch (distriPart.type) {
@@ -395,8 +393,6 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       break;
     }
   }
-
-  console.log('Converted A2A Part:', JSON.stringify(result, null, 2));
   return result;
 }
 

@@ -19,18 +19,26 @@ const getFriendlyToolMessage = (toolName: string, input: any): string => {
   switch (toolName) {
     case 'search':
       return `Searching "${input?.query || 'unknown query'}"`;
-    case 'scrape':
-      return `Scraping website "${input?.url || 'unknown URL'}"`;
-    case 'web_search':
-      return `Searching the web for "${input?.query || 'unknown query'}"`;
-    case 'read_file':
-      return `Reading file "${input?.file_path || 'unknown file'}"`;
-    case 'write_file':
-      return `Writing to file "${input?.file_path || 'unknown file'}"`;
-    case 'list_files':
-      return `Listing files in "${input?.directory || 'current directory'}"`;
-    case 'run_command':
-      return `Running command "${input?.command || 'unknown command'}"`;
+    case 'call_search_agent':
+      return `Searching`;
+    case 'read_values':
+      return `Reading values`;
+    case 'get_sheet_info':
+      return `Getting sheet info`;
+    case 'get_context_pack':
+      return `Understanding the spreadsheet`;
+    case 'write_values':
+      return `Updating values`;
+    case 'clear_values':
+      return `Clearing values`;
+    case 'merge_cells':
+      return `Merging cells`;
+    case 'call_blink_ops_agent':
+      return `Planning sheet updates`;
+    case 'apply_blink_ops':
+      return `Applying sheet updates`;
+    case 'final':
+      return `Finalizing`;
     default:
       return `Executing ${toolName}`;
   }

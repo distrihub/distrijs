@@ -20,7 +20,6 @@ import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
 import { DefaultToolActions } from '../components/renderers/tools/DefaultToolActions';
 import { MissingTool } from '../components/renderers/tools/MissingTool';
-import { extractThoughtContent } from '../utils/extractThought';
 import React from 'react';
 import { toast } from 'sonner';
 
@@ -142,7 +141,7 @@ export interface ChatStateStore extends ChatState {
   getCurrentTasks: () => TaskState[];
   getTaskById: (taskId: string) => TaskState | null;
   getPlanById: (planId: string) => PlanState | null;
-  resolveToolCalls: () => void;
+  resolveToolCalls: () => number;
 
   // Updates
   updateTask: (taskId: string, updates: Partial<TaskState>) => void;
@@ -214,8 +213,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
 
   addMessage: (message: DistriChatMessage) => {
-    const isDebugEnabled = get().debug;
-
     set((state: ChatState) => {
       if (isDistriEvent(message)) {
         const event = message as DistriEvent;
@@ -255,7 +252,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         } else if (event.type === 'text_message_content') {
           // Find existing message and append delta to text part
           const messageId = event.data.message_id;
-          const stepId = event.data.step_id;
           const delta = event.data.delta;
 
           // Silent processing - no logs for content streaming
@@ -267,54 +263,24 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           if (existingIndex >= 0) {
             const existingMessage = state.messages[existingIndex] as DistriMessage;
             let textPart = existingMessage.parts.find(p => p.type === 'text') as { type: 'text'; data: string } | undefined;
-
-            if (!textPart) {
-              textPart = { type: 'text', data: '' };
-              // Create new parts array with the new text part
-              const updatedMessage = {
-                ...existingMessage,
-                parts: [...existingMessage.parts, textPart]
-              };
-              // Create new messages array with only the updated message replaced
-              const messages = state.messages.map((msg, idx) =>
-                idx === existingIndex ? updatedMessage : msg
-              );
-
-              return { ...state, messages };
-            }
-
-            // Update the text part in place (this is safe since we're about to replace the message)
-            textPart.data += delta;
-
-            // Extract thought content from accumulated text and update current thought
-            const thoughtContent = extractThoughtContent(textPart.data);
-            if (thoughtContent) {
-              get().setCurrentThought(thoughtContent);
-            }
-
-            // Update step progress if stepId provided and step exists
-            if (stepId) {
-              const currentStep = get().steps.get(stepId);
-              if (currentStep && currentStep.status === 'running') {
-                get().updateStep(stepId, {
-                  title: `${currentStep.title || 'Writing'} (${textPart.data.length} chars)`,
-                });
-              }
-            }
-
+            textPart = { type: 'text', data: delta };
+            // Create new parts array with the new text part
+            const updatedMessage = {
+              ...existingMessage,
+              parts: [...existingMessage.parts, textPart]
+            };
             // Create new messages array with only the updated message replaced
             const messages = state.messages.map((msg, idx) =>
-              idx === existingIndex ? { ...existingMessage } : msg
+              idx === existingIndex ? updatedMessage : msg
             );
 
             return { ...state, messages };
+
           } else {
             // Only log errors for streaming issues
-            if (isDebugEnabled) {
-              console.warn('❌ Cannot find streaming message to append to:', messageId);
-              console.log('📋 Available message IDs:', state.messages.filter(isDistriMessage).map(m => (m as DistriMessage).id));
-            }
-            return state; // No change needed
+            // For DistriMessage or DistriArtifact, just add directly
+            console.log('🔧 text message content sent without existing message. This should not happen.', message);
+            return state;
           }
 
         } else if (event.type === 'text_message_end') {
@@ -360,11 +326,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     });
   },
 
-  resolveToolCalls: () => {
+  resolveToolCalls: (): number => {
     const toolCalls = get().getPendingToolCalls();
     toolCalls.forEach(toolCall => {
       get().initializeTool(toolCall);
     });
+    return toolCalls.length;
   },
 
   // State actions
@@ -380,7 +347,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
     if (isDistriEvent(message)) {
       const event = message as DistriEvent;
-
       if (isDebugEnabled && message.type !== 'text_message_content') {
         console.log('🏪 EVENT:', message);
       }
@@ -411,16 +377,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Only set currentTaskId if it hasn't been set yet (for backward compatibility)
           const shouldUpdateTaskId = !get().currentTaskId;
 
-          if (isDebugEnabled) {
-            console.log('🏪 run_started task tracking:', {
-              taskId,
-              runId,
-              existingMainTaskId: get().currentTaskId,
-              shouldUpdateTaskId,
-              willBeMainTask: shouldUpdateTaskId
-            });
-          }
-
           set({
             currentRunId: runId,
             currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId
@@ -432,17 +388,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'run_finished':
           const runFinishedEvent = event as RunFinishedEvent;
           const finishedTaskId = runFinishedEvent.data.taskId;
-          const currentMainTaskId = get().currentTaskId;
-
-          console.log('🏁 run_finished - RAW EVENT:', {
-            fullEvent: runFinishedEvent,
-            eventData: runFinishedEvent.data,
-            extractedTaskId: finishedTaskId,
-            currentMainTaskId,
-            isMainTask: finishedTaskId === currentMainTaskId
-          });
-
-          get().resolveToolCalls();
 
           // Update the specific task that finished
           if (finishedTaskId) {
@@ -451,25 +396,18 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+          set({ isStreaming: false, isLoading: false });
+          get().setStreamingIndicator(undefined);
+          get().setCurrentThought(undefined);
 
-          // **FIX**: Don't stop streaming based on task completion - let the backend stream end naturally
-          console.log('📝 Task finished, continuing stream until backend ends:', {
-            finishedTaskId,
-            isMainTask: finishedTaskId === currentMainTaskId
-          });
 
+          get().resolveToolCalls();
           break;
 
         case 'run_error':
           const runErrorEvent = event as RunErrorEvent;
           const errorTaskId = runErrorEvent.data.code ? 'subtask' : get().currentTaskId; // Basic heuristic for now
           const currentMainTaskIdForError = get().currentTaskId;
-
-          console.log('🔧 run_error:', {
-            errorTaskId,
-            currentMainTaskId: currentMainTaskIdForError,
-            isMainTask: errorTaskId === currentMainTaskIdForError
-          });
 
           if (errorTaskId) {
             get().updateTask(errorTaskId, {
@@ -584,24 +522,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'tool_calls':
           // Handle direct tool calls event
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
-            console.log('🔧 Processing tool_calls event:', {
-              taskId: (message.data as any).taskId,
-              tool_calls: message.data.tool_calls,
-              full_message: message.data
-            });
             message.data.tool_calls.forEach((toolCall: ToolCall) => {
-              console.log('🔧 Creating tool call:', {
-                tool_name: toolCall.tool_name,
-                tool_call_id: toolCall.tool_call_id,
-                task_id: (message.data as any).taskId
-              });
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
                 input: toolCall.input,
               }, timestamp, isFromStream);
             });
-            console.log('🔧 Tool calls after init:', Array.from(get().toolCalls.entries()));
 
 
           }

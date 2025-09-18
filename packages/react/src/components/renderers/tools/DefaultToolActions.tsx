@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
-import { Wrench, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Wrench, CheckCircle, XCircle } from 'lucide-react';
 import { UiToolProps } from '@/types';
 import { createSuccessfulToolResult, createFailedToolResult, DistriFnTool } from '@distri/core';
 
@@ -171,21 +171,6 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
             </p>
           </div>
         )}
-      </div>
-    );
-  }
-
-  // Show processing state
-  if (isProcessing) {
-    return (
-      <div className="border rounded-lg p-4 bg-background">
-        <div className="flex items-center gap-2 mb-3">
-          <Loader2 className="h-4 w-4 text-primary animate-spin" />
-          <span className="font-medium">Executing Tool...</span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Running: <code className="bg-muted px-1 rounded">{toolName}</code>
-        </p>
       </div>
     );
   }
