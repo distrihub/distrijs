@@ -357,6 +357,9 @@ var DefaultToolActions = ({
       ] })
     ] });
   }
+  if (isProcessing) {
+    return null;
+  }
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "border rounded-lg p-4 bg-background", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2 mb-3", children: [
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_lucide_react3.Wrench, { className: "h-4 w-4 text-primary" }),

@@ -175,6 +175,10 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     );
   }
 
+  if (isProcessing) {
+    return null;
+  }
+
   // Show pending state with action buttons
   return (
     <div className="border rounded-lg p-4 bg-background">

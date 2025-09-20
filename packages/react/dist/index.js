@@ -217,6 +217,9 @@ var DefaultToolActions = ({
       ] })
     ] });
   }
+  if (isProcessing) {
+    return null;
+  }
   return /* @__PURE__ */ jsxs2("div", { className: "border rounded-lg p-4 bg-background", children: [
     /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2 mb-3", children: [
       /* @__PURE__ */ jsx5(Wrench, { className: "h-4 w-4 text-primary" }),
