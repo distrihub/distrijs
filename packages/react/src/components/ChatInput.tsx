@@ -174,14 +174,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         // Add text part if there's text content
         if (value.trim()) {
-          parts.push({ type: 'text', data: value.trim() });
+          parts.push({ part_type: 'text', data: value.trim() });
         }
 
         // Add image parts
         for (const image of attachedImages) {
           const base64Data = await convertFileToBase64(image.file);
           parts.push({
-            type: 'image',
+            part_type: 'image',
             data: {
               mime_type: image.file.type,
               data: base64Data,
@@ -291,8 +291,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onClick={handleVoiceToggle}
                     disabled={isDisabled || isStreaming || isStreamingVoice}
                     className={`h-10 w-10 rounded-md flex items-center justify-center ${isRecording
-                        ? 'bg-destructive text-destructive-foreground animate-pulse'
-                        : 'hover:bg-muted text-muted-foreground'
+                      ? 'bg-destructive text-destructive-foreground animate-pulse'
+                      : 'hover:bg-muted text-muted-foreground'
                       }`}
                     title={isRecording ? `Recording... ${recordingTime}s` : 'Record voice message'}
                   >
@@ -304,8 +304,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                       onClick={onStartStreamingVoice}
                       disabled={isDisabled || isStreaming || isRecording}
                       className={`h-10 w-10 rounded-md flex items-center justify-center ${isStreamingVoice
-                          ? 'bg-blue-600 text-white animate-pulse'
-                          : 'hover:bg-muted text-muted-foreground'
+                        ? 'bg-blue-600 text-white animate-pulse'
+                        : 'hover:bg-muted text-muted-foreground'
                         }`}
                       title={isStreamingVoice ? 'Streaming voice conversation active' : 'Start streaming voice conversation'}
                     >
@@ -319,10 +319,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 onClick={isStreaming ? handleStop : handleSend}
                 disabled={isStreaming ? false : (!hasContent || isDisabled)}
                 className={`h-10 w-10 rounded-full flex items-center justify-center ${isStreaming
-                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                    : hasContent && !disabled
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-muted text-muted-foreground'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : hasContent && !disabled
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-muted text-muted-foreground'
                   }`}
                 title={isStreaming ? 'Stop' : 'Send'}
               >

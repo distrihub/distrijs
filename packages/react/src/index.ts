@@ -12,7 +12,6 @@ export * from './components/AgentsPage';
 export * from './components/AppSidebar';
 export * from './components/ChatInput';
 export * from './components/VoiceInput';
-export * from './components/TaskExecutionRenderer';
 export * from './components/ThemeProvider';
 export * from './components/ThemeToggle';
 export * from './components/Toast';

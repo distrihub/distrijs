@@ -73,35 +73,20 @@ export interface TextMessageEndEvent {
   };
 }
 
-export interface ToolCallStartEvent {
-  type: 'tool_call_start';
+export interface ToolExecutionStartEvent {
+  type: 'tool_execution_start';
   data: {
     tool_call_id: string;
     tool_call_name: string;
     parent_message_id?: string;
+    input?: any;
   };
 }
 
-export interface ToolCallArgsEvent {
-  type: 'tool_call_args';
+export interface ToolExecutionEndEvent {
+  type: 'tool_execution_end';
   data: {
     tool_call_id: string;
-    delta: string;
-  };
-}
-
-export interface ToolCallEndEvent {
-  type: 'tool_call_end';
-  data: {
-    tool_call_id: string;
-  };
-}
-
-export interface ToolCallResultEvent {
-  type: 'tool_call_result';
-  data: {
-    tool_call_id: string;
-    result: string;
   };
 }
 
@@ -110,16 +95,6 @@ export interface ToolRejectedEvent {
   data: {
     reason?: string;
     tool_call_id?: string;
-  };
-}
-
-export interface TaskArtifactEvent {
-  type: 'task_artifact';
-  data: {
-    artifact_id: string;
-    artifact_type: string;
-    resolution?: any;
-    content?: any;
   };
 }
 
@@ -192,14 +167,11 @@ export type DistriEvent =
   | TextMessageStartEvent
   | TextMessageContentEvent
   | TextMessageEndEvent
-  | ToolCallStartEvent
-  | ToolCallArgsEvent
-  | ToolCallEndEvent
-  | ToolCallResultEvent
+  | ToolExecutionStartEvent
+  | ToolExecutionEndEvent
   | ToolRejectedEvent
   | StepStartedEvent
   | StepCompletedEvent
-  | TaskArtifactEvent
   | AgentHandoverEvent
   | FeedbackReceivedEvent
   | ToolCallsEvent

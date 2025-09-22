@@ -24,15 +24,15 @@ export function extractContent(message: DistriMessage | DistriEvent): ExtractedC
 
     // Extract all text parts and join them properly
     const textParts = distriMessage.parts
-      ?.filter(p => p.type === 'text' && (p as { type: 'text'; data: string }).data)
-      ?.map(p => (p as { type: 'text'; data: string }).data)
+      ?.filter(p => p.part_type === 'text' && (p as { part_type: 'text'; data: string }).data)
+      ?.map(p => (p as { part_type: 'text'; data: string }).data)
       ?.filter(text => text && text.trim()) || [];
 
     text = textParts.join(' ').trim();
 
     // Extract image parts
     imageParts = distriMessage.parts
-      ?.filter(p => p.type === 'image') as ImagePart[] || [];
+      ?.filter(p => p.part_type === 'image') as ImagePart[] || [];
 
     // Check for rich content in text
     hasMarkdown = /[*_`#[\]()>]/.test(text);

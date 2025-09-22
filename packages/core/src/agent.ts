@@ -3,6 +3,7 @@ import {
   AgentDefinition,
   DistriBaseTool,
   DistriChatMessage,
+  ToolResult,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
@@ -37,35 +38,11 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: AgentDefinition;
-  private tools: DistriBaseTool[] = [];
 
   constructor(agentDefinition: AgentDefinition, client: DistriClient) {
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
-
-
-  /**
-   * Set the tools array
-   */
-  setExternalTools(tools: DistriBaseTool[]): void {
-    this.tools = tools;
-  }
-
-  /**
-   * Get all tools
-   */
-  getExternalTools(): DistriBaseTool[] {
-    return this.tools;
-  }
-
-  /**
-   * Add a single tool
-   */
-  addExternalTool(tool: DistriBaseTool): void {
-    this.tools.push(tool);
-  }
-
   /**
    * Get agent information
    */
@@ -106,18 +83,18 @@ export class Agent {
   /**
    * Direct (non-streaming) invoke
    */
-  public async invoke(params: MessageSendParams): Promise<Message> {
+  public async invoke(params: MessageSendParams, tools?: DistriBaseTool[]): Promise<Message> {
     // Inject tool definitions into metadata
-    const enhancedParams = this.enhanceParamsWithTools(params);
+    const enhancedParams = this.enhanceParamsWithTools(params, tools);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams) as Message;
   }
 
   /**
    * Streaming invoke
    */
-  public async invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriChatMessage>> {
+  public async invokeStream(params: MessageSendParams, tools?: DistriBaseTool[]): Promise<AsyncGenerator<DistriChatMessage>> {
     // Inject tool definitions into metadata
-    const enhancedParams = this.enhanceParamsWithTools(params);
+    const enhancedParams = this.enhanceParamsWithTools(params, tools);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
 
 
@@ -138,15 +115,15 @@ export class Agent {
   /**
    * Enhance message params with tool definitions
    */
-  private enhanceParamsWithTools(params: MessageSendParams): MessageSendParams {
+  private enhanceParamsWithTools(params: MessageSendParams, tools?: DistriBaseTool[]): MessageSendParams {
     const metadata = {
       ...params.metadata,
-      external_tools: this.tools.filter(tool => tool.isExternal).map(tool => ({
+      external_tools: tools?.map(tool => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters,
         is_final: tool.is_final
-      }))
+      })) || []
     };
     return {
       ...params,
@@ -170,6 +147,13 @@ export class Agent {
       toolCount: agentDefinition.tools?.length || 0
     });
     return new Agent(agentDefinition, client);
+  }
+
+  /**
+   * Complete an external tool call by sending the result back to the server
+   */
+  async completeTool(result: ToolResult): Promise<void> {
+    await this.client.completeTool(this.agentDefinition.id, result);
   }
 
   /**

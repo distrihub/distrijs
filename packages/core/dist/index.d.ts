@@ -1,4 +1,4 @@
-import { AgentSkill, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent, Task, MessageSendParams, Part } from '@a2a-js/sdk/client';
+import { MessageSendParams, Message, Task, Part, AgentSkill, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from '@a2a-js/sdk/client';
 export { AgentCard, Message, MessageSendParams, Task, TaskArtifactUpdateEvent, TaskStatus, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
 
 type Role = 'user' | 'system' | 'assistant';
@@ -65,32 +65,19 @@ interface TextMessageEndEvent {
         step_id: string;
     };
 }
-interface ToolCallStartEvent {
-    type: 'tool_call_start';
+interface ToolExecutionStartEvent {
+    type: 'tool_execution_start';
     data: {
         tool_call_id: string;
         tool_call_name: string;
         parent_message_id?: string;
+        input?: any;
     };
 }
-interface ToolCallArgsEvent {
-    type: 'tool_call_args';
+interface ToolExecutionEndEvent {
+    type: 'tool_execution_end';
     data: {
         tool_call_id: string;
-        delta: string;
-    };
-}
-interface ToolCallEndEvent {
-    type: 'tool_call_end';
-    data: {
-        tool_call_id: string;
-    };
-}
-interface ToolCallResultEvent {
-    type: 'tool_call_result';
-    data: {
-        tool_call_id: string;
-        result: string;
     };
 }
 interface ToolRejectedEvent {
@@ -98,15 +85,6 @@ interface ToolRejectedEvent {
     data: {
         reason?: string;
         tool_call_id?: string;
-    };
-}
-interface TaskArtifactEvent {
-    type: 'task_artifact';
-    data: {
-        artifact_id: string;
-        artifact_type: string;
-        resolution?: any;
-        content?: any;
     };
 }
 interface AgentHandoverEvent {
@@ -161,7 +139,186 @@ interface ToolResultsEvent {
         }>;
     };
 }
-type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | PlanStartedEvent | PlanFinishedEvent | PlanPrunedEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolCallStartEvent | ToolCallArgsEvent | ToolCallEndEvent | ToolCallResultEvent | ToolRejectedEvent | StepStartedEvent | StepCompletedEvent | TaskArtifactEvent | AgentHandoverEvent | FeedbackReceivedEvent | ToolCallsEvent | ToolResultsEvent;
+type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | PlanStartedEvent | PlanFinishedEvent | PlanPrunedEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolExecutionStartEvent | ToolExecutionEndEvent | ToolRejectedEvent | StepStartedEvent | StepCompletedEvent | AgentHandoverEvent | FeedbackReceivedEvent | ToolCallsEvent | ToolResultsEvent;
+
+/**
+ * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
+ */
+declare class DistriClient {
+    private config;
+    private agentClients;
+    constructor(config: DistriClientConfig);
+    /**
+     * Start streaming speech-to-text transcription via WebSocket
+     */
+    streamingTranscription(options?: StreamingTranscriptionOptions): Promise<{
+        sendAudio: (audioData: ArrayBuffer) => void;
+        sendText: (text: string) => void;
+        stop: () => void;
+        close: () => void;
+    }>;
+    /**
+     * Transcribe audio blob to text using speech-to-text API
+     */
+    transcribe(audioBlob: Blob, config?: SpeechToTextConfig): Promise<string>;
+    /**
+     * Get all available agents from the Distri server
+     */
+    getAgents(): Promise<AgentDefinition[]>;
+    /**
+     * Get specific agent by ID
+     */
+    getAgent(agentId: string): Promise<AgentDefinition>;
+    /**
+     * Get or create A2AClient for an agent
+     */
+    private getA2AClient;
+    /**
+     * Send a message to an agent
+     */
+    sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task>;
+    /**
+     * Send a streaming message to an agent
+     */
+    sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData>;
+    /**
+     * Get task details
+     */
+    getTask(agentId: string, taskId: string): Promise<Task>;
+    /**
+     * Cancel a task
+     */
+    cancelTask(agentId: string, taskId: string): Promise<void>;
+    /**
+     * Get threads from Distri server
+     */
+    getThreads(): Promise<DistriThread[]>;
+    getThread(threadId: string): Promise<DistriThread>;
+    /**
+     * Get thread messages
+     */
+    getThreadMessages(threadId: string): Promise<Message[]>;
+    /**
+     * Get messages from a thread as DistriMessage format
+     */
+    getThreadMessagesAsDistri(threadId: string): Promise<DistriMessage[]>;
+    /**
+     * Send a DistriMessage to a thread
+     */
+    sendDistriMessage(threadId: string, message: DistriMessage, context: InvokeContext): Promise<void>;
+    /**
+     * Complete an external tool call
+     */
+    completeTool(agentId: string, result: ToolResult): Promise<void>;
+    /**
+     * Get the base URL for making direct requests
+     */
+    get baseUrl(): string;
+    /**
+     * Enhanced fetch with retry logic
+     */
+    private fetchAbsolute;
+    /**
+     * Enhanced fetch with retry logic
+     */
+    private fetch;
+    /**
+     * Delay utility
+     */
+    private delay;
+    /**
+     * Debug logging
+     */
+    private debug;
+    /**
+     * Helper method to create A2A messages
+     */
+    static initMessage(parts: Part[] | string, role: "agent" | "user" | undefined, message: Omit<Partial<Message>, 'parts' | 'role' | 'kind'>): Message;
+    /**
+     * Create a DistriMessage instance
+     */
+    static initDistriMessage(role: DistriMessage['role'], parts: DistriPart[], id?: string, created_at?: string): DistriMessage;
+    /**
+     * Helper method to create message send parameters
+     */
+    static initMessageParams(message: Message, configuration?: MessageSendParams['configuration'], metadata?: any): MessageSendParams;
+    /**
+     * Create MessageSendParams from a DistriMessage using InvokeContext
+     */
+    static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams;
+}
+declare function uuidv4(): string;
+
+/**
+ * Configuration for Agent invoke method
+ */
+interface InvokeConfig {
+    /** Configuration for the message */
+    configuration?: MessageSendParams['configuration'];
+    /** Context/thread ID */
+    contextId?: string;
+    /** Metadata for the requests */
+    metadata?: any;
+}
+/**
+ * Result from agent invoke
+ */
+interface InvokeResult {
+    /** Final response message */
+    message?: Message;
+    /** Task if created */
+    task?: any;
+    /** Whether the response was streamed */
+    streamed: boolean;
+}
+/**
+ * Enhanced Agent class with simple tool system following AG-UI pattern
+ */
+declare class Agent {
+    private client;
+    private agentDefinition;
+    constructor(agentDefinition: AgentDefinition, client: DistriClient);
+    /**
+     * Get agent information
+     */
+    get id(): string;
+    get name(): string;
+    get description(): string | undefined;
+    get agentType(): string | undefined;
+    get iconUrl(): string | undefined;
+    /**
+     * Get the full agent definition (including backend tools)
+     */
+    getDefinition(): AgentDefinition;
+    /**
+     * Fetch messages for a thread (public method for useChat)
+     */
+    getThreadMessages(threadId: string): Promise<Message[]>;
+    /**
+     * Direct (non-streaming) invoke
+     */
+    invoke(params: MessageSendParams, tools?: DistriBaseTool[]): Promise<Message>;
+    /**
+     * Streaming invoke
+     */
+    invokeStream(params: MessageSendParams, tools?: DistriBaseTool[]): Promise<AsyncGenerator<DistriChatMessage>>;
+    /**
+     * Enhance message params with tool definitions
+     */
+    private enhanceParamsWithTools;
+    /**
+     * Create an agent instance from an agent ID
+     */
+    static create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent>;
+    /**
+     * Complete an external tool call by sending the result back to the server
+     */
+    completeTool(result: ToolResult): Promise<void>;
+    /**
+     * List all available agents
+     */
+    static list(client: DistriClient): Promise<Agent[]>;
+}
 
 /**
  * Message roles supported by Distri
@@ -189,6 +346,14 @@ interface AssistantWithToolCalls {
     rejected: boolean;
     is_external: boolean;
     reason: string | null;
+}
+interface UseToolsOptions {
+    agent?: Agent;
+    externalTools?: DistriBaseTool[];
+    executionOptions?: ToolExecutionOptions;
+}
+interface ToolExecutionOptions {
+    autoExecute?: boolean;
 }
 interface ToolResults {
     id: string;
@@ -268,30 +433,30 @@ interface InvokeContext {
  * Distri message parts - equivalent to Rust enum Part
  */
 type TextPart = {
-    type: 'text';
+    part_type: 'text';
     data: string;
 };
 type ToolCallPart = {
-    type: 'tool_call';
+    part_type: 'tool_call';
     data: ToolCall;
 };
 type ToolResultRefPart = {
-    type: 'tool_result';
+    part_type: 'tool_result';
     data: ToolResult;
 };
 type ImagePart = {
-    type: 'image';
+    part_type: 'image';
     data: FileType;
 };
 type DataPart = {
-    type: 'data';
-    data: ToolResultData | string | number | boolean | null | object;
+    part_type: 'data';
+    data: object;
 };
 type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart | DataPart;
 /**
  * Union type for parts that can appear in ToolResult (frontend or backend format)
  */
-type ToolResultPart = DistriPart | BackendPart;
+type ToolResultPart = DistriPart;
 /**
  * File type for images
  */
@@ -336,13 +501,6 @@ interface ToolCall {
     tool_call_id: string;
     tool_name: string;
     input: any;
-}
-/**
- * Backend part structure (from Rust Vec<Part>)
- */
-interface BackendPart {
-    part_type: 'data';
-    data: string;
 }
 /**
  * Tool result structure that can come from backend or frontend
@@ -455,6 +613,17 @@ interface ChatProps {
     agent: AgentDefinition;
     onThreadUpdate?: () => void;
 }
+interface SpeechToTextConfig {
+    model?: 'whisper-1';
+    language?: string;
+    temperature?: number;
+}
+interface StreamingTranscriptionOptions {
+    onTranscript?: (text: string, isFinal: boolean) => void;
+    onError?: (error: Error) => void;
+    onStart?: () => void;
+    onEnd?: () => void;
+}
 /**
  * Connection Status
  */
@@ -490,186 +659,11 @@ declare class ApiError extends DistriError {
 declare class ConnectionError extends DistriError {
     constructor(message: string, details?: any);
 }
-/**
- * Helper to convert BackendPart to DistriPart for consistent frontend usage
- */
-declare function normalizeToolResult(toolResult: ToolResult): ToolResult;
 
 type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Task;
 declare function isDistriMessage(event: DistriStreamEvent): event is DistriMessage;
 declare function isDistriEvent(event: DistriStreamEvent): event is DistriEvent;
 type DistriChatMessage = DistriEvent | DistriMessage;
-
-/**
- * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
- */
-declare class DistriClient {
-    private config;
-    private agentClients;
-    constructor(config: DistriClientConfig);
-    /**
-     * Get all available agents from the Distri server
-     */
-    getAgents(): Promise<AgentDefinition[]>;
-    /**
-     * Get specific agent by ID
-     */
-    getAgent(agentId: string): Promise<AgentDefinition>;
-    /**
-     * Get or create A2AClient for an agent
-     */
-    private getA2AClient;
-    /**
-     * Send a message to an agent
-     */
-    sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task>;
-    /**
-     * Send a streaming message to an agent
-     */
-    sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData>;
-    /**
-     * Get task details
-     */
-    getTask(agentId: string, taskId: string): Promise<Task>;
-    /**
-     * Cancel a task
-     */
-    cancelTask(agentId: string, taskId: string): Promise<void>;
-    /**
-     * Get threads from Distri server
-     */
-    getThreads(): Promise<DistriThread[]>;
-    getThread(threadId: string): Promise<DistriThread>;
-    /**
-     * Get thread messages
-     */
-    getThreadMessages(threadId: string): Promise<Message[]>;
-    /**
-     * Get messages from a thread as DistriMessage format
-     */
-    getThreadMessagesAsDistri(threadId: string): Promise<DistriMessage[]>;
-    /**
-     * Send a DistriMessage to a thread
-     */
-    sendDistriMessage(threadId: string, message: DistriMessage, context: InvokeContext): Promise<void>;
-    /**
-     * Get the base URL for making direct requests
-     */
-    get baseUrl(): string;
-    /**
-     * Enhanced fetch with retry logic
-     */
-    private fetchAbsolute;
-    /**
-     * Enhanced fetch with retry logic
-     */
-    private fetch;
-    /**
-     * Delay utility
-     */
-    private delay;
-    /**
-     * Debug logging
-     */
-    private debug;
-    /**
-     * Helper method to create A2A messages
-     */
-    static initMessage(parts: Part[] | string, role: "agent" | "user" | undefined, message: Omit<Partial<Message>, 'parts' | 'role' | 'kind'>): Message;
-    /**
-     * Create a DistriMessage instance
-     */
-    static initDistriMessage(role: DistriMessage['role'], parts: DistriPart[], id?: string, created_at?: string): DistriMessage;
-    /**
-     * Helper method to create message send parameters
-     */
-    static initMessageParams(message: Message, configuration?: MessageSendParams['configuration'], metadata?: any): MessageSendParams;
-    /**
-     * Create MessageSendParams from a DistriMessage using InvokeContext
-     */
-    static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams;
-}
-declare function uuidv4(): string;
-
-/**
- * Configuration for Agent invoke method
- */
-interface InvokeConfig {
-    /** Configuration for the message */
-    configuration?: MessageSendParams['configuration'];
-    /** Context/thread ID */
-    contextId?: string;
-    /** Metadata for the requests */
-    metadata?: any;
-}
-/**
- * Result from agent invoke
- */
-interface InvokeResult {
-    /** Final response message */
-    message?: Message;
-    /** Task if created */
-    task?: any;
-    /** Whether the response was streamed */
-    streamed: boolean;
-}
-/**
- * Enhanced Agent class with simple tool system following AG-UI pattern
- */
-declare class Agent {
-    private client;
-    private agentDefinition;
-    private tools;
-    constructor(agentDefinition: AgentDefinition, client: DistriClient);
-    /**
-     * Set the tools array
-     */
-    setExternalTools(tools: DistriBaseTool[]): void;
-    /**
-     * Get all tools
-     */
-    getExternalTools(): DistriBaseTool[];
-    /**
-     * Add a single tool
-     */
-    addExternalTool(tool: DistriBaseTool): void;
-    /**
-     * Get agent information
-     */
-    get id(): string;
-    get name(): string;
-    get description(): string | undefined;
-    get agentType(): string | undefined;
-    get iconUrl(): string | undefined;
-    /**
-     * Get the full agent definition (including backend tools)
-     */
-    getDefinition(): AgentDefinition;
-    /**
-     * Fetch messages for a thread (public method for useChat)
-     */
-    getThreadMessages(threadId: string): Promise<Message[]>;
-    /**
-     * Direct (non-streaming) invoke
-     */
-    invoke(params: MessageSendParams): Promise<Message>;
-    /**
-     * Streaming invoke
-     */
-    invokeStream(params: MessageSendParams): Promise<AsyncGenerator<DistriChatMessage>>;
-    /**
-     * Enhance message params with tool definitions
-     */
-    private enhanceParamsWithTools;
-    /**
-     * Create an agent instance from an agent ID
-     */
-    static create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent>;
-    /**
-     * List all available agents
-     */
-    static list(client: DistriClient): Promise<Agent[]>;
-}
 
 /**
  * Converts an A2A Message to a DistriMessage
@@ -716,4 +710,4 @@ declare function extractToolCallsFromDistriMessage(message: DistriMessage): any[
  */
 declare function extractToolResultsFromDistriMessage(message: DistriMessage): any[];
 
-export { A2AProtocolError, type A2AStreamEventData, type ActionPlanStep, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type AssistantWithToolCalls, type BackendPart, type BasePlanStep, type BatchToolCallsStep, type ChatProps, type CodePlanStep, ConnectionError, type ConnectionStatus, type DataPart, type DistriBaseTool, type DistriChatMessage, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriPlan, type DistriStreamEvent, type DistriThread, type FeedbackReceivedEvent, type FileBytes, type FileType, type FileUrl, type FinalResultPlanStep, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type LlmPlanStep, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanAction, type PlanFinishedEvent, type PlanPrunedEvent, type PlanStartedEvent, type PlanStep, type ReactStep, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type StepCompletedEvent, type StepStartedEvent, type TaskArtifactEvent, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type ThoughtPlanStep, type ThoughtStep, type Thread, type ToolCall, type ToolCallArgsEvent, type ToolCallEndEvent, type ToolCallPart, type ToolCallResultEvent, type ToolCallStartEvent, type ToolCallsEvent, type ToolHandler, type ToolRejectedEvent, type ToolResult, type ToolResultData, type ToolResultPart, type ToolResultRefPart, type ToolResults, type ToolResultsEvent, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, createFailedToolResult, createSuccessfulToolResult, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultData, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, normalizeToolResult, processA2AMessagesData, processA2AStreamData, uuidv4 };
+export { A2AProtocolError, type A2AStreamEventData, type ActionPlanStep, Agent, type AgentDefinition, type AgentHandoverEvent, ApiError, type AssistantWithToolCalls, type BasePlanStep, type BatchToolCallsStep, type ChatProps, type CodePlanStep, ConnectionError, type ConnectionStatus, type DataPart, type DistriBaseTool, type DistriChatMessage, DistriClient, type DistriClientConfig, DistriError, type DistriEvent, type DistriFnTool, type DistriMessage, type DistriPart, type DistriPlan, type DistriStreamEvent, type DistriThread, type FeedbackReceivedEvent, type FileBytes, type FileType, type FileUrl, type FinalResultPlanStep, type ImagePart, type InvokeConfig, type InvokeContext, type InvokeResult, type LlmPlanStep, type McpDefinition, type McpServerType, type MessageRole, type ModelProvider, type ModelSettings, type PlanAction, type PlanFinishedEvent, type PlanPrunedEvent, type PlanStartedEvent, type PlanStep, type ReactStep, type Role, type RunErrorEvent, type RunFinishedEvent, type RunStartedEvent, type SpeechToTextConfig, type StepCompletedEvent, type StepStartedEvent, type StreamingTranscriptionOptions, type TextMessageContentEvent, type TextMessageEndEvent, type TextMessageStartEvent, type TextPart, type ThoughtPlanStep, type ThoughtStep, type Thread, type ToolCall, type ToolCallPart, type ToolCallsEvent, type ToolExecutionEndEvent, type ToolExecutionOptions, type ToolExecutionStartEvent, type ToolHandler, type ToolRejectedEvent, type ToolResult, type ToolResultData, type ToolResultPart, type ToolResultRefPart, type ToolResults, type ToolResultsEvent, type UseToolsOptions, convertA2AMessageToDistri, convertA2APartToDistri, convertA2AStatusUpdateToDistri, convertDistriMessageToA2A, convertDistriPartToA2A, createFailedToolResult, createSuccessfulToolResult, decodeA2AStreamEvent, extractTextFromDistriMessage, extractToolCallsFromDistriMessage, extractToolResultData, extractToolResultsFromDistriMessage, isDistriEvent, isDistriMessage, processA2AMessagesData, processA2AStreamData, uuidv4 };

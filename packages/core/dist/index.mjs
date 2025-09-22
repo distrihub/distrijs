@@ -8,7 +8,7 @@ function createSuccessfulToolResult(toolCallId, toolName, result) {
     tool_call_id: toolCallId,
     tool_name: toolName,
     parts: [{
-      type: "data",
+      part_type: "data",
       data: {
         result,
         success: true,
@@ -22,7 +22,7 @@ function createFailedToolResult(toolCallId, toolName, error, result) {
     tool_call_id: toolCallId,
     tool_name: toolName,
     parts: [{
-      type: "data",
+      part_type: "data",
       data: {
         result: result ?? `Tool execution failed: ${error}`,
         success: false,
@@ -32,10 +32,7 @@ function createFailedToolResult(toolCallId, toolName, error, result) {
   };
 }
 function isDataPart(part) {
-  return typeof part === "object" && part !== null && "type" in part && part.type === "data" && "data" in part;
-}
-function isBackendPart(part) {
-  return typeof part === "object" && part !== null && "part_type" in part && part.part_type === "data" && "data" in part && typeof part.data === "string";
+  return typeof part === "object" && part !== null && "part_type" in part && part.part_type === "data" && "data" in part;
 }
 function isToolResultData(data) {
   return typeof data === "object" && data !== null && "success" in data && typeof data.success === "boolean";
@@ -83,29 +80,6 @@ function extractToolResultData(toolResult) {
       error: void 0
     };
   }
-  if (isBackendPart(firstPart)) {
-    try {
-      const parsed = JSON.parse(firstPart.data);
-      if (isToolResultData(parsed)) {
-        return {
-          result: parsed.result,
-          success: parsed.success,
-          error: parsed.error
-        };
-      }
-      return {
-        result: parsed,
-        success: true,
-        error: void 0
-      };
-    } catch {
-      return {
-        result: firstPart.data,
-        success: true,
-        error: void 0
-      };
-    }
-  }
   return null;
 }
 var DistriError = class extends Error {
@@ -135,30 +109,6 @@ var ConnectionError = class extends DistriError {
     this.name = "ConnectionError";
   }
 };
-function normalizeToolResult(toolResult) {
-  const normalizedParts = toolResult.parts.map((part) => {
-    if (isBackendPart(part)) {
-      try {
-        const parsed = JSON.parse(part.data);
-        return {
-          type: "data",
-          data: parsed
-        };
-      } catch {
-        return {
-          type: "data",
-          data: part.data
-        };
-      }
-    }
-    return part;
-  });
-  return {
-    tool_call_id: toolResult.tool_call_id,
-    tool_name: toolResult.tool_name,
-    parts: normalizedParts
-  };
-}
 function isDistriMessage(event) {
   return "id" in event && "role" in event && "parts" in event;
 }
@@ -624,7 +574,7 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
     }
     case "tool_execution_start": {
       const toolStartResult = {
-        type: "tool_call_start",
+        type: "tool_execution_start",
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || "Tool",
@@ -635,7 +585,7 @@ function convertA2AStatusUpdateToDistri(statusUpdate) {
     }
     case "tool_execution_end": {
       const toolEndResult = {
-        type: "tool_call_end",
+        type: "tool_execution_end",
         data: {
           tool_call_id: metadata.tool_call_id
         }
@@ -737,26 +687,26 @@ function processA2AMessagesData(data) {
 function convertA2APartToDistri(a2aPart) {
   switch (a2aPart.kind) {
     case "text":
-      return { type: "text", data: a2aPart.text };
+      return { part_type: "text", data: a2aPart.text };
     case "file":
       if ("uri" in a2aPart.file) {
         const fileUrl = { mime_type: a2aPart.file.mimeType || "application/octet-stream", url: a2aPart.file.uri || "" };
-        return { type: "image", data: fileUrl };
+        return { part_type: "image", data: fileUrl };
       } else {
         const fileBytes = { mime_type: a2aPart.file.mimeType || "application/octet-stream", data: a2aPart.file.bytes || "" };
-        return { type: "image", data: fileBytes };
+        return { part_type: "image", data: fileBytes };
       }
     case "data":
       switch (a2aPart.data.part_type) {
         case "tool_call":
-          return { type: "tool_call", data: a2aPart.data };
+          return { part_type: "tool_call", data: a2aPart.data };
         case "tool_result":
-          return { type: "tool_result", data: a2aPart.data };
+          return { part_type: "tool_result", data: a2aPart.data };
         default:
-          return { type: "data", data: a2aPart.data };
+          return { part_type: "data", data: a2aPart.data };
       }
     default:
-      return { type: "text", data: JSON.stringify(a2aPart) };
+      return { part_type: "text", data: JSON.stringify(a2aPart) };
   }
 }
 function convertDistriMessageToA2A(distriMessage, context) {
@@ -786,7 +736,7 @@ function convertDistriMessageToA2A(distriMessage, context) {
 }
 function convertDistriPartToA2A(distriPart) {
   let result;
-  switch (distriPart.type) {
+  switch (distriPart.part_type) {
     case "text":
       result = { kind: "text", text: distriPart.data };
       break;
@@ -852,13 +802,13 @@ function convertDistriPartToA2A(distriPart) {
   return result;
 }
 function extractTextFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "text").map((part) => part.data).join("\n");
+  return message.parts.filter((part) => part.part_type === "text").map((part) => part.data).join("\n");
 }
 function extractToolCallsFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "tool_call").map((part) => part.data);
+  return message.parts.filter((part) => part.part_type === "tool_call").map((part) => part.data);
 }
 function extractToolResultsFromDistriMessage(message) {
-  return message.parts.filter((part) => part.type === "tool_result").map((part) => part.data);
+  return message.parts.filter((part) => part.part_type === "tool_result").map((part) => part.data);
 }
 
 // src/distri-client.ts
@@ -876,6 +826,126 @@ var DistriClient = class {
       interceptor: config.interceptor || ((init) => Promise.resolve(init))
     };
     this.debug("DistriClient initialized with config:", this.config);
+  }
+  /**
+   * Start streaming speech-to-text transcription via WebSocket
+   */
+  async streamingTranscription(options = {}) {
+    const baseUrl = this.config.baseUrl;
+    const wsUrl = baseUrl.replace("http://", "ws://").replace("https://", "wss://") + "/voice/stream";
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(wsUrl);
+      let isResolved = false;
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "start_session" }));
+        options.onStart?.();
+        if (!isResolved) {
+          isResolved = true;
+          resolve({
+            sendAudio: (audioData) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(audioData);
+              }
+            },
+            sendText: (text) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "text_chunk", text }));
+              }
+            },
+            stop: () => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "end_session" }));
+              }
+            },
+            close: () => {
+              ws.close();
+            }
+          });
+        }
+      };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          switch (data.type) {
+            case "text_chunk":
+              options.onTranscript?.(data.text || "", data.is_final || false);
+              break;
+            case "session_started":
+              this.debug("Speech-to-text session started");
+              break;
+            case "session_ended":
+              this.debug("Speech-to-text session ended");
+              options.onEnd?.();
+              break;
+            case "error":
+              const error = new Error(data.message || "WebSocket error");
+              this.debug("Speech-to-text error:", error);
+              options.onError?.(error);
+              break;
+            default:
+              this.debug("Unknown message type:", data.type);
+          }
+        } catch (error) {
+          const parseError = new Error("Failed to parse WebSocket message");
+          this.debug("Parse error:", parseError);
+          options.onError?.(parseError);
+        }
+      };
+      ws.onerror = (event) => {
+        const error = new Error("WebSocket connection error");
+        this.debug("WebSocket error:", event);
+        options.onError?.(error);
+        if (!isResolved) {
+          isResolved = true;
+          reject(error);
+        }
+      };
+      ws.onclose = (event) => {
+        this.debug("WebSocket closed:", event.code, event.reason);
+        options.onEnd?.();
+      };
+    });
+  }
+  /**
+   * Transcribe audio blob to text using speech-to-text API
+   */
+  async transcribe(audioBlob, config = {}) {
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const base64String = btoa(String.fromCharCode(...uint8Array));
+      const requestBody = {
+        audio: base64String,
+        model: config.model || "whisper-1",
+        ...config.language && { language: config.language },
+        ...config.temperature !== void 0 && { temperature: config.temperature }
+      };
+      this.debug("Transcribing audio:", {
+        model: requestBody.model,
+        language: config.language,
+        audioSize: audioBlob.size
+      });
+      const response = await this.fetch(`/tts/transcribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...this.config.headers
+        },
+        body: JSON.stringify(requestBody)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Transcription failed: ${response.status}`;
+        throw new ApiError(errorMessage, response.status);
+      }
+      const result = await response.json();
+      const transcription = result.text || "";
+      this.debug("Transcription result:", { text: transcription });
+      return transcription;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError("Failed to transcribe audio", "TRANSCRIPTION_ERROR", error);
+    }
   }
   /**
    * Get all available agents from the Distri server
@@ -1073,6 +1143,31 @@ var DistriClient = class {
     await this.sendMessage(threadId, params);
   }
   /**
+   * Complete an external tool call
+   */
+  async completeTool(agentId, result) {
+    try {
+      const response = await this.fetch(`/agents/${agentId}/complete-tool`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...this.config.headers
+        },
+        body: JSON.stringify({
+          tool_call_id: result.tool_call_id,
+          tool_response: result
+        })
+      });
+      if (!response.ok) {
+        throw new ApiError(`Failed to complete tool: ${response.statusText}`, response.status);
+      }
+      this.debug(`Tool completed: ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to complete tool ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`, "COMPLETE_TOOL_ERROR", error);
+    }
+  }
+  /**
    * Get the base URL for making direct requests
    */
   get baseUrl() {
@@ -1197,27 +1292,8 @@ function uuidv4() {
 // src/agent.ts
 var Agent = class _Agent {
   constructor(agentDefinition, client) {
-    this.tools = [];
     this.agentDefinition = agentDefinition;
     this.client = client;
-  }
-  /**
-   * Set the tools array
-   */
-  setExternalTools(tools) {
-    this.tools = tools;
-  }
-  /**
-   * Get all tools
-   */
-  getExternalTools() {
-    return this.tools;
-  }
-  /**
-   * Add a single tool
-   */
-  addExternalTool(tool) {
-    this.tools.push(tool);
   }
   /**
    * Get agent information
@@ -1252,15 +1328,15 @@ var Agent = class _Agent {
   /**
    * Direct (non-streaming) invoke
    */
-  async invoke(params) {
-    const enhancedParams = this.enhanceParamsWithTools(params);
+  async invoke(params, tools) {
+    const enhancedParams = this.enhanceParamsWithTools(params, tools);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams);
   }
   /**
    * Streaming invoke
    */
-  async invokeStream(params) {
-    const enhancedParams = this.enhanceParamsWithTools(params);
+  async invokeStream(params, tools) {
+    const enhancedParams = this.enhanceParamsWithTools(params, tools);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
     return async function* () {
       const events = [];
@@ -1278,15 +1354,15 @@ var Agent = class _Agent {
   /**
    * Enhance message params with tool definitions
    */
-  enhanceParamsWithTools(params) {
+  enhanceParamsWithTools(params, tools) {
     const metadata = {
       ...params.metadata,
-      external_tools: this.tools.filter((tool) => tool.isExternal).map((tool) => ({
+      external_tools: tools?.map((tool) => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters,
         is_final: tool.is_final
-      }))
+      })) || []
     };
     return {
       ...params,
@@ -1308,6 +1384,12 @@ var Agent = class _Agent {
       toolCount: agentDefinition.tools?.length || 0
     });
     return new _Agent(agentDefinition, client);
+  }
+  /**
+   * Complete an external tool call by sending the result back to the server
+   */
+  async completeTool(result) {
+    await this.client.completeTool(this.agentDefinition.id, result);
   }
   /**
    * List all available agents
@@ -1338,7 +1420,6 @@ export {
   extractToolResultsFromDistriMessage,
   isDistriEvent,
   isDistriMessage,
-  normalizeToolResult,
   processA2AMessagesData,
   processA2AStreamData,
   uuidv4

@@ -32,12 +32,12 @@ export function MessageRenderer({
   if (isDistriMessage(message)) {
     const distriMessage = message as DistriMessage;
     const textContent = distriMessage.parts
-      .filter(part => part.type === 'text')
-      .map(part => (part as { type: 'text'; data: string }).data)
+      .filter(part => part.part_type === 'text')
+      .map(part => (part as { part_type: 'text'; data: string }).data)
       .join('')
       .trim();
 
-    const imageParts = distriMessage.parts.filter(part => part.type === 'image');
+    const imageParts = distriMessage.parts.filter(part => part.part_type === 'image');
 
     // Only filter out messages that have neither text nor images
     if (!textContent && imageParts.length === 0) {
