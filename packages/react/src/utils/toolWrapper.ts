@@ -1,18 +1,15 @@
 import React from 'react';
-import { DistriFnTool } from '@distri/core';
+import { DistriFnTool, ToolExecutionOptions } from '@distri/core';
 import { DistriUiTool, UiToolProps } from '../types';
 import { DefaultToolActions } from '../components/renderers/tools/DefaultToolActions';
 
-export interface WrapToolOptions {
-  autoExecute?: boolean;
-}
 
 /**
  * Wraps a DistriFnTool as a DistriUiTool with DefaultToolActions component
  */
 export function wrapFnToolAsUiTool(
   fnTool: DistriFnTool,
-  options: WrapToolOptions = {}
+  options: ToolExecutionOptions = {}
 ): DistriUiTool {
   const { autoExecute = false } = options;
 
@@ -35,7 +32,7 @@ export function wrapFnToolAsUiTool(
  */
 export function wrapTools(
   tools: (DistriFnTool | DistriUiTool)[],
-  options: WrapToolOptions = {}
+  options: ToolExecutionOptions = {}
 ): DistriUiTool[] {
   return tools.map(tool => {
     if (tool.type === 'function') {

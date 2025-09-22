@@ -23,7 +23,7 @@ function getThreadId() {
 }
 
 function MapsChat() {
-  const { agent, loading } = useAgent({ agentIdOrDef: 'maps-navigator' });
+  const { agent, loading } = useAgent({ agentIdOrDef: 'maps_agent' });
   const [selectedThreadId, setSelectedThreadId] = useState<string>(getThreadId());
   const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
   const [tools, setTools] = useState<DistriAnyTool[]>([]);
@@ -152,23 +152,19 @@ function MapsChat() {
                     <div className="p-2 border-b border-gray-700 bg-gray-800">
                       <button
                         onClick={() => setVoiceEnabled(!voiceEnabled)}
-                        className={`px-3 py-1 rounded text-sm transition-colors ${
-                          voiceEnabled 
-                            ? 'bg-green-600 hover:bg-green-700 text-white' 
-                            : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
-                        }`}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${voiceEnabled
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
+                          }`}
                       >
                         🎤 Voice {voiceEnabled ? 'ON' : 'OFF'}
                       </button>
                     </div>
-                    
+
                     <div className="flex-1 overflow-hidden">
                       <Chat
                         agent={agent}
-                        tools={{
-                          tools: tools,
-                          agent_tools: new Map(),
-                        }}
+                        externalTools={tools}
                         initialMessages={messages}
                         theme="dark"
                         threadId={selectedThreadId}

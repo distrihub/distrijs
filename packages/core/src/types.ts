@@ -1,6 +1,7 @@
 // Distri Framework Types - Based on A2A Protocol and SSE
 import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
 import { DistriEvent } from './events';
+import { Agent } from './agent';
 
 /**
  * Message roles supported by Distri
@@ -31,6 +32,17 @@ export interface AssistantWithToolCalls {
   is_external: boolean;
   reason: string | null;
 }
+
+export interface UseToolsOptions {
+  agent?: Agent;
+  externalTools?: DistriBaseTool[];
+  executionOptions?: ToolExecutionOptions;
+}
+
+export interface ToolExecutionOptions {
+  autoExecute?: boolean;
+}
+
 
 export interface ToolResults {
   id: string;
@@ -129,17 +141,17 @@ export interface InvokeContext {
  * Distri message parts - equivalent to Rust enum Part
  */
 
-export type TextPart = { type: 'text'; data: string }
-export type ToolCallPart = { type: 'tool_call'; data: ToolCall }
-export type ToolResultRefPart = { type: 'tool_result'; data: ToolResult }
-export type ImagePart = { type: 'image'; data: FileType }
-export type DataPart = { type: 'data'; data: ToolResultData | string | number | boolean | null | object }
+export type TextPart = { part_type: 'text'; data: string }
+export type ToolCallPart = { part_type: 'tool_call'; data: ToolCall }
+export type ToolResultRefPart = { part_type: 'tool_result'; data: ToolResult }
+export type ImagePart = { part_type: 'image'; data: FileType }
+export type DataPart = { part_type: 'data'; data: object }
 export type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart | DataPart;
 
 /**
  * Union type for parts that can appear in ToolResult (frontend or backend format)
  */
-export type ToolResultPart = DistriPart | BackendPart;
+export type ToolResultPart = DistriPart;
 
 
 
@@ -196,14 +208,6 @@ export interface ToolCall {
 }
 
 /**
- * Backend part structure (from Rust Vec<Part>)
- */
-export interface BackendPart {
-  part_type: 'data';
-  data: string; // JSON string from backend
-}
-
-/**
  * Tool result structure that can come from backend or frontend
  */
 export interface ToolResult {
@@ -234,7 +238,7 @@ export function createSuccessfulToolResult(
     tool_call_id: toolCallId,
     tool_name: toolName,
     parts: [{
-      type: 'data' as const,
+      part_type: 'data' as const,
       data: {
         result,
         success: true,
@@ -258,7 +262,7 @@ export function createFailedToolResult(
     tool_call_id: toolCallId,
     tool_name: toolName,
     parts: [{
-      type: 'data' as const,
+      part_type: 'data' as const,
       data: {
         result: result ?? `Tool execution failed: ${error}`,
         success: false,
@@ -275,26 +279,11 @@ function isDataPart(part: unknown): part is DataPart {
   return (
     typeof part === 'object' &&
     part !== null &&
-    'type' in part &&
-    part.type === 'data' &&
+    'part_type' in part &&
+    part.part_type === 'data' &&
     'data' in part
   );
 }
-
-/**
- * Type guard to check if an object is a backend part structure
- */
-function isBackendPart(part: unknown): part is BackendPart {
-  return (
-    typeof part === 'object' &&
-    part !== null &&
-    'part_type' in part &&
-    part.part_type === 'data' &&
-    'data' in part &&
-    typeof (part as BackendPart).data === 'string'
-  );
-}
-
 /**
  * Type guard to check if data has ToolResultData structure
  */
@@ -364,36 +353,6 @@ export function extractToolResultData(toolResult: ToolResult): ToolResultData | 
       success: true,
       error: undefined
     };
-  }
-
-  // Handle backend BackendPart structure (part_type field with JSON string)
-  if (isBackendPart(firstPart)) {
-    try {
-      const parsed = JSON.parse(firstPart.data);
-
-      // If parsed data has ToolResultData structure
-      if (isToolResultData(parsed)) {
-        return {
-          result: parsed.result,
-          success: parsed.success,
-          error: parsed.error
-        };
-      }
-
-      // If parsed but not ToolResultData structure, treat as successful result
-      return {
-        result: parsed,
-        success: true,
-        error: undefined
-      };
-    } catch {
-      // JSON parsing failed, treat raw string as successful result
-      return {
-        result: firstPart.data,
-        success: true,
-        error: undefined
-      };
-    }
   }
 
   return null;
@@ -508,6 +467,19 @@ export interface ChatProps {
   onThreadUpdate?: () => void;
 }
 
+export interface SpeechToTextConfig {
+  model?: 'whisper-1';
+  language?: string;
+  temperature?: number;
+}
+
+export interface StreamingTranscriptionOptions {
+  onTranscript?: (text: string, isFinal: boolean) => void;
+  onError?: (error: Error) => void;
+  onStart?: () => void;
+  onEnd?: () => void;
+}
+
 /**
  * Connection Status
  */
@@ -560,37 +532,6 @@ export class ConnectionError extends DistriError {
     super(message, 'CONNECTION_ERROR', details);
     this.name = 'ConnectionError';
   }
-}
-
-/**
- * Helper to convert BackendPart to DistriPart for consistent frontend usage
- */
-export function normalizeToolResult(toolResult: ToolResult): ToolResult {
-  const normalizedParts: DistriPart[] = toolResult.parts.map(part => {
-    if (isBackendPart(part)) {
-      // Convert BackendPart to DataPart
-      try {
-        const parsed = JSON.parse(part.data);
-        return {
-          type: 'data' as const,
-          data: parsed
-        };
-      } catch {
-        // If JSON parsing fails, wrap the string
-        return {
-          type: 'data' as const,
-          data: part.data
-        };
-      }
-    }
-    return part as DistriPart;
-  });
-
-  return {
-    tool_call_id: toolResult.tool_call_id,
-    tool_name: toolResult.tool_name,
-    parts: normalizedParts
-  };
 }
 
 // Re-export A2A types for convenience

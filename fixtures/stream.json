@@ -287,7 +287,7 @@
     }
   },
   {
-    "type": "tool_call_start",
+    "type": "tool_execution_start",
     "data": {
       "tool_call_id": "e47b586b-26ae-41f8-a09b-c70e61c04b52",
       "tool_call_name": "final",
@@ -323,7 +323,7 @@
     }
   },
   {
-    "type": "tool_call_end",
+    "type": "tool_execution_end",
     "data": {
       "tool_call_id": "e47b586b-26ae-41f8-a09b-c70e61c04b52"
     }

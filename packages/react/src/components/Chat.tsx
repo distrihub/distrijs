@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, ToolCall } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, ToolCall, ToolExecutionOptions } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -8,7 +8,6 @@ import { TypingIndicator } from './renderers/TypingIndicator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 import { ChatState, useChatStateStore } from '../stores/chatStateStore';
-import { WrapToolOptions } from '../utils/toolWrapper';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
 import { DistriAnyTool } from '@/types';
@@ -40,7 +39,7 @@ export interface ChatProps {
   getMetadata?: () => Promise<any>;
   externalTools?: DistriAnyTool[];
   // Tool wrapping options
-  wrapOptions?: WrapToolOptions;
+  executionOptions?: ToolExecutionOptions;
   // Initial messages to use instead of fetching
   initialMessages?: (DistriChatMessage)[];
   // Theme
@@ -80,7 +79,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   onError,
   getMetadata,
   externalTools,
-  wrapOptions,
+  executionOptions,
   initialMessages,
   theme = 'auto',
   models,
@@ -104,10 +103,9 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Voice functionality hooks
-  const speechToText = useSpeechToText({
-    model: 'whisper-1',
-  });
+
+  // Voice functionality hooks - need DistriClient for API calls
+  const speechToText = useSpeechToText();
   const tts = useTts();
 
   // Streaming voice state
@@ -130,7 +128,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     onError,
     getMetadata,
     externalTools,
-    wrapOptions,
+    executionOptions,
     initialMessages,
     beforeSendMessage,
   });
@@ -208,7 +206,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   // Helper to convert content to parts
   const contentToParts = useCallback((content: string | DistriPart[]): DistriPart[] => {
     if (typeof content === 'string') {
-      return [{ type: 'text', data: content }];
+      return [{ part_type: 'text', data: content }];
     }
     return content;
   }, []);
@@ -255,29 +253,25 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
     // Get the chat state to initialize the tool call
     const chatState = useChatStateStore.getState();
-
-    // Initialize the tool call in the state store
-    chatState.initializeTool(toolCall);
-
-    // Send the tool call as a message to continue the conversation
-    const toolCallPart: DistriPart = {
-      type: 'tool_call',
-      data: toolCall
-    };
-
-    await handleSendMessage([toolCallPart]);
+    const tool = chatState.getToolByName(toolName);
+    if (tool) {
+      // Initialize the tool call in the state store
+      chatState.executeTool(toolCall, tool);
+    } else {
+      console.error('Tool not found:', toolName);
+    }
   }, [handleSendMessage]);
 
   // Enhanced voice recording with streaming support
   const handleVoiceRecord = useCallback(async (audioBlob: Blob) => {
     try {
       if (!voiceEnabled || !speechToText) {
-        console.error('Voice recording not properly configured');
+        console.error('Voice recording not properly configured - missing speechToText');
         return;
       }
 
       // Transcribe the audio to text via backend
-      const transcription = await speechToText.transcribe(audioBlob);
+      const transcription = await speechToText.transcribe(audioBlob, { model: 'whisper-1' });
 
       if (transcription.trim()) {
         // Set the transcribed text as input
@@ -295,8 +289,11 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   }, [voiceEnabled, speechToText, handleSendMessage, onError]);
 
   // Start streaming voice conversation
-  const startStreamingVoice = useCallback(() => {
-    if (!voiceEnabled || isStreamingVoice) return;
+  const startStreamingVoice = useCallback(async () => {
+    if (!voiceEnabled || isStreamingVoice || !speechToText) {
+      console.error('Cannot start streaming voice - missing requirements');
+      return;
+    }
 
     setIsStreamingVoice(true);
     setStreamingTranscript('');
@@ -304,7 +301,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
     try {
       // Start streaming transcription
-      speechToText.startStreamingTranscription({
+      await speechToText.startStreamingTranscription({
         onTranscript: (text: string, isFinal: boolean) => {
           setStreamingTranscript(text);
           if (isFinal && text.trim()) {
@@ -358,7 +355,9 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const stopStreamingVoice = useCallback(() => {
     if (!isStreamingVoice) return;
 
-    speechToText.stopStreamingTranscription();
+    if (speechToText) {
+      speechToText.stopStreamingTranscription();
+    }
     tts.stopStreamingTts();
     setIsStreamingVoice(false);
     setStreamingTranscript('');
@@ -418,12 +417,12 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     triggerTool: handleTriggerTool,
     isStreaming,
     isLoading,
-    // Streaming voice capabilities
-    startStreamingVoice: voiceEnabled ? startStreamingVoice : undefined,
-    stopStreamingVoice: voiceEnabled ? stopStreamingVoice : undefined,
-    isStreamingVoice: voiceEnabled ? isStreamingVoice : undefined,
-    streamingTranscript: voiceEnabled ? streamingTranscript : undefined,
-  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, voiceEnabled, startStreamingVoice, stopStreamingVoice, isStreamingVoice, streamingTranscript]);
+    // Streaming voice capabilities - only available with speechToText
+    startStreamingVoice: voiceEnabled && speechToText ? startStreamingVoice : undefined,
+    stopStreamingVoice: voiceEnabled && speechToText ? stopStreamingVoice : undefined,
+    isStreamingVoice: voiceEnabled && speechToText ? isStreamingVoice : undefined,
+    streamingTranscript: voiceEnabled && speechToText ? streamingTranscript : undefined,
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, voiceEnabled, speechToText, startStreamingVoice, stopStreamingVoice, isStreamingVoice, streamingTranscript]);
 
   // Expose ChatInstance via ref
   useImperativeHandle(ref, () => chatInstance, [chatInstance]);
@@ -567,13 +566,13 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
               <div className="mt-2">
                 <div className="text-sm text-yellow-700 dark:text-yellow-300 bg-white dark:bg-gray-800 p-2 rounded border">
                   {pendingMessage.map((part, partIndex) => {
-                    if (part.type === 'text') {
+                    if (part.part_type === 'text') {
                       return (
                         <span key={partIndex} className="block mb-1">
                           {part.data}
                         </span>
                       );
-                    } else if (part.type === 'image' && typeof part.data === 'object' && part.data !== null && 'name' in part.data) {
+                    } else if (part.part_type === 'image' && typeof part.data === 'object' && part.data !== null && 'name' in part.data) {
                       return (
                         <span key={partIndex} className="inline-block text-xs text-muted-foreground bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mr-2 mb-1">
                           📷 {part.data.name}
@@ -582,7 +581,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
                     }
                     return (
                       <span key={partIndex} className="inline-block text-xs text-muted-foreground bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mr-2 mb-1">
-                        [{part.type}]
+                        [{part.part_type}]
                       </span>
                     );
                   })}
@@ -665,7 +664,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
           )}
 
           {/* Streaming voice indicator (non-overlapping, full-width) */}
-          {voiceEnabled && (isStreamingVoice || streamingTranscript) && (
+          {voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript) && (
             <div className="p-3 bg-muted/50 border border-muted rounded-lg">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -707,9 +706,9 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             attachedImages={attachedImages}
             onRemoveImage={removeImage}
             onAddImages={addImages}
-            voiceEnabled={voiceEnabled}
+            voiceEnabled={voiceEnabled && !!speechToText}
             onVoiceRecord={handleVoiceRecord}
-            onStartStreamingVoice={voiceEnabled ? startStreamingVoice : undefined}
+            onStartStreamingVoice={voiceEnabled && speechToText ? startStreamingVoice : undefined}
             isStreamingVoice={isStreamingVoice}
             useSpeechRecognition={useSpeechRecognition}
             onSpeechTranscript={handleSpeechTranscript}

@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolCallStartEvent, ToolCallEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -107,8 +107,8 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
     }
 
     case 'tool_execution_start': {
-      const toolStartResult: ToolCallStartEvent = {
-        type: 'tool_call_start',
+      const toolStartResult: ToolExecutionStartEvent = {
+        type: 'tool_execution_start',
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || 'Tool',
@@ -119,8 +119,8 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
     }
 
     case 'tool_execution_end': {
-      const toolEndResult: ToolCallEndEvent = {
-        type: 'tool_call_end',
+      const toolEndResult: ToolExecutionEndEvent = {
+        type: 'tool_execution_end',
         data: {
           tool_call_id: metadata.tool_call_id
         }
@@ -258,28 +258,28 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
 
   switch (a2aPart.kind) {
     case 'text':
-      return { type: 'text', data: a2aPart.text };
+      return { part_type: 'text', data: a2aPart.text };
     case 'file':
       if ('uri' in a2aPart.file) {
         const fileUrl: FileUrl = { mime_type: a2aPart.file.mimeType || 'application/octet-stream', url: a2aPart.file.uri || '' };
-        return { type: 'image', data: fileUrl };
+        return { part_type: 'image', data: fileUrl };
       }
       else {
         const fileBytes: FileBytes = { mime_type: a2aPart.file.mimeType || 'application/octet-stream', data: a2aPart.file.bytes || '' };
-        return { type: 'image', data: fileBytes };
+        return { part_type: 'image', data: fileBytes };
       }
     case 'data':
       switch (a2aPart.data.part_type) {
         case 'tool_call':
-          return { type: 'tool_call', data: a2aPart.data as unknown as ToolCall };
+          return { part_type: 'tool_call', data: a2aPart.data as unknown as ToolCall };
         case 'tool_result':
-          return { type: 'tool_result', data: a2aPart.data as unknown as ToolResult };
+          return { part_type: 'tool_result', data: a2aPart.data as unknown as ToolResult };
         default:
-          return { type: 'data', data: a2aPart.data };
+          return { part_type: 'data', data: a2aPart.data };
       }
     default:
       // For unknown parts, convert to text by stringifying
-      return { type: 'text', data: JSON.stringify(a2aPart) };
+      return { part_type: 'text', data: JSON.stringify(a2aPart) };
   }
 }
 
@@ -321,7 +321,7 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
 export function convertDistriPartToA2A(distriPart: DistriPart): Part {
   let result: Part;
 
-  switch (distriPart.type) {
+  switch (distriPart.part_type) {
     case 'text':
       result = { kind: 'text', text: distriPart.data };
       break;
@@ -401,8 +401,8 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
  */
 export function extractTextFromDistriMessage(message: DistriMessage): string {
   return message.parts
-    .filter(part => part.type === 'text')
-    .map(part => (part as { type: 'text'; data: string }).data)
+    .filter(part => part.part_type === 'text')
+    .map(part => (part as { part_type: 'text'; data: string }).data)
     .join('\n');
 }
 
@@ -411,8 +411,8 @@ export function extractTextFromDistriMessage(message: DistriMessage): string {
  */
 export function extractToolCallsFromDistriMessage(message: DistriMessage): any[] {
   return message.parts
-    .filter(part => part.type === 'tool_call')
-    .map(part => (part as { type: 'tool_call'; data: any }).data);
+    .filter(part => part.part_type === 'tool_call')
+    .map(part => (part as { part_type: 'tool_call'; data: any }).data);
 }
 
 /**
@@ -420,6 +420,6 @@ export function extractToolCallsFromDistriMessage(message: DistriMessage): any[]
  */
 export function extractToolResultsFromDistriMessage(message: DistriMessage): any[] {
   return message.parts
-    .filter(part => part.type === 'tool_result')
-    .map(part => (part as { type: 'tool_result'; data: any }).data);
+    .filter(part => part.part_type === 'tool_result')
+    .map(part => (part as { part_type: 'tool_result'; data: any }).data);
 }

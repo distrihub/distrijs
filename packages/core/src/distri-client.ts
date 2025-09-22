@@ -9,7 +9,10 @@ import {
   DistriError,
   ApiError,
   A2AProtocolError,
-  A2AStreamEventData
+  A2AStreamEventData,
+  SpeechToTextConfig,
+  StreamingTranscriptionOptions,
+  ToolResult
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 /**
@@ -34,6 +37,149 @@ export class DistriClient {
     this.debug('DistriClient initialized with config:', this.config);
   }
 
+  /**
+   * Start streaming speech-to-text transcription via WebSocket
+   */
+  async streamingTranscription(options: StreamingTranscriptionOptions = {}) {
+    const baseUrl = this.config.baseUrl;
+    // Convert HTTP/HTTPS URLs to WebSocket URLs
+    const wsUrl = baseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/voice/stream';
+
+    return new Promise<{
+      sendAudio: (audioData: ArrayBuffer) => void;
+      sendText: (text: string) => void;
+      stop: () => void;
+      close: () => void;
+    }>((resolve, reject) => {
+      const ws = new WebSocket(wsUrl);
+      let isResolved = false;
+
+      ws.onopen = () => {
+        // Start session
+        ws.send(JSON.stringify({ type: 'start_session' }));
+        options.onStart?.();
+
+        if (!isResolved) {
+          isResolved = true;
+          resolve({
+            sendAudio: (audioData: ArrayBuffer) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(audioData);
+              }
+            },
+            sendText: (text: string) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'text_chunk', text }));
+              }
+            },
+            stop: () => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'end_session' }));
+              }
+            },
+            close: () => {
+              ws.close();
+            }
+          });
+        }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          switch (data.type) {
+            case 'text_chunk':
+              options.onTranscript?.(data.text || '', data.is_final || false);
+              break;
+            case 'session_started':
+              this.debug('Speech-to-text session started');
+              break;
+            case 'session_ended':
+              this.debug('Speech-to-text session ended');
+              options.onEnd?.();
+              break;
+            case 'error':
+              const error = new Error(data.message || 'WebSocket error');
+              this.debug('Speech-to-text error:', error);
+              options.onError?.(error);
+              break;
+            default:
+              this.debug('Unknown message type:', data.type);
+          }
+        } catch (error) {
+          const parseError = new Error('Failed to parse WebSocket message');
+          this.debug('Parse error:', parseError);
+          options.onError?.(parseError);
+        }
+      };
+
+      ws.onerror = (event) => {
+        const error = new Error('WebSocket connection error');
+        this.debug('WebSocket error:', event);
+        options.onError?.(error);
+
+        if (!isResolved) {
+          isResolved = true;
+          reject(error);
+        }
+      };
+
+      ws.onclose = (event) => {
+        this.debug('WebSocket closed:', event.code, event.reason);
+        options.onEnd?.();
+      };
+    });
+  }
+  /**
+   * Transcribe audio blob to text using speech-to-text API
+   */
+  async transcribe(audioBlob: Blob, config: SpeechToTextConfig = {}): Promise<string> {
+    try {
+      // Convert blob to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const base64String = btoa(String.fromCharCode(...uint8Array));
+
+      const requestBody = {
+        audio: base64String,
+        model: config.model || 'whisper-1',
+        ...(config.language && { language: config.language }),
+        ...(config.temperature !== undefined && { temperature: config.temperature }),
+      };
+
+      this.debug('Transcribing audio:', {
+        model: requestBody.model,
+        language: config.language,
+        audioSize: audioBlob.size
+      });
+
+      const response = await this.fetch(`/tts/transcribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.config.headers,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Transcription failed: ${response.status}`;
+        throw new ApiError(errorMessage, response.status);
+      }
+
+      const result = await response.json();
+      const transcription = result.text || '';
+
+      this.debug('Transcription result:', { text: transcription });
+      return transcription;
+
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to transcribe audio', 'TRANSCRIPTION_ERROR', error);
+    }
+  }
 
   /**
    * Get all available agents from the Distri server
@@ -256,6 +402,34 @@ export class DistriClient {
       metadata: contextMetadata
     };
     await this.sendMessage(threadId, params);
+  }
+
+  /**
+   * Complete an external tool call
+   */
+  async completeTool(agentId: string, result: ToolResult): Promise<void> {
+    try {
+      const response = await this.fetch(`/agents/${agentId}/complete-tool`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.config.headers,
+        },
+        body: JSON.stringify({
+          tool_call_id: result.tool_call_id,
+          tool_response: result
+        })
+      });
+
+      if (!response.ok) {
+        throw new ApiError(`Failed to complete tool: ${response.statusText}`, response.status);
+      }
+
+      this.debug(`Tool completed: ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to complete tool ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`, 'COMPLETE_TOOL_ERROR', error);
+    }
   }
 
   /**

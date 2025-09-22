@@ -8,7 +8,7 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
       name: 'set_map_center',
       description: 'Set the center location of the Google Maps view',
       type: 'function',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           latitude: { type: 'number', description: 'Latitude coordinate for the map center' },
@@ -17,8 +17,9 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
         },
         required: ['latitude', 'longitude']
       },
-      handler: async (input: string) => {
-        const { latitude, longitude, zoom } = JSON.parse(input);
+      handler: async (input: object) => {
+        console.log('set_map_center', input);
+        const { latitude, longitude, zoom } = input as { latitude: number; longitude: number; zoom: number };
         if (!latitude || !longitude) {
           return "Invalid input";
         }
@@ -31,7 +32,7 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
       name: 'add_marker',
       description: 'Add a marker to the Google Maps at a specific location',
       type: 'function',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           latitude: { type: 'number', description: 'Latitude coordinate for the marker' },
@@ -41,8 +42,8 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
         },
         required: ['latitude', 'longitude', 'title']
       },
-      handler: async (input: string) => {
-        const { latitude, longitude, title, description } = JSON.parse(input);
+      handler: async (input: object) => {
+        const { latitude, longitude, title, description } = input as { latitude: number; longitude: number; title: string; description: string };
         if (!latitude || !longitude || !title) {
           return "Invalid input";
         }
@@ -55,7 +56,7 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
       name: 'get_directions',
       description: 'Get directions between two locations on Google Maps',
       type: 'function',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           origin: { type: 'string', description: 'Starting location (address or place name)' },
@@ -69,8 +70,8 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
         },
         required: ['origin', 'destination']
       },
-      handler: async (input: string) => {
-        const { origin, destination, travel_mode } = JSON.parse(input);
+      handler: async (input: object) => {
+        const { origin, destination, travel_mode } = input as { origin: string; destination: string; travel_mode: string };
         if (!origin || !destination) {
           return "Invalid input";
         }
@@ -83,7 +84,7 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
       name: 'search_places',
       description: 'Search for places near a location',
       type: 'function',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           query: { type: 'string', description: 'Search query (e.g., "restaurants", "gas stations")' },
@@ -93,8 +94,8 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
         },
         required: ['query', 'latitude', 'longitude']
       },
-      handler: async (input: string) => {
-        const { query, latitude, longitude, radius } = JSON.parse(input);
+      handler: async (input: object) => {
+        const { query, latitude, longitude, radius } = input as { query: string; latitude: number; longitude: number; radius: number };
         if (!query || !latitude || !longitude) {
           return "Invalid input";
         }
@@ -107,11 +108,11 @@ export const getTools = (mapManagerRef: GoogleMapsManagerRef): DistriFnTool[] =>
       name: 'clear_map',
       description: 'Clear all markers and directions from the map',
       type: 'function',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {}
       },
-      handler: async () => {
+      handler: async (_input: object) => {
         await mapManagerRef.clearMap();
         return "Map cleared";
       }

@@ -1,137 +1,134 @@
+import { useDistri } from '@/DistriProvider';
+import { StreamingTranscriptionOptions, SpeechToTextConfig } from '@distri/core';
 import { useCallback, useRef, useState } from 'react';
 
-export interface SpeechToTextConfig {
-  baseUrl?: string;
-  model?: 'whisper-1';
-  language?: string;
-  temperature?: number;
+interface StreamingConnection {
+  sendAudio: (audioData: ArrayBuffer) => void;
+  sendText: (text: string) => void;
+  stop: () => void;
+  close: () => void;
 }
 
-export interface StreamingTranscriptionOptions {
-  onTranscript?: (text: string, isFinal: boolean) => void;
-  onError?: (error: Error) => void;
-  onStart?: () => void;
-  onEnd?: () => void;
-}
-
-export const useSpeechToText = (config: SpeechToTextConfig = {}) => {
-  const baseUrl = config.baseUrl || 'http://localhost:8080/api/v1';
+export const useSpeechToText = () => {
+  // Initialize DistriClient automatically
+  const { client } = useDistri();
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamingConnectionRef = useRef<StreamingConnection | null>(null);
 
-  const transcribe = useCallback(async (audioBlob: Blob): Promise<string> => {
-    // Convert blob to base64 for the new API
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const base64String = btoa(String.fromCharCode(...uint8Array));
-
-    const requestBody = {
-      audio: base64String,
-      model: config.model || 'whisper-1',
-      ...(config.language && { language: config.language }),
-      ...(config.temperature !== undefined && { temperature: config.temperature }),
-    };
-
-    const response = await fetch(`${baseUrl}/tts/transcribe`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Transcription failed: ${response.status}`);
+  /**
+   * Transcribe a single audio blob
+   */
+  const transcribe = useCallback(async (audioBlob: Blob, config: SpeechToTextConfig = {}) => {
+    if (!client) {
+      throw new Error('DistriClient not initialized');
+    }
+    if (isTranscribing) {
+      throw new Error('Transcription already in progress');
     }
 
-    const result = await response.json();
-    return result.text || '';
-  }, [baseUrl, config]);
+    setIsTranscribing(true);
+    try {
+      const result = await client.transcribe(audioBlob, config);
+      return result;
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, [client, isTranscribing]);
 
-  const startStreamingTranscription = useCallback((options: StreamingTranscriptionOptions = {}) => {
-    if (isTranscribing) {
+  /**
+   * Start streaming transcription
+   */
+  const startStreamingTranscription = useCallback(async (options: StreamingTranscriptionOptions = {}) => {
+    if (!client) {
+      throw new Error('DistriClient not initialized');
+    }
+    if (isStreaming) {
       throw new Error('Streaming transcription already in progress');
     }
 
-    // Connect to backend voice streaming endpoint
-    const wsUrl = baseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/voice/stream';
-    
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    setIsTranscribing(true);
+    setIsStreaming(true);
 
-    ws.onopen = () => {
-      // Start session
-      ws.send(JSON.stringify({ type: 'start_session' }));
-      options.onStart?.();
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        switch (data.type) {
-          case 'text_chunk':
-            options.onTranscript?.(data.text || '', data.is_final || false);
-            break;
-          case 'session_started':
-            // Session successfully started
-            break;
-          case 'session_ended':
-            // Session ended
-            break;
-          case 'error':
-            options.onError?.(new Error(data.message || 'WebSocket error'));
-            break;
-        }
-      } catch (error) {
-        options.onError?.(new Error('Failed to parse WebSocket message'));
+    const enhancedOptions = {
+      ...options,
+      onStart: () => {
+        console.log('🎤 Streaming transcription started');
+        options.onStart?.();
+      },
+      onEnd: () => {
+        console.log('🎤 Streaming transcription ended');
+        setIsStreaming(false);
+        streamingConnectionRef.current = null;
+        options.onEnd?.();
+      },
+      onError: (error: Error) => {
+        console.error('🎤 Streaming transcription error:', error);
+        setIsStreaming(false);
+        streamingConnectionRef.current = null;
+        options.onError?.(error);
+      },
+      onTranscript: (text: string, isFinal: boolean) => {
+        console.log('🎤 Transcript:', { text, isFinal });
+        options.onTranscript?.(text, isFinal);
       }
     };
 
-    ws.onerror = () => {
-      options.onError?.(new Error('WebSocket connection error'));
-    };
+    try {
+      const connection = await client.streamingTranscription(enhancedOptions);
+      streamingConnectionRef.current = connection;
+      return connection;
+    } catch (error) {
+      setIsStreaming(false);
+      streamingConnectionRef.current = null;
+      throw error;
+    }
+  }, [client, isStreaming]);
 
-    ws.onclose = () => {
-      setIsTranscribing(false);
-      options.onEnd?.();
-    };
-
-    return {
-      sendAudio: (audioData: ArrayBuffer) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          // Send binary audio data
-          ws.send(audioData);
-        }
-      },
-      sendText: (text: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'text_chunk', text }));
-        }
-      },
-      stop: () => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'end_session' }));
-        }
-        ws.close();
-      }
-    };
-  }, [isTranscribing, baseUrl]);
-
+  /**
+   * Stop streaming transcription
+   */
   const stopStreamingTranscription = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-      setIsTranscribing(false);
+    if (streamingConnectionRef.current) {
+      console.log('🎤 Stopping streaming transcription');
+      streamingConnectionRef.current.stop();
+      streamingConnectionRef.current.close();
+      streamingConnectionRef.current = null;
+    }
+    setIsStreaming(false);
+  }, []);
+
+  /**
+   * Send audio data to the streaming connection
+   */
+  const sendAudio = useCallback((audioData: ArrayBuffer) => {
+    if (streamingConnectionRef.current) {
+      streamingConnectionRef.current.sendAudio(audioData);
+    } else {
+      console.warn('🎤 No active streaming connection to send audio to');
+    }
+  }, []);
+
+  /**
+   * Send text data to the streaming connection
+   */
+  const sendText = useCallback((text: string) => {
+    if (streamingConnectionRef.current) {
+      streamingConnectionRef.current.sendText(text);
+    } else {
+      console.warn('🎤 No active streaming connection to send text to');
     }
   }, []);
 
   return {
+    // Single transcription
     transcribe,
+    isTranscribing,
+
+    // Streaming transcription
     startStreamingTranscription,
     stopStreamingTranscription,
-    isTranscribing,
+    sendAudio,
+    sendText,
+    isStreaming,
   };
 };

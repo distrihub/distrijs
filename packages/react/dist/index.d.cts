@@ -1,8 +1,8 @@
-import { ToolResult, ToolCall, PlanStep, DistriChatMessage, Agent as Agent$1, DistriFnTool, DistriBaseTool, DistriMessage, DistriPart, AgentDefinition, DistriThread, DistriEvent, DistriClientConfig, DistriClient, ImagePart } from '@distri/core';
-import * as zustand from 'zustand';
-import * as react_jsx_runtime from 'react/jsx-runtime';
+import { Agent as Agent$1, DistriChatMessage, DistriBaseTool, ToolExecutionOptions, DistriMessage, DistriPart, AgentDefinition, DistriThread, DistriFnTool, ToolCall, ToolResult, PlanStep, DistriClientConfig, DistriClient, SpeechToTextConfig, StreamingTranscriptionOptions, DistriEvent, ImagePart } from '@distri/core';
 import * as React$1 from 'react';
 import React__default, { ReactNode } from 'react';
+import * as zustand from 'zustand';
+import * as react_jsx_runtime from 'react/jsx-runtime';
 import * as class_variance_authority_types from 'class-variance-authority/types';
 import { VariantProps } from 'class-variance-authority';
 import * as _radix_ui_react_separator from '@radix-ui/react-separator';
@@ -10,6 +10,80 @@ import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+
+interface UseChatOptions {
+    threadId: string;
+    agent?: Agent$1;
+    onMessage?: (message: DistriChatMessage) => void;
+    onError?: (error: Error) => void;
+    getMetadata?: () => Promise<Record<string, unknown>>;
+    externalTools?: DistriBaseTool[];
+    executionOptions?: ToolExecutionOptions;
+    initialMessages?: (DistriChatMessage)[];
+    beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
+}
+interface UseChatReturn {
+    messages: (DistriChatMessage)[];
+    isStreaming: boolean;
+    sendMessage: (content: string | DistriPart[]) => Promise<void>;
+    sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+    isLoading: boolean;
+    error: Error | null;
+    hasPendingToolCalls: () => boolean;
+    stopStreaming: () => void;
+    addMessage: (message: DistriChatMessage) => void;
+}
+declare function useChat({ threadId, onError, getMetadata, agent, externalTools, beforeSendMessage, initialMessages, }: UseChatOptions): UseChatReturn;
+
+interface UseAgentOptions {
+    agentIdOrDef: string | AgentDefinition;
+}
+interface UseAgentResult {
+    agent: Agent$1 | null;
+    loading: boolean;
+    error: Error | null;
+}
+/**
+ * useAgent is for agent configuration and invocation.
+ * For chat UIs, use useChat instead.
+ */
+declare function useAgent({ agentIdOrDef, }: UseAgentOptions): UseAgentResult;
+
+interface UseAgentsResult {
+    agents: AgentDefinition[];
+    loading: boolean;
+    error: Error | null;
+    refetch: () => Promise<void>;
+    getAgent: (agentId: string) => Promise<AgentDefinition>;
+}
+declare function useAgentDefinitions(): UseAgentsResult;
+
+interface UseThreadsResult {
+    threads: DistriThread[];
+    loading: boolean;
+    error: Error | null;
+    refetch: () => Promise<void>;
+    deleteThread: (threadId: string) => Promise<void>;
+    fetchThread: (threadId: string) => Promise<DistriThread>;
+    updateThread: (threadId: string, localId?: string) => Promise<void>;
+}
+declare function useThreads(): UseThreadsResult;
+interface UseThreadMessagesOptions {
+    threadId: string | null;
+}
+
+type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
+type DistriAnyTool = DistriFnTool | DistriUiTool;
+interface DistriUiTool extends DistriBaseTool {
+    type: 'ui';
+    component: (props: UiToolProps) => React.ReactNode;
+}
+type UiToolProps = {
+    toolCall: ToolCall;
+    toolCallState?: ToolCallState;
+    completeTool: (result: ToolResult) => void;
+    tool: DistriBaseTool;
+};
 
 type StreamingIndicator = 'typing' | 'thinking' | 'generating';
 interface ThinkingRendererProps {
@@ -91,9 +165,10 @@ interface ChatState {
     wrapOptions?: {
         autoExecute?: boolean;
     };
-    onAllToolsCompleted?: (() => void) | undefined;
-    getAllExternalTools: () => DistriAnyTool[];
 }
+type ChatStateTool = DistriAnyTool & {
+    executionType: 'backend' | 'external';
+};
 interface ChatStateStore extends ChatState {
     setStreaming: (isStreaming: boolean) => void;
     setLoading: (isLoading: boolean) => void;
@@ -105,6 +180,7 @@ interface ChatStateStore extends ChatState {
     processMessage: (message: DistriChatMessage, isFromStream?: boolean) => void;
     clearAllStates: () => void;
     clearTask: (taskId: string) => void;
+    getToolByName: (toolName: string) => ChatStateTool | undefined;
     completeRunningSteps: () => void;
     resetStreamingStates: () => void;
     initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean) => void;
@@ -113,7 +189,7 @@ interface ChatStateStore extends ChatState {
     getPendingToolCalls: () => ToolCallState[];
     getCompletedToolCalls: () => ToolCallState[];
     completeTool: (toolCall: ToolCall, result: ToolResult) => Promise<void>;
-    initializeTool: (toolCall: ToolCall) => void;
+    executeTool: (toolCall: ToolCall, distriTool: DistriAnyTool) => void;
     hasPendingToolCalls: () => boolean;
     clearToolResults: () => void;
     getExternalToolResponses: () => ToolResult[];
@@ -122,105 +198,16 @@ interface ChatStateStore extends ChatState {
     getCurrentTasks: () => TaskState[];
     getTaskById: (taskId: string) => TaskState | null;
     getPlanById: (planId: string) => PlanState | null;
-    resolveToolCalls: () => number;
     updateTask: (taskId: string, updates: Partial<TaskState>) => void;
     updatePlan: (planId: string, updates: Partial<PlanState>) => void;
     updateStep: (stepId: string, updates: Partial<StepState>) => void;
-    triggerTools: () => void;
     setAgent: (agent: Agent$1) => void;
     setExternalTools: (tools: DistriAnyTool[]) => void;
     setWrapOptions: (options: {
         autoExecute?: boolean;
     }) => void;
-    setOnAllToolsCompleted: (callback: (() => void) | undefined) => void;
 }
 declare const useChatStateStore: zustand.UseBoundStore<zustand.StoreApi<ChatStateStore>>;
-
-type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
-type DistriAnyTool = DistriFnTool | DistriUiTool;
-interface DistriUiTool extends DistriBaseTool {
-    type: 'ui';
-    component: (props: UiToolProps) => React.ReactNode;
-}
-type UiToolProps = {
-    toolCall: ToolCall;
-    toolCallState?: ToolCallState;
-    completeTool: (result: ToolResult) => void;
-    tool: DistriBaseTool;
-};
-
-interface WrapToolOptions {
-    autoExecute?: boolean;
-}
-/**
- * Wraps a DistriFnTool as a DistriUiTool with DefaultToolActions component
- */
-declare function wrapFnToolAsUiTool(fnTool: DistriFnTool, options?: WrapToolOptions): DistriUiTool;
-/**
- * Automatically wraps an array of tools, converting DistriFnTools to DistriUiTools
- */
-declare function wrapTools(tools: (DistriFnTool | DistriUiTool)[], options?: WrapToolOptions): DistriUiTool[];
-
-interface UseChatOptions {
-    threadId: string;
-    agent?: Agent$1;
-    onMessage?: (message: DistriChatMessage) => void;
-    onError?: (error: Error) => void;
-    getMetadata?: () => Promise<Record<string, unknown>>;
-    externalTools?: DistriBaseTool[];
-    wrapOptions?: WrapToolOptions;
-    initialMessages?: (DistriChatMessage)[];
-    beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
-}
-interface UseChatReturn {
-    messages: (DistriChatMessage)[];
-    isStreaming: boolean;
-    sendMessage: (content: string | DistriPart[]) => Promise<void>;
-    sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
-    isLoading: boolean;
-    error: Error | null;
-    hasPendingToolCalls: () => boolean;
-    stopStreaming: () => void;
-    addMessage: (message: DistriChatMessage) => void;
-}
-declare function useChat({ threadId, onError, getMetadata, agent, externalTools, wrapOptions, beforeSendMessage, initialMessages, }: UseChatOptions): UseChatReturn;
-
-interface UseAgentOptions {
-    agentIdOrDef: string | AgentDefinition;
-}
-interface UseAgentResult {
-    agent: Agent$1 | null;
-    loading: boolean;
-    error: Error | null;
-}
-/**
- * useAgent is for agent configuration and invocation.
- * For chat UIs, use useChat instead.
- */
-declare function useAgent({ agentIdOrDef, }: UseAgentOptions): UseAgentResult;
-
-interface UseAgentsResult {
-    agents: AgentDefinition[];
-    loading: boolean;
-    error: Error | null;
-    refetch: () => Promise<void>;
-    getAgent: (agentId: string) => Promise<AgentDefinition>;
-}
-declare function useAgentDefinitions(): UseAgentsResult;
-
-interface UseThreadsResult {
-    threads: DistriThread[];
-    loading: boolean;
-    error: Error | null;
-    refetch: () => Promise<void>;
-    deleteThread: (threadId: string) => Promise<void>;
-    fetchThread: (threadId: string) => Promise<DistriThread>;
-    updateThread: (threadId: string, localId?: string) => Promise<void>;
-}
-declare function useThreads(): UseThreadsResult;
-interface UseThreadMessagesOptions {
-    threadId: string | null;
-}
 
 interface ModelOption {
     id: string;
@@ -245,7 +232,7 @@ interface ChatProps {
     onError?: (error: Error) => void;
     getMetadata?: () => Promise<any>;
     externalTools?: DistriAnyTool[];
-    wrapOptions?: WrapToolOptions;
+    executionOptions?: ToolExecutionOptions;
     initialMessages?: (DistriChatMessage)[];
     theme?: 'light' | 'dark' | 'auto';
     models?: ModelOption[];
@@ -325,15 +312,8 @@ interface VoiceInputProps {
     language?: string;
     interimResults?: boolean;
     useBrowserSpeechRecognition?: boolean;
-    baseUrl?: string;
 }
 declare const VoiceInput: React__default.FC<VoiceInputProps>;
-
-interface TaskExecutionRendererProps {
-    events: (DistriMessage | DistriEvent)[];
-    className?: string;
-}
-declare const TaskExecutionRenderer: React__default.FC<TaskExecutionRendererProps>;
 
 type Theme = 'dark' | 'light' | 'system';
 interface ThemeProviderProps {
@@ -412,28 +392,29 @@ declare const useTts: (config?: TtsConfig) => {
     isSynthesizing: boolean;
 };
 
-interface SpeechToTextConfig {
-    baseUrl?: string;
-    model?: 'whisper-1';
-    language?: string;
-    temperature?: number;
-}
-interface StreamingTranscriptionOptions {
-    onTranscript?: (text: string, isFinal: boolean) => void;
-    onError?: (error: Error) => void;
-    onStart?: () => void;
-    onEnd?: () => void;
-}
-declare const useSpeechToText: (config?: SpeechToTextConfig) => {
-    transcribe: (audioBlob: Blob) => Promise<string>;
-    startStreamingTranscription: (options?: StreamingTranscriptionOptions) => {
+declare const useSpeechToText: () => {
+    transcribe: (audioBlob: Blob, config?: SpeechToTextConfig) => Promise<string>;
+    isTranscribing: boolean;
+    startStreamingTranscription: (options?: StreamingTranscriptionOptions) => Promise<{
         sendAudio: (audioData: ArrayBuffer) => void;
         sendText: (text: string) => void;
         stop: () => void;
-    };
+        close: () => void;
+    }>;
     stopStreamingTranscription: () => void;
-    isTranscribing: boolean;
+    sendAudio: (audioData: ArrayBuffer) => void;
+    sendText: (text: string) => void;
+    isStreaming: boolean;
 };
+
+/**
+ * Wraps a DistriFnTool as a DistriUiTool with DefaultToolActions component
+ */
+declare function wrapFnToolAsUiTool(fnTool: DistriFnTool, options?: ToolExecutionOptions): DistriUiTool;
+/**
+ * Automatically wraps an array of tools, converting DistriFnTools to DistriUiTools
+ */
+declare function wrapTools(tools: (DistriFnTool | DistriUiTool)[], options?: ToolExecutionOptions): DistriUiTool[];
 
 declare const buttonVariants: {
     variant: {
@@ -680,4 +661,4 @@ interface UserMessageRendererProps {
 }
 declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
-export { AgentSelect, AppSidebar, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, type ChatState, type ChatStateStore, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, type PlanState, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, type SpeechToTextConfig, StepBasedRenderer, type StepBasedRendererProps, type StepState, type StreamingIndicator, StreamingTextRenderer, type StreamingTranscriptionOptions, type StreamingTtsOptions, TaskExecutionRenderer, type TaskState, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, type ToolCallState, type ToolCallStatus, ToolResultRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, type WrapToolOptions, extractContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useChatStateStore, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };
+export { AgentSelect, AppSidebar, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, type ChatState, type ChatStateStore, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, type PlanState, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, StepBasedRenderer, type StepBasedRendererProps, type StepState, type StreamingIndicator, StreamingTextRenderer, type StreamingTtsOptions, type TaskState, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, type ToolCallState, type ToolCallStatus, ToolResultRenderer, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, extractContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useChatStateStore, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };
