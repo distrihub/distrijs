@@ -626,48 +626,102 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
 
   executeTool: (toolCall: ToolCall, distriTool: DistriAnyTool) => {
+    try {
+      const commonProps = {
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+        startTime: Date.now(),
+        isExternal: !!distriTool, // Only mark as external if it's actually an external tool
+        status: 'running' as ToolCallStatus,
+      };
+      const completeToolFn = (result: ToolResult) => {
+        try {
+          get().completeTool(toolCall, result);
+        } catch (error) {
+          console.error(`❌ Error completing tool ${toolCall.tool_name}:`, error);
+          // Update tool call with error status
+          get().updateToolCallStatus(toolCall.tool_call_id, {
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Tool completion failed',
+            endTime: Date.now(),
+          });
+        }
+      }
+      const toolCallState = get().toolCalls.get(toolCall.tool_call_id);
 
-    const commonProps = {
-      tool_name: toolCall.tool_name,
-      input: toolCall.input,
-      startTime: Date.now(),
-      isExternal: !!distriTool, // Only mark as external if it's actually an external tool
-      status: 'running' as ToolCallStatus,
-    };
-    const completeToolFn = (result: ToolResult) => {
-      get().completeTool(toolCall, result);
-    }
-    const toolCallState = get().toolCalls.get(toolCall.tool_call_id);
+      console.log('distriTool', distriTool);
+      let component: React.ReactNode | undefined;
 
+      try {
+        if (distriTool?.type === 'ui') {
+          const uiTool = distriTool as DistriUiTool;
+          component = uiTool.component({
+            toolCall,
+            toolCallState,
+            completeTool: completeToolFn,
+            tool: distriTool
+          });
+        } else if (distriTool?.type === 'function') {
+          // For DistriFnTool, automatically create DefaultToolActions component
+          const fnTool = distriTool as DistriFnTool;
+          // Only auto-execute if explicitly set on the tool itself, not from global wrapOptions
+          // This ensures tools show confirmation UI by default and only auto-execute when intended
+          fnTool.autoExecute = fnTool.autoExecute === true;
 
-    console.log('distriTool', distriTool);
-    let component: React.ReactNode | undefined;
-    if (distriTool?.type === 'ui') {
-      const uiTool = distriTool as DistriUiTool;
-      component = uiTool.component({
-        toolCall,
-        toolCallState,
-        completeTool: completeToolFn,
-        tool: distriTool
+          const error = validateToolCallInput(toolCall);
+          if (error) {
+            completeToolFn({
+              tool_call_id: toolCall.tool_call_id,
+              tool_name: toolCall.tool_name,
+              parts: [{ part_type: 'data', data: { result: null, error: error, success: false } }]
+            });
+            return;
+          }
+          component = React.createElement(DefaultToolActions, {
+            toolCall,
+            toolCallState: get().toolCalls.get(toolCall.tool_call_id),
+            completeTool: completeToolFn,
+            tool: fnTool,
+          });
+        }
+      } catch (componentError) {
+        console.error(`❌ Error creating component for tool ${toolCall.tool_name}:`, componentError);
+        // Create error component to display the issue
+        component = React.createElement('div', {
+          className: 'text-red-500 p-2 border border-red-200 rounded bg-red-50'
+        }, `Error loading tool: ${componentError instanceof Error ? componentError.message : 'Unknown component error'}`);
+
+        // Mark tool as errored
+        get().updateToolCallStatus(toolCall.tool_call_id, {
+          ...commonProps,
+          status: 'error',
+          error: `Component creation failed: ${componentError instanceof Error ? componentError.message : 'Unknown error'}`,
+          component,
+          endTime: Date.now(),
+        });
+        return;
+      }
+
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        ...commonProps,
+        component,
       });
-    } else if (distriTool?.type === 'function') {
-      // For DistriFnTool, automatically create DefaultToolActions component
-      const fnTool = distriTool as DistriFnTool;
-      // Only auto-execute if explicitly set on the tool itself, not from global wrapOptions
-      // This ensures tools show confirmation UI by default and only auto-execute when intended
-      fnTool.autoExecute = fnTool.autoExecute === true;
-
-      component = React.createElement(DefaultToolActions, {
-        toolCall,
-        toolCallState: get().toolCalls.get(toolCall.tool_call_id),
-        completeTool: completeToolFn,
-        tool: fnTool,
+    } catch (error) {
+      console.error(`❌ Critical error in executeTool for ${toolCall.tool_name}:`, error);
+      // Fallback: create minimal error state
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+        status: 'error',
+        error: `Tool execution failed: ${error instanceof Error ? error.message : 'Critical error'}`,
+        startTime: Date.now(),
+        endTime: Date.now(),
+        isExternal: true,
+        component: React.createElement('div', {
+          className: 'text-red-500 p-2 border border-red-200 rounded bg-red-50'
+        }, `Critical tool error: ${error instanceof Error ? error.message : 'Unknown error'}`),
       });
     }
-    get().updateToolCallStatus(toolCall.tool_call_id, {
-      ...commonProps,
-      component,
-    });
   },
 
   hasPendingToolCalls: () => {
@@ -860,4 +914,18 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {
     set({ wrapOptions });
   },
-})); 
+}));
+
+
+const validateToolCallInput = (toolCall: ToolCall): string | null => {
+  const notValidJson = 'Input is not a valid JSON string or object';
+  if (typeof toolCall.input === 'string') {
+    try {
+      JSON.parse(toolCall.input);
+      return null;
+    } catch {
+      return notValidJson;
+    }
+  }
+  return typeof toolCall.input === 'object' ? null : notValidJson;
+}

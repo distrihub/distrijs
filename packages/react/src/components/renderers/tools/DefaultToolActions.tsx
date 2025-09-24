@@ -20,7 +20,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
   const [hasExecuted, setHasExecuted] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const autoExecute = tool.autoExecute;
-  const input = typeof toolCall.input === 'string' ? JSON.parse(toolCall.input) : toolCall.input;
+  const input = toolCall.input;
   const toolName = toolCall.tool_name;
   const isLiveStream = toolCallState?.isLiveStream || false;
 

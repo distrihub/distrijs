@@ -103,7 +103,7 @@ var DefaultToolActions = ({
   const [hasExecuted, setHasExecuted] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const autoExecute = tool.autoExecute;
-  const input = typeof toolCall.input === "string" ? JSON.parse(toolCall.input) : toolCall.input;
+  const input = toolCall.input;
   const toolName = toolCall.tool_name;
   const isLiveStream = toolCallState?.isLiveStream || false;
   const getApprovalPreferences = () => {
@@ -664,42 +664,91 @@ var useChatStateStore = create((set, get) => ({
     }
   },
   executeTool: (toolCall, distriTool) => {
-    const commonProps = {
-      tool_name: toolCall.tool_name,
-      input: toolCall.input,
-      startTime: Date.now(),
-      isExternal: !!distriTool,
-      // Only mark as external if it's actually an external tool
-      status: "running"
-    };
-    const completeToolFn = (result) => {
-      get().completeTool(toolCall, result);
-    };
-    const toolCallState = get().toolCalls.get(toolCall.tool_call_id);
-    console.log("distriTool", distriTool);
-    let component;
-    if (distriTool?.type === "ui") {
-      const uiTool = distriTool;
-      component = uiTool.component({
-        toolCall,
-        toolCallState,
-        completeTool: completeToolFn,
-        tool: distriTool
+    try {
+      const commonProps = {
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+        startTime: Date.now(),
+        isExternal: !!distriTool,
+        // Only mark as external if it's actually an external tool
+        status: "running"
+      };
+      const completeToolFn = (result) => {
+        try {
+          get().completeTool(toolCall, result);
+        } catch (error) {
+          console.error(`\u274C Error completing tool ${toolCall.tool_name}:`, error);
+          get().updateToolCallStatus(toolCall.tool_call_id, {
+            status: "error",
+            error: error instanceof Error ? error.message : "Tool completion failed",
+            endTime: Date.now()
+          });
+        }
+      };
+      const toolCallState = get().toolCalls.get(toolCall.tool_call_id);
+      console.log("distriTool", distriTool);
+      let component;
+      try {
+        if (distriTool?.type === "ui") {
+          const uiTool = distriTool;
+          component = uiTool.component({
+            toolCall,
+            toolCallState,
+            completeTool: completeToolFn,
+            tool: distriTool
+          });
+        } else if (distriTool?.type === "function") {
+          const fnTool = distriTool;
+          fnTool.autoExecute = fnTool.autoExecute === true;
+          const error = validateToolCallInput(toolCall);
+          if (error) {
+            completeToolFn({
+              tool_call_id: toolCall.tool_call_id,
+              tool_name: toolCall.tool_name,
+              parts: [{ part_type: "data", data: { result: null, error, success: false } }]
+            });
+            return;
+          }
+          component = React4.createElement(DefaultToolActions, {
+            toolCall,
+            toolCallState: get().toolCalls.get(toolCall.tool_call_id),
+            completeTool: completeToolFn,
+            tool: fnTool
+          });
+        }
+      } catch (componentError) {
+        console.error(`\u274C Error creating component for tool ${toolCall.tool_name}:`, componentError);
+        component = React4.createElement("div", {
+          className: "text-red-500 p-2 border border-red-200 rounded bg-red-50"
+        }, `Error loading tool: ${componentError instanceof Error ? componentError.message : "Unknown component error"}`);
+        get().updateToolCallStatus(toolCall.tool_call_id, {
+          ...commonProps,
+          status: "error",
+          error: `Component creation failed: ${componentError instanceof Error ? componentError.message : "Unknown error"}`,
+          component,
+          endTime: Date.now()
+        });
+        return;
+      }
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        ...commonProps,
+        component
       });
-    } else if (distriTool?.type === "function") {
-      const fnTool = distriTool;
-      fnTool.autoExecute = fnTool.autoExecute === true;
-      component = React4.createElement(DefaultToolActions, {
-        toolCall,
-        toolCallState: get().toolCalls.get(toolCall.tool_call_id),
-        completeTool: completeToolFn,
-        tool: fnTool
+    } catch (error) {
+      console.error(`\u274C Critical error in executeTool for ${toolCall.tool_name}:`, error);
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+        status: "error",
+        error: `Tool execution failed: ${error instanceof Error ? error.message : "Critical error"}`,
+        startTime: Date.now(),
+        endTime: Date.now(),
+        isExternal: true,
+        component: React4.createElement("div", {
+          className: "text-red-500 p-2 border border-red-200 rounded bg-red-50"
+        }, `Critical tool error: ${error instanceof Error ? error.message : "Unknown error"}`)
       });
     }
-    get().updateToolCallStatus(toolCall.tool_call_id, {
-      ...commonProps,
-      component
-    });
   },
   hasPendingToolCalls: () => {
     const state = get();
@@ -865,6 +914,18 @@ var useChatStateStore = create((set, get) => ({
     set({ wrapOptions });
   }
 }));
+var validateToolCallInput = (toolCall) => {
+  const notValidJson = "Input is not a valid JSON string or object";
+  if (typeof toolCall.input === "string") {
+    try {
+      JSON.parse(toolCall.input);
+      return null;
+    } catch {
+      return notValidJson;
+    }
+  }
+  return typeof toolCall.input === "object" ? null : notValidJson;
+};
 
 // src/useChat.ts
 function useChat({
@@ -3333,7 +3394,7 @@ var Chat = forwardRef4(function Chat2({
       onDrop: handleDrop,
       children: [
         isDragOver && /* @__PURE__ */ jsx19("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-primary border-dashed", children: /* @__PURE__ */ jsx19("div", { className: "text-primary font-medium text-lg", children: "Drop images anywhere to upload" }) }),
-        /* @__PURE__ */ jsx19("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs14("div", { className: "max-w-4xl mx-auto px-2 py-4 text-sm space-y-1", children: [
+        /* @__PURE__ */ jsx19("div", { className: "flex-1 overflow-y-auto bg-background text-foreground", children: /* @__PURE__ */ jsxs14("div", { className: "max-w-4xl mx-auto px-2 py-4 text-sm", children: [
           error && /* @__PURE__ */ jsx19("div", { className: "p-4 bg-destructive/10 border-l-4 border-destructive", children: /* @__PURE__ */ jsxs14("div", { className: "text-destructive text-xs", children: [
             /* @__PURE__ */ jsx19("strong", { children: "Error:" }),
             " ",

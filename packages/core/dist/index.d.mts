@@ -492,7 +492,7 @@ interface DistriFnTool extends DistriBaseTool {
  * Tool handler function
  */
 interface ToolHandler {
-    (input: any): Promise<string | number | boolean | null | object>;
+    (input: object): Promise<string | number | boolean | null | object>;
 }
 /**
  * Tool call from agent
