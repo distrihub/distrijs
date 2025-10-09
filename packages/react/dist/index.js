@@ -274,6 +274,7 @@ var DefaultToolActions = ({
 
 // src/stores/chatStateStore.ts
 import React4 from "react";
+var completingToolCallIds = /* @__PURE__ */ new Set();
 var useChatStateStore = create((set, get) => ({
   isStreaming: false,
   isLoading: false,
@@ -565,6 +566,10 @@ var useChatStateStore = create((set, get) => ({
         case "tool_calls":
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
             message.data.tool_calls.forEach(async (toolCall) => {
+              if (get().toolCalls.has(toolCall.tool_call_id)) {
+                console.log("\u{1F501} Ignoring duplicate tool_call event", toolCall.tool_call_id);
+                return;
+              }
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
@@ -606,6 +611,11 @@ var useChatStateStore = create((set, get) => ({
   initToolCall: (toolCall, timestamp, isFromStream = false) => {
     const externalTools = get().externalTools || [];
     const externalTool = externalTools.find((t) => t.name === toolCall.tool_name);
+    const existingToolCall = get().toolCalls.get(toolCall.tool_call_id);
+    if (existingToolCall) {
+      console.log("\u{1F501} initToolCall skipped duplicate", toolCall.tool_call_id);
+      return;
+    }
     set((state) => {
       const newState = { ...state };
       newState.toolCalls.set(toolCall.tool_call_id, {
@@ -647,10 +657,16 @@ var useChatStateStore = create((set, get) => ({
   },
   completeTool: async (toolCall, result) => {
     console.log("completeTool", toolCall, result);
+    if (completingToolCallIds.has(toolCall.tool_call_id)) {
+      console.warn(`Skipping duplicate completeTool for ${toolCall.tool_call_id}`);
+      return;
+    }
+    completingToolCallIds.add(toolCall.tool_call_id);
     const state = get();
     const agent = state.agent;
     if (!agent) {
       console.error("\u274C Agent not found");
+      completingToolCallIds.delete(toolCall.tool_call_id);
       return;
     }
     console.log("state.toolCalls", state.toolCalls);
@@ -661,6 +677,8 @@ var useChatStateStore = create((set, get) => ({
       console.log(`\u2705 Tool completion sent to agent via API`);
     } catch (error) {
       console.error(`\u274C Error executing tool ${toolCall.tool_name}:`, error);
+    } finally {
+      completingToolCallIds.delete(toolCall.tool_call_id);
     }
   },
   executeTool: (toolCall, distriTool) => {

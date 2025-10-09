@@ -21,6 +21,9 @@ import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
 import { DefaultToolActions } from '../components/renderers/tools/DefaultToolActions';
 import React from 'react';
 
+// Prevent duplicate completion posts when React StrictMode double-invokes handlers
+const completingToolCallIds = new Set<string>();
+
 // State types
 export interface TaskState {
   id: string;          // This is the taskId from AgentEvent
@@ -508,6 +511,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Handle direct tool calls event
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
             message.data.tool_calls.forEach(async (toolCall: ToolCall) => {
+              if (get().toolCalls.has(toolCall.tool_call_id)) {
+                console.log('🔁 Ignoring duplicate tool_call event', toolCall.tool_call_id);
+                return;
+              }
               // Initialize tool call in UI
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
@@ -558,6 +565,11 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     // Find tool in configured tools (both external and backend)
     const externalTools = get().externalTools || [];
     const externalTool = externalTools.find(t => t.name === toolCall.tool_name);
+    const existingToolCall = get().toolCalls.get(toolCall.tool_call_id);
+    if (existingToolCall) {
+      console.log('🔁 initToolCall skipped duplicate', toolCall.tool_call_id);
+      return;
+    }
 
     set((state: ChatState) => {
       const newState = { ...state };
@@ -603,11 +615,18 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   completeTool: async (toolCall: ToolCall, result: ToolResult) => {
     console.log('completeTool', toolCall, result);
 
+    if (completingToolCallIds.has(toolCall.tool_call_id)) {
+      console.warn(`Skipping duplicate completeTool for ${toolCall.tool_call_id}`);
+      return;
+    }
+    completingToolCallIds.add(toolCall.tool_call_id);
+
     // Check if all external tools are completed after this completion
     const state = get();
     const agent = state.agent;
     if (!agent) {
       console.error('❌ Agent not found');
+      completingToolCallIds.delete(toolCall.tool_call_id);
       return;
     }
     console.log('state.toolCalls', state.toolCalls);
@@ -622,6 +641,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
     } catch (error) {
       console.error(`❌ Error executing tool ${toolCall.tool_name}:`, error);
+    } finally {
+      completingToolCallIds.delete(toolCall.tool_call_id);
     }
   },
 
