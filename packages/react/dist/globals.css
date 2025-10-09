@@ -1271,9 +1271,6 @@ body {
 .bg-muted-foreground {
   background-color: hsl(var(--muted-foreground));
 }
-.bg-muted\/25 {
-  background-color: hsl(var(--muted) / 0.25);
-}
 .bg-muted\/30 {
   background-color: hsl(var(--muted) / 0.3);
 }

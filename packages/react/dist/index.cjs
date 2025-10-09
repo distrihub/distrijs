@@ -242,6 +242,7 @@ var DefaultToolActions = ({
   const input = toolCall.input;
   const toolName = toolCall.tool_name;
   const isLiveStream = toolCallState?.isLiveStream || false;
+  const hasTriggeredRef = (0, import_react.useRef)(false);
   const getApprovalPreferences = () => {
     try {
       const stored = localStorage.getItem("distri-tool-preferences");
@@ -262,24 +263,32 @@ var DefaultToolActions = ({
     if (!isLiveStream) return;
     const preferences = getApprovalPreferences();
     const autoApprove = preferences[toolName];
-    if (autoApprove !== void 0 && !hasExecuted && !isProcessing) {
-      if (autoApprove) {
-        handleExecute();
-      } else {
-        handleCancel();
-      }
+    if (autoApprove === void 0) return;
+    if (hasExecuted || isProcessing) return;
+    if (hasTriggeredRef.current) return;
+    hasTriggeredRef.current = true;
+    if (autoApprove) {
+      handleExecute();
+    } else {
+      handleCancel();
     }
   }, [toolName, isLiveStream]);
   (0, import_react.useEffect)(() => {
     if (!isLiveStream) return;
     const preferences = getApprovalPreferences();
     const hasPreference = preferences[toolName] !== void 0;
-    if (autoExecute && !hasPreference && !hasExecuted && !isProcessing) {
-      handleExecute();
+    if (!autoExecute || hasPreference || hasExecuted || isProcessing) {
+      return;
     }
+    if (hasTriggeredRef.current) return;
+    hasTriggeredRef.current = true;
+    handleExecute();
   }, [autoExecute, hasExecuted, isProcessing, toolName, isLiveStream]);
   const handleExecute = async () => {
     if (isProcessing || hasExecuted) return;
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+    }
     if (dontAskAgain) {
       saveApprovalPreference(toolName, true);
     }
@@ -312,6 +321,9 @@ var DefaultToolActions = ({
   };
   const handleCancel = () => {
     if (isProcessing || hasExecuted) return;
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+    }
     if (dontAskAgain) {
       saveApprovalPreference(toolName, false);
     }
@@ -2673,75 +2685,111 @@ var ToolExecutionRenderer = ({
   event,
   toolCallStates
 }) => {
-  const [isExpanded, setIsExpanded] = (0, import_react13.useState)(false);
   const toolCalls = event.data?.tool_calls || [];
   if (toolCalls.length === 0) {
     console.log("\u{1F527} No tool calls found in event data or metadata");
     return null;
   }
+  const renderResultData = (toolCallState) => {
+    if (!toolCallState?.result) {
+      return "No result available";
+    }
+    const dataPart = toolCallState.result.parts?.find((part) => part?.part_type === "data");
+    if (dataPart && "data" in dataPart) {
+      return JSON.stringify(dataPart.data, null, 2);
+    }
+    return JSON.stringify(toolCallState.result, null, 2);
+  };
   return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_jsx_runtime15.Fragment, { children: toolCalls.map((toolCall) => {
-    if (toolCall.tool_name === "final") {
-      return null;
-    }
-    const toolCallState = toolCallStates.get(toolCall.tool_call_id);
-    const friendlyMessage = getFriendlyToolMessage(toolCall.tool_name, toolCall.input);
-    const executionTime = toolCallState?.endTime && toolCallState?.startTime ? toolCallState?.endTime - toolCallState?.startTime : void 0;
-    if (toolCallState?.status === "pending" || toolCallState?.status === "running") {
-      return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(LoadingShimmer, { text: friendlyMessage }) }, `${toolCall.tool_call_id}-executing mb-2`);
-    }
-    if (toolCallState?.status === "completed") {
-      const time = executionTime || 0;
-      return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "mb-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center justify-between text-sm text-muted-foreground", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.CheckCircle, { className: "w-4 h-4 text-green-600" }),
+    const ToolCallCard = () => {
+      const [isExpanded, setIsExpanded] = (0, import_react13.useState)(false);
+      const [activeTab, setActiveTab] = (0, import_react13.useState)("output");
+      const toolCallState = toolCallStates.get(toolCall.tool_call_id);
+      const friendlyMessage = getFriendlyToolMessage(toolCall.tool_name, toolCall.input);
+      const executionTime = toolCallState?.endTime && toolCallState?.startTime ? toolCallState?.endTime - toolCallState?.startTime : void 0;
+      const renderTabs = () => /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "mt-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "flex items-center gap-2 mb-2", children: ["output", "input"].map((tab) => /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+          "button",
+          {
+            onClick: () => setActiveTab(tab),
+            className: `text-xs px-2 py-1 rounded border transition-colors ${activeTab === tab ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground hover:text-foreground"}`,
+            children: tab === "output" ? "Output" : "Input"
+          },
+          tab
+        )) }),
+        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("pre", { className: "text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words border border-muted rounded-md p-3", children: activeTab === "input" ? JSON.stringify(toolCall.input, null, 2) : renderResultData(toolCallState) }),
+        toolCallState?.error && activeTab === "output" && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "mt-2 text-xs text-destructive", children: [
+          "Error: ",
+          toolCallState.error
+        ] })
+      ] });
+      if (toolCallState?.status === "pending" || toolCallState?.status === "running") {
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(LoadingShimmer, { text: friendlyMessage }) }, `${toolCall.tool_call_id}-executing mb-2`);
+      }
+      if (toolCallState?.status === "completed") {
+        const time = executionTime || 0;
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "mb-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center justify-between text-sm text-muted-foreground", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.CheckCircle, { className: "w-4 h-4 text-green-600" }),
+              /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { children: [
+                friendlyMessage,
+                " completed",
+                time > 100 && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { className: "text-xs ml-1", children: [
+                  "(",
+                  (time / 1e3).toFixed(1),
+                  "s)"
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(
+              "button",
+              {
+                onClick: () => setIsExpanded(!isExpanded),
+                className: "flex items-center gap-1 text-xs hover:text-foreground transition-colors",
+                children: [
+                  isExpanded ? /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.ChevronDown, { className: "w-3 h-3" }) : /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.ChevronRight, { className: "w-3 h-3" }),
+                  "View details"
+                ]
+              }
+            )
+          ] }),
+          isExpanded && renderTabs()
+        ] }, `${toolCall.tool_call_id}-completed`);
+      }
+      if (toolCallState?.status === "error") {
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "mb-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-2 text-sm text-destructive mb-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.XCircle, { className: "w-4 h-4" }),
             /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { children: [
               friendlyMessage,
-              " completed",
-              time > 100 && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { className: "text-xs ml-1", children: [
-                "(",
-                (time / 1e3).toFixed(1),
-                "s)"
+              " failed",
+              toolCallState.error && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { className: "text-xs ml-1 text-muted-foreground", children: [
+                "- ",
+                toolCallState.error
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
-            "button",
-            {
-              onClick: () => setIsExpanded(!isExpanded),
-              className: "flex items-center gap-1 text-xs hover:text-foreground transition-colors",
-              children: isExpanded ? /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.ChevronDown, { className: "w-3 h-3" }) : /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.ChevronRight, { className: "w-3 h-3" })
-            }
-          )
-        ] }),
-        isExpanded && /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "border border-muted rounded-lg p-3 bg-muted/25", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("pre", { className: "text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words", children: toolCallState.result ? JSON.stringify(toolCallState.result, null, 2) : "No result available" }) })
-      ] }, `${toolCall.tool_call_id}-completed`);
-    }
-    if (toolCallState?.status === "error") {
-      return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("div", { className: "mb-3", children: /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-2 text-sm text-destructive mb-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.XCircle, { className: "w-4 h-4" }),
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { children: [
-          friendlyMessage,
-          " failed",
-          toolCallState.error && /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { className: "text-xs ml-1 text-muted-foreground", children: [
-            "- ",
-            toolCallState.error
+          renderTabs()
+        ] }, `${toolCall.tool_call_id}-error`);
+      }
+      if (toolCallState) {
+        return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.Clock, { className: "w-4 h-4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { children: [
+            friendlyMessage,
+            " (",
+            toolCallState.status,
+            ")"
           ] })
-        ] })
-      ] }) }, `${toolCall.tool_call_id}-error`);
+        ] }, `${toolCall.tool_call_id}-unknown`);
+      }
+      return null;
+    };
+    if (toolCall.tool_name === "final") {
+      return null;
     }
-    if (toolCallState) {
-      return /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(import_lucide_react6.Clock, { className: "w-4 h-4" }),
-        /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("span", { children: [
-          friendlyMessage,
-          " (",
-          toolCallState.status,
-          ")"
-        ] })
-      ] }, `${toolCall.tool_call_id}-unknown`);
-    }
-    return null;
+    return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(ToolCallCard, {}, toolCall.tool_call_id);
   }) });
 };
 

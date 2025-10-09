@@ -1,7 +1,7 @@
 "use client";
 
 // src/useChat.ts
-import { useCallback, useEffect as useEffect2, useRef } from "react";
+import { useCallback, useEffect as useEffect2, useRef as useRef2 } from "react";
 import { DistriClient } from "@distri/core";
 import {
   convertDistriMessageToA2A
@@ -15,7 +15,7 @@ import {
 } from "@distri/core";
 
 // src/components/renderers/tools/DefaultToolActions.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // src/components/ui/button.tsx
 import * as React from "react";
@@ -106,6 +106,7 @@ var DefaultToolActions = ({
   const input = toolCall.input;
   const toolName = toolCall.tool_name;
   const isLiveStream = toolCallState?.isLiveStream || false;
+  const hasTriggeredRef = useRef(false);
   const getApprovalPreferences = () => {
     try {
       const stored = localStorage.getItem("distri-tool-preferences");
@@ -126,24 +127,32 @@ var DefaultToolActions = ({
     if (!isLiveStream) return;
     const preferences = getApprovalPreferences();
     const autoApprove = preferences[toolName];
-    if (autoApprove !== void 0 && !hasExecuted && !isProcessing) {
-      if (autoApprove) {
-        handleExecute();
-      } else {
-        handleCancel();
-      }
+    if (autoApprove === void 0) return;
+    if (hasExecuted || isProcessing) return;
+    if (hasTriggeredRef.current) return;
+    hasTriggeredRef.current = true;
+    if (autoApprove) {
+      handleExecute();
+    } else {
+      handleCancel();
     }
   }, [toolName, isLiveStream]);
   useEffect(() => {
     if (!isLiveStream) return;
     const preferences = getApprovalPreferences();
     const hasPreference = preferences[toolName] !== void 0;
-    if (autoExecute && !hasPreference && !hasExecuted && !isProcessing) {
-      handleExecute();
+    if (!autoExecute || hasPreference || hasExecuted || isProcessing) {
+      return;
     }
+    if (hasTriggeredRef.current) return;
+    hasTriggeredRef.current = true;
+    handleExecute();
   }, [autoExecute, hasExecuted, isProcessing, toolName, isLiveStream]);
   const handleExecute = async () => {
     if (isProcessing || hasExecuted) return;
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+    }
     if (dontAskAgain) {
       saveApprovalPreference(toolName, true);
     }
@@ -176,6 +185,9 @@ var DefaultToolActions = ({
   };
   const handleCancel = () => {
     if (isProcessing || hasExecuted) return;
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+    }
     if (dontAskAgain) {
       saveApprovalPreference(toolName, false);
     }
@@ -955,12 +967,12 @@ function useChat({
   beforeSendMessage,
   initialMessages
 }) {
-  const abortControllerRef = useRef(null);
-  const onErrorRef = useRef(onError);
+  const abortControllerRef = useRef2(null);
+  const onErrorRef = useRef2(onError);
   useEffect2(() => {
     onErrorRef.current = onError;
   }, [onError]);
-  const getMetadataRef = useRef(getMetadata);
+  const getMetadataRef = useRef2(getMetadata);
   useEffect2(() => {
     getMetadataRef.current = getMetadata;
   }, [getMetadata]);
@@ -1001,7 +1013,7 @@ function useChat({
       setAgent(agent);
     }
   }, [agent, setAgent]);
-  const cleanupRef = useRef();
+  const cleanupRef = useRef2();
   cleanupRef.current = () => {
     chatState.setStreamingIndicator(void 0);
     setStreaming(false);
@@ -1017,7 +1029,7 @@ function useChat({
       }
     };
   }, []);
-  const agentIdRef = useRef(void 0);
+  const agentIdRef = useRef2(void 0);
   useEffect2(() => {
     if (agent?.id !== agentIdRef.current) {
       clearAllStates();
@@ -1158,7 +1170,7 @@ function useChat({
 }
 
 // src/useAgent.ts
-import React6, { useState as useState4, useCallback as useCallback2, useRef as useRef2 } from "react";
+import React6, { useState as useState4, useCallback as useCallback2, useRef as useRef3 } from "react";
 import {
   Agent as Agent3
 } from "@distri/core";
@@ -1292,8 +1304,8 @@ function useAgent({
   const [agent, setAgent] = useState4(null);
   const [loading, setLoading] = useState4(false);
   const [error, setError] = useState4(null);
-  const agentRef = useRef2(null);
-  const currentAgentIdRef = useRef2(null);
+  const agentRef = useRef3(null);
+  const currentAgentIdRef = useRef3(null);
   const initializeAgent = useCallback2(async () => {
     if (!client || !agentIdOrDef) return;
     if (currentAgentIdRef.current === agentIdOrDef && agentRef.current) {
@@ -1515,10 +1527,10 @@ function useThreads() {
 }
 
 // src/components/Chat.tsx
-import { useState as useState12, useCallback as useCallback9, useRef as useRef6, useEffect as useEffect9, useImperativeHandle, forwardRef as forwardRef4, useMemo as useMemo2 } from "react";
+import { useState as useState12, useCallback as useCallback9, useRef as useRef7, useEffect as useEffect9, useImperativeHandle, forwardRef as forwardRef4, useMemo as useMemo2 } from "react";
 
 // src/components/ChatInput.tsx
-import { useRef as useRef4, useEffect as useEffect8, useCallback as useCallback7, useState as useState9 } from "react";
+import { useRef as useRef5, useEffect as useEffect8, useCallback as useCallback7, useState as useState9 } from "react";
 import { Send, Square, ImageIcon, X, Mic as Mic2, MicOff as MicOff2, Radio } from "lucide-react";
 
 // src/components/VoiceInput.tsx
@@ -1527,12 +1539,12 @@ import { Mic, MicOff, Loader2 } from "lucide-react";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 
 // src/hooks/useSpeechToText.ts
-import { useCallback as useCallback5, useRef as useRef3, useState as useState7 } from "react";
+import { useCallback as useCallback5, useRef as useRef4, useState as useState7 } from "react";
 var useSpeechToText = () => {
   const { client } = useDistri();
   const [isTranscribing, setIsTranscribing] = useState7(false);
   const [isStreaming, setIsStreaming] = useState7(false);
-  const streamingConnectionRef = useRef3(null);
+  const streamingConnectionRef = useRef4(null);
   const transcribe = useCallback5(async (audioBlob, config = {}) => {
     if (!client) {
       throw new Error("DistriClient not initialized");
@@ -1862,9 +1874,9 @@ var ChatInput = ({
   useSpeechRecognition: useSpeechRecognition2 = false,
   onSpeechTranscript
 }) => {
-  const textareaRef = useRef4(null);
-  const fileInputRef = useRef4(null);
-  const mediaRecorderRef = useRef4(null);
+  const textareaRef = useRef5(null);
+  const fileInputRef = useRef5(null);
+  const mediaRecorderRef = useRef5(null);
   const [isRecording, setIsRecording] = useState9(false);
   const [recordingTime, setRecordingTime] = useState9(0);
   useEffect8(() => {
@@ -2539,75 +2551,111 @@ var ToolExecutionRenderer = ({
   event,
   toolCallStates
 }) => {
-  const [isExpanded, setIsExpanded] = useState10(false);
   const toolCalls = event.data?.tool_calls || [];
   if (toolCalls.length === 0) {
     console.log("\u{1F527} No tool calls found in event data or metadata");
     return null;
   }
+  const renderResultData = (toolCallState) => {
+    if (!toolCallState?.result) {
+      return "No result available";
+    }
+    const dataPart = toolCallState.result.parts?.find((part) => part?.part_type === "data");
+    if (dataPart && "data" in dataPart) {
+      return JSON.stringify(dataPart.data, null, 2);
+    }
+    return JSON.stringify(toolCallState.result, null, 2);
+  };
   return /* @__PURE__ */ jsx15(Fragment3, { children: toolCalls.map((toolCall) => {
-    if (toolCall.tool_name === "final") {
-      return null;
-    }
-    const toolCallState = toolCallStates.get(toolCall.tool_call_id);
-    const friendlyMessage = getFriendlyToolMessage(toolCall.tool_name, toolCall.input);
-    const executionTime = toolCallState?.endTime && toolCallState?.startTime ? toolCallState?.endTime - toolCallState?.startTime : void 0;
-    if (toolCallState?.status === "pending" || toolCallState?.status === "running") {
-      return /* @__PURE__ */ jsx15("div", { children: /* @__PURE__ */ jsx15(LoadingShimmer, { text: friendlyMessage }) }, `${toolCall.tool_call_id}-executing mb-2`);
-    }
-    if (toolCallState?.status === "completed") {
-      const time = executionTime || 0;
-      return /* @__PURE__ */ jsxs10("div", { className: "mb-2", children: [
-        /* @__PURE__ */ jsxs10("div", { className: "flex items-center justify-between text-sm text-muted-foreground", children: [
-          /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsx15(CheckCircle3, { className: "w-4 h-4 text-green-600" }),
+    const ToolCallCard = () => {
+      const [isExpanded, setIsExpanded] = useState10(false);
+      const [activeTab, setActiveTab] = useState10("output");
+      const toolCallState = toolCallStates.get(toolCall.tool_call_id);
+      const friendlyMessage = getFriendlyToolMessage(toolCall.tool_name, toolCall.input);
+      const executionTime = toolCallState?.endTime && toolCallState?.startTime ? toolCallState?.endTime - toolCallState?.startTime : void 0;
+      const renderTabs = () => /* @__PURE__ */ jsxs10("div", { className: "mt-2", children: [
+        /* @__PURE__ */ jsx15("div", { className: "flex items-center gap-2 mb-2", children: ["output", "input"].map((tab) => /* @__PURE__ */ jsx15(
+          "button",
+          {
+            onClick: () => setActiveTab(tab),
+            className: `text-xs px-2 py-1 rounded border transition-colors ${activeTab === tab ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground hover:text-foreground"}`,
+            children: tab === "output" ? "Output" : "Input"
+          },
+          tab
+        )) }),
+        /* @__PURE__ */ jsx15("pre", { className: "text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words border border-muted rounded-md p-3", children: activeTab === "input" ? JSON.stringify(toolCall.input, null, 2) : renderResultData(toolCallState) }),
+        toolCallState?.error && activeTab === "output" && /* @__PURE__ */ jsxs10("div", { className: "mt-2 text-xs text-destructive", children: [
+          "Error: ",
+          toolCallState.error
+        ] })
+      ] });
+      if (toolCallState?.status === "pending" || toolCallState?.status === "running") {
+        return /* @__PURE__ */ jsx15("div", { children: /* @__PURE__ */ jsx15(LoadingShimmer, { text: friendlyMessage }) }, `${toolCall.tool_call_id}-executing mb-2`);
+      }
+      if (toolCallState?.status === "completed") {
+        const time = executionTime || 0;
+        return /* @__PURE__ */ jsxs10("div", { className: "mb-2", children: [
+          /* @__PURE__ */ jsxs10("div", { className: "flex items-center justify-between text-sm text-muted-foreground", children: [
+            /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-2", children: [
+              /* @__PURE__ */ jsx15(CheckCircle3, { className: "w-4 h-4 text-green-600" }),
+              /* @__PURE__ */ jsxs10("span", { children: [
+                friendlyMessage,
+                " completed",
+                time > 100 && /* @__PURE__ */ jsxs10("span", { className: "text-xs ml-1", children: [
+                  "(",
+                  (time / 1e3).toFixed(1),
+                  "s)"
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxs10(
+              "button",
+              {
+                onClick: () => setIsExpanded(!isExpanded),
+                className: "flex items-center gap-1 text-xs hover:text-foreground transition-colors",
+                children: [
+                  isExpanded ? /* @__PURE__ */ jsx15(ChevronDown, { className: "w-3 h-3" }) : /* @__PURE__ */ jsx15(ChevronRight, { className: "w-3 h-3" }),
+                  "View details"
+                ]
+              }
+            )
+          ] }),
+          isExpanded && renderTabs()
+        ] }, `${toolCall.tool_call_id}-completed`);
+      }
+      if (toolCallState?.status === "error") {
+        return /* @__PURE__ */ jsxs10("div", { className: "mb-3", children: [
+          /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-2 text-sm text-destructive mb-2", children: [
+            /* @__PURE__ */ jsx15(XCircle2, { className: "w-4 h-4" }),
             /* @__PURE__ */ jsxs10("span", { children: [
               friendlyMessage,
-              " completed",
-              time > 100 && /* @__PURE__ */ jsxs10("span", { className: "text-xs ml-1", children: [
-                "(",
-                (time / 1e3).toFixed(1),
-                "s)"
+              " failed",
+              toolCallState.error && /* @__PURE__ */ jsxs10("span", { className: "text-xs ml-1 text-muted-foreground", children: [
+                "- ",
+                toolCallState.error
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ jsx15(
-            "button",
-            {
-              onClick: () => setIsExpanded(!isExpanded),
-              className: "flex items-center gap-1 text-xs hover:text-foreground transition-colors",
-              children: isExpanded ? /* @__PURE__ */ jsx15(ChevronDown, { className: "w-3 h-3" }) : /* @__PURE__ */ jsx15(ChevronRight, { className: "w-3 h-3" })
-            }
-          )
-        ] }),
-        isExpanded && /* @__PURE__ */ jsx15("div", { className: "border border-muted rounded-lg p-3 bg-muted/25", children: /* @__PURE__ */ jsx15("pre", { className: "text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words", children: toolCallState.result ? JSON.stringify(toolCallState.result, null, 2) : "No result available" }) })
-      ] }, `${toolCall.tool_call_id}-completed`);
-    }
-    if (toolCallState?.status === "error") {
-      return /* @__PURE__ */ jsx15("div", { className: "mb-3", children: /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-2 text-sm text-destructive mb-2", children: [
-        /* @__PURE__ */ jsx15(XCircle2, { className: "w-4 h-4" }),
-        /* @__PURE__ */ jsxs10("span", { children: [
-          friendlyMessage,
-          " failed",
-          toolCallState.error && /* @__PURE__ */ jsxs10("span", { className: "text-xs ml-1 text-muted-foreground", children: [
-            "- ",
-            toolCallState.error
+          renderTabs()
+        ] }, `${toolCall.tool_call_id}-error`);
+      }
+      if (toolCallState) {
+        return /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
+          /* @__PURE__ */ jsx15(Clock2, { className: "w-4 h-4" }),
+          /* @__PURE__ */ jsxs10("span", { children: [
+            friendlyMessage,
+            " (",
+            toolCallState.status,
+            ")"
           ] })
-        ] })
-      ] }) }, `${toolCall.tool_call_id}-error`);
+        ] }, `${toolCall.tool_call_id}-unknown`);
+      }
+      return null;
+    };
+    if (toolCall.tool_name === "final") {
+      return null;
     }
-    if (toolCallState) {
-      return /* @__PURE__ */ jsxs10("div", { className: "flex items-center gap-2 text-sm text-muted-foreground", children: [
-        /* @__PURE__ */ jsx15(Clock2, { className: "w-4 h-4" }),
-        /* @__PURE__ */ jsxs10("span", { children: [
-          friendlyMessage,
-          " (",
-          toolCallState.status,
-          ")"
-        ] })
-      ] }, `${toolCall.tool_call_id}-unknown`);
-    }
-    return null;
+    return /* @__PURE__ */ jsx15(ToolCallCard, {}, toolCall.tool_call_id);
   }) });
 };
 
@@ -2850,12 +2898,12 @@ var SelectSeparator = React11.forwardRef(({ className, ...props }, ref) => /* @_
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 
 // src/hooks/useTts.ts
-import { useCallback as useCallback8, useRef as useRef5, useState as useState11 } from "react";
+import { useCallback as useCallback8, useRef as useRef6, useState as useState11 } from "react";
 var useTts = (config = {}) => {
   const baseUrl = config.baseUrl || "http://localhost:8080/api/v1";
   const [isSynthesizing, setIsSynthesizing] = useState11(false);
-  const wsRef = useRef5(null);
-  const audioContextRef = useRef5(null);
+  const wsRef = useRef6(null);
+  const audioContextRef = useRef6(null);
   const synthesize = useCallback8(async (request) => {
     const response = await fetch(`${baseUrl}/tts/synthesize`, {
       method: "POST",
@@ -3036,7 +3084,7 @@ var Chat = forwardRef4(function Chat2({
 }, ref) {
   const [input, setInput] = useState12("");
   const [expandedTools, setExpandedTools] = useState12(/* @__PURE__ */ new Set());
-  const messagesEndRef = useRef6(null);
+  const messagesEndRef = useRef7(null);
   const [pendingMessage, setPendingMessage] = useState12(null);
   const [attachedImages, setAttachedImages] = useState12([]);
   const [isDragOver, setIsDragOver] = useState12(false);
@@ -4799,7 +4847,7 @@ import { X as X3, CheckCircle as CheckCircle4, AlertCircle as AlertCircle2, Aler
 import { jsx as jsx36, jsxs as jsxs24 } from "react/jsx-runtime";
 
 // src/hooks/useChatMessages.ts
-import { useCallback as useCallback12, useEffect as useEffect12, useState as useState15, useRef as useRef7 } from "react";
+import { useCallback as useCallback12, useEffect as useEffect12, useState as useState15, useRef as useRef8 } from "react";
 
 // ../core/src/encoder.ts
 function convertA2AMessageToDistri(a2aMessage) {
@@ -5012,7 +5060,7 @@ function useChatMessages({
   threadId,
   onError
 } = {}) {
-  const onErrorRef = useRef7(onError);
+  const onErrorRef = useRef8(onError);
   useEffect12(() => {
     onErrorRef.current = onError;
   }, [onError]);
