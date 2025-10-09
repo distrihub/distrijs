@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { Wrench, CheckCircle, XCircle } from 'lucide-react';
@@ -23,6 +23,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
   const input = toolCall.input;
   const toolName = toolCall.tool_name;
   const isLiveStream = toolCallState?.isLiveStream || false;
+  const hasTriggeredRef = useRef(false);
 
   // Get approval preferences from localStorage
   const getApprovalPreferences = (): Record<string, boolean> => {
@@ -52,12 +53,16 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     const preferences = getApprovalPreferences();
     const autoApprove = preferences[toolName];
 
-    if (autoApprove !== undefined && !hasExecuted && !isProcessing) {
-      if (autoApprove) {
-        handleExecute();
-      } else {
-        handleCancel();
-      }
+    if (autoApprove === undefined) return;
+    if (hasExecuted || isProcessing) return;
+    if (hasTriggeredRef.current) return;
+
+    hasTriggeredRef.current = true;
+
+    if (autoApprove) {
+      handleExecute();
+    } else {
+      handleCancel();
     }
   }, [toolName, isLiveStream]);
 
@@ -69,13 +74,20 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     const hasPreference = preferences[toolName] !== undefined;
 
     // Only auto-execute if there's no saved user preference, autoExecute is enabled, and it's from live stream
-    if (autoExecute && !hasPreference && !hasExecuted && !isProcessing) {
-      handleExecute();
+    if (!autoExecute || hasPreference || hasExecuted || isProcessing) {
+      return;
     }
+    if (hasTriggeredRef.current) return;
+
+    hasTriggeredRef.current = true;
+    handleExecute();
   }, [autoExecute, hasExecuted, isProcessing, toolName, isLiveStream]);
 
   const handleExecute = async () => {
     if (isProcessing || hasExecuted) return;
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+    }
 
     // Save preference if "don't ask again" is checked
     if (dontAskAgain) {
@@ -117,6 +129,9 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
   const handleCancel = () => {
     if (isProcessing || hasExecuted) return;
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+    }
 
     // Save preference if "don't ask again" is checked
     if (dontAskAgain) {
