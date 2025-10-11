@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
   Agent,
   AgentDefinition,
+  DistriClient,
 } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
@@ -31,13 +32,18 @@ export function useAgent({
   const [error, setError] = useState<Error | null>(null);
   const agentRef = useRef<Agent | null>(null);
   const currentAgentIdRef = useRef<string | AgentDefinition | null>(null);
+  const currentClientRef = useRef<DistriClient | null>(null);
 
   // Initialize agent
   const initializeAgent = useCallback(async () => {
     if (!client || !agentIdOrDef) return;
 
     // Check if we need to create a new agent
-    if (currentAgentIdRef.current === agentIdOrDef && agentRef.current) {
+    if (
+      currentAgentIdRef.current === agentIdOrDef &&
+      agentRef.current &&
+      currentClientRef.current === client
+    ) {
       return; // Same agent, no need to recreate
     }
 
@@ -46,7 +52,10 @@ export function useAgent({
       setError(null);
 
       // Clear previous agent if switching to a different one
-      if (currentAgentIdRef.current !== agentIdOrDef) {
+      if (
+        currentAgentIdRef.current !== agentIdOrDef ||
+        currentClientRef.current !== client
+      ) {
         agentRef.current = null;
         setAgent(null);
       }
@@ -54,6 +63,7 @@ export function useAgent({
       const newAgent = await Agent.create(agentIdOrDef, client);
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
+      currentClientRef.current = client;
       setAgent(newAgent);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to create agent'));
@@ -77,6 +87,15 @@ export function useAgent({
       currentAgentIdRef.current = null;
     }
   }, [agentIdOrDef]);
+
+  // Reset agent when client instance changes
+  React.useEffect(() => {
+    if (currentClientRef.current !== client) {
+      agentRef.current = null;
+      setAgent(null);
+      currentClientRef.current = null;
+    }
+  }, [client]);
 
   return {
     // Agent information
