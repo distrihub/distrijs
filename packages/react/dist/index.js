@@ -1306,21 +1306,23 @@ function useAgent({
   const [error, setError] = useState4(null);
   const agentRef = useRef3(null);
   const currentAgentIdRef = useRef3(null);
+  const currentClientRef = useRef3(null);
   const initializeAgent = useCallback2(async () => {
     if (!client || !agentIdOrDef) return;
-    if (currentAgentIdRef.current === agentIdOrDef && agentRef.current) {
+    if (currentAgentIdRef.current === agentIdOrDef && agentRef.current && currentClientRef.current === client) {
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      if (currentAgentIdRef.current !== agentIdOrDef) {
+      if (currentAgentIdRef.current !== agentIdOrDef || currentClientRef.current !== client) {
         agentRef.current = null;
         setAgent(null);
       }
       const newAgent = await Agent3.create(agentIdOrDef, client);
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
+      currentClientRef.current = client;
       setAgent(newAgent);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to create agent"));
@@ -1340,6 +1342,13 @@ function useAgent({
       currentAgentIdRef.current = null;
     }
   }, [agentIdOrDef]);
+  React6.useEffect(() => {
+    if (currentClientRef.current !== client) {
+      agentRef.current = null;
+      setAgent(null);
+      currentClientRef.current = null;
+    }
+  }, [client]);
   return {
     // Agent information
     agent,

@@ -1440,21 +1440,23 @@ function useAgent({
   const [error, setError] = (0, import_react6.useState)(null);
   const agentRef = (0, import_react6.useRef)(null);
   const currentAgentIdRef = (0, import_react6.useRef)(null);
+  const currentClientRef = (0, import_react6.useRef)(null);
   const initializeAgent = (0, import_react6.useCallback)(async () => {
     if (!client || !agentIdOrDef) return;
-    if (currentAgentIdRef.current === agentIdOrDef && agentRef.current) {
+    if (currentAgentIdRef.current === agentIdOrDef && agentRef.current && currentClientRef.current === client) {
       return;
     }
     try {
       setLoading(true);
       setError(null);
-      if (currentAgentIdRef.current !== agentIdOrDef) {
+      if (currentAgentIdRef.current !== agentIdOrDef || currentClientRef.current !== client) {
         agentRef.current = null;
         setAgent(null);
       }
       const newAgent = await import_core6.Agent.create(agentIdOrDef, client);
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
+      currentClientRef.current = client;
       setAgent(newAgent);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to create agent"));
@@ -1474,6 +1476,13 @@ function useAgent({
       currentAgentIdRef.current = null;
     }
   }, [agentIdOrDef]);
+  import_react6.default.useEffect(() => {
+    if (currentClientRef.current !== client) {
+      agentRef.current = null;
+      setAgent(null);
+      currentClientRef.current = null;
+    }
+  }, [client]);
   return {
     // Agent information
     agent,

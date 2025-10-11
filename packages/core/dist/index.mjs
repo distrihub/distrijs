@@ -1002,14 +1002,18 @@ var DistriClient = class {
    * Get or create A2AClient for an agent
    */
   getA2AClient(agentId) {
-    if (!this.agentClients.has(agentId)) {
+    const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
+    const existing = this.agentClients.get(agentId);
+    if (!existing || existing.url !== agentUrl) {
       const fetchFn = this.fetchAbsolute.bind(this);
-      const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
       const client = new A2AClient(agentUrl, fetchFn);
-      this.agentClients.set(agentId, client);
-      this.debug(`Created A2AClient for agent ${agentId} at ${agentUrl}`);
+      this.agentClients.set(agentId, { url: agentUrl, client });
+      this.debug(
+        existing ? `Recreated A2AClient for agent ${agentId} with new URL ${agentUrl}` : `Created A2AClient for agent ${agentId} at ${agentUrl}`
+      );
+      return client;
     }
-    return this.agentClients.get(agentId);
+    return existing.client;
   }
   /**
    * Send a message to an agent
