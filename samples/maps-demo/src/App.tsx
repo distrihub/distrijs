@@ -1,12 +1,11 @@
-import { useMemo, useRef, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { DistriProvider, Chat, useAgent, DistriAnyTool, useThreads, useChatMessages } from '@distri/react';
 import { AlertCircle } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
-import GoogleMapsManager, { GoogleMapsManagerRef } from './components/GoogleMapsManager';
-import { ConversationsSidebar } from './components/ConversationsSidebar';
+import type { GoogleMapsManagerRef } from './components/GoogleMapsManager';
+import Layout from './components/Layout';
 import { getTools } from './Tools.tsx';
 import { Agent, uuidv4 } from '@distri/core';
-import { SidebarProvider, SidebarInset } from '@distri/components';
 
 // Environment variables validation
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -22,10 +21,9 @@ function getThreadId() {
   return threadId;
 }
 
-function MapsChat() {
+function MapsContent() {
   const { agent, loading } = useAgent({ agentIdOrDef: 'maps_agent' });
   const [selectedThreadId, setSelectedThreadId] = useState<string>(getThreadId());
-  const mapManagerRef = useRef<GoogleMapsManagerRef>(null);
   const [tools, setTools] = useState<DistriAnyTool[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(false);
 
@@ -114,85 +112,57 @@ function MapsChat() {
   }
 
   return (
-    <SidebarProvider
-      defaultOpen={true}
-      style={{
-        "--sidebar-width": "20rem",
-        "--sidebar-width-mobile": "18rem",
-      } as React.CSSProperties}
+    <Layout
+      onMapReady={handleMapReady}
+      threads={threads as any}
+      selectedThreadId={selectedThreadId}
+      loading={threadsLoading}
+      onThreadSelect={handleThreadSelect}
+      onThreadDelete={handleThreadDelete}
+      onRefresh={refetch}
+      onNewChat={handleNewChat}
     >
-      <ConversationsSidebar
-        threads={threads}
-        selectedThreadId={selectedThreadId}
-        loading={threadsLoading}
-        onThreadSelect={handleThreadSelect}
-        onThreadDelete={handleThreadDelete}
-        onRefresh={refetch}
-        onNewChat={handleNewChat}
-      />
-      <SidebarInset>
-        <main className="flex-1 overflow-hidden">
-          <div className="flex h-screen">
-            {/* Google Maps Panel */}
-            <div className="flex-1">
-              <GoogleMapsManager
-                ref={mapManagerRef}
-                defaultCenter={{ lat: 37.7749, lng: -122.4194 }} // San Francisco
-                defaultZoom={13}
-                onReady={handleMapReady}
-              />
-            </div>
-
-            {/* Chat Panel */}
-            <div className="w-96">
-              <div className="h-full">
-                {!loading && agent && tools.length > 0 ? (
-                  <div className="h-full flex flex-col">
-                    {/* Voice toggle button */}
-                    <div className="p-2 border-b border-gray-700 bg-gray-800">
-                      <button
-                        onClick={() => setVoiceEnabled(!voiceEnabled)}
-                        className={`px-3 py-1 rounded text-sm transition-colors ${voiceEnabled
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
-                          }`}
-                      >
-                        🎤 Voice {voiceEnabled ? 'ON' : 'OFF'}
-                      </button>
-                    </div>
-
-                    <div className="flex-1 overflow-hidden">
-                      <Chat
-                        agent={agent}
-                        externalTools={tools}
-                        initialMessages={messages}
-                        theme="dark"
-                        threadId={selectedThreadId}
-                        voiceEnabled={voiceEnabled}
-                        ttsConfig={{
-                          model: 'openai',
-                          voice: 'alloy',
-                          speed: 1.0
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full bg-gray-900 text-gray-300">
-                    <div className="text-center">
-                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto mb-2"></div>
-                      <p>Loading chat interface...</p>
-                      {!agent && <p className="text-sm text-gray-400 mt-1">Waiting for agent</p>}
-                      {agent && tools.length === 0 && <p className="text-sm text-gray-400 mt-1">Waiting for map tools</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+      {agent && tools.length > 0 ? (
+        <div className="h-full flex flex-col">
+          <div className="p-2 border-b border-gray-700 bg-gray-800">
+            <button
+              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              className={`px-3 py-1 rounded text-sm transition-colors ${voiceEnabled
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
+                }`}
+            >
+              🎤 Voice {voiceEnabled ? 'ON' : 'OFF'}
+            </button>
           </div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+
+          <div className="flex-1 overflow-hidden">
+            <Chat
+              agent={agent}
+              externalTools={tools}
+              initialMessages={messages}
+              theme="dark"
+              threadId={selectedThreadId}
+              voiceEnabled={voiceEnabled}
+              ttsConfig={{
+                model: 'openai',
+                voice: 'alloy',
+                speed: 1.0
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-full bg-gray-900 text-gray-300">
+          <div className="text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto mb-2"></div>
+            <p>Loading chat interface...</p>
+            {!agent && <p className="text-sm text-gray-400 mt-1">Waiting for agent</p>}
+            {agent && tools.length === 0 && <p className="text-sm text-gray-400 mt-1">Waiting for map tools</p>}
+          </div>
+        </div>
+      )}
+    </Layout>
   );
 }
 
@@ -249,8 +219,8 @@ function App() {
 
   return (
     <DistriProvider config={config}>
-      <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-        <MapsChat />
+      <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={["places"]}>
+        <MapsContent />
       </APIProvider>
     </DistriProvider>
   );
