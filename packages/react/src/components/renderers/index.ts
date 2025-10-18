@@ -5,7 +5,6 @@ export * from './StepBasedRenderer';
 export * from './StreamingTextRenderer';
 export * from './TextRenderer';
 export * from './ThinkingRenderer';
-export * from './ToolResultRenderer';
 export * from './TypingIndicator';
 export * from './UserMessageRenderer';
 export * from './utils';

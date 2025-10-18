@@ -1,3 +1,5 @@
+import { ToolResult } from "./types";
+
 export type Role = 'user' | 'system' | 'assistant';
 
 // Each event is a concrete type
@@ -146,13 +148,7 @@ export interface ToolCallsEvent {
 export interface ToolResultsEvent {
   type: 'tool_results';
   data: {
-    results: Array<{
-      tool_call_id: string;
-      tool_name: string;
-      result: any;
-      success?: boolean;
-      error?: string;
-    }>;
+    results: Array<ToolResult>;
   };
 }
 

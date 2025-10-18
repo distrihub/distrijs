@@ -6,6 +6,7 @@ import {
   Agent,
   ToolCall,
   ToolResult,
+  extractToolResultData,
   DistriFnTool,
   isDistriMessage,
   DistriChatMessage,
@@ -528,22 +529,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'tool_results':
           // Handle direct tool results event
           if (message.data.results && Array.isArray(message.data.results)) {
-            message.data.results.forEach((result: { tool_call_id: string; tool_name: string; result: any; error?: string; success?: boolean }) => {
+            message.data.results.forEach((result: ToolResult) => {
               get().updateToolCallStatus(result.tool_call_id, {
-                status: result.success !== false ? 'completed' : 'error',
-                result: {
-                  tool_call_id: result.tool_call_id,
-                  tool_name: result.tool_name,
-                  parts: [{
-                    part_type: 'data' as const,
-                    data: {
-                      result: result.result,
-                      error: result.error,
-                      success: result.success !== false,
-                    }
-                  }]
-                },
-                error: result.error,
+                status: 'completed',
+                result,
                 endTime: timestamp,
               });
             });
@@ -621,11 +610,26 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     }
     completingToolCallIds.add(toolCall.tool_call_id);
 
-    // Check if all external tools are completed after this completion
+    const toolResultData = extractToolResultData(result);
+    const resultIndicatesError = toolResultData?.success === false || Boolean(toolResultData?.error);
+    const resultErrorMessage = toolResultData?.error ?? (toolResultData?.success === false ? 'Tool execution failed' : undefined);
+
+    get().updateToolCallStatus(toolCall.tool_call_id, {
+      status: resultIndicatesError ? 'error' : 'completed',
+      result,
+      error: resultIndicatesError ? resultErrorMessage : undefined,
+      endTime: Date.now(),
+    });
+
     const state = get();
     const agent = state.agent;
     if (!agent) {
       console.error('❌ Agent not found');
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        status: 'error',
+        error: resultErrorMessage ?? 'Agent not available to complete tool',
+        endTime: Date.now(),
+      });
       completingToolCallIds.delete(toolCall.tool_call_id);
       return;
     }
@@ -636,11 +640,15 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
       // Call agent's completeTool API
       await agent.completeTool(result);
-
       console.log(`✅ Tool completion sent to agent via API`);
 
     } catch (error) {
       console.error(`❌ Error executing tool ${toolCall.tool_name}:`, error);
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Tool completion failed',
+        endTime: Date.now(),
+      });
     } finally {
       completingToolCallIds.delete(toolCall.tool_call_id);
     }

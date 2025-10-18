@@ -115,7 +115,6 @@ __export(index_exports, {
   ThemeProvider: () => ThemeProvider,
   ThemeToggle: () => ThemeToggle,
   ThinkingRenderer: () => ThinkingRenderer,
-  ToolResultRenderer: () => ToolResultRenderer,
   Tooltip: () => Tooltip,
   TooltipContent: () => TooltipContent,
   TooltipProvider: () => TooltipProvider,
@@ -730,20 +729,8 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
           if (message.data.results && Array.isArray(message.data.results)) {
             message.data.results.forEach((result) => {
               get().updateToolCallStatus(result.tool_call_id, {
-                status: result.success !== false ? "completed" : "error",
-                result: {
-                  tool_call_id: result.tool_call_id,
-                  tool_name: result.tool_name,
-                  parts: [{
-                    part_type: "data",
-                    data: {
-                      result: result.result,
-                      error: result.error,
-                      success: result.success !== false
-                    }
-                  }]
-                },
-                error: result.error,
+                status: "completed",
+                result,
                 endTime: timestamp
               });
             });
@@ -810,10 +797,24 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       return;
     }
     completingToolCallIds.add(toolCall.tool_call_id);
+    const toolResultData = (0, import_core2.extractToolResultData)(result);
+    const resultIndicatesError = toolResultData?.success === false || Boolean(toolResultData?.error);
+    const resultErrorMessage = toolResultData?.error ?? (toolResultData?.success === false ? "Tool execution failed" : void 0);
+    get().updateToolCallStatus(toolCall.tool_call_id, {
+      status: resultIndicatesError ? "error" : "completed",
+      result,
+      error: resultIndicatesError ? resultErrorMessage : void 0,
+      endTime: Date.now()
+    });
     const state = get();
     const agent = state.agent;
     if (!agent) {
       console.error("\u274C Agent not found");
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        status: "error",
+        error: resultErrorMessage ?? "Agent not available to complete tool",
+        endTime: Date.now()
+      });
       completingToolCallIds.delete(toolCall.tool_call_id);
       return;
     }
@@ -825,6 +826,11 @@ var useChatStateStore = (0, import_zustand.create)((set, get) => ({
       console.log(`\u2705 Tool completion sent to agent via API`);
     } catch (error) {
       console.error(`\u274C Error executing tool ${toolCall.tool_name}:`, error);
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        status: "error",
+        error: error instanceof Error ? error.message : "Tool completion failed",
+        endTime: Date.now()
+      });
     } finally {
       completingToolCallIds.delete(toolCall.tool_call_id);
     }
@@ -2250,7 +2256,7 @@ var ChatInput = ({
 };
 
 // src/components/renderers/MessageRenderer.tsx
-var import_core8 = require("@distri/core");
+var import_core9 = require("@distri/core");
 
 // src/components/renderers/utils.tsx
 function extractContent(message) {
@@ -2661,6 +2667,7 @@ var StepBasedRenderer = ({
 // src/components/renderers/ToolExecutionRenderer.tsx
 var import_react13 = require("react");
 var import_lucide_react6 = require("lucide-react");
+var import_core8 = require("@distri/core");
 var import_jsx_runtime15 = require("react/jsx-runtime");
 var getFriendlyToolMessage = (toolName, input) => {
   switch (toolName) {
@@ -2703,9 +2710,10 @@ var ToolExecutionRenderer = ({
     if (!toolCallState?.result) {
       return "No result available";
     }
-    const dataPart = toolCallState.result.parts?.find((part) => part?.part_type === "data");
-    if (dataPart && "data" in dataPart) {
-      return JSON.stringify(dataPart.data, null, 2);
+    console.log("\u{1F527} Tool call result:", toolCallState.result);
+    const resultData = (0, import_core8.extractToolResultData)(toolCallState.result);
+    if (resultData) {
+      return resultData.result;
     }
     return JSON.stringify(toolCallState.result, null, 2);
   };
@@ -2813,7 +2821,7 @@ function MessageRenderer({
   index
 }) {
   const toolCallsState = useChatStateStore((state) => state.toolCalls);
-  if ((0, import_core8.isDistriMessage)(message)) {
+  if ((0, import_core9.isDistriMessage)(message)) {
     const distriMessage = message;
     const textContent = distriMessage.parts.filter((part) => part.part_type === "text").map((part) => part.data).join("").trim();
     const imageParts = distriMessage.parts.filter((part) => part.part_type === "image");
@@ -2821,7 +2829,7 @@ function MessageRenderer({
       return null;
     }
   }
-  if ((0, import_core8.isDistriMessage)(message)) {
+  if ((0, import_core9.isDistriMessage)(message)) {
     const distriMessage = message;
     switch (distriMessage.role) {
       case "user":
@@ -2842,7 +2850,7 @@ function MessageRenderer({
         return null;
     }
   }
-  if ((0, import_core8.isDistriEvent)(message)) {
+  if ((0, import_core9.isDistriEvent)(message)) {
     const event = message;
     switch (event.type) {
       case "run_started":
@@ -5279,74 +5287,6 @@ function wrapTools(tools, options = {}) {
     return tool;
   });
 }
-
-// src/components/renderers/ToolResultRenderer.tsx
-var import_lucide_react16 = require("lucide-react");
-var import_jsx_runtime37 = require("react/jsx-runtime");
-function ToolResultRenderer({
-  toolCallId,
-  toolName,
-  result,
-  success,
-  error,
-  onSendResponse,
-  className = ""
-}) {
-  const getStatusIcon = () => {
-    if (success) {
-      return /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_lucide_react16.CheckCircle, { className: "w-4 h-4 text-primary" });
-    } else {
-      return /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_lucide_react16.XCircle, { className: "w-4 h-4 text-destructive" });
-    }
-  };
-  const getStatusColor = () => {
-    if (success) {
-      return "bg-primary/10 text-primary";
-    } else {
-      return "bg-destructive/10 text-destructive";
-    }
-  };
-  const handleSendResponse = () => {
-    if (onSendResponse) {
-      onSendResponse(toolCallId, result);
-    }
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(Card, { className: `mb-4 ${className}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(CardHeader, { className: "pb-3", children: /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "flex items-center space-x-2", children: [
-        getStatusIcon(),
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(CardTitle, { className: "text-sm font-medium", children: toolName }),
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(Badge, { variant: "secondary", className: getStatusColor(), children: success ? "Success" : "Failed" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "text-xs text-muted-foreground", children: [
-        "ID: ",
-        toolCallId
-      ] })
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(CardContent, { className: "pt-0 space-y-3", children: [
-      result && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "text-sm", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { children: "Result:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-auto break-words", children: typeof result === "string" ? result : JSON.stringify(result, null, 2) })
-      ] }),
-      error && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "text-sm", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { children: "Error:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("pre", { className: "whitespace-pre-wrap text-xs bg-destructive/10 p-2 rounded mt-1 text-destructive overflow-auto break-words", children: error })
-      ] }),
-      onSendResponse && success && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(
-        Button,
-        {
-          size: "sm",
-          onClick: handleSendResponse,
-          className: "flex items-center space-x-1",
-          children: [
-            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_lucide_react16.Send, { className: "w-3 h-3" }),
-            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("span", { children: "Send Response" })
-          ]
-        }
-      ) })
-    ] })
-  ] });
-}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AgentSelect,
@@ -5433,7 +5373,6 @@ function ToolResultRenderer({
   ThemeProvider,
   ThemeToggle,
   ThinkingRenderer,
-  ToolResultRenderer,
   Tooltip,
   TooltipContent,
   TooltipProvider,

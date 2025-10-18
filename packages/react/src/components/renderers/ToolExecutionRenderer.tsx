@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { LoadingShimmer } from './ThinkingRenderer';
+import { extractToolResultData } from '@distri/core';
 
 interface ToolExecutionRendererProps {
   event: any; // Can be ToolCallsEvent or ToolResultsEvent
@@ -50,7 +51,6 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
 }) => {
   // Tool calls should be in data.tool_calls after encoder conversion
   const toolCalls = event.data?.tool_calls || [];
-
   if (toolCalls.length === 0) {
     console.log('🔧 No tool calls found in event data or metadata');
     return null;
@@ -60,11 +60,11 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
     if (!toolCallState?.result) {
       return 'No result available';
     }
-
+    console.log('🔧 Tool call result:', toolCallState.result);
     // Prefer simplified data view when parts array exists
-    const dataPart = toolCallState.result.parts?.find(part => (part as any)?.part_type === 'data');
-    if (dataPart && 'data' in dataPart) {
-      return JSON.stringify((dataPart as any).data, null, 2);
+    const resultData = extractToolResultData(toolCallState.result);
+    if (resultData) {
+      return resultData.result;
     }
     return JSON.stringify(toolCallState.result, null, 2);
   };
