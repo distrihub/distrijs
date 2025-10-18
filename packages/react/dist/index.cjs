@@ -2713,7 +2713,10 @@ var ToolExecutionRenderer = ({
     console.log("\u{1F527} Tool call result:", toolCallState.result);
     const resultData = (0, import_core8.extractToolResultData)(toolCallState.result);
     if (resultData) {
-      return resultData.result;
+      if (typeof resultData.result === "object") {
+        return JSON.stringify(resultData.result, null, 2);
+      }
+      return String(resultData.result);
     }
     return JSON.stringify(toolCallState.result, null, 2);
   };
