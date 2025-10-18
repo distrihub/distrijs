@@ -64,7 +64,10 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
     // Prefer simplified data view when parts array exists
     const resultData = extractToolResultData(toolCallState.result);
     if (resultData) {
-      return resultData.result;
+      if (typeof resultData.result === 'object') {
+        return JSON.stringify(resultData.result, null, 2);
+      }
+      return String(resultData.result);
     }
     return JSON.stringify(toolCallState.result, null, 2);
   };

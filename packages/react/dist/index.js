@@ -2581,7 +2581,10 @@ var ToolExecutionRenderer = ({
     console.log("\u{1F527} Tool call result:", toolCallState.result);
     const resultData = extractToolResultData2(toolCallState.result);
     if (resultData) {
-      return resultData.result;
+      if (typeof resultData.result === "object") {
+        return JSON.stringify(resultData.result, null, 2);
+      }
+      return String(resultData.result);
     }
     return JSON.stringify(toolCallState.result, null, 2);
   };
