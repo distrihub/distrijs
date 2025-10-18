@@ -11,6 +11,7 @@ import {
 import { create } from "zustand";
 import {
   isDistriEvent,
+  extractToolResultData,
   isDistriMessage
 } from "@distri/core";
 
@@ -594,20 +595,8 @@ var useChatStateStore = create((set, get) => ({
           if (message.data.results && Array.isArray(message.data.results)) {
             message.data.results.forEach((result) => {
               get().updateToolCallStatus(result.tool_call_id, {
-                status: result.success !== false ? "completed" : "error",
-                result: {
-                  tool_call_id: result.tool_call_id,
-                  tool_name: result.tool_name,
-                  parts: [{
-                    part_type: "data",
-                    data: {
-                      result: result.result,
-                      error: result.error,
-                      success: result.success !== false
-                    }
-                  }]
-                },
-                error: result.error,
+                status: "completed",
+                result,
                 endTime: timestamp
               });
             });
@@ -674,10 +663,24 @@ var useChatStateStore = create((set, get) => ({
       return;
     }
     completingToolCallIds.add(toolCall.tool_call_id);
+    const toolResultData = extractToolResultData(result);
+    const resultIndicatesError = toolResultData?.success === false || Boolean(toolResultData?.error);
+    const resultErrorMessage = toolResultData?.error ?? (toolResultData?.success === false ? "Tool execution failed" : void 0);
+    get().updateToolCallStatus(toolCall.tool_call_id, {
+      status: resultIndicatesError ? "error" : "completed",
+      result,
+      error: resultIndicatesError ? resultErrorMessage : void 0,
+      endTime: Date.now()
+    });
     const state = get();
     const agent = state.agent;
     if (!agent) {
       console.error("\u274C Agent not found");
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        status: "error",
+        error: resultErrorMessage ?? "Agent not available to complete tool",
+        endTime: Date.now()
+      });
       completingToolCallIds.delete(toolCall.tool_call_id);
       return;
     }
@@ -689,6 +692,11 @@ var useChatStateStore = create((set, get) => ({
       console.log(`\u2705 Tool completion sent to agent via API`);
     } catch (error) {
       console.error(`\u274C Error executing tool ${toolCall.tool_name}:`, error);
+      get().updateToolCallStatus(toolCall.tool_call_id, {
+        status: "error",
+        error: error instanceof Error ? error.message : "Tool completion failed",
+        endTime: Date.now()
+      });
     } finally {
       completingToolCallIds.delete(toolCall.tool_call_id);
     }
@@ -2527,6 +2535,7 @@ var StepBasedRenderer = ({
 // src/components/renderers/ToolExecutionRenderer.tsx
 import { useState as useState10 } from "react";
 import { ChevronDown, ChevronRight, CheckCircle as CheckCircle3, XCircle as XCircle2, Clock as Clock2 } from "lucide-react";
+import { extractToolResultData as extractToolResultData2 } from "@distri/core";
 import { Fragment as Fragment3, jsx as jsx15, jsxs as jsxs10 } from "react/jsx-runtime";
 var getFriendlyToolMessage = (toolName, input) => {
   switch (toolName) {
@@ -2569,9 +2578,10 @@ var ToolExecutionRenderer = ({
     if (!toolCallState?.result) {
       return "No result available";
     }
-    const dataPart = toolCallState.result.parts?.find((part) => part?.part_type === "data");
-    if (dataPart && "data" in dataPart) {
-      return JSON.stringify(dataPart.data, null, 2);
+    console.log("\u{1F527} Tool call result:", toolCallState.result);
+    const resultData = extractToolResultData2(toolCallState.result);
+    if (resultData) {
+      return resultData.result;
     }
     return JSON.stringify(toolCallState.result, null, 2);
   };
@@ -5145,74 +5155,6 @@ function wrapTools(tools, options = {}) {
     return tool;
   });
 }
-
-// src/components/renderers/ToolResultRenderer.tsx
-import { CheckCircle as CheckCircle5, XCircle as XCircle3, Send as Send2 } from "lucide-react";
-import { jsx as jsx37, jsxs as jsxs25 } from "react/jsx-runtime";
-function ToolResultRenderer({
-  toolCallId,
-  toolName,
-  result,
-  success,
-  error,
-  onSendResponse,
-  className = ""
-}) {
-  const getStatusIcon = () => {
-    if (success) {
-      return /* @__PURE__ */ jsx37(CheckCircle5, { className: "w-4 h-4 text-primary" });
-    } else {
-      return /* @__PURE__ */ jsx37(XCircle3, { className: "w-4 h-4 text-destructive" });
-    }
-  };
-  const getStatusColor = () => {
-    if (success) {
-      return "bg-primary/10 text-primary";
-    } else {
-      return "bg-destructive/10 text-destructive";
-    }
-  };
-  const handleSendResponse = () => {
-    if (onSendResponse) {
-      onSendResponse(toolCallId, result);
-    }
-  };
-  return /* @__PURE__ */ jsxs25(Card, { className: `mb-4 ${className}`, children: [
-    /* @__PURE__ */ jsx37(CardHeader, { className: "pb-3", children: /* @__PURE__ */ jsxs25("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ jsxs25("div", { className: "flex items-center space-x-2", children: [
-        getStatusIcon(),
-        /* @__PURE__ */ jsx37(CardTitle, { className: "text-sm font-medium", children: toolName }),
-        /* @__PURE__ */ jsx37(Badge, { variant: "secondary", className: getStatusColor(), children: success ? "Success" : "Failed" })
-      ] }),
-      /* @__PURE__ */ jsxs25("div", { className: "text-xs text-muted-foreground", children: [
-        "ID: ",
-        toolCallId
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsxs25(CardContent, { className: "pt-0 space-y-3", children: [
-      result && /* @__PURE__ */ jsxs25("div", { className: "text-sm", children: [
-        /* @__PURE__ */ jsx37("strong", { children: "Result:" }),
-        /* @__PURE__ */ jsx37("pre", { className: "whitespace-pre-wrap text-xs bg-muted p-2 rounded mt-1 max-h-32 overflow-auto break-words", children: typeof result === "string" ? result : JSON.stringify(result, null, 2) })
-      ] }),
-      error && /* @__PURE__ */ jsxs25("div", { className: "text-sm", children: [
-        /* @__PURE__ */ jsx37("strong", { children: "Error:" }),
-        /* @__PURE__ */ jsx37("pre", { className: "whitespace-pre-wrap text-xs bg-destructive/10 p-2 rounded mt-1 text-destructive overflow-auto break-words", children: error })
-      ] }),
-      onSendResponse && success && /* @__PURE__ */ jsx37("div", { className: "flex justify-end", children: /* @__PURE__ */ jsxs25(
-        Button,
-        {
-          size: "sm",
-          onClick: handleSendResponse,
-          className: "flex items-center space-x-1",
-          children: [
-            /* @__PURE__ */ jsx37(Send2, { className: "w-3 h-3" }),
-            /* @__PURE__ */ jsx37("span", { children: "Send Response" })
-          ]
-        }
-      ) })
-    ] })
-  ] });
-}
 export {
   AgentSelect,
   AppSidebar,
@@ -5298,7 +5240,6 @@ export {
   ThemeProvider,
   ThemeToggle,
   ThinkingRenderer,
-  ToolResultRenderer,
   Tooltip,
   TooltipContent,
   TooltipProvider,

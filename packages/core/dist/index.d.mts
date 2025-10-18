@@ -130,13 +130,7 @@ interface ToolCallsEvent {
 interface ToolResultsEvent {
     type: 'tool_results';
     data: {
-        results: Array<{
-            tool_call_id: string;
-            tool_name: string;
-            result: any;
-            success?: boolean;
-            error?: string;
-        }>;
+        results: Array<ToolResult>;
     };
 }
 type DistriEvent = RunStartedEvent | RunFinishedEvent | RunErrorEvent | PlanStartedEvent | PlanFinishedEvent | PlanPrunedEvent | TextMessageStartEvent | TextMessageContentEvent | TextMessageEndEvent | ToolExecutionStartEvent | ToolExecutionEndEvent | ToolRejectedEvent | StepStartedEvent | StepCompletedEvent | AgentHandoverEvent | FeedbackReceivedEvent | ToolCallsEvent | ToolResultsEvent;

@@ -714,9 +714,6 @@ body {
 .h-svh {
   height: 100svh;
 }
-.max-h-32 {
-  max-height: 8rem;
-}
 .max-h-64 {
   max-height: 16rem;
 }
@@ -1398,9 +1395,6 @@ body {
 .py-4 {
   padding-top: 1rem;
   padding-bottom: 1rem;
-}
-.pb-3 {
-  padding-bottom: 0.75rem;
 }
 .pb-\[env\(safe-area-inset-bottom\)\] {
   padding-bottom: env(safe-area-inset-bottom);
