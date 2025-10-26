@@ -237,5 +237,51 @@ const { messages, sendMessage } = useChat({
 });
 ```
 
+Empty-state UX can be customized either by supplying structured data to the built-in renderer or by providing a full React override.
+
+Use the `emptyState` prop to populate the minimal default layout with your own copy and optional conversation starters:
+
+```tsx
+<Chat
+  threadId="..."
+  agent={agent}
+  emptyState={{
+    eyebrow: 'Quick start',
+    title: 'Build an enrichment',
+    categories: [{
+      id: 'ideas',
+      title: 'Idea starters',
+      starters: [{ label: 'Suggest a workflow for refreshing company firmographics' }],
+    }],
+  }}
+/>
+```
+
+For complete control, continue to use the `renderEmptyState` prop:
+
+```tsx
+<Chat
+  threadId="..."
+  agent={agent}
+  renderEmptyState={({ input, setInput, submit, isLoading }) => (
+    <MyEmptyState
+      value={input}
+      disabled={isLoading}
+      onChange={setInput}
+      onSubmit={submit}
+    />
+  )}
+/>
+```
+
+`renderEmptyState` runs only when the thread has no messages and no errors. The callback receives a controller with:
+- `input` – current composer value
+- `setInput(next: string)` – updates the composer
+- `submit(content?: string | DistriPart[])` – sends either the provided content or the current input
+- `isLoading` / `isStreaming` – flags for disabling UI
+- `composer` – preconfigured `<ChatInput>` you can mount inside the empty state if you want the hero-style composer instead of the footer version
+
+If neither prop is provided the default empty state renders a bare hero composer with no opinionated copy. The override you pass to `renderEmptyState` always wins over `emptyState`.
+
 **Error Handling:**
 All operations use typed error classes: `DistriError`, `ApiError`, `ConnectionError`, `A2AProtocolError`.

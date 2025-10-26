@@ -209,6 +209,30 @@ interface ChatStateStore extends ChatState {
 }
 declare const useChatStateStore: zustand.UseBoundStore<zustand.StoreApi<ChatStateStore>>;
 
+interface ChatEmptyStateStarter {
+    id?: string;
+    label: string;
+    prompt?: string;
+    description?: string;
+    autoSend?: boolean;
+}
+interface ChatEmptyStateCategory {
+    id: string;
+    title?: string;
+    description?: string;
+    starters?: ChatEmptyStateStarter[];
+}
+interface ChatEmptyStateOptions {
+    eyebrow?: string;
+    description?: string;
+    promptPlaceholder?: string;
+    promptHelperText?: string;
+    categoriesLabel?: string;
+    startersLabel?: string;
+    categories?: ChatEmptyStateCategory[];
+    autoSendOnStarterClick?: boolean;
+}
+
 interface ModelOption {
     id: string;
     name: string;
@@ -223,6 +247,14 @@ interface ChatInstance {
     stopStreamingVoice?: () => void;
     isStreamingVoice?: boolean;
     streamingTranscript?: string;
+}
+interface ChatEmptyStateController {
+    input: string;
+    setInput: (value: string) => void;
+    submit: (content?: string | DistriPart[]) => Promise<void>;
+    isLoading: boolean;
+    isStreaming: boolean;
+    composer?: React__default.ReactNode;
 }
 interface ChatProps {
     threadId: string;
@@ -240,6 +272,8 @@ interface ChatProps {
     onModelChange?: (modelId: string) => void;
     onChatInstanceReady?: (instance: ChatInstance) => void;
     onChatStateChange?: (state: ChatState) => void;
+    renderEmptyState?: (controller: ChatEmptyStateController) => React__default.ReactNode;
+    emptyState?: ChatEmptyStateOptions;
     voiceEnabled?: boolean;
     useSpeechRecognition?: boolean;
     ttsConfig?: {
@@ -301,6 +335,7 @@ interface ChatInputProps {
     isStreamingVoice?: boolean;
     useSpeechRecognition?: boolean;
     onSpeechTranscript?: (text: string) => void;
+    variant?: 'default' | 'hero';
 }
 declare const ChatInput: React__default.FC<ChatInputProps>;
 
@@ -650,4 +685,4 @@ interface UserMessageRendererProps {
 }
 declare const UserMessageRenderer: React__default.FC<UserMessageRendererProps>;
 
-export { AgentSelect, AppSidebar, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, type ChatState, type ChatStateStore, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, type PlanState, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, StepBasedRenderer, type StepBasedRendererProps, type StepState, type StreamingIndicator, StreamingTextRenderer, type StreamingTtsOptions, type TaskState, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, type ToolCallState, type ToolCallStatus, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, extractContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useChatStateStore, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };
+export { AgentSelect, AppSidebar, AssistantMessageRenderer, type AssistantMessageRendererProps, type AttachedImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chat, type ChatEmptyStateCategory, type ChatEmptyStateController, type ChatEmptyStateOptions, type ChatEmptyStateStarter, ChatInput, type ChatInputProps, type ChatInstance, type ChatProps, type ChatState, type ChatStateStore, DialogRoot as Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, type DistriAnyTool, DistriProvider, type DistriUiTool, DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, type ExtractedContent, ImageRenderer, type ImageRendererProps, Input, LoadingShimmer, MessageRenderer, type MessageRendererProps, type ModelOption, type PlanState, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue, Separator, Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, Skeleton, StepBasedRenderer, type StepBasedRendererProps, type StepState, type StreamingIndicator, StreamingTextRenderer, type StreamingTtsOptions, type TaskState, Textarea, ThemeProvider, ThemeToggle, ThinkingRenderer, type ThinkingRendererProps, type ToolCallState, type ToolCallStatus, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, type TtsConfig, type TtsRequest, TypingIndicator, type UiToolProps, type UseAgentOptions, type UseAgentResult, type UseAgentsResult, type UseChatMessagesOptions, type UseChatMessagesReturn, type UseChatOptions, type UseChatReturn, type UseThreadMessagesOptions, type UseThreadsResult, UserMessageRenderer, type UserMessageRendererProps, VoiceInput, type VoiceInputProps, extractContent, useAgent, useAgentDefinitions, useChat, useChatMessages, useChatStateStore, useDistri, useDistriClient, useSidebar, useSpeechToText, useTheme, useThreads, useTts, wrapFnToolAsUiTool, wrapTools };
