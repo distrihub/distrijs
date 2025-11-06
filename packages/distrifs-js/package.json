@@ -1,0 +1,28 @@
+{
+  "name": "distrifs-js",
+  "version": "0.1.0",
+  "description": "IndexedDB-backed filesystem tools and React workspace components for Distri agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@distri/core": "workspace:*",
+    "@distri/react": "workspace:*",
+    "lucide-react": "^0.460.0",
+    "zustand": "^5.0.8"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

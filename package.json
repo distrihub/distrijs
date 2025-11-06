@@ -30,6 +30,7 @@
     "build:copy": "node scripts/build-copy.js",
     "dev": "turbo dev",
     "dev:maps": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/maps-demo",
+    "dev:file": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/file-tools-demo",
     "lint": "turbo lint",
     "lint:fix": "turbo lint -- --fix",
     "clean": "turbo clean",
