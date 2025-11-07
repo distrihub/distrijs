@@ -6,10 +6,13 @@
         "./src/*",
       ],
       "@distri/react": [
-        "../distrijs/packages/react/src"
+        "../packages/react/src"
       ],
       "@distri/core": [
-        "../distrijs/packages/core/src"
+        "../packages/core/src"
+      ],
+      "@distri/fs": [
+        "../packages/fs/src"
       ]
     },
     "target": "ES2020",

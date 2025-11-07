@@ -17,6 +17,9 @@ import { BACKEND_URL } from './constants';
 import { AccountProvider } from './components/AccountProvider';
 import AgentsPage from './routes/home/AgentsPage';
 import AgentDetailsPage from './routes/home/AgentDetailsPage';
+import SkillsPage from './routes/home/SkillsPage';
+import SkillDesignerPage from './routes/home/SkillDesignerPage';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   // Initialize theme to dark by default
@@ -52,7 +55,9 @@ function App() {
               </TokenProvider>
 
             }>
-              <Route index element={<Navigate to="/home/agents" replace />} />
+              <Route index element={<Navigate to="/home/skills" replace />} />
+              <Route path="skills" element={<SkillsPage />} />
+              <Route path="skills/:skillId" element={<SkillDesignerPage />} />
               <Route path="agents" element={<AgentsPage />} />
               <Route path="agents/:agentId" element={<AgentDetailsPage />} />
               <Route path="menu/account" element={<AccountPage />} />
@@ -68,6 +73,7 @@ function App() {
           </Routes>
 
         </Router>
+        <Toaster position="top-right" richColors closeButton />
       </ThreadProvider>
     </ThemeProvider>
   );
@@ -76,24 +82,29 @@ function App() {
 const WrappedHomeLayout = () => {
   const { token } = useInitialization()
 
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
+
   return (
-    <DistriProvider config={{
-      baseUrl: `${BACKEND_URL}/api/v1/`,
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      interceptor: async (init?: RequestInit): Promise<RequestInit | undefined> => {
-        let initCopy = init || {}
-        const newInit = {
-          ...initCopy,
-          headers: {
-            ...initCopy.headers,
-            'Authorization': `Bearer ${token}`
+    <DistriProvider
+      config={{
+        baseUrl: `${BACKEND_URL}/api/v1/`,
+        headers: authHeaders,
+        interceptor: async (init?: RequestInit): Promise<RequestInit | undefined> => {
+          if (!token) {
+            return init
           }
-        }
-        return newInit
-      }
-    }}>
+          let initCopy = init || {}
+          const newInit = {
+            ...initCopy,
+            headers: {
+              ...initCopy.headers,
+              Authorization: `Bearer ${token}`,
+            },
+          }
+          return newInit
+        },
+      }}
+    >
       <HomeLayout />
     </DistriProvider>
   )

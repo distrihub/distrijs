@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Send, Square, ImageIcon, X, Mic, MicOff, Radio } from 'lucide-react';
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
+import { cn } from '../lib/utils';
 
 export interface AttachedImage {
   id: string;
@@ -32,6 +33,7 @@ export interface ChatInputProps {
   // Speech recognition props
   useSpeechRecognition?: boolean;
   onSpeechTranscript?: (text: string) => void;
+  variant?: 'default' | 'hero';
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -52,6 +54,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isStreamingVoice = false,
   useSpeechRecognition = false,
   onSpeechTranscript,
+  variant = 'default',
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -214,12 +217,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const hasContent = value.trim().length > 0 || attachedImages.length > 0;
   const isDisabled = disabled; // Remove isStreaming from disabled condition
 
+  const shellClass = variant === 'hero'
+    ? 'rounded-3xl border border-border/70 bg-background/95 p-4 sm:p-6 shadow-xl'
+    : 'rounded-2xl border border-input bg-input p-2';
+
+  const wrapperClass = variant === 'hero' ? 'mx-0' : 'mx-3 sm:mx-5';
+  const previewClass = variant === 'hero' ? 'gap-3 mb-3' : 'gap-2 mb-2';
+  const textareaClass = variant === 'hero'
+    ? 'flex-1 resize-none bg-transparent outline-none border-none leading-7 text-base text-foreground placeholder:text-muted-foreground/80 max-h-[40dvh] overflow-auto px-1 py-1'
+    : 'flex-1 resize-none bg-transparent outline-none border-none leading-6 text-sm text-foreground placeholder:text-muted-foreground max-h-[40dvh] overflow-auto px-2 py-2';
+
   return (
-    <div className={`relative w-full ${className}`}>
+    <div className={cn('relative w-full', className)}>
       <div className="flex flex-col w-full">
-        {/* Image previews (unchanged) */}
         {attachedImages.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2 mx-3 sm:mx-5">
+          <div className={cn('flex flex-wrap', previewClass, wrapperClass)}>
             {attachedImages.map((image) => (
               <div key={image.id} className="relative group">
                 <img
@@ -241,10 +253,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         )}
 
-        {/* Input bar */}
-        <div className="mx-3 sm:mx-5 rounded-2xl border border-input bg-input p-2">
+        <div className={cn(wrapperClass, shellClass)}>
           <div className="flex items-end gap-2">
-            {/* Textarea */}
             <textarea
               ref={textareaRef}
               value={value}
@@ -260,10 +270,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               placeholder={attachedImages.length > 0 ? 'Add a message...' : placeholder}
               disabled={isDisabled}
               rows={1}
-              className="flex-1 resize-none bg-transparent outline-none border-none leading-6 text-sm text-foreground placeholder:text-muted-foreground max-h-[40dvh] overflow-auto px-2 py-2"
+              className={textareaClass}
             />
 
-            {/* Controls (never overlap the text) */}
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => fileInputRef.current?.click()}

@@ -1,10 +1,8 @@
-
-
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MessageSquare, FileText, WandSparkles, Sparkles, Bot, Workflow, Eye } from "lucide-react"
+import { MessageSquare, WandSparkles, Bot, Workflow, Eye } from "lucide-react"
 import { Header } from "@/components/ui/header"
 import { useAgentDefinitions } from "@distri/react"
 import { AgentDefinition } from "@distri/core"
@@ -15,10 +13,6 @@ const AgentListing = () => {
 
   const navigate = useNavigate()
   const { agents, loading } = useAgentDefinitions()
-
-  const createAgent = () => {
-    console.log("createAgent")
-  }
 
   const handleChatWithAgent = (agent: AgentDefinition) => {
     navigate(`/home/agents/${encodeURIComponent(agent.id)}`)
@@ -65,22 +59,11 @@ const AgentListing = () => {
   return (
     <div className="flex flex-col h-full">
       <Header
-        title="Agents & Workflows"
+        title="Agents"
         subtitle={
           <p className="text-muted-foreground text-sm flex  gap-2">
             Chat with agents or run workflows! <WandSparkles className="h-4 w-4 text-primary" />
           </p>
-        }
-        rightElement={
-          <Button
-            onClick={() => createAgent()}
-            variant="secondary"
-            size="lg"
-            className="flex items-center gap-3"
-          >
-            <FileText className="h-5 w-5" />
-            <span>Create a new AI Agent</span>
-          </Button>
         }
       />
       <div className="flex-1 px-4 py-6">

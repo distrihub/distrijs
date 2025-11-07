@@ -2,6 +2,20 @@
 
 This file provides guidance to AI coding agents (Claude Code, GPT-based, etc.) when working with this repository.
 
+## Monorepo Context
+
+- The `distrijs/` directory now lives inside the main `distri` repository, which
+  also includes the Rust backend crates (`distri-server`, `distri-stores`, etc.).
+- Frontend and TypeScript work happens entirely inside this folder; backend API
+  changes should be coordinated with `../distri-server/src/routes.rs`.
+- Agents contributing here should also read `../Agents.md` for the high-level
+  repository map and pointers to key personas (`agents/distri.md`,
+  `agents/scripter.md`).
+
+When you need to exercise the full stack locally, run the Rust backend from the
+repo root (`cargo run -p distri-server`) and start the UI via Turborepo commands
+documented below.
+
 ## Development Commands
 
 This is a TypeScript monorepo using Turbo and PNPM workspaces.
@@ -158,6 +172,17 @@ The `test-event-processing.js` file validates the new event-based architecture:
 
 **Component Standards:**
 - **ALWAYS use shadcn/ui components and colors** - Do not introduce custom colors or styling
+
+## Skill Designer Workflow
+
+- The `apps/distri-ui` project includes a **Skill Designer** route that embeds
+  the `@distri/fs` workspace for authoring skill bundles (scripts + docs).
+- Use `distrijs/samples/file-tools-demo` as the reference implementation when
+  adding filesystem features or workspace behaviours.
+- Skill persistence flows through the backend `POST /api/v1/skills` endpoints
+  defined in `../distri-server/src/routes.rs`.
+- Coordinate with the `agents/scripter.md` persona when the UI needs
+  automation or default script scaffolding for new skills.
 - Follow shadcn design tokens: `bg-muted`, `text-foreground`, `border-muted-foreground`, etc.
 - Use semantic color variables for consistency across themes
 - Prefer standard component patterns from shadcn documentation
@@ -236,6 +261,52 @@ const { messages, sendMessage } = useChat({
   threadId: 'conversation-id' 
 });
 ```
+
+Empty-state UX can be customized either by supplying structured data to the built-in renderer or by providing a full React override.
+
+Use the `emptyState` prop to populate the minimal default layout with your own copy and optional conversation starters:
+
+```tsx
+<Chat
+  threadId="..."
+  agent={agent}
+  emptyState={{
+    eyebrow: 'Quick start',
+    title: 'Build an enrichment',
+    categories: [{
+      id: 'ideas',
+      title: 'Idea starters',
+      starters: [{ label: 'Suggest a workflow for refreshing company firmographics' }],
+    }],
+  }}
+/>
+```
+
+For complete control, continue to use the `renderEmptyState` prop:
+
+```tsx
+<Chat
+  threadId="..."
+  agent={agent}
+  renderEmptyState={({ input, setInput, submit, isLoading }) => (
+    <MyEmptyState
+      value={input}
+      disabled={isLoading}
+      onChange={setInput}
+      onSubmit={submit}
+    />
+  )}
+/>
+```
+
+`renderEmptyState` runs only when the thread has no messages and no errors. The callback receives a controller with:
+- `input` – current composer value
+- `setInput(next: string)` – updates the composer
+- `submit(content?: string | DistriPart[])` – sends either the provided content or the current input
+- `isLoading` / `isStreaming` – flags for disabling UI
+- `composer` – preconfigured `<ChatInput>` you can mount inside the empty state if you want the hero-style composer instead of the footer version
+
+If neither prop is provided the default empty state renders a bare hero composer with no opinionated copy. The override you pass to `renderEmptyState` always wins over `emptyState`.
 
 **Error Handling:**
 All operations use typed error classes: `DistriError`, `ApiError`, `ConnectionError`, `A2AProtocolError`.

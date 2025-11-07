@@ -6,11 +6,12 @@ import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { TypingIndicator } from './renderers/TypingIndicator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-
 import { ChatState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
 import { DistriAnyTool } from '@/types';
+import { DefaultChatEmptyState, type ChatEmptyStateOptions } from './ChatEmptyState';
+export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
 
 export interface ModelOption {
   id: string;
@@ -28,6 +29,15 @@ export interface ChatInstance {
   stopStreamingVoice?: () => void;
   isStreamingVoice?: boolean;
   streamingTranscript?: string;
+}
+
+export interface ChatEmptyStateController {
+  input: string;
+  setInput: (value: string) => void;
+  submit: (content?: string | DistriPart[]) => Promise<void>;
+  isLoading: boolean;
+  isStreaming: boolean;
+  composer?: React.ReactNode;
 }
 
 export interface ChatProps {
@@ -52,6 +62,8 @@ export interface ChatProps {
   onChatInstanceReady?: (instance: ChatInstance) => void;
 
   onChatStateChange?: (state: ChatState) => void;
+  renderEmptyState?: (controller: ChatEmptyStateController) => React.ReactNode;
+  emptyState?: ChatEmptyStateOptions;
   // Voice support
   voiceEnabled?: boolean;
   useSpeechRecognition?: boolean;
@@ -88,6 +100,8 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   onModelChange,
   onChatInstanceReady,
   onChatStateChange,
+  renderEmptyState,
+  emptyState,
   voiceEnabled = false,
   useSpeechRecognition = false,
   ttsConfig,
@@ -211,9 +225,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     return content;
   }, []);
 
-  const handleSendMessage = useCallback(async (initialContent: string | DistriPart[]) => {
-    let content = initialContent;
-
+  const handleSendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (typeof content === 'string' && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
 
@@ -231,7 +243,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     } else {
       await sendMessage(content);
     }
-  }, [sendMessage, beforeSendMessage, isStreaming, contentToParts]);
+  }, [sendMessage, isStreaming, contentToParts]);
 
   const handleStopStreaming = useCallback(() => {
     console.log('handleStopStreaming called, about to call stopStreaming()');
@@ -524,6 +536,108 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     return elements;
   };
 
+  const showEmptyState = messages.length === 0 && !isLoading && !error;
+
+  const submitFromEmptyState = useCallback(async (value?: string | DistriPart[]) => {
+    if (typeof value === 'string' || Array.isArray(value)) {
+      await handleSendMessage(value);
+      return;
+    }
+    await handleSendMessage(input);
+  }, [handleSendMessage, input]);
+
+  const setComposerInput = useCallback((value: string) => {
+    setInput(value);
+  }, [setInput]);
+
+  const emptyStateController = useMemo<ChatEmptyStateController>(() => ({
+    input,
+    setInput: setComposerInput,
+    submit: submitFromEmptyState,
+    isLoading,
+    isStreaming,
+  }), [input, setComposerInput, submitFromEmptyState, isLoading, isStreaming]);
+
+  const renderComposer = useCallback((variant: 'default' | 'hero', className?: string) => {
+    const basePlaceholder = showEmptyState && emptyState?.promptPlaceholder
+      ? emptyState.promptPlaceholder
+      : 'Type your message…';
+
+    return (
+    <ChatInput
+      value={input}
+      onChange={setInput}
+      onSend={handleSendMessage}
+      onStop={handleStopStreaming}
+      placeholder={
+        isStreamingVoice
+          ? 'Voice mode active…'
+          : isStreaming
+            ? 'Message will be queued…'
+            : basePlaceholder
+      }
+      disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
+      isStreaming={isStreaming}
+      attachedImages={attachedImages}
+      onRemoveImage={removeImage}
+      onAddImages={addImages}
+      voiceEnabled={voiceEnabled && !!speechToText}
+      onVoiceRecord={handleVoiceRecord}
+      onStartStreamingVoice={voiceEnabled && speechToText ? startStreamingVoice : undefined}
+      isStreamingVoice={isStreamingVoice}
+      useSpeechRecognition={useSpeechRecognition}
+      onSpeechTranscript={handleSpeechTranscript}
+      className={className}
+      variant={variant}
+    />
+  );
+  }, [
+    input,
+    setInput,
+    handleSendMessage,
+    handleStopStreaming,
+    isStreamingVoice,
+    isStreaming,
+    isLoading,
+    hasPendingToolCalls,
+    attachedImages,
+    removeImage,
+    addImages,
+    voiceEnabled,
+    speechToText,
+    handleVoiceRecord,
+    startStreamingVoice,
+    useSpeechRecognition,
+    handleSpeechTranscript,
+    showEmptyState,
+    emptyState,
+  ]);
+
+  const emptyStateComposer = useMemo(() => renderComposer('hero', 'w-full max-w-2xl mx-auto empty-state-composer'), [renderComposer]);
+  const footerComposer = useMemo(() => renderComposer('default', 'w-full'), [renderComposer]);
+
+  const controllerWithComposer = useMemo<ChatEmptyStateController>(() => ({
+    ...emptyStateController,
+    composer: emptyStateComposer,
+  }), [emptyStateController, emptyStateComposer]);
+
+  const emptyStateContent = useMemo(() => {
+    if (!showEmptyState) {
+      return null;
+    }
+    if (renderEmptyState) {
+      return renderEmptyState(controllerWithComposer);
+    }
+    return (
+      <DefaultChatEmptyState controller={controllerWithComposer} options={emptyState} />
+    );
+  }, [showEmptyState, renderEmptyState, controllerWithComposer, emptyState]);
+
+  const shouldRenderFooterComposer = !showEmptyState || Boolean(renderEmptyState);
+  const footerHasContent = shouldRenderFooterComposer
+    || (models && models.length > 0)
+    || (voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript));
+
 
   // Render thinking indicator separately at the end
   const renderThinkingIndicator = () => {
@@ -621,6 +735,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
               </div>
             </div>
           )}
+          {emptyStateContent}
           {/* Render all messages and state */}
           {renderMessages()}
 
@@ -634,87 +749,61 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
         </div>
       </div>
 
-      {/* Sticky composer like ChatGPT */}
-      <footer className="
+      {footerHasContent ? (
+        <footer className="
   sticky bottom-0 inset-x-0 z-30
   border-t border-border
   bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60
   pb-[env(safe-area-inset-bottom)]
 ">
-        <div className="max-w-4xl mx-auto w-full px-4 py-3 sm:py-4 space-y-3">
+          <div className="max-w-4xl mx-auto w-full px-4 py-3 sm:py-4 space-y-3">
 
-          {/* Model selector (wraps on small screens) */}
-          {models && models.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-muted-foreground shrink-0">Model:</span>
-              <Select value={selectedModelId} onValueChange={onModelChange}>
-                <SelectTrigger className="w-64 max-w-full">
-                  <SelectValue placeholder="Select a model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+            {models && models.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground shrink-0">Model:</span>
+                <Select value={selectedModelId} onValueChange={onModelChange}>
+                  <SelectTrigger className="w-64 max-w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-          {/* Streaming voice indicator (non-overlapping, full-width) */}
-          {voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript) && (
-            <div className="p-3 bg-muted/50 border border-muted rounded-lg">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-sm font-medium text-muted-foreground">
-                  {isStreamingVoice ? 'Listening…' : 'Processing…'}
-                </span>
-                {isStreamingVoice && (
-                  <button
-                    onClick={stopStreamingVoice}
-                    className="ml-auto text-xs px-2 py-1 bg-destructive text-destructive-foreground rounded"
-                  >
-                    Stop
-                  </button>
+            {voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript) && (
+              <div className="p-3 bg-muted/50 border border-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {isStreamingVoice ? 'Listening…' : 'Processing…'}
+                  </span>
+                  {isStreamingVoice && (
+                    <button
+                      onClick={stopStreamingVoice}
+                      className="ml-auto text-xs px-2 py-1 bg-destructive text-destructive-foreground rounded"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+                {streamingTranscript && (
+                  <p className="mt-2 text-sm text-foreground font-mono break-words">
+                    “{streamingTranscript}”
+                  </p>
                 )}
               </div>
-              {streamingTranscript && (
-                <p className="mt-2 text-sm text-foreground font-mono break-words">
-                  “{streamingTranscript}”
-                </p>
-              )}
-            </div>
-          )}
+            )}
 
-          {/* Chat input (uses the non-overlapping layout from previous message) */}
-          <ChatInput
-            value={input}
-            onChange={setInput}
-            onSend={handleSendMessage}
-            onStop={handleStopStreaming}
-            placeholder={
-              isStreamingVoice
-                ? 'Voice mode active…'
-                : isStreaming
-                  ? 'Message will be queued…'
-                  : 'Type your message…'
-            }
-            disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
-            isStreaming={isStreaming}
-            attachedImages={attachedImages}
-            onRemoveImage={removeImage}
-            onAddImages={addImages}
-            voiceEnabled={voiceEnabled && !!speechToText}
-            onVoiceRecord={handleVoiceRecord}
-            onStartStreamingVoice={voiceEnabled && speechToText ? startStreamingVoice : undefined}
-            isStreamingVoice={isStreamingVoice}
-            useSpeechRecognition={useSpeechRecognition}
-            onSpeechTranscript={handleSpeechTranscript}
-            className="w-full"
-          />
-        </div>
-      </footer>
+            {shouldRenderFooterComposer ? footerComposer : null}
+          </div>
+        </footer>
+      ) : null}
 
 
     </div >
