@@ -1,7 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 interface TokenContextType {
   token: string | null
@@ -12,25 +11,60 @@ interface TokenContextType {
 const TokenContext = createContext<TokenContextType | undefined>(undefined)
 
 export function TokenProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null)
+  const [token, setTokenState] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    try {
+      return window.localStorage.getItem('auth_token')
+    } catch (err) {
+      console.warn('Failed to read auth token from storage', err)
+      return null
+    }
+  })
   const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
-  const location = useLocation()
 
-  // useEffect(() => {
-  //   const storedToken = localStorage.getItem('auth_token')
-  //   if (storedToken) {
-  //     setToken(storedToken)
-  //     // Redirect to /home/agents after successful login if not in iframe
-  //     if (location.pathname === '/auth/success' || location.pathname === '/') {
-  //       navigate('/home/agents')
-  //     }
-  //     return
-  //   }
-  //   navigate('/auth')
+  const setToken = useCallback(
+    (value: string | null) => {
+      if (typeof window !== 'undefined') {
+        try {
+          if (value) {
+            window.localStorage.setItem('auth_token', value)
+          } else {
+            window.localStorage.removeItem('auth_token')
+          }
+        } catch (err) {
+          console.warn('Failed to persist auth token', err)
+          setError('Failed to persist authentication token')
+        }
+      }
+      setTokenState(value)
+    },
+    [],
+  )
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    const storedToken = window.localStorage.getItem('auth_token')
+    if (storedToken && storedToken !== token) {
+      setTokenState(storedToken)
+    }
+  }, [token])
 
-  // }, [navigate, location.pathname])
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return () => {}
+    }
+    const listener = (event: StorageEvent) => {
+      if (event.key === 'auth_token') {
+        setTokenState(event.newValue)
+      }
+    }
+    window.addEventListener('storage', listener)
+    return () => window.removeEventListener('storage', listener)
+  }, [])
 
   if (error) {
     return (

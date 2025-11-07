@@ -16,10 +16,16 @@
       "types": "./packages/react/dist/index.d.ts",
       "import": "./packages/react/dist/index.js",
       "require": "./packages/react/dist/index.cjs"
+    },
+    "./fs": {
+      "types": "./packages/react/dist/index.d.ts",
+      "import": "./packages/react/dist/index.js",
+      "require": "./packages/react/dist/index.cjs"
     }
   },
   "files": [
     "packages/core/dist/",
+    "packages/fs/dist/",
     "packages/react/dist/",
     "README.md"
   ],
@@ -30,7 +36,8 @@
     "build:copy": "node scripts/build-copy.js",
     "dev": "turbo dev",
     "dev:maps": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/maps-demo",
-    "dev:distri": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./apps/distri-ui",
+    "dev:file": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/file-tools-demo",
+    "dev:distri": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./packages/fs --filter=./apps/distri-ui",
     "dev:tauri": "pnpm --filter \"./distri-ui\" dev:tauri",
     "lint": "turbo lint",
     "lint:fix": "turbo lint -- --fix",

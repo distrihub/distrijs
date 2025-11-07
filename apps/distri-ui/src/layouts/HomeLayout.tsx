@@ -25,6 +25,7 @@ import {
   CreditCard,
   User2,
   ChevronUp,
+  Sparkles,
 } from 'lucide-react';
 import Threads from '@/components/Threads';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -77,6 +78,15 @@ function HomeSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem className="mb-1">
+                <SidebarMenuButton
+                  isActive={isActiveRoute('/home/skills')}
+                  onClick={() => navigate('/home/skills')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Skills
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={isActiveRoute('/home/agents')}
                   onClick={() => navigate('/home/agents')}
