@@ -57,37 +57,37 @@ export function CampaignCreatePage() {
   }
 
   return (
-    <section className="p-10 space-y-8">
+    <section className="p-10 space-y-8 text-slate-900 dark:text-slate-100 transition-colors">
       <button
         type="button"
-        className="text-sm text-slate-400 hover:text-white"
+        className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
         onClick={() => navigate('/campaigns')}
       >
         ← Back to Campaigns
       </button>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-slate-600">New Campaign</p>
-          <h1 className="text-4xl font-semibold text-white mt-1">Design an Experiment</h1>
-          <p className="text-slate-400">Capture intent, review the generated plan, then launch.</p>
+          <p className="text-sm uppercase tracking-[0.35em] text-slate-500">New Campaign</p>
+          <h1 className="text-4xl font-semibold text-slate-900 dark:text-white mt-1">Design an Experiment</h1>
+          <p className="text-slate-600 dark:text-slate-400">Capture intent, review the generated plan, then launch.</p>
         </div>
         <Stepper steps={steps} activeIndex={step} />
       </div>
 
       {step === 0 && (
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 space-y-6">
-          <label className="text-sm text-slate-400 space-y-2 block">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 space-y-6 shadow-sm shadow-slate-200/70 dark:bg-slate-900/50 dark:border-slate-800 dark:shadow-black/20 transition-colors">
+          <label className="text-sm text-slate-600 dark:text-slate-400 space-y-2 block">
             Campaign Name
             <input
-              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white"
+              className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
           </label>
-          <label className="text-sm text-slate-400 space-y-2 block">
+          <label className="text-sm text-slate-600 dark:text-slate-400 space-y-2 block">
             Expected Outcome
             <textarea
-              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white min-h-[160px]"
+              className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-slate-900 min-h-[160px] dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
               placeholder="Describe what winning looks like..."
               value={outcome}
               onChange={(event) => setOutcome(event.target.value)}
@@ -96,7 +96,7 @@ export function CampaignCreatePage() {
           <div className="flex justify-end">
             <button
               type="button"
-              className="px-6 py-3 rounded-2xl bg-indigo-500 text-white"
+              className="px-6 py-3 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
               onClick={next}
             >
               Continue
@@ -108,33 +108,35 @@ export function CampaignCreatePage() {
       {step === 1 && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
-            <label className="text-sm text-slate-400 space-y-2">
+            <label className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
               Summary Markdown
               <textarea
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white min-h-[320px]"
+                className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-slate-900 min-h-[320px] dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
                 value={summary}
                 onChange={(event) => setSummary(event.target.value)}
               />
             </label>
-            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 overflow-y-auto">
-              <ReactMarkdown className="text-sm leading-relaxed text-slate-200">{summary}</ReactMarkdown>
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 overflow-y-auto shadow-sm shadow-slate-200/70 dark:bg-slate-900/50 dark:border-slate-800 dark:shadow-black/20">
+              <ReactMarkdown className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+                {summary}
+              </ReactMarkdown>
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            <label className="text-sm text-slate-400 space-y-2">
+            <label className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
               Start Date
               <input
                 type="date"
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white"
+                className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
               />
             </label>
-            <label className="text-sm text-slate-400 space-y-2">
+            <label className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
               End Date
               <input
                 type="date"
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white"
+                className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
                 value={endDate}
                 onChange={(event) => setEndDate(event.target.value)}
               />
@@ -143,14 +145,14 @@ export function CampaignCreatePage() {
           <div className="flex justify-between">
             <button
               type="button"
-              className="px-6 py-3 rounded-2xl border border-slate-800 text-slate-300"
+              className="px-6 py-3 rounded-2xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
               onClick={() => setStep(0)}
             >
               Back
             </button>
             <button
               type="button"
-              className="px-6 py-3 rounded-2xl bg-emerald-500 text-white"
+              className="px-6 py-3 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-400 transition-colors"
               onClick={save}
             >
               Approve & Save

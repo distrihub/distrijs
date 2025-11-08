@@ -8,13 +8,16 @@ import { MemoriesPage } from '@/pages/MemoriesPage'
 import { CampaignCreatePage } from '@/pages/CampaignCreatePage'
 import { BotTrainingPage } from '@/pages/BotTrainingPage'
 import { Toaster } from 'sonner'
+import { useTheme } from '@/providers/ThemeProvider'
 
 export default function App() {
+  const { theme } = useTheme()
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
+    <div className="min-h-screen flex bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <Toaster theme="dark" richColors />
+      <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-950 transition-colors">
+        <Toaster theme={theme} richColors />
         <Routes>
           <Route path="/" element={<Navigate to="/feed" replace />} />
           <Route path="/feed" element={<FeedPage />} />
