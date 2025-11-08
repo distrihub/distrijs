@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { BACKEND_URL } from '@/constants'
@@ -14,6 +13,7 @@ import { useInitialization } from '@/components/TokenProvider'
 import { toast } from 'sonner'
 import { Sparkles, Plus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { persistDesignerSeed } from '@/utils/designerSeed'
 
 interface SkillSummary {
   id: string
@@ -26,6 +26,19 @@ interface SkillSummary {
 
 const API_BASE_URL = `${BACKEND_URL}/api/v1`
 
+const deriveSkillName = (idea: string) => {
+  const cleaned = idea.replace(/[^a-zA-Z0-9\s_-]/g, ' ').trim()
+  if (!cleaned) {
+    return 'Untitled Skill'
+  }
+  const words = cleaned.split(/\s+/).slice(0, 5)
+  const titled = words
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+    .trim()
+  return titled.slice(0, 60) || 'Untitled Skill'
+}
+
 const SkillsPage = () => {
   const navigate = useNavigate()
   const { token } = useInitialization()
@@ -33,8 +46,7 @@ const SkillsPage = () => {
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [newSkillName, setNewSkillName] = useState('')
-  const [newSkillDescription, setNewSkillDescription] = useState('')
+  const [skillIdea, setSkillIdea] = useState('')
 
   const headers = useMemo(() => {
     const base: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -66,17 +78,18 @@ const SkillsPage = () => {
   }, [headers])
 
   const handleCreateSkill = async () => {
-    const name = newSkillName.trim()
-    if (!name) {
-      toast.error('Please provide a name for the new skill')
+    const idea = skillIdea.trim()
+    if (!idea) {
+      toast.error('Tell us what skill you want to build')
       return
     }
+    const name = deriveSkillName(idea)
     setCreating(true)
     try {
       const response = await fetch(`${API_BASE_URL}/skills`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ name, description: newSkillDescription.trim() }),
+        body: JSON.stringify({ name, description: idea }),
       })
       if (!response.ok) {
         const message = await response.text()
@@ -85,8 +98,8 @@ const SkillsPage = () => {
       const skill = await response.json()
       toast.success('Skill created')
       setDialogOpen(false)
-      setNewSkillName('')
-      setNewSkillDescription('')
+      setSkillIdea('')
+      persistDesignerSeed(skill.id, idea)
       navigate(`/home/skills/${encodeURIComponent(skill.id)}`)
     } catch (err) {
       console.error(err)
@@ -175,22 +188,17 @@ const SkillsPage = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="new-skill-name">Name</Label>
-              <Input
-                id="new-skill-name"
-                value={newSkillName}
-                placeholder="Customer onboarding skill"
-                onChange={(event) => setNewSkillName(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-skill-description">Description</Label>
+              <Label htmlFor="skill-idea">What skill are you trying to build?</Label>
               <Textarea
-                id="new-skill-description"
-                value={newSkillDescription}
-                onChange={(event) => setNewSkillDescription(event.target.value)}
+                id="skill-idea"
+                value={skillIdea}
+                onChange={(event) => setSkillIdea(event.target.value)}
                 rows={4}
+                placeholder="e.g. A summarizer that turns support tickets into test plans"
               />
+              <p className="text-xs text-muted-foreground">
+                We'll send this directly to the designer agent so it can rename files, scaffold the workspace, and prep tests.
+              </p>
             </div>
           </div>
           <DialogFooter>

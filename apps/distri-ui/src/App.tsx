@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { DistriProvider, ThemeProvider } from '@distri/react';
 import { TokenProvider, useInitialization } from '@/components/TokenProvider';
 import { ThreadProvider } from '@/components/ThreadContext';
@@ -47,22 +47,24 @@ function App() {
 
             {/* Protected routes with layout */}
             <Route path="/home" element={
-
               <TokenProvider>
                 <AccountProvider>
-                  <WrappedHomeLayout />
+                  <Outlet />
                 </AccountProvider>
               </TokenProvider>
-
             }>
-              <Route index element={<Navigate to="/home/skills" replace />} />
-              <Route path="skills" element={<SkillsPage />} />
-              <Route path="skills/:skillId" element={<SkillDesignerPage />} />
-              <Route path="agents" element={<AgentsPage />} />
-              <Route path="agents/:agentId" element={<AgentDetailsPage />} />
-              <Route path="menu/account" element={<AccountPage />} />
-              <Route path="menu/account/pricing" element={<PricingPage />} />
-              <Route path="menu/help" element={<HelpPage />} />
+              <Route element={<WrappedHomeLayout />}>
+                <Route index element={<Navigate to="/home/skills" replace />} />
+                <Route path="skills" element={<SkillsPage />} />
+                <Route path="agents" element={<AgentsPage />} />
+                <Route path="agents/:agentId" element={<AgentDetailsPage />} />
+                <Route path="menu/account" element={<AccountPage />} />
+                <Route path="menu/account/pricing" element={<PricingPage />} />
+                <Route path="menu/help" element={<HelpPage />} />
+              </Route>
+              <Route element={<WrappedHomeLayout hideSidebar />}>
+                <Route path="skills/:skillId" element={<SkillDesignerPage />} />
+              </Route>
             </Route>
 
             {/* Payment routes */}
@@ -79,7 +81,11 @@ function App() {
   );
 }
 
-const WrappedHomeLayout = () => {
+interface WrappedHomeLayoutProps {
+  hideSidebar?: boolean;
+}
+
+const WrappedHomeLayout = ({ hideSidebar = false }: WrappedHomeLayoutProps) => {
   const { token } = useInitialization()
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
@@ -105,7 +111,7 @@ const WrappedHomeLayout = () => {
         },
       }}
     >
-      <HomeLayout />
+      <HomeLayout hideSidebar={hideSidebar} />
     </DistriProvider>
   )
 }
