@@ -166,7 +166,11 @@ function HomeSidebar() {
   );
 }
 
-export default function HomeLayout() {
+interface HomeLayoutProps {
+  hideSidebar?: boolean;
+}
+
+export default function HomeLayout({ hideSidebar = false }: HomeLayoutProps) {
   const [defaultOpen, setDefaultOpen] = useState(true);
 
   // Load sidebar state from localStorage
@@ -179,22 +183,20 @@ export default function HomeLayout() {
 
   return (
     <div className="h-screen">
-
       <SidebarProvider
-        defaultOpen={defaultOpen}
+        defaultOpen={hideSidebar ? false : defaultOpen}
         style={{
           "--sidebar-width": "20rem",
           "--sidebar-width-mobile": "18rem",
         } as React.CSSProperties}
       >
-        <HomeSidebar />
-        <SidebarInset>
-          <main className="flex-1 overflow-hidden">
+        {hideSidebar ? null : <HomeSidebar />}
+        <SidebarInset className={hideSidebar ? 'pl-0' : undefined}>
+          <main className="flex-1 overflow-hidden bg-background">
             <Outlet />
           </main>
         </SidebarInset>
       </SidebarProvider>
-
     </div>
   );
 }

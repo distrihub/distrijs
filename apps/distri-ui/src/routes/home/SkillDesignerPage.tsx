@@ -22,9 +22,10 @@ import { Badge } from '@/components/ui/badge'
 import { BACKEND_URL } from '@/constants'
 import { useInitialization } from '@/components/TokenProvider'
 import { toast } from 'sonner'
-import { Save, Sparkles } from 'lucide-react'
+import { ArrowLeft, Save, Sparkles } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { uuidv4 } from '@distri/core'
+import { consumeDesignerSeed } from '@/utils/designerSeed'
 
 const API_BASE_URL = `${BACKEND_URL}/api/v1`
 const WORKSPACE_PREFIX = 'distri-skill'
@@ -197,6 +198,7 @@ const SkillDesignerPage = () => {
   const [toolDescription, setToolDescription] = useState('Entry point for this skill')
   const [scriptPath, setScriptPath] = useState(DEFAULT_SCRIPT_PATH)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+  const [designerSeedPrompt, setDesignerSeedPrompt] = useState<string | null>(null)
 
   const projectId = useMemo(
     () => `${WORKSPACE_PREFIX}-${skillId ?? 'new'}`,
@@ -211,6 +213,75 @@ const SkillDesignerPage = () => {
     () => currentThreadId(skillId ?? 'new'),
     [skillId],
   )
+  const missingSkillId = !skillId
+
+  useEffect(() => {
+    if (!skillId) {
+      setDesignerSeedPrompt(null)
+      return
+    }
+    const seed = consumeDesignerSeed(skillId)
+    setDesignerSeedPrompt(seed)
+  }, [skillId])
+
+  const designerKickoffMessage = useMemo(() => {
+    const prompt = designerSeedPrompt?.trim()
+    if (!prompt) return undefined
+    return `${prompt}
+
+Please rename the workspace files to reflect this skill, scaffold the initial scripts/metadata/tests, and confirm when everything is ready for execution.`
+  }, [designerSeedPrompt])
+
+  const testingDefaultPayload = useMemo(() => {
+    const label = (skillName || 'New skill').trim() || 'New skill'
+    return JSON.stringify(
+      {
+        skill: label,
+        input: {
+          example: `Describe the happy-path scenario for ${label}`,
+        },
+      },
+      null,
+      2,
+    )
+  }, [skillName])
+
+  const handleGenerateTestPayload = useCallback(async () => {
+    const label = (skillName || 'New skill').trim() || 'New skill'
+    return JSON.stringify(
+      {
+        skill: label,
+        description: description || 'Describe what this skill should accomplish.',
+        parameters: {
+          sample_input: 'Replace with the payload you want to validate.',
+          generated_at: new Date().toISOString(),
+        },
+      },
+      null,
+      2,
+    )
+  }, [description, skillName])
+
+  const handleRunTestPayload = useCallback(async (payload: string) => {
+    let parsed: unknown
+    try {
+      parsed = payload ? JSON.parse(payload) : {}
+    } catch (error) {
+      throw new Error('Testing parameters must be valid JSON.')
+    }
+    return JSON.stringify(
+      {
+        status: 'queued',
+        received: parsed,
+        note: missingSkillId
+          ? 'Save the skill once to register it before executing tests against the backend.'
+          : 'Connect the workspace to the Distri runtime to execute the payload against the skill.',
+        timestamp: new Date().toISOString(),
+      },
+      null,
+      2,
+    )
+  }, [missingSkillId])
 
   const previewRenderer: PreviewRenderer = useCallback(({ path, content }) => {
     if (path.toLowerCase().endsWith('.md')) {
@@ -493,8 +564,6 @@ const SkillDesignerPage = () => {
     return []
   }, [skill])
 
-  const missingSkillId = !skillId
-
   if (agentLoading) {
     return (
       <div className="flex h-full flex-col gap-6 p-6">
@@ -544,12 +613,12 @@ const SkillDesignerPage = () => {
     <div className="flex h-full flex-col">
       <Header
         title={skillName || 'Skill Designer'}
-        subtitle={
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" />
-            Pair the Scripter agent with the workspace to build new skills.
-          </span>
+        leftElement={
+          <Button variant="ghost" size="sm" className="gap-2 text-xs text-muted-foreground" onClick={() => navigate('/home/skills')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
         }
+
         rightElement={
           <div className="flex items-center gap-2">
             {lastSavedLabel ? (
@@ -569,15 +638,14 @@ const SkillDesignerPage = () => {
       />
 
       {missingSkillId ? (
-        <div className="mx-4 mb-3 rounded-lg border border-dashed border-yellow-500/50 bg-yellow-500/10 p-3 text-xs text-yellow-900">
+        <div className="mx-4 mb-3 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-900 dark:text-amber-100">
           <p>
             This workspace is not yet registered in the catalog. Save it once to create a skill ID and enable metadata editing.
           </p>
         </div>
       ) : null}
 
-      <div className="flex-1 overflow-hidden px-4 pb-6 h-full">
-
+      <div className="flex-1 h-full overflow-hidden px-4 pb-6">
         <FileWorkspaceWithChat
           projectId={projectId}
           filesystem={filesystem}
@@ -587,15 +655,23 @@ const SkillDesignerPage = () => {
             await filesystem.writeFile(tab.path, tab.content)
           }}
           defaultFilePath={scriptPath}
+          testing={{
+            defaultPayload: testingDefaultPayload,
+            title: 'Testing',
+            description: 'Parameters (JSON)',
+            resultPlaceholder: 'Run a test to see the latest output.',
+            onGenerate: handleGenerateTestPayload,
+            onRun: handleRunTestPayload,
+          }}
 
           chat={{
             agent,
             threadId,
             title: 'Scripter',
+            initialMessage: designerKickoffMessage,
           }}
           height="calc(100vh - 200px)"
         />
-
       </div>
 
       <Dialog open={isMetadataDialogOpen} onOpenChange={setMetadataDialogOpen}>

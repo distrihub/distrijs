@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Agent } from '@distri/core';
-import { Chat, type ChatProps, type DistriAnyTool } from '@distri/react';
+import { Chat, type ChatInstance, type ChatProps, type DistriAnyTool } from '@distri/react';
+import { Files, MessageSquare } from 'lucide-react';
 
 import { createFileWorkspaceStore, type FileWorkspaceStore } from '../store/fileStore';
 import { IndexedDbFilesystem } from '../storage/indexedDbFilesystem';
@@ -16,6 +17,7 @@ export interface WorkspaceChatConfig {
   agent: Agent;
   threadId: string;
   title?: string;
+  initialMessage?: string;
   chatProps?: Partial<Omit<ChatProps, 'agent' | 'threadId' | 'externalTools'>>;
 }
 
@@ -34,9 +36,13 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
   className,
   ...workspaceProps
 }) => {
-  const { projectId } = workspaceProps;
-  const providedStore = workspaceProps.store;
-  const providedFilesystem = workspaceProps.filesystem;
+  const {
+    projectId,
+    store: providedStore,
+    filesystem: providedFilesystem,
+    height: providedHeight,
+    ...restWorkspaceProps
+  } = workspaceProps;
 
   const filesystem = useMemo(
     () => providedFilesystem ?? IndexedDbFilesystem.forProject(projectId),
@@ -84,37 +90,100 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
     [filesystemTools, additionalTools, uiToolList],
   );
 
+  const normalizedInitialMessage = useMemo(() => {
+    const trimmed = chat.initialMessage?.trim();
+    return trimmed ? trimmed : null;
+  }, [chat.initialMessage]);
 
+  const hasSeededInitialMessage = useRef(false);
 
-  return (
-    <div
-      className={cls(
-        'flex h-full flex-row',
-        className,
-      )}
-    >
+  useEffect(() => {
+    hasSeededInitialMessage.current = false;
+  }, [chat.threadId, normalizedInitialMessage]);
 
-      <FileWorkspace
-        {...workspaceProps}
-        filesystem={filesystem}
-        store={store}
-        height="100%"
-        className={cls('border-none shadow-none')}
-      />
+  const handleChatInstanceReady = useCallback(
+    (instance: ChatInstance) => {
+      chat.chatProps?.onChatInstanceReady?.(instance);
 
+      if (!normalizedInitialMessage || hasSeededInitialMessage.current) {
+        return;
+      }
 
+      hasSeededInitialMessage.current = true;
+      void instance.sendMessage(normalizedInitialMessage).catch((error) => {
+        console.warn('Failed to send initial chat message', error);
+      });
+    },
+    [chat.chatProps, normalizedInitialMessage],
+  );
 
+  const mergedChatProps = useMemo(
+    () => ({
+      ...(chat.chatProps ?? {}),
+      onChatInstanceReady: handleChatInstanceReady,
+    }),
+    [chat.chatProps, handleChatInstanceReady],
+  );
 
+  const layoutHeight = providedHeight ?? '100%';
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'files' | 'chat'>('files');
+
+  const chatPanel = (
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-2 text-foreground shadow-sm">
       <Chat
         agent={chat.agent}
         threadId={chat.threadId}
         externalTools={combinedTools}
-        {...(chat.chatProps ?? {})}
+        {...mergedChatProps}
       />
-
-
     </div>
+  );
 
+  const sidebarView = activeSidebarTab === 'chat' ? 'custom' : 'explorer';
+  const sidebarCustom = activeSidebarTab === 'chat' ? chatPanel : undefined;
+
+  return (
+    <div
+      className={cls(
+        'relative flex h-full w-full overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-lg',
+        className,
+      )}
+    >
+      <div className="flex w-full gap-4">
+        <div className="flex w-14 flex-col items-center gap-2 rounded-2xl border border-border/80 bg-muted/20 p-4 shadow-sm dark:bg-muted/30">
+          {[
+            { id: 'files' as const, icon: Files, label: 'Project files' },
+            { id: 'chat' as const, icon: MessageSquare, label: 'Chat' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveSidebarTab(item.id)}
+              className={cls(
+                'flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:text-foreground',
+                activeSidebarTab === item.id && 'bg-primary/10 text-primary'
+              )}
+              aria-label={item.label}
+            >
+              <item.icon className="h-5 w-5" />
+            </button>
+          ))}
+        </div>
+
+        <div className="flex min-w-0 flex-1 overflow-hidden rounded-2xl bg-transparent">
+          <FileWorkspace
+            {...restWorkspaceProps}
+            projectId={projectId}
+            filesystem={filesystem}
+            store={store}
+            height={layoutHeight}
+            className="h-full"
+            sidebarView={sidebarView}
+            sidebarCustom={sidebarCustom}
+          />
+        </div>
+      </div>
+    </div>
   );
 };
 
