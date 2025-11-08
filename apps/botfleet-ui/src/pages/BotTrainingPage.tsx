@@ -94,60 +94,65 @@ export function BotTrainingPage() {
 
   if (!bot) {
     return (
-      <section className="p-10 text-slate-400">
+      <section className="p-10 text-slate-500 dark:text-slate-400">
         Loading bot…
       </section>
     )
   }
 
   return (
-    <section className="p-10 space-y-8">
+    <section className="p-10 space-y-8 text-slate-900 dark:text-slate-100 transition-colors">
       <header className="flex items-center justify-between">
         <div>
           <button
             type="button"
-            className="text-sm text-slate-400 hover:text-white"
+            className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
             onClick={() => navigate('/bots')}
           >
             ← Back to Bots
           </button>
-          <h1 className="text-4xl font-semibold text-white mt-2">Train {bot.name}</h1>
-          <p className="text-slate-400">Simulate behaviors and capture learnings.</p>
+          <h1 className="text-4xl font-semibold text-slate-900 dark:text-white mt-2">Train {bot.name}</h1>
+          <p className="text-slate-600 dark:text-slate-400">Simulate behaviors and capture learnings.</p>
         </div>
       </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 space-y-5">
           {feed.map((action) => (
-            <article key={action.id} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-3">
+            <article
+              key={action.id}
+              className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-sm shadow-slate-200/70 dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-black/20 transition-colors"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500 uppercase tracking-[0.3em]">{action.action_type}</p>
-                  <h3 className="text-white font-semibold">{action.summary}</h3>
+                  <p className="text-sm text-slate-500 uppercase tracking-[0.3em] dark:text-slate-400">
+                    {action.action_type}
+                  </p>
+                  <h3 className="text-slate-900 dark:text-white font-semibold">{action.summary}</h3>
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    className="px-3 py-2 rounded-xl border border-slate-800 text-slate-300"
+                    className="px-3 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
                     onClick={() => approve(action.id, 'rejected')}
                   >
                     <X className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                    className="px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30 transition-colors"
                     onClick={() => approve(action.id, 'approved')}
                   >
                     <Check className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-slate-300 whitespace-pre-wrap text-sm">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-700 whitespace-pre-wrap text-sm dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300">
                 {typeof action.payload?.preview === 'string' ? action.payload.preview : action.summary}
               </div>
               <button
                 type="button"
-                className="text-xs text-slate-400 underline"
+                className="text-xs text-slate-600 underline dark:text-slate-400"
                 onClick={() =>
                   setNote((prev) => ({
                     ...prev,
@@ -165,30 +170,30 @@ export function BotTrainingPage() {
             </article>
           ))}
           {!feed.length && (
-            <div className="text-slate-500 border border-dashed border-slate-800 rounded-2xl p-8 text-center">
+            <div className="text-slate-600 border border-dashed border-slate-300 rounded-2xl p-8 text-center dark:text-slate-500 dark:border-slate-800">
               No pending actions right now.
             </div>
           )}
         </div>
 
         <aside className="space-y-6">
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <h3 className="text-white font-semibold">Log Insight</h3>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-sm shadow-slate-200/70 dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-black/20 transition-colors">
+            <h3 className="text-slate-900 dark:text-white font-semibold">Log Insight</h3>
             <input
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-sm dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
               placeholder="Title"
               value={note.title}
               onChange={(event) => setNote({ ...note, title: event.target.value })}
             />
             <textarea
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm min-h-[160px]"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-sm min-h-[160px] dark:bg-slate-950 dark:border-slate-800 dark:text-white transition-colors"
               placeholder="Markdown note"
               value={note.content}
               onChange={(event) => setNote({ ...note, content: event.target.value })}
             />
             <button
               type="button"
-              className="w-full h-10 rounded-xl bg-indigo-500 text-white text-sm font-semibold"
+              className="w-full h-10 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
               onClick={logMemory}
             >
               Save to Memories
@@ -197,16 +202,19 @@ export function BotTrainingPage() {
 
           <div className="space-y-3">
             {memories.map((memory) => (
-              <article key={memory.id} className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-2 text-sm">
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Memory</p>
-                <h4 className="text-white font-semibold">{memory.title}</h4>
-                <div className="text-slate-300">
+              <article
+                key={memory.id}
+                className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 text-sm shadow-sm shadow-slate-200/70 dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-black/20 transition-colors"
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Memory</p>
+                <h4 className="text-slate-900 dark:text-white font-semibold">{memory.title}</h4>
+                <div className="text-slate-700 dark:text-slate-300">
                   <ReactMarkdown>{memory.content}</ReactMarkdown>
                 </div>
               </article>
             ))}
             {!memories.length && (
-              <div className="text-center text-slate-500 border border-dashed border-slate-800 rounded-2xl p-6 text-sm">
+              <div className="text-center text-slate-600 border border-dashed border-slate-300 rounded-2xl p-6 text-sm dark:text-slate-500 dark:border-slate-800">
                 No memories yet.
               </div>
             )}
