@@ -25,8 +25,6 @@ import {
   Folder,
   FlaskConical,
   MoreVertical,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   RefreshCw,
   Save,
@@ -100,7 +98,6 @@ export interface FileWorkspaceProps {
   filesystem?: ProjectFilesystem;
   selectionMode?: SelectionMode;
   className?: string;
-  height?: number | string;
   defaultFilePath?: string;
   store?: FileWorkspaceStore;
   testing?: TestingPanelConfig;
@@ -116,7 +113,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   filesystem,
   selectionMode = 'multiple',
   className,
-  height = '640px',
   defaultFilePath,
   store: externalStore,
   testing,
@@ -193,7 +189,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   const tabs = useFileWorkspaceStore(store, (state) => state.tabs);
   const tree = useFileWorkspaceStore(store, (state) => state.tree);
   const activePath = useFileWorkspaceStore(store, (state) => state.activePath);
-  const isLoading = useFileWorkspaceStore(store, (state) => state.isLoading);
   const error = useFileWorkspaceStore(store, (state) => state.error);
   const pendingSaves = useFileWorkspaceStore(store, (state) => state.pendingSaves);
 
@@ -208,7 +203,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   const refresh = useFileWorkspaceStore(store, (state) => state.refresh);
 
   const isBrowser = typeof window !== 'undefined';
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['']));
   const [newEntryOpen, setNewEntryOpen] = useState(false);
   const [newEntryType, setNewEntryType] = useState<'file' | 'directory'>('file');
@@ -223,7 +217,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   const resultPlaceholder = testing?.resultPlaceholder ?? 'No tests have been executed yet.';
   const hasTestingPanel = Boolean(testing);
   const isExplorerSidebar = sidebarViewProp === 'explorer';
-  const effectiveSidebarCollapsed = isExplorerSidebar ? sidebarCollapsed : false;
 
   useEffect(() => {
     let cancelled = false;
@@ -384,8 +377,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
     },
     [deleteEntry, activeTab?.path, closeTab],
   );
-
-  const layoutHeight = typeof height === 'number' ? `${height}px` : height;
   const editorTheme = resolvedTheme === 'light' ? 'vs-light' : 'vs-dark';
 
   return (
@@ -401,9 +392,9 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
           <aside
             className={cls(
               'flex h-full flex-col border-r border-border/80 bg-muted/10 transition-all duration-200 ease-in-out dark:bg-muted/20',
-              effectiveSidebarCollapsed ? 'w-0 min-w-0 -translate-x-full opacity-0' : 'w-64'
+              'w-64'
             )}
-            aria-hidden={effectiveSidebarCollapsed && isExplorerSidebar}
+            aria-hidden={isExplorerSidebar}
           >
             {isExplorerSidebar ? (
               <>
