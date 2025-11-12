@@ -38,8 +38,6 @@ const getFriendlyToolMessage = (toolName: string, input: any): string => {
       return `Planning sheet updates`;
     case 'apply_blink_ops':
       return `Applying sheet updates`;
-    case 'final':
-      return `Finalizing`;
     default:
       return `Executing ${toolName}`;
   }
@@ -184,7 +182,6 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
           return null;
         };
 
-        // Hide 'final' tool calls as they're internal responses
         if (toolCall.tool_name === 'final') {
           return null;
         }

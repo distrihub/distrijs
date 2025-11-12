@@ -79,11 +79,11 @@ function HomeSidebar() {
             <SidebarMenu>
               <SidebarMenuItem className="mb-1">
                 <SidebarMenuButton
-                  isActive={isActiveRoute('/home/skills')}
-                  onClick={() => navigate('/home/skills')}
+                  isActive={isActiveRoute('/home/files')}
+                  onClick={() => navigate('/home/files')}
                 >
                   <Sparkles className="h-4 w-4" />
-                  Skills
+                  Files
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
