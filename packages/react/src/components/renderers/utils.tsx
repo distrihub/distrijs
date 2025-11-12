@@ -1,4 +1,4 @@
-import { DistriMessage, DistriEvent, ImagePart } from '@distri/core';
+import { DistriMessage, DistriEvent, ImagePart, DistriPart } from '@distri/core';
 
 export interface ExtractedContent {
   text: string;
@@ -34,6 +34,25 @@ export function extractContent(message: DistriMessage | DistriEvent): ExtractedC
     imageParts = distriMessage.parts
       ?.filter(p => p.part_type === 'image') as ImagePart[] || [];
 
+    // Fallback: render structured parts (tool calls/results/data) when no text exists
+    if (!text) {
+      const structuredParts = distriMessage.parts?.filter(
+        part => part.part_type !== 'text' && part.part_type !== 'image'
+      ) || [];
+
+      if (structuredParts.length > 0) {
+        text = structuredParts
+          .map(part => formatStructuredPart(part))
+          .filter(Boolean)
+          .join('\n\n');
+
+        if (text) {
+          hasMarkdown = true;
+          hasCode = true;
+        }
+      }
+    }
+
     // Check for rich content in text
     hasMarkdown = /[*_`#[\]()>]/.test(text);
     hasCode = /```|`/.test(text);
@@ -55,3 +74,15 @@ export function extractContent(message: DistriMessage | DistriEvent): ExtractedC
   };
 }
 
+function formatStructuredPart(part: DistriPart): string {
+  switch (part.part_type) {
+    case 'tool_call':
+      return `**Tool Call: ${part.data?.name || 'unknown'}**\n\n\`\`\`json\n${JSON.stringify(part.data, null, 2)}\n\`\`\``;
+    case 'tool_result':
+      return `**Tool Result**\n\n\`\`\`json\n${JSON.stringify(part.data, null, 2)}\n\`\`\``;
+    case 'data':
+      return `\`\`\`json\n${JSON.stringify(part.data, null, 2)}\n\`\`\``;
+    default:
+      return `\`\`\`json\n${JSON.stringify(part, null, 2)}\n\`\`\``;
+  }
+}

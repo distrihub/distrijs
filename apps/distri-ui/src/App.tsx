@@ -17,8 +17,7 @@ import { BACKEND_URL } from './constants';
 import { AccountProvider } from './components/AccountProvider';
 import AgentsPage from './routes/home/AgentsPage';
 import AgentDetailsPage from './routes/home/AgentDetailsPage';
-import SkillsPage from './routes/home/SkillsPage';
-import SkillDesignerPage from './routes/home/SkillDesignerPage';
+import FilesPage from './routes/home/FilesPage';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -54,16 +53,13 @@ function App() {
               </TokenProvider>
             }>
               <Route element={<WrappedHomeLayout />}>
-                <Route index element={<Navigate to="/home/skills" replace />} />
-                <Route path="skills" element={<SkillsPage />} />
+                <Route index element={<Navigate to="/home/files" replace />} />
+                <Route path="files" element={<FilesPage />} />
                 <Route path="agents" element={<AgentsPage />} />
                 <Route path="agents/:agentId" element={<AgentDetailsPage />} />
                 <Route path="menu/account" element={<AccountPage />} />
                 <Route path="menu/account/pricing" element={<PricingPage />} />
                 <Route path="menu/help" element={<HelpPage />} />
-              </Route>
-              <Route element={<WrappedHomeLayout hideSidebar />}>
-                <Route path="skills/:skillId" element={<SkillDesignerPage />} />
               </Route>
             </Route>
 
