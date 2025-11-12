@@ -40,7 +40,6 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
     projectId,
     store: providedStore,
     filesystem: providedFilesystem,
-    height: providedHeight,
     ...restWorkspaceProps
   } = workspaceProps;
 
@@ -110,7 +109,7 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
       }
 
       hasSeededInitialMessage.current = true;
-      void instance.sendMessage(normalizedInitialMessage).catch((error) => {
+      void instance.sendMessage(normalizedInitialMessage).catch((error: any) => {
         console.warn('Failed to send initial chat message', error);
       });
     },
@@ -124,8 +123,6 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
     }),
     [chat.chatProps, handleChatInstanceReady],
   );
-
-  const layoutHeight = providedHeight ?? '100%';
   const [activeSidebarTab, setActiveSidebarTab] = useState<'files' | 'chat'>('files');
 
   const chatPanel = (
@@ -176,7 +173,6 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
             projectId={projectId}
             filesystem={filesystem}
             store={store}
-            height={layoutHeight}
             className="h-full"
             sidebarView={sidebarView}
             sidebarCustom={sidebarCustom}
