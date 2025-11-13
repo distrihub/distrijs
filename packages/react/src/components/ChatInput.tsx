@@ -68,7 +68,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const codeMirrorRef = useRef<any>(null);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
-  const handleSendRef = useRef<() => void>(() => {});
+  const handleSendRef = useRef<() => void>(() => { });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -548,12 +548,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </div>
           </div>
         </div>
-
-        {useSpeechRecognition && (
-          <div className="mt-2 text-xs text-muted-foreground text-center">
-            Dictation mode active. Press enter to send.
-          </div>
-        )}
 
         <input
           ref={fileInputRef}
