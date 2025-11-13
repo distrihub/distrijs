@@ -59,7 +59,7 @@ export class Agent {
   }
 
   get agentType(): string | undefined {
-    return this.agentDefinition.agentType;
+    return this.agentDefinition.agent_type ?? this.agentDefinition.agentType;
   }
 
   get iconUrl(): string | undefined {

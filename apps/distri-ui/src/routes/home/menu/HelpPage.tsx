@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/ui/header'
-import { HelpCircle, Book, MessageCircle, Mail, ArrowLeft } from 'lucide-react'
+import { Book, MessageCircle, Mail, ArrowLeft } from 'lucide-react'
 
 export default function HelpPage() {
   const navigate = useNavigate()

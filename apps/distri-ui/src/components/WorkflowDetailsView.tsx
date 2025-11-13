@@ -8,7 +8,8 @@ import {
   getFirstStepType,
   SequentialWorkflowAgent,
   convertBackendDagToWorkflowDAG,
-  BackendDag
+  BackendDag,
+  WorkflowDAG
 } from '@/utils/workflowUtils'
 
 interface WorkflowDetailsViewProps {
@@ -16,7 +17,7 @@ interface WorkflowDetailsViewProps {
 }
 
 export const WorkflowDetailsView = ({ agent }: WorkflowDetailsViewProps) => {
-  const [agentDag, setAgentDag] = useState(null)
+  const [agentDag, setAgentDag] = useState<WorkflowDAG | null>(null)
 
   // Fetch agent DAG for workflow agent types
   useEffect(() => {

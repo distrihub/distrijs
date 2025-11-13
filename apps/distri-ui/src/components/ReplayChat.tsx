@@ -200,6 +200,7 @@ export const ReplayChat = (options: ReplayChatOptions) => {
           agent={options.agent}
           threadId={threadId}
           initialMessages={filteredMessages}
+          initialInput={options.initialInput}
           theme="auto"
           voiceEnabled={true}
           useSpeechRecognition={true}

@@ -218,7 +218,7 @@ class DatabaseManager {
 
       // Clear metadata
       const metadataStore = transaction.objectStore('metadata');
-      const metadataRequest = metadataStore.delete(spreadsheetId);
+      metadataStore.delete(spreadsheetId);
 
       // Clear sheet data
       const sheetDataStore = transaction.objectStore('sheetData');

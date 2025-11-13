@@ -30,15 +30,3 @@ export interface Enrichment {
   is_draft: boolean
   created_at: string
 }
-
-
-function uuidv4() {
-  if (typeof crypto?.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 8);
-    return v.toString(16);
-  });
-}

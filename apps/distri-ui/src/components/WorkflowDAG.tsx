@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Play, Square, Diamond, Repeat, GitBranch, Zap, Settings } from 'lucide-react'
-import { WorkflowDAG, WorkflowNode } from '@/utils/workflowUtils'
+import { WorkflowDAG, WorkflowEdge, WorkflowNode } from '@/utils/workflowUtils'
 
 interface WorkflowDAGProps {
   dag: WorkflowDAG
@@ -89,7 +89,7 @@ export const WorkflowDAGComponent = ({ dag, className }: WorkflowDAGProps) => {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const nodes: Node[] = dag.nodes.map((node: WorkflowNode) => {
       const position = node.position ? { x: node.position[0], y: node.position[1] } : { x: 0, y: 0 }
-      
+
       let subtitle = ''
       if (node.node_type.type === 'AgentCall' && node.node_type.function_name) {
         subtitle = `Agent: ${node.node_type.function_name}`
@@ -134,8 +134,8 @@ export const WorkflowDAGComponent = ({ dag, className }: WorkflowDAGProps) => {
     return { nodes, edges }
   }, [dag])
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const [nodes, , onNodesChange] = useNodesState(initialNodes)
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     console.log('Node clicked:', node)
@@ -163,9 +163,9 @@ export const WorkflowDAGComponent = ({ dag, className }: WorkflowDAGProps) => {
         maxZoom={4}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       >
-        <Background 
-          color="hsl(var(--muted-foreground) / 0.2)" 
-          gap={16} 
+        <Background
+          color="hsl(var(--muted-foreground) / 0.2)"
+          gap={16}
         />
         <Controls />
       </ReactFlow>

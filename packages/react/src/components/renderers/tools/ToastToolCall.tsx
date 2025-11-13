@@ -48,7 +48,7 @@ export const ToastToolCall: React.FC<UiToolProps> = ({
       );
       completeTool(result);
     }, duration);
-  }, [message, type, completeTool]);
+  }, [completeTool, duration, message, method, toolCall.tool_call_id, toolCall.tool_name]);
 
   return (<></>);
 };

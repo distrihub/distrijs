@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { Wrench, CheckCircle, XCircle } from 'lucide-react';
@@ -26,17 +26,17 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
   const hasTriggeredRef = useRef(false);
 
   // Get approval preferences from localStorage
-  const getApprovalPreferences = (): Record<string, boolean> => {
+  const getApprovalPreferences = useCallback((): Record<string, boolean> => {
     try {
       const stored = localStorage.getItem('distri-tool-preferences');
       return stored ? JSON.parse(stored) : {};
     } catch {
       return {};
     }
-  };
+  }, []);
 
   // Save approval preferences to localStorage
-  const saveApprovalPreference = (toolName: string, approved: boolean) => {
+  const saveApprovalPreference = useCallback((toolName: string, approved: boolean) => {
     try {
       const preferences = getApprovalPreferences();
       preferences[toolName] = approved;
@@ -44,7 +44,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     } catch {
       // Silently fail if localStorage is unavailable
     }
-  };
+  }, [getApprovalPreferences]);
 
   // Check for auto-approval preference - but only for live stream tool calls
   useEffect(() => {
@@ -64,7 +64,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     } else {
       handleCancel();
     }
-  }, [toolName, isLiveStream]);
+  }, [getApprovalPreferences, handleCancel, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
 
   // Auto-execute if enabled - but only for live stream tool calls and if no user preference exists
   useEffect(() => {
@@ -81,9 +81,9 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
     hasTriggeredRef.current = true;
     handleExecute();
-  }, [autoExecute, hasExecuted, isProcessing, toolName, isLiveStream]);
+  }, [autoExecute, getApprovalPreferences, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
 
-  const handleExecute = async () => {
+  const handleExecute = useCallback(async () => {
     if (isProcessing || hasExecuted) return;
     if (!hasTriggeredRef.current) {
       hasTriggeredRef.current = true;
@@ -125,9 +125,9 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [completeTool, dontAskAgain, hasExecuted, isProcessing, saveApprovalPreference, tool, toolCall.input, toolCall.tool_call_id, toolName]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     if (isProcessing || hasExecuted) return;
     if (!hasTriggeredRef.current) {
       hasTriggeredRef.current = true;
@@ -148,7 +148,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     );
 
     completeTool(toolResult);
-  };
+  }, [completeTool, dontAskAgain, hasExecuted, isProcessing, saveApprovalPreference, toolCall.tool_call_id, toolName]);
 
   // Show completed state
   if (hasExecuted && !isProcessing) {

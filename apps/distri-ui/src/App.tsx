@@ -53,7 +53,7 @@ function App() {
               </TokenProvider>
             }>
               <Route element={<WrappedHomeLayout />}>
-                <Route index element={<Navigate to="/home/files" replace />} />
+                <Route index element={<Navigate to="/home/agents" replace />} />
                 <Route path="files" element={<FilesPage />} />
                 <Route path="agents" element={<AgentsPage />} />
                 <Route path="agents/:agentId" element={<AgentDetailsPage />} />
@@ -95,7 +95,7 @@ const WrappedHomeLayout = ({ hideSidebar = false }: WrappedHomeLayoutProps) => {
           if (!token) {
             return init
           }
-          let initCopy = init || {}
+          const initCopy = init || {}
           const newInit = {
             ...initCopy,
             headers: {

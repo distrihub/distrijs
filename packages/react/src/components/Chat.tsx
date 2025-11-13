@@ -72,6 +72,7 @@ export interface ChatProps {
     voice?: string;
     speed?: number;
   };
+  initialInput?: string;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -105,8 +106,10 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   voiceEnabled = false,
   useSpeechRecognition = false,
   ttsConfig,
+  initialInput = '',
 }, ref) {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialInput ?? '');
+  const initialInputRef = useRef(initialInput ?? '');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +129,13 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const [isStreamingVoice, setIsStreamingVoice] = useState(false);
   const [streamingTranscript, setStreamingTranscript] = useState('');
   const [audioChunks, setAudioChunks] = useState<Uint8Array[]>([]);
+
+  useEffect(() => {
+    if (typeof initialInput === 'string' && initialInput !== initialInputRef.current) {
+      setInput(initialInput);
+      initialInputRef.current = initialInput;
+    }
+  }, [initialInput]);
 
 
   const {
@@ -272,7 +282,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     } else {
       console.error('Tool not found:', toolName);
     }
-  }, [handleSendMessage]);
+  }, []);
 
   // Enhanced voice recording with streaming support
   const handleVoiceRecord = useCallback(async (audioBlob: Blob) => {

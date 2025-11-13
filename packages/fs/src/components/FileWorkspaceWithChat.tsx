@@ -126,7 +126,7 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
   const [activeSidebarTab, setActiveSidebarTab] = useState<'files' | 'chat'>('files');
 
   const chatPanel = (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-2 text-foreground shadow-sm">
+    <div className="flex h-full flex-col border border-border bg-background p-2 text-foreground">
       <Chat
         agent={chat.agent}
         threadId={chat.threadId}
@@ -140,44 +140,36 @@ export const FileWorkspaceWithChat: React.FC<FileWorkspaceWithChatProps> = ({
   const sidebarCustom = activeSidebarTab === 'chat' ? chatPanel : undefined;
 
   return (
-    <div
-      className={cls(
-        'relative flex h-full w-full overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-lg',
-        className,
-      )}
-    >
-      <div className="flex w-full gap-4">
-        <div className="flex w-14 flex-col items-center gap-2 rounded-2xl border border-border/80 bg-muted/20 p-4 shadow-sm dark:bg-muted/30">
-          {[
-            { id: 'files' as const, icon: Files, label: 'Project files' },
-            { id: 'chat' as const, icon: MessageSquare, label: 'Chat' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveSidebarTab(item.id)}
-              className={cls(
-                'flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:text-foreground',
-                activeSidebarTab === item.id && 'bg-primary/10 text-primary'
-              )}
-              aria-label={item.label}
-            >
-              <item.icon className="h-5 w-5" />
-            </button>
-          ))}
-        </div>
-
-        <div className="flex min-w-0 flex-1 overflow-hidden rounded-2xl bg-transparent">
-          <FileWorkspace
-            {...restWorkspaceProps}
-            projectId={projectId}
-            filesystem={filesystem}
-            store={store}
-            className="h-full"
-            sidebarView={sidebarView}
-            sidebarCustom={sidebarCustom}
-          />
-        </div>
+    <div className={cls('relative flex h-full w-full gap-3 bg-card text-foreground', className)}>
+      <div className="flex w-12 flex-col items-center gap-2 border border-border/60 bg-muted/20 py-3">
+        {[
+          { id: 'files' as const, icon: Files, label: 'Project files' },
+          { id: 'chat' as const, icon: MessageSquare, label: 'Chat' },
+        ].map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setActiveSidebarTab(item.id)}
+            className={cls(
+              'flex h-10 w-10 items-center justify-center text-muted-foreground transition hover:text-foreground',
+              activeSidebarTab === item.id && 'bg-primary/10 text-primary',
+            )}
+            aria-label={item.label}
+          >
+            <item.icon className="h-5 w-5" />
+          </button>
+        ))}
+      </div>
+      <div className="flex min-w-0 flex-1 overflow-hidden">
+        <FileWorkspace
+          {...restWorkspaceProps}
+          projectId={projectId}
+          filesystem={filesystem}
+          store={store}
+          className="h-full"
+          sidebarView={sidebarView}
+          sidebarCustom={sidebarCustom}
+        />
       </div>
     </div>
   );

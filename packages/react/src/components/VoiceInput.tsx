@@ -153,7 +153,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       setShowModal(false);
       setIsListening(false);
     }
-  }, [disabled, useBrowser, canUseBackend, language, interimResults, onError]);
+  }, [canUseBackend, disabled, interimResults, language, onError, onTranscript, speechToText, useBrowser]);
 
   const stopListening = useCallback(() => {
     if (useBrowser) {

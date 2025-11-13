@@ -36,6 +36,8 @@ export function useChatMessages({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const initialMessagesLength = initialMessages.length;
+
   // Handle initialMessages updates
   useEffect(() => {
     if (initialMessages.length > 0) {
@@ -77,10 +79,10 @@ export function useChatMessages({
 
   // Fetch messages on mount and when threadId/agent changes (only if no initialMessages)
   useEffect(() => {
-    if (threadId && agent && !initialMessages?.length) {
+    if (threadId && agent && !initialMessagesLength) {
       fetchMessages();
     }
-  }, [threadId, agent?.id, initialMessages?.length, fetchMessages]);
+  }, [agent, fetchMessages, initialMessagesLength, threadId]);
 
   return {
     messages,

@@ -76,8 +76,11 @@ export function extractContent(message: DistriMessage | DistriEvent): ExtractedC
 
 function formatStructuredPart(part: DistriPart): string {
   switch (part.part_type) {
-    case 'tool_call':
-      return `**Tool Call: ${part.data?.name || 'unknown'}**\n\n\`\`\`json\n${JSON.stringify(part.data, null, 2)}\n\`\`\``;
+    case 'tool_call': {
+      const payload = part.data as { tool_name?: string } | undefined;
+      const toolName = payload?.tool_name || 'unknown tool';
+      return `**Tool Call: ${toolName}**\n\n\`\`\`json\n${JSON.stringify(part.data, null, 2)}\n\`\`\``;
+    }
     case 'tool_result':
       return `**Tool Result**\n\n\`\`\`json\n${JSON.stringify(part.data, null, 2)}\n\`\`\``;
     case 'data':

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
@@ -17,17 +17,17 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
   const toolCallsToApprove = input.tool_calls || [];
 
   // Get approval preferences from localStorage
-  const getApprovalPreferences = (): Record<string, boolean> => {
+  const getApprovalPreferences = useCallback((): Record<string, boolean> => {
     try {
       const stored = localStorage.getItem('distri-approval-preferences');
       return stored ? JSON.parse(stored) : {};
     } catch {
       return {};
     }
-  };
+  }, []);
 
   // Save approval preferences to localStorage
-  const saveApprovalPreference = (toolName: string, approved: boolean) => {
+  const saveApprovalPreference = useCallback((toolName: string, approved: boolean) => {
     try {
       const preferences = getApprovalPreferences();
       preferences[toolName] = approved;
@@ -35,20 +35,9 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
     } catch {
       // Silently fail if localStorage is unavailable
     }
-  };
+  }, [getApprovalPreferences]);
 
-  // Check if tool is auto-approved
-  useEffect(() => {
-    const preferences = getApprovalPreferences();
-    const autoApprove = preferences[toolCall.tool_name];
-    
-    if (autoApprove !== undefined && !toolCallState?.status) {
-      // Auto-approve or auto-deny based on stored preference
-      handleResponse(autoApprove, false);
-    }
-  }, [toolCall.tool_name]);
-
-  const handleResponse = async (approved: boolean, savePreference: boolean = true) => {
+  const handleResponse = useCallback(async (approved: boolean, savePreference: boolean = true) => {
     if (isProcessing || toolCallState?.status === 'completed') return;
 
     setIsProcessing(true);
@@ -65,7 +54,18 @@ export const ApprovalToolCall: React.FC<UiToolProps> = ({
     );
 
     completeTool(result);
-  };
+  }, [completeTool, dontAskAgain, isProcessing, saveApprovalPreference, toolCall.tool_call_id, toolCall.tool_name, toolCallState?.status]);
+
+  // Check if tool is auto-approved
+  useEffect(() => {
+    const preferences = getApprovalPreferences();
+    const autoApprove = preferences[toolCall.tool_name];
+
+    if (autoApprove !== undefined && !toolCallState?.status) {
+      // Auto-approve or auto-deny based on stored preference
+      handleResponse(autoApprove, false);
+    }
+  }, [getApprovalPreferences, handleResponse, toolCall.tool_name, toolCallState?.status]);
 
   if (toolCallState?.status === 'completed') {
     const result = input.result || {};
