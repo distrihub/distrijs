@@ -25,6 +25,9 @@
       ],
       "@distri/core": [
         "../core/src"
+      ],
+      "@distri/react": [
+        "../react/src"
       ]
     }
   },
