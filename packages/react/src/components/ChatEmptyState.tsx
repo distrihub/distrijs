@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 import type { ChatEmptyStateController } from './Chat';
 import { Button } from './ui/button';
 
@@ -57,22 +56,6 @@ export const DefaultChatEmptyState: React.FC<DefaultChatEmptyStateProps> = ({ co
       <div className="mx-auto w-full max-w-4xl px-2">
         <div className="">
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-              <div className="flex h-10 w-10 items-center justify-center bg-primary/10 text-primary">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              {options?.eyebrow ? (
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {options.eyebrow}
-                </p>
-              ) : null}
-
-              {options?.description ? (
-                <p className="text-sm text-muted-foreground">
-                  {options.description}
-                </p>
-              ) : null}
-            </div>
 
             {controller.composer ? (
               <div className="flex flex-col gap-2">

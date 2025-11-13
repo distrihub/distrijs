@@ -16,6 +16,7 @@ import {
   RunErrorEvent,
   ToolExecutionStartEvent,
   ToolExecutionEndEvent,
+  ToolResultPart,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -203,14 +204,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   getToolByName: (toolName: string): ChatStateTool | undefined => {
     const state = get();
-    let externalTool = state.externalTools?.find(t => t.name === toolName) || state.agent?.getDefinition?.()?.tools?.find(t => t.name === toolName);
-    let backendTool = state.agent?.getDefinition?.()?.tools?.find(t => t.name === toolName);
+    const externalTool = state.externalTools?.find(t => t.name === toolName);
     if (externalTool) {
-      return { ...externalTool, executionType: 'external' as const } as ChatStateTool;
-    } else if (backendTool) {
-      return { ...backendTool, executionType: 'backend' as const } as ChatStateTool;
+      return { ...externalTool, executionType: 'external' };
     }
-    return undefined
+
+    return undefined;
   },
 
   addMessage: (message: DistriChatMessage) => {
@@ -784,14 +783,18 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       !toolCall.resultSent // **FIX**: Don't return results that were already sent
     );
 
-    return completedToolCalls.map(toolCallState => ({
-      tool_call_id: toolCallState.tool_call_id,
-      tool_name: toolCallState.tool_name,
-      parts: toolCallState.result?.parts || [{
-        type: 'data' as const,
-        data: { result: null, error: 'No result', success: false }
-      }]
-    } as ToolResult));
+    return completedToolCalls.map((toolCallState): ToolResult => {
+      const fallbackPart: ToolResultPart = {
+        part_type: 'data',
+        data: { result: null, error: 'No result', success: false },
+      };
+
+      return {
+        tool_call_id: toolCallState.tool_call_id,
+        tool_name: toolCallState.tool_name,
+        parts: toolCallState.result?.parts ?? [fallbackPart],
+      };
+    });
   },
 
   getToolCallById: (toolCallId: string) => {
@@ -902,7 +905,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set((state: ChatState) => {
       const newState = { ...state };
       const existingTask = newState.tasks.get(taskId);
-      const taskToUpdate = existingTask || ({ id: taskId } as TaskState);
+      const taskToUpdate: TaskState = existingTask || {
+        id: taskId,
+        title: updates.title ?? 'Task',
+        status: updates.status ?? 'pending',
+        toolCalls: [],
+        results: [],
+      };
       newState.tasks.set(taskId, { ...taskToUpdate, ...updates });
       return newState;
     });
@@ -911,8 +920,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   updatePlan: (planId: string, updates: Partial<PlanState>) => {
     set((state: ChatState) => {
       const newState = { ...state };
-      const existingPlan = newState.plans.get(planId) || ({ id: planId, steps: [], status: 'pending' } as PlanState);
-      newState.plans.set(planId, { ...existingPlan, ...updates });
+      const existingPlan = newState.plans.get(planId);
+      const planToUpdate: PlanState = existingPlan || {
+        id: planId,
+        steps: [],
+        status: updates.status ?? 'pending',
+      };
+      newState.plans.set(planId, { ...planToUpdate, ...updates });
       return newState;
     });
   },

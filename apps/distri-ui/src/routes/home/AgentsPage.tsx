@@ -1,36 +1,63 @@
+import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MessageSquare, WandSparkles, Bot, Workflow, Eye } from "lucide-react"
-import { Header } from "@/components/ui/header"
-import { useAgentDefinitions } from "@distri/react"
-import { AgentDefinition } from "@distri/core"
+import { useAgentDefinitions, ChatInput } from "@distri/react"
+import { AgentDefinition, DistriPart } from "@distri/core"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
+import { v4 as uuidv4 } from "uuid"
 
 const AgentListing = () => {
-
   const navigate = useNavigate()
   const { agents, loading } = useAgentDefinitions()
+  const [heroPrompt, setHeroPrompt] = useState('')
+  const [showCreator, setShowCreator] = useState(false)
+
+  const preferredAgent = useMemo(() => {
+    if (!agents.length) {
+      return undefined
+    }
+    return (
+      agents.find((agent) => agent.id === 'scripter' || agent.name?.toLowerCase() === 'scripter') ||
+      agents[0]
+    )
+  }, [agents])
+
+  const handleHeroSend = (content: string | DistriPart[]) => {
+    const text = typeof content === 'string'
+      ? content
+      : content.map(part => part.part_type === 'text' ? part.data : '').join('\n')
+
+    if (!text.trim()) return
+    if (preferredAgent) {
+      const params = new URLSearchParams()
+      params.set('prefill', text.trim())
+      params.set('threadId', uuidv4())
+      navigate(`/home/agents/${encodeURIComponent(preferredAgent.id)}?${params.toString()}`)
+    }
+    setHeroPrompt('')
+    setShowCreator(false)
+  }
 
   const handleChatWithAgent = (agent: AgentDefinition) => {
     navigate(`/home/agents/${encodeURIComponent(agent.id)}`)
   }
 
   const getAgentIcon = (agent: AgentDefinition) => {
-    if (agent.agent_type === 'sequential_workflow_agent' || 
-        agent.agent_type === 'dag_workflow_agent' || 
-        agent.agent_type === 'custom_agent') {
+    if (agent.agent_type === 'sequential_workflow_agent' ||
+      agent.agent_type === 'dag_workflow_agent' ||
+      agent.agent_type === 'custom_agent') {
       return <Workflow className="h-6 w-6 text-primary" />
     }
     return <Bot className="h-6 w-6 text-primary" />
   }
 
   const getActionButton = (agent: AgentDefinition) => {
-    if (agent.agent_type === 'sequential_workflow_agent' || 
-        agent.agent_type === 'dag_workflow_agent' || 
-        agent.agent_type === 'custom_agent') {
+    if (agent.agent_type === 'sequential_workflow_agent' ||
+      agent.agent_type === 'dag_workflow_agent' ||
+      agent.agent_type === 'custom_agent') {
       return (
         <Button
           size="sm"
@@ -57,71 +84,88 @@ const AgentListing = () => {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
-        title="Agents"
-        subtitle={
-          <p className="text-muted-foreground text-sm flex  gap-2">
-            Chat with agents or run workflows! <WandSparkles className="h-4 w-4 text-primary" />
-          </p>
-        }
-      />
-      <div className="flex-1 px-4 py-6">
-        <div className="max-w-7xl">
+    <div className="flex h-full w-full overflow-auto bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        {showCreator ? (
+          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">New agent</p>
+                <h3 className="text-lg font-semibold">Describe the workflow you want</h3>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowCreator(false)}>
+                Close
+              </Button>
+            </div>
+            <ChatInput
+              value={heroPrompt}
+              onChange={setHeroPrompt}
+              onSend={handleHeroSend}
+              placeholder="Describe the agent’s goals, inputs, and tools."
+              variant="hero"
+            />
+          </section>
+        ) : null}
+
+        <section className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em]">Distri Agents</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" className="gap-2" onClick={() => setShowCreator(true)}>
+                  Create new agent
+                </Button>
+              </div>
+            </div>
+          </div>
 
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="flex flex-col space-y-3">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-                <Skeleton className="h-4 w-[300px]" />
-              </div>
+            <div className="flex justify-center py-12">
+              <Skeleton className="h-40 w-full" />
             </div>
           ) : agents.length === 0 ? (
-            <div className="text-center py-12">
-              <p>No agents found. Create a new one to get started.</p>
-            </div>
+            <div className="text-center text-muted-foreground">No agents found. Create a new one to get started.</div>
           ) : (
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                {agents.map((agent: AgentDefinition, index: number) => (
-                  <Card
-                    key={index}
-                    className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] border-border hover:border-primary/20"
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex flex-col space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3 flex-1 min-w-0">
-                            <div className="flex-shrink-0 w-10 h-10 bg-muted/50 rounded-lg p-2 flex items-center justify-center">
-                              <Avatar>
-                                <AvatarImage src={agent.icon_url} />
-                                <AvatarFallback>
-                                  {getAgentIcon(agent)}
-                                </AvatarFallback>
-                              </Avatar>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-sm font-medium text-foreground truncate">{agent.name}</h3>
-                            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {agents.map((agent: AgentDefinition) => (
+                <Card
+                  key={agent.id}
+                  className="group border border-border/70 bg-card/95 text-foreground shadow-none transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
+                >
+                  <CardContent className="p-5">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-1 items-center gap-3 min-w-0">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/20">
+                            <Avatar>
+                              <AvatarImage src={agent.icon_url} />
+                              <AvatarFallback className="bg-transparent text-primary">
+                                {getAgentIcon(agent)}
+                              </AvatarFallback>
+                            </Avatar>
                           </div>
-
-                          <div className="flex items-center space-x-1">
-                            {getActionButton(agent)}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate" title={agent.name}>
+                              {agent.name}
+                            </p>
+                            <p className="text-xs capitalize text-muted-foreground truncate" title={agent.agent_type?.replace(/_/g, ' ') || 'standard'}>
+                              {agent.agent_type?.replace(/_/g, ' ') || 'standard'}
+                            </p>
                           </div>
                         </div>
-
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <p className="text-xs text-muted-foreground truncate">{agent.description}</p>
-                        </div>
+                        {getActionButton(agent)}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+
+                      <p className="line-clamp-1 text-sm text-muted-foreground">{agent.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )

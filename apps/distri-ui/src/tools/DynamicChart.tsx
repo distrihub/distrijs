@@ -210,7 +210,7 @@ export const DynamicChart: React.FC<UiToolProps> = ({
           </AreaChart>
         );
 
-      case 'pie':
+      case 'pie': {
         // For pie charts, use the first y-key as the value
         const valueKey = chartConfig.yKeys?.[0];
         return (
@@ -235,6 +235,7 @@ export const DynamicChart: React.FC<UiToolProps> = ({
             {chartConfig.showTooltip && <Tooltip />}
           </PieChart>
         );
+      }
 
       case 'scatter':
         return (

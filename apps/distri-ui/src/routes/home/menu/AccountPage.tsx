@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/ui/header'
-import { Settings, CreditCard, User, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { SubscriptionTier, useAccount } from '@/components/AccountProvider'
 import { format } from 'date-fns'
 

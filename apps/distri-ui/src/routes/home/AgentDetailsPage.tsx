@@ -7,7 +7,6 @@ import { WorkflowDetailsView } from '@/components/WorkflowDetailsView'
 export default function AgentDetailsPage() {
   const { agentId: encodedAgentId } = useParams<{ agentId: string }>()
   const agentId = encodedAgentId ? decodeURIComponent(encodedAgentId) : undefined
-
   const { agent, loading } = useAgent({ agentIdOrDef: agentId || '' })
 
   if (loading) {
@@ -30,21 +29,16 @@ export default function AgentDetailsPage() {
     )
   }
 
-  const agentType = agent.agentType
+  const agentType = (agent as any).agent_type ?? agent.agentType
   // Determine if this is a workflow agent type
   const isWorkflowAgent = agentType === 'sequential_workflow_agent' ||
     agentType === 'dag_workflow_agent' ||
     agentType === 'custom_agent'
 
-  console.log('AgentDetailsPage - agent.agent_type:', agentType)
-  console.log('AgentDetailsPage - isWorkflowAgent:', isWorkflowAgent)
-
   // Render the appropriate view component
   if (isWorkflowAgent) {
-    console.log('Rendering WorkflowDetailsView')
     return <WorkflowDetailsView agent={agent} />
   } else {
-    console.log('Rendering AgentChatView')
     return <AgentChatView agent={agent} agentId={agentId || ''} />
   }
 }

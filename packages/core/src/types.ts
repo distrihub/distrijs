@@ -401,6 +401,7 @@ export interface AgentDefinition {
 
 
   agentType?: string;
+  agent_type?: string;
 
   tools?: DistriBaseTool[];
 

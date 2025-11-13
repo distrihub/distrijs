@@ -129,6 +129,7 @@ export class IndexedDbFilesystem {
   private readonly isIndexedDbAvailable: boolean;
   private readonly memoryAdapter: MemoryAdapter;
   private dbPromise?: Promise<IDBDatabase>;
+  private remoteFetcher?: (path: string, currentVersion?: number) => Promise<{ content: string; updatedAt?: number } | null>;
 
   private constructor(projectId: string) {
     this.projectId = projectId;
@@ -253,7 +254,24 @@ export class IndexedDbFilesystem {
 
   async readFile(path: string): Promise<ReadFileResult> {
     const normalized = normalizePath(path);
-    const record = await this.getRecord(normalized);
+    let record = await this.getRecord(normalized);
+
+    if (this.remoteFetcher) {
+      const versionHint = record?.content !== undefined ? record.updatedAt : undefined;
+      const remote = await this.remoteFetcher(normalized, versionHint);
+      if (remote) {
+        const nextRecord: FileRecord = {
+          path: normalized,
+          type: 'file',
+          content: remote.content,
+          createdAt: record?.createdAt ?? now(),
+          updatedAt: remote.updatedAt ?? now(),
+        };
+        await this.putRecord(nextRecord);
+        record = nextRecord;
+      }
+    }
+
     if (!record || record.type !== 'file') {
       throw new Error(`File not found: ${normalized}`);
     }
@@ -417,6 +435,25 @@ export class IndexedDbFilesystem {
       }
     }
     return matches;
+  }
+
+  setRemoteFetcher(
+    fetcher?: (path: string, currentVersion?: number) => Promise<{ content: string; updatedAt?: number } | null>,
+  ) {
+    this.remoteFetcher = fetcher;
+  }
+
+  async upsertMetadata(path: string, type: EntryType, updatedAt?: number) {
+    const normalized = normalizePath(path);
+    const existing = await this.getRecord(normalized);
+    const record: FileRecord = {
+      path: normalized,
+      type,
+      content: existing?.content,
+      createdAt: existing?.createdAt ?? now(),
+      updatedAt: updatedAt ?? existing?.updatedAt ?? now(),
+    };
+    await this.putRecord(record);
   }
 
   async copyFile(source: string, destination: string): Promise<void> {

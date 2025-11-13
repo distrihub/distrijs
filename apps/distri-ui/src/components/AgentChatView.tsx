@@ -18,9 +18,11 @@ export const AgentChatView = ({ agent, agentId }: AgentChatViewProps) => {
   const { getLastThreadId, setLastThreadId } = useThreadContext()
   const [playMode, setPlayMode] = useState(false)
   const [threadId, setThreadId] = useState<string | null>()
+  const [composerPrefill, setComposerPrefill] = useState<string | undefined>(undefined)
 
   // Read threadId from query string
   const threadIdFromQuery = searchParams.get('threadId')
+  const prefillFromQuery = searchParams.get('prefill')
 
   // Create new thread if none exists
   useEffect(() => {
@@ -35,6 +37,17 @@ export const AgentChatView = ({ agent, agentId }: AgentChatViewProps) => {
       }
     }
   }, [agentId, threadIdFromQuery, getLastThreadId])
+
+  useEffect(() => {
+    if (prefillFromQuery) {
+      setComposerPrefill(prefillFromQuery)
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('prefill')
+        return next
+      })
+    }
+  }, [prefillFromQuery, setSearchParams])
 
   // Function to create new chat
   const createNewChat = () => {
@@ -108,6 +121,7 @@ export const AgentChatView = ({ agent, agentId }: AgentChatViewProps) => {
               agent={agent}
               threadId={threadId}
               playMode={playMode ? "replay" : "chat"}
+              initialInput={composerPrefill}
             />
           </div>
         ) : (

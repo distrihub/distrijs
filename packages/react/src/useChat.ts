@@ -55,47 +55,49 @@ export function useChat({
     getMetadataRef.current = getMetadata;
   }, [getMetadata]);
 
+  const currentRunId = useChatStateStore(state => state.currentRunId);
+  const currentTaskId = useChatStateStore(state => state.currentTaskId);
+  const processMessage = useChatStateStore(state => state.processMessage);
+  const clearAllStates = useChatStateStore(state => state.clearAllStates);
+  const setError = useChatStateStore(state => state.setError);
+  const setLoading = useChatStateStore(state => state.setLoading);
+  const setStreaming = useChatStateStore(state => state.setStreaming);
+  const setAgent = useChatStateStore(state => state.setAgent);
+  const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
+  const setStreamingIndicator = useChatStateStore(state => state.setStreamingIndicator);
+  const setExternalTools = useChatStateStore(state => state.setExternalTools);
+  const errorState = useChatStateStore(state => state.error);
+  const messages = useChatStateStore(state => state.messages);
+
   useEffect(() => {
     if (externalTools && externalTools.length > 0) {
-      chatState.setExternalTools(externalTools as DistriAnyTool[]);
+      setExternalTools(externalTools as DistriAnyTool[]);
     }
-  }, [externalTools]);
-  // Chat state management with Zustand - only for processing state
-  const chatState = useChatStateStore();
+  }, [externalTools, setExternalTools]);
 
 
   // Create InvokeContext for message construction
   const createInvokeContext = useCallback((): InvokeContext => ({
     thread_id: threadId,
-    run_id: chatState.currentRunId,
-    task_id: chatState.currentTaskId,
+    run_id: currentRunId,
+    task_id: currentTaskId,
     getMetadata: getMetadataRef.current
-  }), [threadId, chatState.currentRunId, chatState.currentTaskId]);
+  }), [currentRunId, currentTaskId, threadId]);
 
   const isLoading = useChatStateStore(state => state.isLoading);
   const isStreaming = useChatStateStore(state => state.isStreaming);
-
-  const {
-    processMessage,
-    clearAllStates,
-    setError,
-    setLoading,
-    setStreaming,
-    setAgent,
-    hasPendingToolCalls,
-  } = chatState;
 
   // Handle initial messages processing - static recalculation when initialMessages change
   useEffect(() => {
     if (initialMessages) {
       // Clear state and process initial messages
-      chatState.clearAllStates();
+      clearAllStates();
       // Process initial messages as historical (not from stream)
-      initialMessages.forEach(message => chatState.processMessage(message, false));
+      initialMessages.forEach(message => processMessage(message, false));
 
 
     }
-  }, [initialMessages]); // Only depend on initialMessages for static behavior
+  }, [clearAllStates, initialMessages, processMessage]);
 
   // Direct message processing
   const addMessage = useCallback((message: DistriChatMessage) => {
@@ -116,7 +118,7 @@ export function useChat({
   // Store cleanup functions in refs to avoid dependency changes
   const cleanupRef = useRef<() => void>();
   cleanupRef.current = () => {
-    chatState.setStreamingIndicator(undefined);
+    setStreamingIndicator(undefined);
     setStreaming(false);
     setLoading(false);
   };
@@ -159,7 +161,7 @@ export function useChat({
     setLoading(true);
     setStreaming(true);
     setError(null);
-    chatState.setStreamingIndicator('typing');
+    setStreamingIndicator('typing');
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -191,7 +193,7 @@ export function useChat({
         message: a2aMessage,
         metadata: {
           ...contextMetadata,
-          task_id: chatState.currentTaskId
+          task_id: currentTaskId
         },
       }, externalTools);
 
@@ -205,7 +207,7 @@ export function useChat({
       if (err instanceof Error && err.name === 'AbortError') {
         // Stream was cancelled, don't show error
         // **FIX**: Clean up streaming state even on abort
-        chatState.setStreamingIndicator(undefined);
+        setStreamingIndicator(undefined);
         setStreaming(false);
         setLoading(false);
         return;
@@ -215,7 +217,7 @@ export function useChat({
       onErrorRef.current?.(error);
 
       // **FIX**: Clear streaming indicators immediately on error
-      chatState.setStreamingIndicator(undefined);
+      setStreamingIndicator(undefined);
       setStreaming(false);
       setLoading(false);
     } finally {
@@ -225,7 +227,7 @@ export function useChat({
       abortControllerRef.current = null;
       console.log('✅ [useChat sendMessage] Streaming cleanup completed');
     }
-  }, [agent, createInvokeContext, handleStreamEvent, setLoading, setStreaming, setError]);
+  }, [agent, beforeSendMessage, createInvokeContext, currentTaskId, externalTools, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator]);
 
   const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
     if (!agent) return;
@@ -233,7 +235,7 @@ export function useChat({
     setLoading(true);
     setStreaming(true);
     setError(null);
-    chatState.setStreamingIndicator('typing');
+    setStreamingIndicator('typing');
 
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -261,7 +263,7 @@ export function useChat({
         message: a2aMessage,
         metadata: {
           ...contextMetadata,
-          task_id: chatState.currentTaskId
+          task_id: currentTaskId
         }
       });
 
@@ -275,7 +277,7 @@ export function useChat({
       if (err instanceof Error && err.name === 'AbortError') {
         // Stream was cancelled, don't show error
         // **FIX**: Clean up streaming state even on abort
-        chatState.setStreamingIndicator(undefined);
+        setStreamingIndicator(undefined);
         setStreaming(false);
         setLoading(false);
         return;
@@ -285,7 +287,7 @@ export function useChat({
       onErrorRef.current?.(error);
 
       // **FIX**: Clear streaming indicators immediately on error
-      chatState.setStreamingIndicator(undefined);
+      setStreamingIndicator(undefined);
       setStreaming(false);
       setLoading(false);
     } finally {
@@ -293,13 +295,13 @@ export function useChat({
       // **FIX**: When stream ends naturally, force stop all streaming indicators
       // regardless of pending tool calls, because backend has closed the stream
       console.log('🛑 [useChat sendMessageStream] Backend stream ended - force stopping all streaming indicators');
-      chatState.setStreamingIndicator(undefined); // Clear typing indicator
+      setStreamingIndicator(undefined); // Clear typing indicator
       setLoading(false);
       setStreaming(false);
       abortControllerRef.current = null;
       console.log('✅ [useChat sendMessageStream] Streaming cleanup completed');
     }
-  }, [agent, createInvokeContext, handleStreamEvent, threadId, setLoading, setStreaming, setError, hasPendingToolCalls]);
+  }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator]);
 
 
   const stopStreaming = useCallback(() => {
@@ -308,15 +310,13 @@ export function useChat({
     }
   }, []);
 
-  const messages = useChatStateStore(state => state.messages);
-
   return {
     isStreaming,
     messages,
     sendMessage,
     sendMessageStream,
     isLoading,
-    error: chatState.error,
+    error: errorState,
     hasPendingToolCalls,
     stopStreaming,
     addMessage,

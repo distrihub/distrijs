@@ -19,7 +19,7 @@ export const WorkflowRunner = ({ agent, firstStepType }: WorkflowRunnerProps) =>
   const runWorkflow = async () => {
     setIsRunning(true)
     setResult(null)
-    
+
     try {
       // Call the a2a API directly
       const response = await fetch(`${BACKEND_URL}/api/v1/agents/${agent.id}/invoke`, {
@@ -39,7 +39,7 @@ export const WorkflowRunner = ({ agent, firstStepType }: WorkflowRunnerProps) =>
         const errorText = await response.text()
         setResult({ error: `Failed to run workflow: ${errorText}` })
       }
-    } catch (error) {
+    } catch (error: any) {
       setResult({ error: `Network error: ${error.message}` })
     } finally {
       setIsRunning(false)
@@ -71,9 +71,9 @@ export const WorkflowRunner = ({ agent, firstStepType }: WorkflowRunnerProps) =>
               />
             </div>
           )}
-          
-          <Button 
-            onClick={runWorkflow} 
+
+          <Button
+            onClick={runWorkflow}
             disabled={isRunning || (firstStepType === 'agent' && !message.trim())}
             className="w-full"
           >

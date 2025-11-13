@@ -12,6 +12,8 @@ import { Sheet, SheetContent } from "./sheet"
 import { Skeleton } from "./skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
 
+type CSSVars = React.CSSProperties & Record<string, string | number>
+
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
@@ -124,17 +126,20 @@ const SidebarProvider = React.forwardRef<
     [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
   )
 
+  const providerStyle = React.useMemo(() => {
+    const vars: CSSVars = {
+      ...style,
+      "--sidebar-width": SIDEBAR_WIDTH,
+      "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+    }
+    return vars
+  }, [style])
+
   return (
     <SidebarContext.Provider value={contextValue}>
       <TooltipProvider delayDuration={0}>
         <div
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as React.CSSProperties
-          }
+          style={providerStyle}
           className={cn(
             "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
             className
@@ -175,6 +180,10 @@ const Sidebar = React.forwardRef<
     )
   }
 
+  const sheetStyles: CSSVars = {
+    "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+  }
+
   if (isMobile) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
@@ -182,11 +191,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-mobile="true"
           className="w-[--sidebar-width-mobile] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={sheetStyles}
           side={side}
         >
           <div className="flex h-full w-full flex-col">{children}</div>
@@ -614,6 +619,8 @@ const SidebarMenuSkeleton = React.forwardRef<
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
 
+  const skeletonStyle: CSSVars = { '--skeleton-width': width }
+
   return (
     <div
       ref={ref}
@@ -627,11 +634,7 @@ const SidebarMenuSkeleton = React.forwardRef<
       <Skeleton
         className="h-4 flex-1 max-w-[--skeleton-width]"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={skeletonStyle}
       />
     </div>
   )

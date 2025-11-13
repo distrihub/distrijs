@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useTheme } from '@distri/react';
 import {
@@ -173,6 +173,11 @@ interface HomeLayoutProps {
 export default function HomeLayout({ hideSidebar = false }: HomeLayoutProps) {
   const [defaultOpen, setDefaultOpen] = useState(true);
 
+  const sidebarStyles: CSSProperties = {
+    "--sidebar-width": "20rem",
+    "--sidebar-width-mobile": "18rem",
+  }
+
   // Load sidebar state from localStorage
   useEffect(() => {
     const savedState = localStorage.getItem('sidebar:state');
@@ -185,10 +190,7 @@ export default function HomeLayout({ hideSidebar = false }: HomeLayoutProps) {
     <div className="h-screen">
       <SidebarProvider
         defaultOpen={hideSidebar ? false : defaultOpen}
-        style={{
-          "--sidebar-width": "20rem",
-          "--sidebar-width-mobile": "18rem",
-        } as React.CSSProperties}
+        style={sidebarStyles}
       >
         {hideSidebar ? null : <HomeSidebar />}
         <SidebarInset className={hideSidebar ? 'pl-0' : undefined}>

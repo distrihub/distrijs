@@ -84,29 +84,31 @@ export const useTts = (config: TtsConfig = {}) => {
 
     const audioContext = audioContextRef.current;
 
-    return new Promise<void>(async (resolve, reject) => {
-      try {
-        // Combine all audio chunks
-        const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-        const combinedArray = new Uint8Array(totalLength);
-        let offset = 0;
+    return new Promise<void>((resolve, reject) => {
+      (async () => {
+        try {
+          // Combine all audio chunks
+          const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const combinedArray = new Uint8Array(totalLength);
+          let offset = 0;
 
-        for (const chunk of audioChunks) {
-          combinedArray.set(chunk, offset);
-          offset += chunk.length;
+          for (const chunk of audioChunks) {
+            combinedArray.set(chunk, offset);
+            offset += chunk.length;
+          }
+
+          // Decode and play
+          const audioBuffer = await audioContext.decodeAudioData(combinedArray.buffer);
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioContext.destination);
+
+          source.onended = () => resolve();
+          source.start();
+        } catch (error) {
+          reject(new Error(`Audio playback failed: ${error}`));
         }
-
-        // Decode and play
-        const audioBuffer = await audioContext.decodeAudioData(combinedArray.buffer);
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-
-        source.onended = () => resolve();
-        source.start();
-      } catch (error) {
-        reject(new Error(`Audio playback failed: ${error}`));
-      }
+      })();
     });
   }, []);
 

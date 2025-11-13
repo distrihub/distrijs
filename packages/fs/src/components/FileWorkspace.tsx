@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
+import type { editor as MonacoEditorNS } from 'monaco-editor';
+import { TOML_LANGUAGE, TOML_LANGUAGE_CONFIGURATION } from '../monaco/tomlLanguage';
+type MonacoType = typeof import('monaco-editor');
+type MonacoEditorInstance = MonacoEditorNS.IStandaloneCodeEditor;
 import {
   Button,
   Dialog,
@@ -24,6 +28,7 @@ import {
   FileText,
   Folder,
   FlaskConical,
+  Loader2,
   MoreVertical,
   Plus,
   RefreshCw,
@@ -103,6 +108,8 @@ export interface FileWorkspaceProps {
   testing?: TestingPanelConfig;
   sidebarView?: 'explorer' | 'custom';
   sidebarCustom?: React.ReactNode;
+  onSyncWorkspace?: () => void | Promise<void>;
+  isSyncingWorkspace?: boolean;
 }
 
 export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
@@ -118,6 +125,8 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   testing,
   sidebarView: sidebarViewProp = 'explorer',
   sidebarCustom,
+  onSyncWorkspace,
+  isSyncingWorkspace,
 }) => {
   const fs = useMemo(
     () => filesystem ?? IndexedDbFilesystem.forProject(projectId),
@@ -204,6 +213,7 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
 
   const isBrowser = typeof window !== 'undefined';
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['']));
+  const autoOpenAttemptedRef = useRef(false);
   const [newEntryOpen, setNewEntryOpen] = useState(false);
   const [newEntryType, setNewEntryType] = useState<'file' | 'directory'>('file');
   const [newEntryPath, setNewEntryPath] = useState('');
@@ -217,6 +227,7 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   const resultPlaceholder = testing?.resultPlaceholder ?? 'No tests have been executed yet.';
   const hasTestingPanel = Boolean(testing);
   const isExplorerSidebar = sidebarViewProp === 'explorer';
+  const monacoTomlRegistered = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,6 +268,10 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   }, [store]);
 
   useEffect(() => {
+    autoOpenAttemptedRef.current = false;
+  }, [projectId]);
+
+  useEffect(() => {
     setTestPayload(testing?.defaultPayload ?? '{\n  "input": "sample"\n}');
     setTestOutput(resultPlaceholder);
     setTestStatus('idle');
@@ -276,6 +291,84 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
     }
     ensureParentsExpanded(path);
   };
+
+  const handleSaveActiveTab = useCallback(() => {
+    if (!activeTab) {
+      return;
+    }
+    if (pendingSaves[activeTab.path]) {
+      return;
+    }
+    if (!isTabDirty(activeTab)) {
+      return;
+    }
+    void saveFile(activeTab.path);
+  }, [activeTab, pendingSaves, saveFile]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        handleSaveActiveTab();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSaveActiveTab]);
+
+  const registerTomlLanguage = useCallback((monaco: MonacoType) => {
+    if (monacoTomlRegistered.current) {
+      return;
+    }
+    const alreadyRegistered = monaco.languages.getLanguages().some((lang) => lang.id === 'toml');
+    if (!alreadyRegistered) {
+      monaco.languages.register({ id: 'toml' });
+    }
+    monaco.languages.setMonarchTokensProvider('toml', TOML_LANGUAGE as any);
+    monaco.languages.setLanguageConfiguration('toml', TOML_LANGUAGE_CONFIGURATION as any);
+    monacoTomlRegistered.current = true;
+  }, []);
+
+  const handleEditorBeforeMount = useCallback((monaco: MonacoType) => {
+    registerTomlLanguage(monaco);
+  }, [registerTomlLanguage]);
+
+  const handleEditorDidMount = useCallback(
+    (editor: MonacoEditorInstance, monacoInstance: MonacoType) => {
+      editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
+        handleSaveActiveTab();
+      });
+      editor.onKeyDown((event) => {
+        if ((event.metaKey || event.ctrlKey) && event.code === 'KeyS') {
+          event.preventDefault();
+          handleSaveActiveTab();
+        }
+      });
+    },
+    [handleSaveActiveTab],
+  );
+
+  const firstAvailableFile = useMemo(() => findFirstFilePath(tree), [tree]);
+
+  useEffect(() => {
+    if (defaultFilePath) {
+      return;
+    }
+    if (autoOpenAttemptedRef.current) {
+      return;
+    }
+    if (tabs.length > 0) {
+      return;
+    }
+    if (!firstAvailableFile) {
+      return;
+    }
+    autoOpenAttemptedRef.current = true;
+    void handleOpenFile(firstAvailableFile);
+  }, [defaultFilePath, firstAvailableFile, tabs.length, handleOpenFile]);
 
   const ensureParentsExpanded = (path: string) => {
     const segments = normalizePath(path).split('/');
@@ -383,8 +476,8 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
     <TooltipProvider>
       <div
         className={cls(
-          'flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-lg',
-          'supports-[backdrop-filter]:bg-card/90',
+          'flex flex-1 flex-col overflow-hidden bg-card text-foreground',
+          'supports-[backdrop-filter]:bg-card/85',
           className,
         )}
       >
@@ -400,10 +493,19 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
               <>
                 <div className="flex items-center gap-2 px-3 pt-3">
                   <Dialog open={newEntryOpen} onOpenChange={setNewEntryOpen}>
-                    <Button size="sm" variant="secondary" className="gap-2" onClick={() => setNewEntryOpen(true)}>
-                      <Plus className="h-4 w-4" />
-                      New
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setNewEntryOpen(true)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">New file or folder</TooltipContent>
+                    </Tooltip>
                     <DialogContent className="sm:max-w-[420px]">
                       <DialogHeader>
                         <DialogTitle>Create {newEntryType === 'file' ? 'File' : 'Folder'}</DialogTitle>
@@ -471,13 +573,21 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => refresh()}
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          void refresh();
+                          void onSyncWorkspace?.();
+                        }}
+                        disabled={isSyncingWorkspace}
+                        className="text-muted-foreground hover:text-foreground"
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        {isSyncingWorkspace ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">Refresh tree</TooltipContent>
+                    <TooltipContent side="bottom">Sync workspace</TooltipContent>
                   </Tooltip>
                 </div>
 
@@ -514,7 +624,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
           <div className="flex flex-1 flex-col overflow-hidden bg-muted/10 dark:bg-muted/20">
             <header className="flex items-center gap-2 border-b border-border/80 bg-background/80 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <div className="flex flex-1 items-center gap-2 overflow-x-auto">
-
                 {tabs.map((tab) => (
                   <WorkspaceTab
                     key={tab.path}
@@ -524,21 +633,54 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                     onSelect={() => setActiveTab(tab.path)}
                     onClose={() => closeTab(tab.path)}
                   />
-                ))
-                }
+                ))}
               </div>
 
-              {activeTab ? (
-                <Button
-                  size="sm"
-                  className="gap-2"
-                  disabled={!isTabDirty(activeTab) || Boolean(pendingSaves[activeTab.path])}
-                  onClick={() => saveFile(activeTab.path)}
-                >
-                  <Save className="h-4 w-4" />
-                  {pendingSaves[activeTab.path] ? 'Saving…' : 'Save'}
-                </Button>
-              ) : null}
+              <div className="ml-auto flex items-center gap-1">
+                {onSyncWorkspace ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => void onSyncWorkspace()}
+                        disabled={Boolean(isSyncingWorkspace)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Sync workspace"
+                      >
+                        {isSyncingWorkspace ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Sync workspace</TooltipContent>
+                  </Tooltip>
+                ) : null}
+
+                {activeTab ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={!isTabDirty(activeTab) || Boolean(pendingSaves[activeTab.path])}
+                        onClick={handleSaveActiveTab}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Save file"
+                      >
+                        {pendingSaves[activeTab.path] ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Save file</TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </div>
             </header>
 
             {error ? (
@@ -552,7 +694,7 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                 {activeTab ? (
                   <div className="flex h-full flex-col gap-3">
 
-                    <div className="relative flex-1 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+                    <div className="relative flex-1 overflow-hidden border border-border/70 bg-background">
                       {isBrowser ? (
                         <Editor
                           key={activeTab.path}
@@ -560,6 +702,8 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                           language={detectLanguage(activeTab.path)}
                           theme={editorTheme}
                           onChange={(value) => updateTabContent(activeTab.path, value ?? '')}
+                          beforeMount={handleEditorBeforeMount}
+                          onMount={handleEditorDidMount}
                           options={{
                             fontSize: 14,
                             minimap: { enabled: false },
@@ -572,12 +716,18 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                         />
                       ) : (
                         <Textarea
-                          className="min-h-0 h-full w-full flex-1 resize-none rounded-2xl border-none bg-transparent font-mono text-sm text-foreground"
+                          className="min-h-0 h-full w-full flex-1 resize-none rounded-none border-none bg-transparent font-mono text-sm text-foreground"
                           spellCheck={false}
                           value={activeTab.content}
                           onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
                             updateTabContent(activeTab.path, event.target.value)
                           }
+                          onKeyDown={(event) => {
+                            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+                              event.preventDefault();
+                              handleSaveActiveTab();
+                            }
+                          }}
                         />
                       )}
                     </div>
@@ -603,13 +753,15 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                   </div>
 
                   <div className="mt-4 flex flex-col gap-3">
-                    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card">
+                    <div className="overflow-hidden border border-border/70 bg-background">
                       {isBrowser ? (
                         <Editor
                           value={testPayload}
                           language="json"
                           theme={editorTheme}
                           onChange={(value) => setTestPayload(value ?? '')}
+                          beforeMount={handleEditorBeforeMount}
+                          onMount={handleEditorDidMount}
                           height="220px"
                           options={{
                             minimap: { enabled: false },
@@ -626,6 +778,12 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                           onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setTestPayload(event.target.value)}
                           rows={10}
                           className="bg-transparent font-mono text-xs text-foreground"
+                          onKeyDown={(event) => {
+                            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+                              event.preventDefault();
+                              handleSaveActiveTab();
+                            }
+                          }}
                         />
                       )}
                     </div>
@@ -646,7 +804,7 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                     </div>
 
                     {testError ? (
-                      <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      <div className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                         {testError}
                       </div>
                     ) : null}
@@ -667,7 +825,7 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                           {testStatus === 'success' ? 'Ready' : testStatus === 'error' ? 'Error' : 'Idle'}
                         </span>
                       </div>
-                      <div className="max-h-40 overflow-y-auto rounded-2xl border border-border/80 bg-card p-3 text-[11px] text-muted-foreground">
+                      <div className="max-h-40 overflow-y-auto border border-border/70 bg-background p-3 text-[11px] text-muted-foreground">
                         <pre className="whitespace-pre-wrap break-words font-mono text-xs">
                           {testOutput || resultPlaceholder}
                         </pre>
@@ -822,11 +980,31 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({ tab, isActive, isSaving, on
   );
 };
 
-const sortTree = (a: DirectoryTreeNode, b: DirectoryTreeNode) => {
+function sortTree(a: DirectoryTreeNode, b: DirectoryTreeNode) {
   if (a.type === b.type) {
     return a.name.localeCompare(b.name);
   }
   return a.type === 'directory' ? -1 : 1;
-};
+}
+
+function findFirstFilePath(node: DirectoryTreeNode | null): string | null {
+  if (!node) {
+    return null;
+  }
+  if (node.type === 'file' && node.path) {
+    return node.path;
+  }
+  if (!node.children || node.children.length === 0) {
+    return null;
+  }
+  const sorted = node.children.slice().sort(sortTree);
+  for (const child of sorted) {
+    const match = findFirstFilePath(child);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
 
 export default FileWorkspace;

@@ -51,7 +51,7 @@ const WrappedTauriContent = () => {
         'Authorization': `Bearer ${token}`
       } : {},
       interceptor: async (init?: RequestInit): Promise<RequestInit | undefined> => {
-        let initCopy = init || {}
+        const initCopy = init || {}
         const newInit = {
           ...initCopy,
           headers: {
