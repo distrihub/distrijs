@@ -368,6 +368,9 @@ export interface AgentDefinition {
 
   id: string;
 
+  /** Optional package identifier (workspace/plugin) that registered the agent */
+  package_name?: string | null;
+
   /** A brief description of the agent's purpose. */
   description?: string;
 
