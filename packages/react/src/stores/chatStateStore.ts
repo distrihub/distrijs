@@ -103,6 +103,11 @@ export interface ChatState {
 
   externalTools?: DistriAnyTool[];
   wrapOptions?: { autoExecute?: boolean };
+
+  // Browser streaming state
+  browserFrame?: string;
+  browserFrameFormat?: string;
+  browserFrameUpdatedAt?: number;
 }
 
 type ChatStateTool = DistriAnyTool & {
@@ -125,6 +130,7 @@ export interface ChatStateStore extends ChatState {
   processMessage: (message: DistriChatMessage, isFromStream?: boolean) => void;
   clearAllStates: () => void;
   clearTask: (taskId: string) => void;
+  clearBrowserFrame: () => void;
   getToolByName: (toolName: string) => ChatStateTool | undefined;
   completeRunningSteps: () => void;
   resetStreamingStates: () => void;
@@ -175,6 +181,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   streamingIndicator: undefined,
   currentThought: undefined,
   messages: [],
+  browserFrame: undefined,
+  browserFrameFormat: undefined,
+  browserFrameUpdatedAt: undefined,
   tools: {
     tools: [],
     agent_tools: new Map(),
@@ -216,6 +225,20 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set((state: ChatState) => {
       if (isDistriEvent(message)) {
         const event = message as DistriEvent;
+
+        if (event.type === 'browser_screenshot') {
+          if (event.data.image) {
+            const format = event.data.format || 'png';
+            const frameSrc = `data:image/${format};base64,${event.data.image}`;
+            return {
+              ...state,
+              browserFrame: frameSrc,
+              browserFrameFormat: format,
+              browserFrameUpdatedAt: event.data.timestamp_ms || Date.now(),
+            };
+          }
+          return state;
+        }
 
         if (event.type === 'text_message_start') {
           // Create a new message with the specified ID and role
@@ -830,6 +853,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       isStreaming: false,
       isLoading: false,
       error: null,
+      browserFrame: undefined,
+      browserFrameFormat: undefined,
+      browserFrameUpdatedAt: undefined,
     });
   },
 
@@ -870,6 +896,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       }
 
       return newState;
+    });
+  },
+
+  clearBrowserFrame: () => {
+    set({
+      browserFrame: undefined,
+      browserFrameFormat: undefined,
+      browserFrameUpdatedAt: undefined,
     });
   },
 

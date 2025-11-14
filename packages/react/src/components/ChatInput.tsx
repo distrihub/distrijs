@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { Send, Square, ImageIcon, X, Mic, MicOff, Radio, Plus } from 'lucide-react';
+import { Send, Square, ImageIcon, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
 import { cn } from '../lib/utils';
@@ -23,6 +23,8 @@ export interface ChatInputProps {
   onChange: (value: string) => void;
   onSend: (content: string | DistriPart[]) => void;
   onStop?: () => void;
+  browserEnabled?: boolean;
+  onToggleBrowser?: (enabled: boolean) => void;
   placeholder?: string;
   disabled?: boolean;
   isStreaming?: boolean;
@@ -52,6 +54,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = 'Type your message…',
   disabled = false,
   isStreaming = false,
+  browserEnabled = false,
+  onToggleBrowser,
   className = '',
   attachedImages,
   onRemoveImage,
@@ -329,6 +333,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [isRecording, startRecording, stopRecording]);
 
+  const handleBrowserToggle = useCallback(() => {
+    if (onToggleBrowser) {
+      onToggleBrowser(!browserEnabled);
+    }
+  }, [onToggleBrowser, browserEnabled]);
+
   const handleSpeechTranscript = useCallback((transcript: string) => {
     onChangeRef.current(transcript);
     onSpeechTranscript?.(transcript);
@@ -386,7 +396,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const shellClass = variant === 'hero'
     ? heroStyles.shell
-    : 'rounded-2xl border border-input bg-input p-2';
+    : 'rounded-2xl border border-input bg-input p-2 shadow-sm';
 
   const innerShell = variant === 'hero'
     ? heroStyles.inner
@@ -462,6 +472,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
             <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBrowserToggle}
+                  className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-2xl border transition',
+                    browserEnabled
+                      ? (variant === 'hero'
+                          ? 'border-emerald-400/60 bg-emerald-400/20 text-emerald-100'
+                          : 'border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-200')
+                      : (variant === 'hero'
+                          ? heroStyles.voiceIdle
+                          : 'border-border bg-background text-muted-foreground hover:text-foreground')
+                  )}
+                  disabled={disabled || !onToggleBrowser}
+                  title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
+                >
+                  <Globe className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}

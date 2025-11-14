@@ -152,6 +152,17 @@ export interface ToolResultsEvent {
   };
 }
 
+export interface BrowserScreenshotEvent {
+  type: 'browser_screenshot';
+  data: {
+    image: string;
+    format?: string;
+    filename?: string;
+    size?: number;
+    timestamp_ms?: number;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -171,4 +182,5 @@ export type DistriEvent =
   | AgentHandoverEvent
   | FeedbackReceivedEvent
   | ToolCallsEvent
-  | ToolResultsEvent;
+  | ToolResultsEvent
+  | BrowserScreenshotEvent;
