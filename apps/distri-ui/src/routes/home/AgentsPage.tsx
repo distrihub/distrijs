@@ -1,19 +1,111 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MessageSquare, WandSparkles, Bot, Workflow, Eye } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { MessageSquare, Bot, Workflow, Eye } from "lucide-react"
 import { useAgentDefinitions, ChatInput } from "@distri/react"
 import { AgentDefinition, DistriPart } from "@distri/core"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { v4 as uuidv4 } from "uuid"
+
+type PackageFilterState =
+  | { kind: 'all' }
+  | { kind: 'default' }
+  | { kind: 'local' }
+  | { kind: 'plugin'; name: string }
 
 const AgentListing = () => {
   const navigate = useNavigate()
   const { agents, loading } = useAgentDefinitions()
   const [heroPrompt, setHeroPrompt] = useState('')
   const [showCreator, setShowCreator] = useState(false)
+  const [packageFilter, setPackageFilter] = useState<PackageFilterState>({ kind: 'all' })
+
+  const packageSummary = useMemo(() => {
+    const pluginNames = new Set<string>()
+    let hasLocal = false
+    let hasDefault = false
+
+    agents.forEach((agent) => {
+      const pkg = agent.package_name?.trim()
+      if (pkg) {
+        if (pkg === 'distri') {
+          hasDefault = true
+        } else {
+          pluginNames.add(pkg)
+        }
+      } else {
+        hasLocal = true
+      }
+    })
+
+    return {
+      pluginNames: Array.from(pluginNames).sort((a, b) => a.localeCompare(b)),
+      hasLocal,
+      hasDefault,
+    }
+  }, [agents])
+
+  useEffect(() => {
+    if (packageFilter.kind === 'all') {
+      return
+    }
+
+    const stillExists = (() => {
+      switch (packageFilter.kind) {
+        case 'default':
+          return agents.some((agent) => agent.package_name === 'distri')
+        case 'local':
+          return agents.some((agent) => !agent.package_name)
+        case 'plugin':
+          return agents.some((agent) => agent.package_name === packageFilter.name)
+        default:
+          return true
+      }
+    })()
+
+    if (!stillExists) {
+      setPackageFilter({ kind: 'all' })
+    }
+  }, [agents, packageFilter])
+
+  const filteredAgents = useMemo(() => {
+    switch (packageFilter.kind) {
+      case 'all':
+        return agents
+      case 'default':
+        return agents.filter((agent) => agent.package_name === 'distri')
+      case 'local':
+        return agents.filter((agent) => !agent.package_name)
+      case 'plugin':
+        return agents.filter((agent) => agent.package_name === packageFilter.name)
+      default:
+        return agents
+    }
+  }, [agents, packageFilter])
+
+  const getAgentBadge = (agent: AgentDefinition) => {
+    if (agent.package_name === 'distri') {
+      return {
+        label: 'Default',
+        className: 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-100 border-transparent'
+      }
+    }
+
+    if (!agent.package_name) {
+      return {
+        label: 'Local',
+        className: 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 border-transparent'
+      }
+    }
+
+    return {
+      label: agent.package_name,
+      className: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100 border-transparent'
+    }
+  }
 
   const preferredAgent = useMemo(() => {
     if (!agents.length) {
@@ -119,6 +211,47 @@ const AgentListing = () => {
                 </Button>
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={packageFilter.kind === 'all' ? 'default' : 'outline'}
+                onClick={() => setPackageFilter({ kind: 'all' })}
+                className="text-xs"
+              >
+                All
+              </Button>
+              {packageSummary.hasDefault && (
+                <Button
+                  size="sm"
+                  variant={packageFilter.kind === 'default' ? 'default' : 'outline'}
+                  onClick={() => setPackageFilter({ kind: 'default' })}
+                  className="text-xs"
+                >
+                  Default
+                </Button>
+              )}
+              {packageSummary.hasLocal && (
+                <Button
+                  size="sm"
+                  variant={packageFilter.kind === 'local' ? 'default' : 'outline'}
+                  onClick={() => setPackageFilter({ kind: 'local' })}
+                  className="text-xs"
+                >
+                  Local
+                </Button>
+              )}
+              {packageSummary.pluginNames.map((pkg) => (
+                <Button
+                  key={pkg}
+                  size="sm"
+                  variant={packageFilter.kind === 'plugin' && packageFilter.name === pkg ? 'default' : 'outline'}
+                  onClick={() => setPackageFilter({ kind: 'plugin', name: pkg })}
+                  className="text-xs"
+                >
+                  {pkg}
+                </Button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
@@ -127,9 +260,11 @@ const AgentListing = () => {
             </div>
           ) : agents.length === 0 ? (
             <div className="text-center text-muted-foreground">No agents found. Create a new one to get started.</div>
+          ) : filteredAgents.length === 0 ? (
+            <div className="text-center text-muted-foreground">No agents found for the selected package.</div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {agents.map((agent: AgentDefinition) => (
+              {filteredAgents.map((agent: AgentDefinition) => (
                 <Card
                   key={agent.id}
                   className="group border border-border/70 bg-card/95 text-foreground shadow-none transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
@@ -147,9 +282,19 @@ const AgentListing = () => {
                             </Avatar>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground truncate" title={agent.name}>
-                              {agent.name}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground truncate" title={agent.name}>
+                                {agent.name}
+                              </p>
+                              {(() => {
+                                const badge = getAgentBadge(agent)
+                                return (
+                                  <Badge variant="secondary" className={`text-xs ${badge.className}`}>
+                                    {badge.label}
+                                  </Badge>
+                                )
+                              })()}
+                            </div>
                             <p className="text-xs capitalize text-muted-foreground truncate" title={agent.agent_type?.replace(/_/g, ' ') || 'standard'}>
                               {agent.agent_type?.replace(/_/g, ' ') || 'standard'}
                             </p>
