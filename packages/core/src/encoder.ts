@@ -183,6 +183,20 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       return toolResultsResult;
     }
 
+    case 'browser_screenshot': {
+      const browserScreenshotResult = {
+        type: 'browser_screenshot' as const,
+        data: {
+          image: metadata.image || '',
+          format: metadata.format,
+          filename: metadata.filename,
+          size: metadata.size,
+          timestamp_ms: metadata.timestamp_ms,
+        }
+      };
+      return browserScreenshotResult;
+    }
+
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);

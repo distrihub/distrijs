@@ -90,7 +90,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   agent,
   onMessage,
   onError,
-  getMetadata,
+  getMetadata: getMetadataProp,
   externalTools,
   executionOptions,
   initialMessages,
@@ -129,6 +129,10 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const [isStreamingVoice, setIsStreamingVoice] = useState(false);
   const [streamingTranscript, setStreamingTranscript] = useState('');
   const [audioChunks, setAudioChunks] = useState<Uint8Array[]>([]);
+  const [browserEnabled, setBrowserEnabled] = useState(false);
+  const browserFrame = useChatStateStore(state => state.browserFrame);
+  const browserFrameUpdatedAt = useChatStateStore(state => state.browserFrameUpdatedAt);
+  const clearBrowserFrame = useChatStateStore(state => state.clearBrowserFrame);
 
   useEffect(() => {
     if (typeof initialInput === 'string' && initialInput !== initialInputRef.current) {
@@ -137,6 +141,19 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     }
   }, [initialInput]);
 
+
+  const mergedMetadataProvider = useCallback(async () => {
+    const baseMetadata = (await getMetadataProp?.()) ?? {};
+    const existingOverrides = (baseMetadata.definition_overrides as Record<string, unknown> | undefined) ?? {};
+
+    return {
+      ...baseMetadata,
+      definition_overrides: {
+        ...existingOverrides,
+        use_browser: browserEnabled,
+      },
+    };
+  }, [browserEnabled, getMetadataProp]);
 
   const {
     sendMessage,
@@ -150,12 +167,22 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     agent,
     onMessage,
     onError,
-    getMetadata,
+    getMetadata: mergedMetadataProvider,
     externalTools,
     executionOptions,
     initialMessages,
     beforeSendMessage,
   });
+
+  const browserTimestampLabel = useMemo(() => {
+    if (!browserFrameUpdatedAt) return null;
+    try {
+      const date = new Date(browserFrameUpdatedAt);
+      return date.toLocaleTimeString();
+    } catch {
+      return null;
+    }
+  }, [browserFrameUpdatedAt]);
 
   // Get reactive state from store
   const toolCalls = useChatStateStore(state => state.toolCalls);
@@ -169,6 +196,13 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       onChatStateChange(currentState);
     }
   }, [currentState, onChatStateChange]);
+
+  const handleToggleBrowser = useCallback((enabled: boolean) => {
+    setBrowserEnabled(enabled);
+    if (!enabled) {
+      clearBrowserFrame();
+    }
+  }, [clearBrowserFrame]);
 
 
   // Image upload functions moved from ChatInput
@@ -574,38 +608,42 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       : 'Type your message…';
 
     return (
-    <ChatInput
-      value={input}
-      onChange={setInput}
-      onSend={handleSendMessage}
-      onStop={handleStopStreaming}
-      placeholder={
-        isStreamingVoice
-          ? 'Voice mode active…'
-          : isStreaming
-            ? 'Message will be queued…'
-            : basePlaceholder
-      }
-      disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
-      isStreaming={isStreaming}
-      attachedImages={attachedImages}
-      onRemoveImage={removeImage}
-      onAddImages={addImages}
-      voiceEnabled={voiceEnabled && !!speechToText}
-      onVoiceRecord={handleVoiceRecord}
-      onStartStreamingVoice={voiceEnabled && speechToText ? startStreamingVoice : undefined}
-      isStreamingVoice={isStreamingVoice}
-      useSpeechRecognition={useSpeechRecognition}
-      onSpeechTranscript={handleSpeechTranscript}
-      className={className}
-      variant={variant}
-    />
-  );
+      <ChatInput
+        value={input}
+        onChange={setInput}
+        onSend={handleSendMessage}
+        onStop={handleStopStreaming}
+        browserEnabled={browserEnabled}
+        onToggleBrowser={handleToggleBrowser}
+        placeholder={
+          isStreamingVoice
+            ? 'Voice mode active…'
+            : isStreaming
+              ? 'Message will be queued…'
+              : basePlaceholder
+        }
+        disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
+        isStreaming={isStreaming}
+        attachedImages={attachedImages}
+        onRemoveImage={removeImage}
+        onAddImages={addImages}
+        voiceEnabled={voiceEnabled && !!speechToText}
+        onVoiceRecord={handleVoiceRecord}
+        onStartStreamingVoice={voiceEnabled && speechToText ? startStreamingVoice : undefined}
+        isStreamingVoice={isStreamingVoice}
+        useSpeechRecognition={useSpeechRecognition}
+        onSpeechTranscript={handleSpeechTranscript}
+        className={className}
+        variant={variant}
+      />
+    );
   }, [
     input,
     setInput,
     handleSendMessage,
     handleStopStreaming,
+    browserEnabled,
+    handleToggleBrowser,
     isStreamingVoice,
     isStreaming,
     isLoading,
@@ -752,6 +790,23 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
           {renderExternalToolCalls()}
           {/* Render thinking indicator at the end */}
           {renderThinkingIndicator()}
+          {browserEnabled && browserFrame && (
+            <RendererWrapper className="max-w-full px-0">
+              <div className="w-full rounded-xl border bg-muted/40 overflow-hidden">
+                <img
+                  src={browserFrame}
+                  alt="Browser screenshot"
+                  className="block w-full h-auto object-contain"
+                />
+                <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground bg-background/60">
+                  <span>Live browser preview</span>
+                  {browserTimestampLabel && (
+                    <span className="text-[11px]">Updated {browserTimestampLabel}</span>
+                  )}
+                </div>
+              </div>
+            </RendererWrapper>
+          )}
           {/* Render pending message after thinking indicator */}
           {renderPendingMessage()}
 

@@ -6,7 +6,6 @@
     "skipLibCheck": true,
     "declaration": true,
     "declarationMap": true,
-    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
       "@/*": [
