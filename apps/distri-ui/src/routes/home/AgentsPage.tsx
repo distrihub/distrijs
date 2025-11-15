@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { MessageSquare, Bot, Workflow, Eye } from "lucide-react"
-import { useAgentDefinitions, ChatInput } from "@distri/react"
+import { useAgentDefinitions, ChatInput, useAgent, Chat } from "@distri/react"
 import { AgentDefinition, DistriPart } from "@distri/core"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { v4 as uuidv4 } from "uuid"
@@ -175,9 +175,23 @@ const AgentListing = () => {
     )
   }
 
+  // Designer chat sidebar
+  const { agent: designerAgent } = useAgent({ agentIdOrDef: 'designer' })
+  const [showDesignerChat, setShowDesignerChat] = useState(true)
+  const [designerThreadId, setDesignerThreadId] = useState<string>(() => {
+    if (typeof window === 'undefined') return uuidv4()
+    const key = 'designer:threadId'
+    const cached = window.localStorage.getItem(key)
+    if (cached) return cached
+    const id = uuidv4()
+    window.localStorage.setItem(key, id)
+    return id
+  })
+
   return (
-    <div className="flex h-full w-full overflow-auto bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+    <div className="flex h-full w-full overflow-hidden bg-background text-foreground">
+      <div className="flex-1 overflow-auto">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         {showCreator ? (
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
             <div className="mb-3 flex items-center justify-between">
@@ -185,9 +199,14 @@ const AgentListing = () => {
                 <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">New agent</p>
                 <h3 className="text-lg font-semibold">Describe the workflow you want</h3>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setShowCreator(false)}>
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowDesignerChat((v) => !v)}>
+                  {showDesignerChat ? 'Hide Designer' : 'Show Designer'}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowCreator(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
             <ChatInput
               value={heroPrompt}
@@ -312,6 +331,26 @@ const AgentListing = () => {
           )}
         </section>
       </div>
+      </div>
+
+      {/* Right sidebar: Designer Chat */}
+      {showDesignerChat && (
+        <aside className="w-80 border-l border-border bg-muted/10 p-2 dark:bg-muted/20">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">Designer</p>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowDesignerChat(false)}>
+              Hide
+            </Button>
+          </div>
+          <div className="h-[calc(100%-1.75rem)] overflow-hidden">
+            {designerAgent ? (
+              <Chat agent={designerAgent} threadId={designerThreadId} theme="auto" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Loading designer…</div>
+            )}
+          </div>
+        </aside>
+      )}
     </div>
   )
 }

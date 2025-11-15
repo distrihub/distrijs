@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FileSaveHandler, FileWorkspaceStore } from '@distri/fs'
-import { FileWorkspaceWithChat, IndexedDbFilesystem, createFileWorkspaceStore } from '@distri/fs'
-import { useAgent } from '@distri/react'
+import { FileWorkspace, IndexedDbFilesystem, createFileWorkspaceStore } from '@distri/fs'
+import { useAgent, Chat, type DistriAnyTool } from '@distri/react'
 import { BACKEND_URL } from '@/constants'
 import { useInitialization } from '@/components/TokenProvider'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { uuidv4 } from '@distri/core'
+import { createFilesystemTools, ScriptRunnerTool } from '@distri/fs'
+import { Files, MessageSquare } from 'lucide-react'
 
 interface WorkspaceMetadataEntry {
   path: string
@@ -44,7 +46,7 @@ const encodeWorkspacePath = (path: string) =>
 
 const FilesPage = () => {
   const { token } = useInitialization()
-  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentIdOrDef: 'scripter' })
+  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentIdOrDef: 'coder' })
 
   const filesystem = useMemo(() => IndexedDbFilesystem.forProject(PROJECT_ID), [])
   const storeRef = useRef<FileWorkspaceStore | null>(null)
@@ -165,6 +167,21 @@ const FilesPage = () => {
 
   const isReady = workspaceReady && !!agent && !agentLoading
 
+  // Build filesystem tools for chat (so the coder agent can operate on the workspace)
+  const filesystemTools = useMemo(() => (
+    createFilesystemTools(PROJECT_ID, {
+      filesystem,
+      onChange: (event) => {
+        void store.getState().handleExternalChange(event)
+      },
+    })
+  ), [filesystem, store])
+
+  const uiTools = useMemo<DistriAnyTool[]>(() => [ScriptRunnerTool], [])
+  const externalTools = useMemo(() => [...filesystemTools, ...uiTools], [filesystemTools, uiTools])
+
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'files' | 'chat'>('files')
+
   return (
     <div className="flex h-full w-full flex-col bg-background text-foreground">
       {error ? (
@@ -175,27 +192,58 @@ const FilesPage = () => {
 
       {agentError ? (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-200">
-          Unable to load the Scripter agent. Ensure it is registered before using the workspace chat.
+          Unable to load the Coder agent. Ensure it is registered before using the workspace chat.
         </div>
       ) : null}
 
       <div className="flex-1 min-h-0 bg-card">
         {isReady ? (
-          <FileWorkspaceWithChat
-            projectId={PROJECT_ID}
-            filesystem={filesystem}
-            store={store}
-            onSaveFile={handleSaveFile}
-            chat={{
-              agent: agent!,
-              threadId,
-              title: 'Workspace assistant',
-              initialMessage: 'Review the current workspace files and suggest improvements.',
-            }}
-            onSyncWorkspace={() => void fetchMetadata()}
-            isSyncingWorkspace={loading}
-            className="h-full bg-card"
-          />
+          <div className="relative flex h-full w-full gap-3 bg-card text-foreground">
+            {/* Sidebar toggle rail */}
+            <div className="flex w-12 flex-col items-center gap-2 border border-border/60 bg-muted/20 py-3">
+              {[
+                { id: 'files' as const, icon: Files, label: 'Project files' },
+                { id: 'chat' as const, icon: MessageSquare, label: 'Chat' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveSidebarTab(item.id)}
+                  className={[
+                    'flex h-10 w-10 items-center justify-center text-muted-foreground transition hover:text-foreground rounded',
+                    activeSidebarTab === item.id ? 'bg-primary/10 text-primary' : '',
+                  ].join(' ')}
+                  aria-label={item.label}
+                >
+                  <item.icon className="h-5 w-5" />
+                </button>
+              ))}
+            </div>
+
+            {/* Workspace with switchable sidebar (explorer or chat) */}
+            <div className="flex min-w-0 flex-1 overflow-hidden">
+              <FileWorkspace
+                projectId={PROJECT_ID}
+                filesystem={filesystem}
+                store={store}
+                onSaveFile={handleSaveFile}
+                onSyncWorkspace={() => void fetchMetadata()}
+                isSyncingWorkspace={loading}
+                className="h-full"
+                sidebarView={activeSidebarTab === 'chat' ? 'custom' : 'explorer'}
+                sidebarCustom={activeSidebarTab === 'chat' ? (
+                  <div className="flex h-full flex-col border border-border bg-background p-2 text-foreground">
+                    <Chat
+                      agent={agent!}
+                      threadId={threadId}
+                      externalTools={externalTools}
+                      theme="auto"
+                    />
+                  </div>
+                ) : undefined}
+              />
+            </div>
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
