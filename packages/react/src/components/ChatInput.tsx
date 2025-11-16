@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { Send, Square, ImageIcon, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
+import { Send, Square, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
 import { cn } from '../lib/utils';
@@ -80,31 +80,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isCodeMirrorReady, setIsCodeMirrorReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const imageAttachments = useMemo(() => attachedImages ?? [], [attachedImages]);
-
-  const heroStyles = useMemo(() => {
-    if (isDarkMode) {
-      return {
-        shell: 'rounded-[32px] p-[3px] bg-[radial-gradient(circle_at_top,_rgba(255,105,255,0.7),_rgba(96,76,255,0.9))] shadow-[0_20px_80px_rgba(96,76,255,0.35)]',
-        inner: 'rounded-[28px] border border-white/10 bg-[#050508] px-5 py-4 flex flex-col gap-4 text-white',
-        attachButton: 'border-white/10 bg-white/5 text-white hover:border-white/40',
-        voiceIdle: 'border-white/10 bg-white/5 text-white hover:border-white/40',
-        sendActive: 'bg-white text-black shadow-primary/30',
-        sendIdle: 'bg-white/10 text-white/50 shadow-none',
-        overlay: 'border border-white/5',
-        text: 'text-white',
-      }
-    }
-    return {
-      shell: 'rounded-2xl border border-border bg-muted shadow-sm',
-      inner: 'rounded-xl border border-border/80 bg-background px-4 py-3 flex flex-col gap-3 text-foreground',
-      attachButton: 'border border-border/80 bg-background text-muted-foreground hover:text-foreground',
-      voiceIdle: 'border border-border/80 bg-muted text-foreground hover:text-foreground',
-      sendActive: 'bg-primary text-primary-foreground shadow-sm',
-      sendIdle: 'bg-muted text-muted-foreground shadow-none',
-      overlay: 'border border-border/80',
-      text: 'text-foreground',
-    }
-  }, [isDarkMode])
 
   const ensureCodeMirrorAssets = useCallback(async () => {
     if (typeof window === 'undefined' || window.CodeMirror) {
@@ -202,10 +177,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const wrapper = cm.getWrapperElement();
     const scroller = cm.getScrollerElement();
     const heroWrapperClasses = [
-      'rounded-[22px]', 'border', 'border-white/5', 'bg-transparent', 'text-white', 'text-base', 'leading-7'
+      'rounded-2xl', 'border', 'border-primary/30', 'bg-transparent', 'text-foreground', 'text-base', 'leading-7'
     ];
     const defaultWrapperClasses = [
-      'rounded-2xl', 'border', 'border-border', 'bg-background', 'text-foreground', 'text-sm', 'leading-6'
+      'rounded-2xl', 'border', 'border-primary/30', 'bg-transparent', 'text-foreground', 'text-sm', 'leading-6'
     ];
     wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1');
     scroller.style.background = 'transparent';
@@ -394,16 +369,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const hasContent = value.trim().length > 0 || imageAttachments.length > 0;
   const isDisabled = disabled;
 
-  const shellClass = variant === 'hero'
-    ? heroStyles.shell
-    : 'rounded-2xl border border-input bg-input p-2 shadow-sm';
-
-  const innerShell = variant === 'hero'
-    ? heroStyles.inner
-    : 'rounded-2xl bg-background flex flex-col gap-2';
-
-  const wrapperClass = variant === 'hero' ? 'mx-0' : 'mx-3 sm:mx-5';
-  const previewClass = variant === 'hero' ? 'gap-3 mb-3' : 'gap-2 mb-2';
+  const shellClass = 'rounded-2xl bg-transparent';
+  const innerShell = cn(
+    'rounded-2xl border border-primary/30 bg-background/95 px-4 py-3 flex flex-col gap-3 shadow-sm',
+    variant === 'hero' && 'sm:px-6 sm:py-4'
+  );
+  const wrapperClass = 'mx-0 sm:mx-1';
+  const previewClass = 'gap-2 mb-2';
+  const toolbarButton = 'flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 text-muted-foreground transition hover:text-primary';
+  const toolbarButtonActive = 'bg-primary/10 text-primary border-primary/50';
+  const subtleTextClass = variant === 'hero' ? 'text-base leading-7' : 'text-sm leading-6';
 
   return (
     <div className={cn('relative w-full', className)}>
@@ -415,7 +390,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <img
                   src={image.preview}
                   alt={image.name}
-                  className="w-16 h-16 object-cover rounded-lg border border-border"
+                  className="w-16 h-16 object-cover rounded-lg border border-primary/20 bg-background/60"
                 />
                 <button
                   type="button"
@@ -452,11 +427,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   placeholder={placeholder}
                   rows={variant === 'hero' ? 4 : 2}
                   disabled={disabled}
-                  className={cn(
-                    'w-full resize-none bg-transparent outline-none border-none placeholder:text-muted-foreground/60',
-                    variant === 'hero' ? heroStyles.text : 'text-foreground',
-                    variant === 'hero' ? 'text-base leading-7' : 'text-sm leading-6'
-                  )}
+                  className={cn('w-full resize-none bg-transparent outline-none border-none placeholder:text-muted-foreground/60 text-foreground', subtleTextClass)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
                       e.preventDefault();
@@ -465,9 +436,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   }}
                 />
               )}
-              {variant === 'hero' && (
-                <div className={cn('pointer-events-none absolute inset-0 rounded-[22px]', heroStyles.overlay)} />
-              )}
             </div>
 
             <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
@@ -475,16 +443,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <button
                   type="button"
                   onClick={handleBrowserToggle}
-                  className={cn(
-                    'flex h-11 w-11 items-center justify-center rounded-2xl border transition',
-                    browserEnabled
-                      ? (variant === 'hero'
-                          ? 'border-emerald-400/60 bg-emerald-400/20 text-emerald-100'
-                          : 'border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-200')
-                      : (variant === 'hero'
-                          ? heroStyles.voiceIdle
-                          : 'border-border bg-background text-muted-foreground hover:text-foreground')
-                  )}
+                  className={cn(toolbarButton, browserEnabled && toolbarButtonActive)}
                   disabled={disabled || !onToggleBrowser}
                   title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
                 >
@@ -493,30 +452,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    'flex h-11 w-11 items-center justify-center rounded-2xl border transition',
-                    variant === 'hero'
-                      ? heroStyles.attachButton
-                      : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                  )}
+                  className={toolbarButton}
                   disabled={disabled}
                   title="Attach image"
                 >
-                  {variant === 'hero' ? <Plus className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                  <Plus className="h-4 w-4" />
                 </button>
 
                 {voiceEnabled && !useSpeechRecognition ? (
                   <button
                     type="button"
                     onClick={handleVoiceToggle}
-                    className={cn(
-                      'flex h-11 w-11 items-center justify-center rounded-2xl border transition',
-                      isRecording
-                        ? 'border-red-400/60 bg-red-400/20 text-red-200'
-                        : variant === 'hero'
-                          ? heroStyles.voiceIdle
-                          : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                    )}
+                  className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-200')}
                     title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
                     disabled={isStreaming || disabled}
                   >
@@ -528,14 +475,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   <button
                     type="button"
                     onClick={onStartStreamingVoice}
-                    className={cn(
-                      'flex h-11 w-11 items-center justify-center rounded-2xl border transition',
-                      isStreamingVoice
-                        ? 'border-blue-400/70 bg-blue-400/20 text-blue-100'
-                        : variant === 'hero'
-                          ? heroStyles.voiceIdle
-                          : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                    )}
+                  className={cn(toolbarButton, isStreamingVoice && toolbarButtonActive)}
                     disabled={isStreaming || disabled || isRecording}
                     title="Start streaming voice conversation"
                   >
@@ -561,12 +501,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   onClick={() => (isStreaming ? handleStop() : void handleSend())}
                   disabled={isStreaming ? false : (!hasContent || isDisabled)}
                   className={cn(
-                    'flex h-12 w-12 items-center justify-center rounded-full transition shadow-lg',
+                    'flex h-11 w-11 items-center justify-center rounded-full transition shadow-sm',
                     isStreaming
-                      ? 'bg-amber-400/20 text-amber-200 shadow-amber-300/30'
+                      ? 'bg-amber-400 text-amber-950 hover:bg-amber-300'
                       : hasContent
-                        ? (variant === 'hero' ? heroStyles.sendActive : 'bg-primary text-primary-foreground')
-                        : (variant === 'hero' ? heroStyles.sendIdle : 'bg-muted text-muted-foreground')
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'bg-muted text-muted-foreground'
                   )}
                   title={isStreaming ? 'Stop' : 'Send'}
                 >

@@ -200,12 +200,12 @@ const FilesPage = () => {
       },
       {
         id: 'designer-chat',
-        label: 'Designer chat',
+        label: 'Preview',
         icon: Palette,
         position: 'right' as const,
         mode: 'custom' as const,
         content: (
-          <div className="flex h-full flex-col gap-3 px-2 py-3">
+          <div className="flex h-full flex-col gap-3">
             <ChatSidebarPanel
               agent={agent}
               agentLoading={agentLoading}
@@ -313,10 +313,7 @@ const ChatSidebarPanel = ({ agent, agentLoading, threadId, externalTools }: Chat
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="rounded-xl border border-border/60 bg-card/70 p-2 text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-        Thread: <span className="ml-1 font-mono text-[10px] normal-case tracking-normal">{threadId.slice(0, 8)}…</span>
-      </div>
-      <div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-card/40">
+      <div className="flex-1 overflow-hidden">
         <Chat agent={agent} threadId={threadId} externalTools={externalTools} theme="auto" />
       </div>
     </div>
