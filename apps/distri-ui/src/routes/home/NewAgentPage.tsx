@@ -36,20 +36,16 @@ const NewAgentPage = () => {
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background px-4 py-6">
-      <div className="w-full max-w-2xl space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:p-8">
+    <div className="flex h-full w-full items-center justify-center ">
+      <div className="w-full max-w-2xl space-y-6 p-4 shadow-sm sm:p-6 lg:p-8">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">New agent</p>
-          <h1 className="text-xl font-semibold text-foreground sm:text-2xl">Describe the workflow you need</h1>
-          <p className="text-sm text-muted-foreground">
-            Summarize the problem, inputs, tools, and outputs. We will route you to the recommended agent.
-          </p>
         </div>
         <ChatInput
           value={prompt}
           onChange={setPrompt}
           onSend={handleSend}
-          placeholder={preferredAgent ? 'Explain the automation you want to build…' : 'No agents available'}
+          placeholder={'Describe the agent you want to build'}
           disabled={!preferredAgent || loading}
           variant="hero"
         />
