@@ -1,4 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+  type ComponentType,
+} from 'react';
 import Editor from '@monaco-editor/react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { TOML_LANGUAGE, TOML_LANGUAGE_CONFIGURATION } from '../monaco/tomlLanguage';
@@ -26,14 +34,15 @@ import {
 import {
   ChevronRight,
   FileText,
-  Folder,
   FlaskConical,
+  Folder,
   Loader2,
   MoreVertical,
   Plus,
   RefreshCw,
   Save,
   Sparkles,
+  Files,
 } from 'lucide-react';
 
 import {
@@ -46,6 +55,7 @@ import type { FileTab } from '../store/fileStore';
 import { IndexedDbFilesystem, ProjectFilesystem } from '../storage/indexedDbFilesystem';
 import type { DirectoryTreeNode } from '../storage/indexedDbFilesystem';
 import type { FileSaveHandler, InitialEntry, PreviewRenderer, SelectionMode } from '../types';
+import { FileList } from './FileList';
 
 const normalizePath = (path: string) => path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
 
@@ -95,6 +105,27 @@ export interface TestingPanelConfig {
   resultPlaceholder?: string;
 }
 
+export interface WorkspaceActivityItem {
+  id: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  mode?: 'explorer' | 'custom';
+  content?: ReactNode;
+}
+
+export interface WorkspaceStaticTab {
+  id: string;
+  title: string;
+  content: ReactNode;
+}
+
+export interface WorkspaceSidePanel {
+  id: string;
+  content: ReactNode;
+  width?: number | string;
+  className?: string;
+}
+
 export interface FileWorkspaceProps {
   projectId: string;
   initialEntries?: InitialEntry[];
@@ -106,10 +137,11 @@ export interface FileWorkspaceProps {
   defaultFilePath?: string;
   store?: FileWorkspaceStore;
   testing?: TestingPanelConfig;
-  sidebarView?: 'explorer' | 'custom';
-  sidebarCustom?: React.ReactNode;
+  activityBarItems?: WorkspaceActivityItem[];
+  defaultActivityId?: string;
   onSyncWorkspace?: () => void | Promise<void>;
   isSyncingWorkspace?: boolean;
+  sidePanels?: WorkspaceSidePanel[];
 }
 
 export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
@@ -123,22 +155,19 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   defaultFilePath,
   store: externalStore,
   testing,
-  sidebarView: sidebarViewProp = 'explorer',
-  sidebarCustom,
+  activityBarItems = [],
+  defaultActivityId,
   onSyncWorkspace,
   isSyncingWorkspace,
+  sidePanels = [],
 }) => {
   const fs = useMemo(
     () => filesystem ?? IndexedDbFilesystem.forProject(projectId),
     [filesystem, projectId],
   );
 
-  let themeContext: ReturnType<typeof useTheme> | null = null;
-  try {
-    themeContext = useTheme();
-  } catch {
-    themeContext = null;
-  }
+  const themeContext = useTheme();
+
   const themeSetting = themeContext?.theme ?? 'system';
 
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() =>
@@ -214,10 +243,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   const isBrowser = typeof window !== 'undefined';
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['']));
   const autoOpenAttemptedRef = useRef(false);
-  const [newEntryOpen, setNewEntryOpen] = useState(false);
-  const [newEntryType, setNewEntryType] = useState<'file' | 'directory'>('file');
-  const [newEntryPath, setNewEntryPath] = useState('');
-  const [newEntryContent, setNewEntryContent] = useState('');
   const [testPayload, setTestPayload] = useState<string>(() => testing?.defaultPayload ?? '{\n  "input": "sample"\n}');
   const [testOutput, setTestOutput] = useState<string>(testing?.resultPlaceholder ?? 'No tests have been executed yet.');
   const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -225,8 +250,13 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   const [isGeneratingTest, setIsGeneratingTest] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const resultPlaceholder = testing?.resultPlaceholder ?? 'No tests have been executed yet.';
+  const [newEntryOpen, setNewEntryOpen] = useState(false);
+  const [newEntryType, setNewEntryType] = useState<'file' | 'directory'>('file');
+  const [newEntryPath, setNewEntryPath] = useState('');
+  const [newEntryContent, setNewEntryContent] = useState('');
   const hasTestingPanel = Boolean(testing);
-  const isExplorerSidebar = sidebarViewProp === 'explorer';
+
+
   const monacoTomlRegistered = useRef(false);
 
   useEffect(() => {
@@ -279,18 +309,31 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   }, [testing?.defaultPayload, resultPlaceholder]);
 
   const activeTab = useMemo(
-    () => tabs.find((tab) => tab.path === activePath) ?? tabs.at(-1),
+    () => (activePath ? tabs.find((tab) => tab.path === activePath) : undefined),
     [tabs, activePath],
   );
 
-  const handleOpenFile = async (path: string) => {
+
+  const ensureParentsExpanded = useCallback(async (path: string) => {
+    const segments = normalizePath(path).split('/');
+    if (segments.length <= 1) return;
+    const next = new Set(expandedPaths);
+    let cursor = '';
+    for (const part of segments.slice(0, -1)) {
+      cursor = cursor ? `${cursor}/${part}` : part;
+      next.add(cursor);
+    }
+    setExpandedPaths(next);
+  }, []);
+
+  const handleOpenFile = useCallback(async (path: string) => {
     await openFile(path);
     if (selectionMode === 'single') {
       const currentTabs = store.getState().tabs.filter((tab) => tab.path === path);
       store.setState({ tabs: currentTabs, activePath: path });
     }
     ensureParentsExpanded(path);
-  };
+  }, [ensureParentsExpanded, openFile, selectionMode, store]);
 
   const handleSaveActiveTab = useCallback(() => {
     if (!activeTab) {
@@ -370,17 +413,6 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
     void handleOpenFile(firstAvailableFile);
   }, [defaultFilePath, firstAvailableFile, tabs.length, handleOpenFile]);
 
-  const ensureParentsExpanded = (path: string) => {
-    const segments = normalizePath(path).split('/');
-    if (segments.length <= 1) return;
-    const next = new Set(expandedPaths);
-    let cursor = '';
-    for (const part of segments.slice(0, -1)) {
-      cursor = cursor ? `${cursor}/${part}` : part;
-      next.add(cursor);
-    }
-    setExpandedPaths(next);
-  };
 
   const handleGenerateTestPayload = useCallback(async () => {
     if (!testing?.onGenerate) {
@@ -426,7 +458,7 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
     }
   }, [testing, testPayload]);
 
-  const toggleDirectory = (path: string) => {
+  const toggleDirectory = useCallback((path: string) => {
     setExpandedPaths((prev) => {
       const next = new Set(prev);
       if (next.has(path)) {
@@ -436,24 +468,31 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
       }
       return next;
     });
-  };
+  }, []);
 
-  const handleCreateEntry = async () => {
-    const path = normalizePath(newEntryPath);
-    if (!path) {
-      return;
-    }
-    if (newEntryType === 'file') {
-      await createFile(path, newEntryContent ?? '');
-      await handleOpenFile(path);
-    } else {
-      await createDirectory(path);
-      ensureParentsExpanded(path);
-    }
-    setNewEntryContent('');
-    setNewEntryPath('');
-    setNewEntryOpen(false);
-  };
+  const handleCreateEntry = useCallback(
+    async (type: 'file' | 'directory', rawPath: string, content?: string) => {
+      const path = normalizePath(rawPath)
+      if (!path) {
+        return
+      }
+      if (type === 'file') {
+        await createFile(path, content ?? '')
+        await handleOpenFile(path)
+      } else {
+        await createDirectory(path)
+        ensureParentsExpanded(path)
+      }
+    },
+    [createFile, createDirectory, handleOpenFile, ensureParentsExpanded],
+  )
+
+  const handleDialogCreate = useCallback(async () => {
+    await handleCreateEntry(newEntryType, newEntryPath, newEntryType === 'file' ? newEntryContent : undefined)
+    setNewEntryOpen(false)
+    setNewEntryPath('')
+    setNewEntryContent('')
+  }, [handleCreateEntry, newEntryContent, newEntryPath, newEntryType])
 
   const handleDeleteEntry = useCallback(
     async (path: string, _isDirectory?: boolean) => {
@@ -472,6 +511,170 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
   );
   const editorTheme = resolvedTheme === 'light' ? 'vs-light' : 'vs-dark';
 
+  const explorerPanel = useMemo(() => (
+    <FileList
+      tree={tree}
+      expandedPaths={expandedPaths}
+      activePath={activeTab?.path}
+      onToggle={toggleDirectory}
+      onOpenFile={(path) => {
+        void handleOpenFile(path)
+      }}
+      onDeleteEntry={(path, isDirectory) => {
+        void handleDeleteEntry(path, Boolean(isDirectory))
+      }}
+      onRefresh={() => void refresh()}
+      onCreateEntry={({ type, path, content }) => handleCreateEntry(type, path, content)}
+    />
+  ), [tree, expandedPaths, activeTab?.path, toggleDirectory, handleOpenFile, handleDeleteEntry, refresh, handleCreateEntry]);
+
+  const workspaceActivities = useMemo<WorkspaceActivityItem[]>(() => {
+    const explorerItem: WorkspaceActivityItem = {
+      id: 'explorer',
+      label: 'Explorer',
+      icon: Files,
+      content: explorerPanel,
+    }
+    if (!activityBarItems.length) {
+      return [explorerItem]
+    }
+    return [explorerItem, ...activityBarItems]
+  }, [activityBarItems, explorerPanel])
+
+  const [activeActivityId, setActiveActivityId] = useState<string>(() => {
+    if (defaultActivityId && workspaceActivities.some((item) => item.id === defaultActivityId)) {
+      return defaultActivityId
+    }
+    return workspaceActivities[0]?.id ?? 'explorer'
+  })
+
+  useEffect(() => {
+    if (!workspaceActivities.length) {
+      return
+    }
+    if (workspaceActivities.some((item) => item.id === activeActivityId)) {
+      return
+    }
+    const fallback =
+      (defaultActivityId && workspaceActivities.some((item) => item.id === defaultActivityId)
+        ? defaultActivityId
+        : workspaceActivities[0]?.id) ?? 'explorer'
+    setActiveActivityId(fallback)
+  }, [workspaceActivities, activeActivityId, defaultActivityId])
+
+  const resolvedActivityItem = workspaceActivities.find((item) => item.id === activeActivityId) ?? workspaceActivities[0]
+  const isExplorerSidebar = resolvedActivityItem?.mode !== 'custom'
+  const resolvedSidebarCustom = !isExplorerSidebar ? resolvedActivityItem?.content : null
+  const hasActivityBar = workspaceActivities.length > 1
+
+  const testingPanelContent = hasTestingPanel ? (
+    <div className="flex h-full flex-col gap-4 text-foreground">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
+            {testing?.description ?? 'Parameters (JSON)'}
+          </p>
+          <h3 className="text-base font-semibold">{testing?.title ?? 'Testing'}</h3>
+        </div>
+        <FlaskConical className="h-5 w-5 text-muted-foreground" />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="overflow-hidden border border-border/70 bg-background">
+          {isBrowser ? (
+            <Editor
+              value={testPayload}
+              language="json"
+              theme={editorTheme}
+              onChange={(value) => setTestPayload(value ?? '')}
+              beforeMount={handleEditorBeforeMount}
+              onMount={handleEditorDidMount}
+              height="220px"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 12,
+                scrollBeyondLastLine: false,
+                lineNumbers: 'off',
+                wordWrap: 'on',
+                padding: { top: 12, bottom: 12 },
+              }}
+            />
+          ) : (
+            <Textarea
+              value={testPayload}
+              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setTestPayload(event.target.value)}
+              rows={10}
+              className="bg-transparent font-mono text-xs text-foreground"
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+                  event.preventDefault()
+                  handleSaveActiveTab()
+                }
+              }}
+            />
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1 gap-2"
+            disabled={!testing?.onGenerate || isGeneratingTest}
+            onClick={handleGenerateTestPayload}
+          >
+            <Sparkles className="h-4 w-4" />
+            {isGeneratingTest ? 'Generating…' : testing?.generateButtonLabel ?? 'Generate test'}
+          </Button>
+          <Button className="flex-1 gap-2" disabled={isRunningTest} onClick={handleRunTestPayload}>
+            {isRunningTest ? 'Running…' : testing?.runButtonLabel ?? 'Run test'}
+          </Button>
+        </div>
+
+        {testError ? (
+          <div className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {testError}
+          </div>
+        ) : null}
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+            <span>Output</span>
+            <span
+              className={cls(
+                'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                testStatus === 'success'
+                  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                  : testStatus === 'error'
+                    ? 'bg-red-500/20 text-red-700 dark:text-red-200'
+                    : 'bg-muted/40 text-muted-foreground'
+              )}
+            >
+              {testStatus === 'success' ? 'Ready' : testStatus === 'error' ? 'Error' : 'Idle'}
+            </span>
+          </div>
+          <div className="max-h-40 overflow-y-auto border border-border/70 bg-background p-3 text-[11px] text-muted-foreground">
+            <pre className="whitespace-pre-wrap break-words font-mono text-xs">
+              {testOutput || resultPlaceholder}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null
+
+  const resolvedSidePanels = useMemo(() => {
+    const panels = [...sidePanels]
+    if (testingPanelContent) {
+      panels.push({
+        id: 'testing',
+        content: testingPanelContent,
+        width: 320,
+        className: 'border-l border-border/80 bg-muted/10 px-4 py-4 backdrop-blur dark:bg-muted/20',
+      })
+    }
+    return panels
+  }, [sidePanels, testingPanelContent])
+
   return (
     <TooltipProvider>
       <div
@@ -482,155 +685,300 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
         )}
       >
         <div className="flex h-full overflow-hidden">
-          <aside
-            className={cls(
-              'flex h-full flex-col border-r border-border/80 bg-muted/10 transition-all duration-200 ease-in-out dark:bg-muted/20',
-              'w-64'
-            )}
-            aria-hidden={isExplorerSidebar}
-          >
-            {isExplorerSidebar ? (
-              <>
-                <div className="flex items-center gap-2 px-3 pt-3">
-                  <Dialog open={newEntryOpen} onOpenChange={setNewEntryOpen}>
+          {hasActivityBar ? (
+            <div className="flex h-full">
+              <nav className="flex w-12 flex-col items-center gap-2 border-r border-border/80 bg-muted/5 py-3">
+                {activityBarItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-label={item.label}
+                    onClick={() => setActiveActivityId(item.id)}
+                    className={cls(
+                      'flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition',
+                      resolvedActivityItem?.id === item.id
+                        ? 'bg-primary/15 text-primary'
+                        : 'hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </nav>
+              <aside
+                className={cls(
+                  'flex h-full flex-col border-r border-border/80 bg-muted/10 transition-all duration-200 ease-in-out dark:bg-muted/20',
+                  'w-64'
+                )}
+              >
+                {isExplorerSidebar ? (
+                  <>
+                    <div className="flex items-center gap-2 px-3 pt-3">
+                      <Dialog open={newEntryOpen} onOpenChange={setNewEntryOpen}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setNewEntryOpen(true)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">New file or folder</TooltipContent>
+                        </Tooltip>
+                        <DialogContent className="sm:max-w-[420px]">
+                          <DialogHeader>
+                            <DialogTitle>Create {newEntryType === 'file' ? 'File' : 'Folder'}</DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-2">
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Type
+                              </label>
+                              <Select
+                                value={newEntryType}
+                                onValueChange={(value: 'file' | 'directory') => setNewEntryType(value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="file">File</SelectItem>
+                                  <SelectItem value="directory">Folder</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Path
+                              </label>
+                              <Input
+                                placeholder="src/index.ts"
+                                value={newEntryPath}
+                                onChange={(event) => setNewEntryPath(event.target.value)}
+                              />
+                            </div>
+                            {newEntryType === 'file' ? (
+                              <div className="grid gap-2">
+                                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                  Initial content
+                                </label>
+                                <Textarea
+                                  rows={4}
+                                  value={newEntryContent}
+                                  onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                    setNewEntryContent(event.target.value)
+                                  }
+                                  placeholder="// Optional starting content"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setNewEntryOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button onClick={() => void handleDialogCreate()} disabled={!newEntryPath.trim()}>
+                              Create
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => void refresh()}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-auto">
+                      {tree ? (
+                        <ul className="space-y-1 px-2">
+                          {tree.children
+                            ?.slice()
+                            .sort(sortTree)
+                            .map((child) => (
+                              <ExplorerNode
+                                key={child.path}
+                                node={child}
+                                expandedPaths={expandedPaths}
+                                onToggle={toggleDirectory}
+                                onOpenFile={handleOpenFile}
+                                onDeleteEntry={handleDeleteEntry}
+                                activePath={activeTab?.path}
+                              />
+                            ))}
+                        </ul>
+                      ) : (
+                        <div className="px-2 text-xs text-muted-foreground">No files yet. Create one to get started.</div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-full flex-col overflow-hidden">
+                    {resolvedSidebarCustom}
+                  </div>
+                )}
+              </aside>
+            </div>
+          ) : (
+            <aside
+              className={cls(
+                'flex h-full flex-col border-r border-border/80 bg-muted/10 transition-all duration-200 ease-in-out dark:bg-muted/20',
+                'w-64'
+              )}
+              aria-hidden={isExplorerSidebar}
+            >
+              {isExplorerSidebar ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 pt-3">
+                    <Dialog open={newEntryOpen} onOpenChange={setNewEntryOpen}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setNewEntryOpen(true)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">New file or folder</TooltipContent>
+                      </Tooltip>
+                      <DialogContent className="sm:max-w-[420px]">
+                        <DialogHeader>
+                          <DialogTitle>Create {newEntryType === 'file' ? 'File' : 'Folder'}</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-2">
+                          <div className="grid gap-2">
+                            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Type
+                            </label>
+                            <Select
+                              value={newEntryType}
+                              onValueChange={(value: 'file' | 'directory') => setNewEntryType(value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="file">File</SelectItem>
+                                <SelectItem value="directory">Folder</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-2">
+                            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Relative path
+                            </label>
+                            <Input
+                              autoFocus
+                              value={newEntryPath}
+                              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                                setNewEntryPath(event.target.value)
+                              }
+                              placeholder="src/components/NewFile.tsx"
+                            />
+                          </div>
+                          {newEntryType === 'file' ? (
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Initial content
+                              </label>
+                              <Textarea
+                                rows={6}
+                                value={newEntryContent}
+                                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                  setNewEntryContent(event.target.value)
+                                }
+                                placeholder="// File contents"
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="secondary" onClick={() => setNewEntryOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={() => void handleDialogCreate()} disabled={!newEntryPath.trim()}>
+                            Create
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          size="icon"
                           variant="ghost"
-                          onClick={() => setNewEntryOpen(true)}
+                          size="icon"
+                          onClick={() => {
+                            void refresh();
+                            void onSyncWorkspace?.();
+                          }}
+                          disabled={isSyncingWorkspace}
                           className="text-muted-foreground hover:text-foreground"
                         >
-                          <Plus className="h-4 w-4" />
+                          {isSyncingWorkspace ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom">New file or folder</TooltipContent>
+                      <TooltipContent side="bottom">Sync workspace</TooltipContent>
                     </Tooltip>
-                    <DialogContent className="sm:max-w-[420px]">
-                      <DialogHeader>
-                        <DialogTitle>Create {newEntryType === 'file' ? 'File' : 'Folder'}</DialogTitle>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-2">
-                        <div className="grid gap-2">
-                          <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Type
-                          </label>
-                          <Select
-                            value={newEntryType}
-                            onValueChange={(value: 'file' | 'directory') => setNewEntryType(value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="file">File</SelectItem>
-                              <SelectItem value="directory">Folder</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Relative path
-                          </label>
-                          <Input
-                            autoFocus
-                            value={newEntryPath}
-                            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                              setNewEntryPath(event.target.value)
-                            }
-                            placeholder="src/components/NewFile.tsx"
-                          />
-                        </div>
-                        {newEntryType === 'file' ? (
-                          <div className="grid gap-2">
-                            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              Initial content
-                            </label>
-                            <Textarea
-                              rows={6}
-                              value={newEntryContent}
-                              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-                                setNewEntryContent(event.target.value)
-                              }
-                              placeholder="// File contents"
+                  </div>
+
+                  <div className="mt-2 flex-1 overflow-y-auto px-2 pb-4">
+                    {tree && tree.children && tree.children.length > 0 ? (
+                      <ul className="space-y-1 text-sm text-foreground/80">
+                        {tree.children
+                          .slice()
+                          .sort(sortTree)
+                          .map((child) => (
+                            <ExplorerNode
+                              key={child.path}
+                              node={child}
+                              expandedPaths={expandedPaths}
+                              onToggle={toggleDirectory}
+                              onOpenFile={handleOpenFile}
+                              onDeleteEntry={handleDeleteEntry}
+                              activePath={activeTab?.path}
                             />
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setNewEntryOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleCreateEntry} disabled={!newEntryPath.trim()}>
-                          Create
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          void refresh();
-                          void onSyncWorkspace?.();
-                        }}
-                        disabled={isSyncingWorkspace}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        {isSyncingWorkspace ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Sync workspace</TooltipContent>
-                  </Tooltip>
+                          ))}
+                      </ul>
+                    ) : (
+                      <div className="px-2 text-xs text-muted-foreground">No files yet. Create one to get started.</div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-full flex-col overflow-hidden">
+                  {resolvedSidebarCustom}
                 </div>
-
-                <div className="mt-2 flex-1 overflow-y-auto px-2 pb-4">
-                  {tree && tree.children && tree.children.length > 0 ? (
-                    <ul className="space-y-1 text-sm text-foreground/80">
-                      {tree.children
-                        .slice()
-                        .sort(sortTree)
-                        .map((child) => (
-                          <ExplorerNode
-                            key={child.path}
-                            node={child}
-                            expandedPaths={expandedPaths}
-                            onToggle={toggleDirectory}
-                            onOpenFile={handleOpenFile}
-                            onDeleteEntry={handleDeleteEntry}
-                            activePath={activeTab?.path}
-                          />
-                        ))}
-                    </ul>
-                  ) : (
-                    <div className="px-2 text-xs text-muted-foreground">No files yet. Create one to get started.</div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex h-full flex-col overflow-hidden">
-                {sidebarCustom}
-              </div>
-            )}
-          </aside>
+              )}
+            </aside>
+          )}
 
           <div className="flex flex-1 flex-col overflow-hidden bg-muted/10 dark:bg-muted/20">
             <header className="flex items-center gap-2 border-b border-border/80 bg-background/80 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <div className="flex flex-1 items-center gap-2 overflow-x-auto">
+
                 {tabs.map((tab) => (
                   <WorkspaceTab
                     key={tab.path}
                     tab={tab}
                     isActive={activeTab?.path === tab.path}
                     isSaving={Boolean(pendingSaves[tab.path])}
-                    onSelect={() => setActiveTab(tab.path)}
+                    onSelect={() => {
+                      setActiveTab(tab.path);
+                    }}
                     onClose={() => closeTab(tab.path)}
                   />
                 ))}
@@ -740,100 +1088,18 @@ export const FileWorkspace: React.FC<FileWorkspaceProps> = ({
                 )}
               </main>
 
-              {hasTestingPanel ? (
-                <section className="w-[320px] border-l border-border/80 bg-muted/10 px-4 py-4 backdrop-blur dark:bg-muted/20">
-                  <div className="flex items-center justify-between text-foreground">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
-                        {testing?.description ?? 'Parameters (JSON)'}
-                      </p>
-                      <h3 className="text-base font-semibold">{testing?.title ?? 'Testing'}</h3>
-                    </div>
-                    <FlaskConical className="h-5 w-5 text-muted-foreground" />
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-3">
-                    <div className="overflow-hidden border border-border/70 bg-background">
-                      {isBrowser ? (
-                        <Editor
-                          value={testPayload}
-                          language="json"
-                          theme={editorTheme}
-                          onChange={(value) => setTestPayload(value ?? '')}
-                          beforeMount={handleEditorBeforeMount}
-                          onMount={handleEditorDidMount}
-                          height="220px"
-                          options={{
-                            minimap: { enabled: false },
-                            fontSize: 12,
-                            scrollBeyondLastLine: false,
-                            lineNumbers: 'off',
-                            wordWrap: 'on',
-                            padding: { top: 12, bottom: 12 },
-                          }}
-                        />
-                      ) : (
-                        <Textarea
-                          value={testPayload}
-                          onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setTestPayload(event.target.value)}
-                          rows={10}
-                          className="bg-transparent font-mono text-xs text-foreground"
-                          onKeyDown={(event) => {
-                            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-                              event.preventDefault();
-                              handleSaveActiveTab();
-                            }
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1 gap-2"
-                        disabled={!testing?.onGenerate || isGeneratingTest}
-                        onClick={handleGenerateTestPayload}
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        {isGeneratingTest ? 'Generating…' : testing?.generateButtonLabel ?? 'Generate test'}
-                      </Button>
-                      <Button className="flex-1 gap-2" disabled={isRunningTest} onClick={handleRunTestPayload}>
-                        {isRunningTest ? 'Running…' : testing?.runButtonLabel ?? 'Run test'}
-                      </Button>
-                    </div>
-
-                    {testError ? (
-                      <div className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                        {testError}
-                      </div>
-                    ) : null}
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        <span>Output</span>
-                        <span
-                          className={cls(
-                            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                            testStatus === 'success'
-                              ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                              : testStatus === 'error'
-                                ? 'bg-red-500/20 text-red-700 dark:text-red-200'
-                                : 'bg-muted/40 text-muted-foreground'
-                          )}
-                        >
-                          {testStatus === 'success' ? 'Ready' : testStatus === 'error' ? 'Error' : 'Idle'}
-                        </span>
-                      </div>
-                      <div className="max-h-40 overflow-y-auto border border-border/70 bg-background p-3 text-[11px] text-muted-foreground">
-                        <pre className="whitespace-pre-wrap break-words font-mono text-xs">
-                          {testOutput || resultPlaceholder}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              ) : null}
+              {resolvedSidePanels.map((panel) => (
+                <aside
+                  key={panel.id}
+                  className={cls(
+                    'border-l border-border/80 bg-muted/10 px-4 py-4 backdrop-blur dark:bg-muted/20',
+                    panel.className,
+                  )}
+                  style={panel.width ? { width: typeof panel.width === 'number' ? `${panel.width}px` : panel.width } : undefined}
+                >
+                  {panel.content}
+                </aside>
+              ))}
             </div>
           </div>
         </div>
@@ -937,6 +1203,27 @@ const ExplorerNode: React.FC<ExplorerNodeProps> = ({ node, expandedPaths, onTogg
     </li>
   );
 };
+
+interface WorkspaceStaticTabProps {
+  title: string;
+  isActive: boolean;
+  onSelect: () => void;
+}
+
+const WorkspaceStaticTab: React.FC<WorkspaceStaticTabProps> = ({ title, isActive, onSelect }) => (
+  <div
+    className={cls(
+      'flex items-center gap-1 truncate rounded border px-3 py-1 text-xs transition',
+      isActive
+        ? 'border-primary/50 bg-primary/10 text-foreground'
+        : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground'
+    )}
+  >
+    <button type="button" onClick={onSelect} className="truncate text-left">
+      {title}
+    </button>
+  </div>
+);
 
 interface WorkspaceTabProps {
   tab: FileTab;

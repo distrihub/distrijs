@@ -13,7 +13,7 @@
 - a Zustand-powered workspace store with single or multi-tab modes
 - a ShadCN-styled workspace shell featuring dialog-driven creation, collapsible sidebar, and previews
 - a helper for generating Distri tool definitions that stay in sync with the UI
-- optional chat integration and a script runner UI tool for the `distri_execute_code` action
+- helpers for wiring chat interfaces and the script runner UI tool into the workspace shell
 
 The package is designed for browser-hosted agent workspaces that need offline-aware file operations bound to a `projectId` namespace.
 
@@ -34,9 +34,10 @@ import {
   IndexedDbFilesystem,
   createFilesystemTools,
   FileWorkspace,
-  FileWorkspaceWithChat,
   ScriptRunnerTool,
 } from 'distrifs-js';
+import { Chat } from '@distri/react';
+import { Files, MessageSquare } from 'lucide-react';
 
 const projectId = 'demo';
 const filesystem = IndexedDbFilesystem.forProject(projectId);
@@ -50,12 +51,40 @@ const extendedTools = [...tools, ScriptRunnerTool];
   previewRenderer={({ content }) => <pre>{content}</pre>}
 />;
 
-// With chat + agent tools
-<FileWorkspaceWithChat
+// With a chat side panel + workspace activity bar integration
+<FileWorkspace
   projectId={projectId}
   filesystem={filesystem}
-  chat={{ agent, threadId: 'workspace-thread' }}
-  additionalTools={extendedTools}
+  activityBarItems=[
+    { id: 'explorer', label: 'Explorer', icon: Files, mode: 'explorer' },
+    {
+      id: 'chat',
+      label: 'Chat',
+      icon: MessageSquare,
+      mode: 'custom',
+      content: (
+        <Chat
+          agent={agent}
+          threadId="workspace-thread"
+          externalTools={extendedTools}
+        />
+      ),
+    },
+  ]
+  sidePanels=[
+    {
+      id: 'chat-panel',
+      width: '26rem',
+      content: (
+        <Chat
+          agent={agent}
+          threadId="workspace-thread"
+          externalTools={extendedTools}
+        />
+      ),
+    },
+  ]
+  defaultActivityId="explorer"
 />;
 ```
 
@@ -75,16 +104,12 @@ const extendedTools = [...tools, ScriptRunnerTool];
 - Props include `projectId`, `initialEntries`, `previewRenderer`, `onSaveFile`, `filesystem`, and `selectionMode` (`'single' | 'multiple'`)
 - Save button dispatches the store’s save handler (mocked with a resolved promise by default)
 - Uses ShadCN primitives for dialogs, buttons, and sidebar interactions
+- `activityBarItems`, `staticTabs`, and `sidePanels` enable extending the shell with custom explorers, chats, or insight panels
 
 ### `createFilesystemTools(projectId, options)`
 - Generates Distri function tools for every filesystem and artifact operation in the Rust reference implementation
 - Tools share the same filesystem instance used by the workspace so UI edits and agent tool calls remain consistent
 - Accepts `onChange` callback to react to external write/delete/move events
-
-### `FileWorkspaceWithChat`
-- Composite component that renders the workspace beside a Distri chat widget
-- Accepts `chat` configuration (`agent`, `threadId`, optional `title`/`chatProps`)
-- Automatically wires filesystem tools (and optional UI tools) into the chat’s `externalTools`
 
 ### `ScriptRunnerTool`
 - `DistriUiTool` that surfaces an embeddable script editor with fullscreen mode and run button

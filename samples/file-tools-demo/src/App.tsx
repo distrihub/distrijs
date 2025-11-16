@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import {
   FileWorkspace,
-  FileWorkspaceWithChat,
   IndexedDbFilesystem,
   InitialEntry,
   PreviewRenderer,
   SelectionMode,
+  createFilesystemTools,
+  ScriptRunnerTool,
 } from '@distri/fs';
-import { useAgent, DistriProvider } from '@distri/react';
+import { useAgent, DistriProvider, Chat } from '@distri/react';
 import { Agent, uuidv4 } from '@distri/core';
 
 const PROJECT_ID = 'demo-project';
@@ -76,35 +77,61 @@ const getPersistedThreadId = () => {
 const selectionMode: SelectionMode = 'multiple';
 
 const WorkspaceOnly: React.FC<{ filesystem: ReturnType<typeof IndexedDbFilesystem.forProject> }> = ({ filesystem }) => (
-  <FileWorkspace
-    projectId={PROJECT_ID}
-    filesystem={filesystem}
-    initialEntries={initialEntries}
-    previewRenderer={renderPreview}
-    onSaveFile={async (tab) => {
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      await filesystem.writeFile(tab.path, tab.content);
-    }}
-    selectionMode={selectionMode}
-    height="640px"
-  />
+  <div className="h-[640px]">
+    <FileWorkspace
+      projectId={PROJECT_ID}
+      filesystem={filesystem}
+      initialEntries={initialEntries}
+      previewRenderer={renderPreview}
+      onSaveFile={async (tab) => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        await filesystem.writeFile(tab.path, tab.content);
+      }}
+      selectionMode={selectionMode}
+      className="h-full"
+    />
+  </div>
 );
 
-const ChatEnabledWorkspace: React.FC<{ agent: Agent; filesystem: ReturnType<typeof IndexedDbFilesystem.forProject>; threadId: string }> = ({ agent, filesystem, threadId }) => (
-  <FileWorkspaceWithChat
-    projectId={PROJECT_ID}
-    filesystem={filesystem}
-    initialEntries={initialEntries}
-    previewRenderer={renderPreview}
-    onSaveFile={async (tab) => {
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      await filesystem.writeFile(tab.path, tab.content);
-    }}
-    selectionMode={selectionMode}
-    chat={{ agent, threadId, title: 'Workspace Assistant' }}
-    height="720px"
-  />
-);
+const ChatEnabledWorkspace: React.FC<{ agent: Agent; filesystem: ReturnType<typeof IndexedDbFilesystem.forProject>; threadId: string }> = ({ agent, filesystem, threadId }) => {
+  const filesystemTools = useMemo(() => createFilesystemTools(PROJECT_ID, { filesystem }), [filesystem]);
+  const externalTools = useMemo(() => [...filesystemTools, ScriptRunnerTool], [filesystemTools]);
+  const chatPanel = (
+    <div className="flex h-full flex-col gap-3">
+      <div className="rounded-xl border border-border/60 bg-card/70 p-2 text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+        Thread <span className="ml-1 font-mono text-[10px] tracking-normal">{threadId.slice(0, 8)}…</span>
+      </div>
+      <div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-card/40">
+        <Chat agent={agent} threadId={threadId} externalTools={externalTools} theme="auto" />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="h-[720px]">
+      <FileWorkspace
+        projectId={PROJECT_ID}
+        filesystem={filesystem}
+        initialEntries={initialEntries}
+        previewRenderer={renderPreview}
+        onSaveFile={async (tab) => {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          await filesystem.writeFile(tab.path, tab.content);
+        }}
+        selectionMode={selectionMode}
+        className="h-full"
+        sidePanels={[
+          {
+            id: 'chat',
+            width: '26rem',
+            className: 'border-l border-border/80 bg-muted/10 px-3 py-3 dark:bg-muted/20',
+            content: chatPanel,
+          },
+        ]}
+      />
+    </div>
+  );
+};
 
 const WorkspaceRouter: React.FC<{ filesystem: ReturnType<typeof IndexedDbFilesystem.forProject>; threadId: string }> = ({ filesystem, threadId }) => {
   if (!AGENT_ID) {
