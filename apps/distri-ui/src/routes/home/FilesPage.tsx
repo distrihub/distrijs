@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { FileSaveHandler, FileWorkspaceStore } from '@distri/fs'
-import { FileWorkspace, IndexedDbFilesystem, createFileWorkspaceStore } from '@distri/fs'
+import {
+  FileWorkspace,
+  IndexedDbFilesystem,
+  createFileWorkspaceStore,
+  ScriptTestingPanel,
+  createFilesystemTools,
+  ScriptRunnerTool,
+  type FileActionItem,
+  type FileActionRenderer,
+} from '@distri/fs'
 import { useAgent, Chat, type DistriAnyTool } from '@distri/react'
 import { BACKEND_URL } from '@/constants'
 import { useInitialization } from '@/components/TokenProvider'
-import { Loader2, Files, MessageSquare } from 'lucide-react'
+import { Loader2, Home, Palette, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { uuidv4 } from '@distri/core'
-import { createFilesystemTools, ScriptRunnerTool } from '@distri/fs'
-
 interface WorkspaceMetadataEntry {
   path: string
   is_dir: boolean
@@ -177,14 +185,24 @@ const FilesPage = () => {
 
   const uiTools = useMemo<DistriAnyTool[]>(() => [ScriptRunnerTool], [])
   const externalTools = useMemo(() => [...filesystemTools, ...uiTools], [filesystemTools, uiTools])
+  const navigate = useNavigate();
 
   const activityBarItems = useMemo(() => (
     [
-      { id: 'explorer', label: 'Explorer', icon: Files, mode: 'explorer' as const },
       {
-        id: 'chat',
-        label: 'Chat',
-        icon: MessageSquare,
+        id: 'workspace-home',
+        label: 'Home',
+        icon: Home,
+        position: 'left' as const,
+        type: 'action' as const,
+        order: -100,
+        onSelect: () => navigate('/home'),
+      },
+      {
+        id: 'designer-chat',
+        label: 'Designer chat',
+        icon: Palette,
+        position: 'right' as const,
         mode: 'custom' as const,
         content: (
           <div className="flex h-full flex-col gap-3 px-2 py-3">
@@ -198,7 +216,41 @@ const FilesPage = () => {
         ),
       },
     ]
-  ), [agent, agentLoading, externalTools, threadId])
+  ), [agent, agentLoading, externalTools, navigate, threadId])
+
+
+  const fileActionItems = useMemo<FileActionItem[]>(() => (
+    [
+      {
+        id: 'run-script',
+        label: 'Run script',
+        icon: Play,
+        isVisible: ({ tab }) => tab.path.includes('/scripts/') || tab.path.endsWith('.script.ts'),
+        onSelect: ({ tab }) => {
+          toast.info('Running script', { description: tab.path })
+        },
+      },
+    ]
+  ), [])
+
+  const fileActionRenderers = useMemo<FileActionRenderer[]>(() => (
+    [
+      {
+        id: 'ts-testing',
+        label: 'Script testing',
+        match: ({ tab }) => tab.path.endsWith('.ts') || tab.path.endsWith('.tsx'),
+        render: ({ tab }) => (
+          <ScriptTestingPanel
+            key={tab.path}
+            title={`Test ${tab.path.split('/').pop()}`}
+            description="Send sample payloads to the coder agent."
+            resultPlaceholder="Run a test to see agent output."
+            onRun={async () => 'Connect your script runner to execute tests.'}
+          />
+        ),
+      },
+    ]
+  ), [])
 
 
 
@@ -229,7 +281,8 @@ const FilesPage = () => {
             className="h-full"
             activityBarItems={activityBarItems}
             defaultActivityId="explorer"
-            defaultStaticTabId="home"
+            fileActionItems={fileActionItems}
+            fileActionRenderers={fileActionRenderers}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">

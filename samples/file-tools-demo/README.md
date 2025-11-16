@@ -16,4 +16,4 @@ export VITE_DISTRI_API_URL="http://localhost:8080/api/v1"
 export VITE_DISTRI_AGENT_ID="workspace_agent"
 ```
 
-With those variables in place the demo renders `FileWorkspace` with a chat side panel, wiring the generated filesystem tools (and the embedded script runner UI tool) into the Distri agent workflow.
+With those variables in place the demo renders `FileWorkspace` with custom panels on both sides (notes on the left, chat + testing on the right), wiring the generated filesystem tools (and the embedded script runner UI tool) into the Distri agent workflow.

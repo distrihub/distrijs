@@ -7,9 +7,11 @@ import {
   SelectionMode,
   createFilesystemTools,
   ScriptRunnerTool,
+  ScriptTestingPanel,
 } from '@distri/fs';
 import { useAgent, DistriProvider, Chat } from '@distri/react';
 import { Agent, uuidv4 } from '@distri/core';
+import { Lightbulb, MessageSquare, FlaskConical } from 'lucide-react';
 
 const PROJECT_ID = 'demo-project';
 const AGENT_ID = import.meta.env.VITE_DISTRI_AGENT_ID as string | undefined;
@@ -107,6 +109,52 @@ const ChatEnabledWorkspace: React.FC<{ agent: Agent; filesystem: ReturnType<type
     </div>
   );
 
+  const workspacePanels = useMemo(() => (
+    [
+      {
+        id: 'notes',
+        label: 'Notes',
+        position: 'left' as const,
+        icon: Lightbulb,
+        defaultCollapsed: false,
+        content: (
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">Workspace shortcuts</p>
+            <ul className="list-disc space-y-1 pl-4">
+              <li>⌘K to focus the tab bar</li>
+              <li>⌘S to save the active file</li>
+              <li>The chat panel drives the agent with filesystem tools</li>
+            </ul>
+          </div>
+        ),
+      },
+      {
+        id: 'chat',
+        label: 'Workspace chat',
+        position: 'right' as const,
+        allowCollapse: false,
+        icon: MessageSquare,
+        defaultCollapsed: false,
+        content: chatPanel,
+      },
+      {
+        id: 'testing',
+        label: 'Script testing',
+        position: 'right' as const,
+        defaultCollapsed: true,
+        icon: FlaskConical,
+        content: (
+          <ScriptTestingPanel
+            title="Demo testing"
+            description="Payload"
+            resultPlaceholder="Configure onRun to execute tests."
+            onRun={async () => 'Connect a backend to execute these payloads.'}
+          />
+        ),
+      },
+    ]
+  ), [chatPanel]);
+
   return (
     <div className="h-[720px]">
       <FileWorkspace
@@ -120,14 +168,7 @@ const ChatEnabledWorkspace: React.FC<{ agent: Agent; filesystem: ReturnType<type
         }}
         selectionMode={selectionMode}
         className="h-full"
-        sidePanels={[
-          {
-            id: 'chat',
-            width: '26rem',
-            className: 'border-l border-border/80 bg-muted/10 px-3 py-3 dark:bg-muted/20',
-            content: chatPanel,
-          },
-        ]}
+        panels={workspacePanels}
       />
     </div>
   );

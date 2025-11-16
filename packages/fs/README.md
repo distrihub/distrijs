@@ -13,7 +13,7 @@
 - a Zustand-powered workspace store with single or multi-tab modes
 - a ShadCN-styled workspace shell featuring dialog-driven creation, collapsible sidebar, and previews
 - a helper for generating Distri tool definitions that stay in sync with the UI
-- helpers for wiring chat interfaces and the script runner UI tool into the workspace shell
+- helpers for wiring chat interfaces, testing panels, and the script runner UI tool into the workspace shell
 
 The package is designed for browser-hosted agent workspaces that need offline-aware file operations bound to a `projectId` namespace.
 
@@ -35,9 +35,10 @@ import {
   createFilesystemTools,
   FileWorkspace,
   ScriptRunnerTool,
+  ScriptTestingPanel,
 } from 'distrifs-js';
 import { Chat } from '@distri/react';
-import { Files, MessageSquare } from 'lucide-react';
+import { Files, MessageSquare, FlaskConical, Home, Play } from 'lucide-react';
 
 const projectId = 'demo';
 const filesystem = IndexedDbFilesystem.forProject(projectId);
@@ -51,16 +52,24 @@ const extendedTools = [...tools, ScriptRunnerTool];
   previewRenderer={({ content }) => <pre>{content}</pre>}
 />;
 
-// With a chat side panel + workspace activity bar integration
+// With chat + auxiliary panels on each side
 <FileWorkspace
   projectId={projectId}
   filesystem={filesystem}
   activityBarItems=[
-    { id: 'explorer', label: 'Explorer', icon: Files, mode: 'explorer' },
+    {
+      id: 'home',
+      label: 'Workspace',
+      icon: Home,
+      position: 'left',
+      type: 'action',
+      onSelect: () => navigate('/'),
+    },
     {
       id: 'chat',
       label: 'Chat',
       icon: MessageSquare,
+      position: 'right',
       mode: 'custom',
       content: (
         <Chat
@@ -71,16 +80,57 @@ const extendedTools = [...tools, ScriptRunnerTool];
       ),
     },
   ]
-  sidePanels=[
+  panels=[
+    {
+      id: 'notes',
+      label: 'Workspace notes',
+      position: 'left',
+      icon: Files,
+      content: <p className="text-xs text-muted-foreground">Add instructions or summaries on the left.</p>,
+    },
     {
       id: 'chat-panel',
-      width: '26rem',
+      label: 'Chat',
+      position: 'right',
+      allowCollapse: false,
+      icon: MessageSquare,
       content: (
         <Chat
           agent={agent}
           threadId="workspace-thread"
           externalTools={extendedTools}
         />
+      ),
+    },
+    {
+      id: 'testing',
+      label: 'Script testing',
+      position: 'right',
+      defaultCollapsed: true,
+      icon: FlaskConical,
+      content: (
+        <ScriptTestingPanel
+          onRun={async (payload) => doSomething(payload)}
+        />
+      ),
+    },
+  ]
+  fileActionItems=[
+    {
+      id: 'run-script',
+      label: 'Run script',
+      icon: Play,
+      isVisible: ({ tab }) => tab.path.endsWith('.ts'),
+      onSelect: ({ tab }) => runScript(tab.path),
+    },
+  ]
+  fileActionRenderers=[
+    {
+      id: 'ts-testing',
+      label: 'Script testing',
+      match: ({ tab }) => tab.path.endsWith('.ts'),
+      render: ({ tab }) => (
+        <ScriptTestingPanel key={tab.path} onRun={async () => doSomething(tab.path)} />
       ),
     },
   ]
@@ -104,12 +154,17 @@ const extendedTools = [...tools, ScriptRunnerTool];
 - Props include `projectId`, `initialEntries`, `previewRenderer`, `onSaveFile`, `filesystem`, and `selectionMode` (`'single' | 'multiple'`)
 - Save button dispatches the store’s save handler (mocked with a resolved promise by default)
 - Uses ShadCN primitives for dialogs, buttons, and sidebar interactions
-- `activityBarItems`, `staticTabs`, and `sidePanels` enable extending the shell with custom explorers, chats, or insight panels
+- `activityBarItems` can place icons on the left or right rails, open workspace panels via `panelId`, or fire callbacks (handy for navigation buttons); the `panels` prop still lets you dock arbitrary sections on either side with shared collapse/resize behavior
+- `fileActionItems` adds buttons to the right-side FileActionBar, and `fileActionRenderers` register contextual components (test runners, previews, etc.) that render based on the active tab
 
 ### `createFilesystemTools(projectId, options)`
 - Generates Distri function tools for every filesystem and artifact operation in the Rust reference implementation
 - Tools share the same filesystem instance used by the workspace so UI edits and agent tool calls remain consistent
 - Accepts `onChange` callback to react to external write/delete/move events
+
+### `ScriptTestingPanel`
+- Standalone React component for JSON (or TOML) payload authoring + execution status
+- Pair it with `FileWorkspace` panels to give agents a built-in “run payload” drawer without wiring your own editor every time
 
 ### `ScriptRunnerTool`
 - `DistriUiTool` that surfaces an embeddable script editor with fullscreen mode and run button
