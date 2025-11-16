@@ -1,55 +1,98 @@
-import { useEffect, useState, type CSSProperties } from 'react';
-import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { useTheme } from '@distri/react';
+import { useEffect, useState, type CSSProperties } from 'react'
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
+import { useTheme, useThreads } from '@distri/react'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
+  SidebarInset,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
   SidebarProvider,
-  SidebarInset,
-} from "@/components/ui/sidebar"
+  SidebarSeparator,
+} from '@/components/ui/sidebar'
 import {
   Bot,
-  Settings,
-  HelpCircle,
-  LogOut,
-  CreditCard,
-  User2,
   ChevronUp,
-  Sparkles,
-} from 'lucide-react';
-import Threads from '@/components/Threads';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAccount } from '@/components/AccountProvider';
+  CreditCard,
+  FileCode,
+  HelpCircle,
+  Loader2,
+  LogOut,
+  Plus,
+  RefreshCw,
+  Settings,
+  User2,
+  Users,
+} from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useAccount } from '@/components/AccountProvider'
 
-function HomeSidebar() {
-  const { theme, setTheme } = useTheme();
+const navItems = [
+  { id: 'agents', label: 'Agents', href: '/home', icon: Users },
+  { id: 'new', label: 'New Agent', href: '/home/new', icon: Plus },
+  { id: 'workspace', label: 'Workspace', href: '/home/workspace', icon: FileCode },
+]
+
+export default function HomeLayout() {
+  const [defaultOpen, setDefaultOpen] = useState(true)
+  const sidebarStyles: CSSProperties = {
+    '--sidebar-width': '20rem',
+    '--sidebar-width-mobile': '18rem',
+  }
+
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebar:state')
+    if (savedState !== null) {
+      setDefaultOpen(savedState === 'true')
+    }
+  }, [])
+
+  return (
+    <div className="h-screen">
+      <SidebarProvider defaultOpen={defaultOpen} style={sidebarStyles}>
+        <HomeSidebar />
+        <SidebarInset>
+          <main className="flex-1 overflow-hidden bg-background">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </div>
+  )
+}
+
+const HomeSidebar = () => {
+  const { theme, setTheme } = useTheme()
   const { accountInfo } = useAccount()
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const isActiveRoute = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(path + '/');
-  };
+  const isActiveRoute = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+
+  const handleThreadSelect = (thread: any) => {
+    if (!thread?.agent_id || thread.type === 'workflow') {
+      return
+    }
+    const params = new URLSearchParams({ threadId: thread.id })
+    navigate(`/home/agents/${encodeURIComponent(thread.agent_id)}?${params.toString()}`)
+  }
 
   return (
     <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => navigate('/home')}
-            >
+            <SidebarMenuButton onClick={() => navigate('/home')}>
               <Bot />
               Distri Agents
             </SidebarMenuButton>
@@ -73,132 +116,137 @@ function HomeSidebar() {
       <SidebarSeparator />
 
       <SidebarContent>
+        <ThreadsSidebarSection onSelect={handleThreadSelect} />
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem className="mb-1">
-                <SidebarMenuButton
-                  isActive={isActiveRoute('/home/files')}
-                  onClick={() => navigate('/home/files')}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Files
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isActiveRoute('/home/agents')}
-                  onClick={() => navigate('/home/agents')}
-                >
-                  <Bot className="h-4 w-4" />
-                  Agents
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.id} className="mb-1">
+                  <SidebarMenuButton isActive={isActiveRoute(item.href)} onClick={() => navigate(item.href)}>
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-
-        <SidebarSeparator />
-        <Threads />
-
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={accountInfo?.picture || undefined} alt={accountInfo?.email || 'User'} />
-                    <AvatarFallback className="rounded-lg">
-                      {accountInfo?.email?.charAt(0)?.toUpperCase() || <User2 className="h-4 w-4" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-
-                    <span className="truncate text-xs">{accountInfo?.email}</span>
-                  </div>
-                  <ChevronUp className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuItem asChild>
-                  <Link to="/home/menu/account">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Account Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/home/menu/account/pricing">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Billing
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/home/menu/help">
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    Help
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/auth">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <AccountMenuButton accountInfo={accountInfo} />
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }
 
-interface HomeLayoutProps {
-  hideSidebar?: boolean;
+interface ThreadsSidebarSectionProps {
+  onSelect: (thread: any) => void
 }
 
-export default function HomeLayout({ hideSidebar = false }: HomeLayoutProps) {
-  const [defaultOpen, setDefaultOpen] = useState(true);
-
-  const sidebarStyles: CSSProperties = {
-    "--sidebar-width": "20rem",
-    "--sidebar-width-mobile": "18rem",
-  }
-
-  // Load sidebar state from localStorage
-  useEffect(() => {
-    const savedState = localStorage.getItem('sidebar:state');
-    if (savedState !== null) {
-      setDefaultOpen(savedState === 'true');
-    }
-  }, []);
+const ThreadsSidebarSection = ({ onSelect }: ThreadsSidebarSectionProps) => {
+  const { threads, loading, refetch } = useThreads()
 
   return (
-    <div className="h-screen">
-      <SidebarProvider
-        defaultOpen={hideSidebar ? false : defaultOpen}
-        style={sidebarStyles}
-      >
-        {hideSidebar ? null : <HomeSidebar />}
-        <SidebarInset className={hideSidebar ? 'pl-0' : undefined}>
-          <main className="flex-1 overflow-hidden bg-background">
-            <Outlet />
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
-    </div>
-  );
+    <SidebarGroup>
+      <SidebarGroupLabel>Threads</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {loading ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton className="items-center gap-2" disabled>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading threads…
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ) : threads.length === 0 ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton disabled>No conversations yet</SidebarMenuButton>
+            </SidebarMenuItem>
+          ) : (
+            threads.map((thread: any) => {
+              const isWorkflowThread = thread.type === 'workflow'
+              return (
+                <SidebarMenuItem key={thread.id}>
+                  <SidebarMenuButton
+                    className="flex-col items-start gap-1"
+                    disabled={isWorkflowThread || !thread.agent_id}
+                    onClick={() => {
+                      if (isWorkflowThread || !thread.agent_id) {
+                        return
+                      }
+                      onSelect(thread)
+                    }}
+                  >
+                    <span className="text-sm font-medium">{thread.title || 'Untitled thread'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {thread.last_message || 'No messages yet'}
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })
+          )}
+        </SidebarMenu>
+      </SidebarGroupContent>
+      <SidebarGroupAction onClick={() => refetch()} disabled={loading} title="Refresh conversations">
+        <RefreshCw className={loading ? 'animate-spin' : ''} />
+        <span className="sr-only">Refresh conversations</span>
+      </SidebarGroupAction>
+    </SidebarGroup>
+  )
 }
+
+interface AccountMenuButtonProps {
+  accountInfo: ReturnType<typeof useAccount>['accountInfo']
+}
+
+const AccountMenuButton = ({ accountInfo }: AccountMenuButtonProps) => (
+  <SidebarMenu>
+    <SidebarMenuItem>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+            <Avatar className="h-8 w-8 rounded-lg">
+              <AvatarImage src={accountInfo?.picture || undefined} alt={accountInfo?.email || 'User'} />
+              <AvatarFallback className="rounded-lg">
+                {accountInfo?.email?.charAt(0)?.toUpperCase() || <User2 className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate text-xs">{accountInfo?.email}</span>
+            </div>
+            <ChevronUp className="ml-auto size-4" />
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg" side="bottom" align="end" sideOffset={4}>
+          <DropdownMenuItem asChild>
+            <Link to="/home/menu/account">
+              <Settings className="mr-2 h-4 w-4" />
+              Account Settings
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/home/menu/account/pricing">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Billing
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/home/menu/help">
+              <HelpCircle className="mr-2 h-4 w-4" />
+              Help
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/auth">
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
+  </SidebarMenu>
+)

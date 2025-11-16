@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FileSaveHandler, FileWorkspaceStore } from '@distri/fs'
-import { FileWorkspaceWithChat, IndexedDbFilesystem, createFileWorkspaceStore } from '@distri/fs'
-import { useAgent } from '@distri/react'
+import { FileWorkspace, IndexedDbFilesystem, createFileWorkspaceStore } from '@distri/fs'
+import { useAgent, Chat, type DistriAnyTool } from '@distri/react'
 import { BACKEND_URL } from '@/constants'
 import { useInitialization } from '@/components/TokenProvider'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Files, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { uuidv4 } from '@distri/core'
+import { createFilesystemTools, ScriptRunnerTool } from '@distri/fs'
 
 interface WorkspaceMetadataEntry {
   path: string
@@ -44,7 +45,7 @@ const encodeWorkspacePath = (path: string) =>
 
 const FilesPage = () => {
   const { token } = useInitialization()
-  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentIdOrDef: 'scripter' })
+  const { agent, loading: agentLoading, error: agentError } = useAgent({ agentIdOrDef: 'agent_designer' })
 
   const filesystem = useMemo(() => IndexedDbFilesystem.forProject(PROJECT_ID), [])
   const storeRef = useRef<FileWorkspaceStore | null>(null)
@@ -56,7 +57,6 @@ const FilesPage = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [workspaceReady, setWorkspaceReady] = useState(false)
-
   const threadId = useMemo(() => currentThreadId(PROJECT_ID), [])
 
   const authHeaders = useMemo(() => {
@@ -163,7 +163,45 @@ const FilesPage = () => {
     toast.success('Saved', { description: tab.path, duration: 1500 })
   }, [authHeaders])
 
-  const isReady = workspaceReady && !!agent && !agentLoading
+  const isReady = workspaceReady
+
+  // Build filesystem tools for chat (so the coder agent can operate on the workspace)
+  const filesystemTools = useMemo(() => (
+    createFilesystemTools(PROJECT_ID, {
+      filesystem,
+      onChange: (event) => {
+        void store.getState().handleExternalChange(event)
+      },
+    })
+  ), [filesystem, store])
+
+  const uiTools = useMemo<DistriAnyTool[]>(() => [ScriptRunnerTool], [])
+  const externalTools = useMemo(() => [...filesystemTools, ...uiTools], [filesystemTools, uiTools])
+
+  const activityBarItems = useMemo(() => (
+    [
+      { id: 'explorer', label: 'Explorer', icon: Files, mode: 'explorer' as const },
+      {
+        id: 'chat',
+        label: 'Chat',
+        icon: MessageSquare,
+        mode: 'custom' as const,
+        content: (
+          <div className="flex h-full flex-col gap-3 px-2 py-3">
+            <ChatSidebarPanel
+              agent={agent}
+              agentLoading={agentLoading}
+              threadId={threadId}
+              externalTools={externalTools}
+            />
+          </div>
+        ),
+      },
+    ]
+  ), [agent, agentLoading, externalTools, threadId])
+
+
+
 
   return (
     <div className="flex h-full w-full flex-col bg-background text-foreground">
@@ -175,26 +213,23 @@ const FilesPage = () => {
 
       {agentError ? (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-200">
-          Unable to load the Scripter agent. Ensure it is registered before using the workspace chat.
+          Unable to load the Coder agent. Ensure it is registered before using the workspace chat.
         </div>
       ) : null}
 
       <div className="flex-1 min-h-0 bg-card">
         {isReady ? (
-          <FileWorkspaceWithChat
+          <FileWorkspace
             projectId={PROJECT_ID}
             filesystem={filesystem}
             store={store}
             onSaveFile={handleSaveFile}
-            chat={{
-              agent: agent!,
-              threadId,
-              title: 'Workspace assistant',
-              initialMessage: 'Review the current workspace files and suggest improvements.',
-            }}
             onSyncWorkspace={() => void fetchMetadata()}
             isSyncingWorkspace={loading}
-            className="h-full bg-card"
+            className="h-full"
+            activityBarItems={activityBarItems}
+            defaultActivityId="explorer"
+            defaultStaticTabId="home"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -206,5 +241,34 @@ const FilesPage = () => {
     </div>
   )
 }
+
+interface ChatSidebarPanelProps {
+  agent: ReturnType<typeof useAgent>['agent']
+  agentLoading: boolean
+  threadId: string
+  externalTools: DistriAnyTool[]
+}
+
+const ChatSidebarPanel = ({ agent, agentLoading, threadId, externalTools }: ChatSidebarPanelProps) => {
+  if (!agent) {
+    return (
+      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+        {agentLoading ? 'Connecting to agent…' : 'Agent unavailable'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="rounded-xl border border-border/60 bg-card/70 p-2 text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+        Thread: <span className="ml-1 font-mono text-[10px] normal-case tracking-normal">{threadId.slice(0, 8)}…</span>
+      </div>
+      <div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-card/40">
+        <Chat agent={agent} threadId={threadId} externalTools={externalTools} theme="auto" />
+      </div>
+    </div>
+  )
+}
+
 
 export default FilesPage

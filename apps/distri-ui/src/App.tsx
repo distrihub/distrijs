@@ -15,9 +15,10 @@ import PricingPage from '@/routes/home/menu/PricingPage';
 import HelpPage from '@/routes/home/menu/HelpPage';
 import { BACKEND_URL } from './constants';
 import { AccountProvider } from './components/AccountProvider';
-import AgentsPage from './routes/home/AgentsPage';
-import AgentDetailsPage from './routes/home/AgentDetailsPage';
 import FilesPage from './routes/home/FilesPage';
+import AgentsPage from './routes/home/AgentsPage';
+import NewAgentPage from './routes/home/NewAgentPage';
+import AgentDetailsPage from './routes/home/AgentDetailsPage';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -45,22 +46,16 @@ function App() {
             <Route path="/auth/success" element={<AuthSuccess />} />
 
             {/* Protected routes with layout */}
-            <Route path="/home" element={
-              <TokenProvider>
-                <AccountProvider>
-                  <Outlet />
-                </AccountProvider>
-              </TokenProvider>
-            }>
-              <Route element={<WrappedHomeLayout />}>
-                <Route index element={<Navigate to="/home/agents" replace />} />
-                <Route path="files" element={<FilesPage />} />
-                <Route path="agents" element={<AgentsPage />} />
+            <Route path="/home" element={<LayoutWithProviders />}>
+              <Route element={<HomeLayout />}>
+                <Route index element={<AgentsPage />} />
+                <Route path="new" element={<NewAgentPage />} />
                 <Route path="agents/:agentId" element={<AgentDetailsPage />} />
                 <Route path="menu/account" element={<AccountPage />} />
                 <Route path="menu/account/pricing" element={<PricingPage />} />
                 <Route path="menu/help" element={<HelpPage />} />
               </Route>
+              <Route path="workspace" element={<FilesPage />} />
             </Route>
 
             {/* Payment routes */}
@@ -77,11 +72,15 @@ function App() {
   );
 }
 
-interface WrappedHomeLayoutProps {
-  hideSidebar?: boolean;
-}
+const LayoutWithProviders = () => (
+  <TokenProvider>
+    <AccountProvider>
+      <ProtectedLayout />
+    </AccountProvider>
+  </TokenProvider>
+)
 
-const WrappedHomeLayout = ({ hideSidebar = false }: WrappedHomeLayoutProps) => {
+const ProtectedLayout = () => {
   const { token } = useInitialization()
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
@@ -107,7 +106,7 @@ const WrappedHomeLayout = ({ hideSidebar = false }: WrappedHomeLayoutProps) => {
         },
       }}
     >
-      <HomeLayout hideSidebar={hideSidebar} />
+      <Outlet />
     </DistriProvider>
   )
 }
