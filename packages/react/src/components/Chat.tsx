@@ -11,6 +11,7 @@ import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
 import { DistriAnyTool } from '@/types';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions } from './ChatEmptyState';
+import { BrowserPreviewPanel } from './BrowserPreviewPanel';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
 
 export interface ModelOption {
@@ -133,6 +134,29 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const browserFrame = useChatStateStore(state => state.browserFrame);
   const browserFrameUpdatedAt = useChatStateStore(state => state.browserFrameUpdatedAt);
   const clearBrowserFrame = useChatStateStore(state => state.clearBrowserFrame);
+  const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
+  const supportsBrowserStreaming = Boolean(agentDefinition?.browser_config);
+  const browserAgentIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const agentId = agentDefinition?.id;
+
+    if (!agentDefinition || !supportsBrowserStreaming) {
+      setBrowserEnabled(false);
+      browserAgentIdRef.current = agentId;
+      clearBrowserFrame();
+      return;
+    }
+
+    if (browserAgentIdRef.current !== agentId) {
+      browserAgentIdRef.current = agentId;
+      const defaultEnabled = agentDefinition.browser_config?.enabled ?? false;
+      setBrowserEnabled(defaultEnabled);
+      if (!defaultEnabled) {
+        clearBrowserFrame();
+      }
+    }
+  }, [agentDefinition, supportsBrowserStreaming, clearBrowserFrame]);
 
   useEffect(() => {
     if (typeof initialInput === 'string' && initialInput !== initialInputRef.current) {
@@ -146,14 +170,15 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     const baseMetadata = (await getMetadataProp?.()) ?? {};
     const existingOverrides = (baseMetadata.definition_overrides as Record<string, unknown> | undefined) ?? {};
 
+    const overrides = supportsBrowserStreaming
+      ? { ...existingOverrides, use_browser: browserEnabled }
+      : existingOverrides;
+
     return {
       ...baseMetadata,
-      definition_overrides: {
-        ...existingOverrides,
-        use_browser: browserEnabled,
-      },
+      definition_overrides: overrides,
     };
-  }, [browserEnabled, getMetadataProp]);
+  }, [browserEnabled, getMetadataProp, supportsBrowserStreaming]);
 
   const {
     sendMessage,
@@ -198,11 +223,12 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   }, [currentState, onChatStateChange]);
 
   const handleToggleBrowser = useCallback((enabled: boolean) => {
+    if (!supportsBrowserStreaming) return;
     setBrowserEnabled(enabled);
     if (!enabled) {
       clearBrowserFrame();
     }
-  }, [clearBrowserFrame]);
+  }, [supportsBrowserStreaming, clearBrowserFrame]);
 
 
   // Image upload functions moved from ChatInput
@@ -613,8 +639,8 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
         onChange={setInput}
         onSend={handleSendMessage}
         onStop={handleStopStreaming}
-        browserEnabled={browserEnabled}
-        onToggleBrowser={handleToggleBrowser}
+        browserEnabled={supportsBrowserStreaming && browserEnabled}
+        onToggleBrowser={supportsBrowserStreaming ? handleToggleBrowser : undefined}
         placeholder={
           isStreamingVoice
             ? 'Voice mode active…'
@@ -643,6 +669,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     handleSendMessage,
     handleStopStreaming,
     browserEnabled,
+    supportsBrowserStreaming,
     handleToggleBrowser,
     isStreamingVoice,
     isStreaming,
@@ -685,6 +712,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const footerHasContent = shouldRenderFooterComposer
     || (models && models.length > 0)
     || (voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript));
+  const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserFrame);
 
 
   // Render thinking indicator separately at the end
@@ -774,8 +802,8 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto bg-background text-foreground">
-        <div className="max-w-4xl mx-auto px-2 py-4 text-sm">
+      <div className="flex-1 overflow-y-auto bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground dark:selection:bg-primary/40">
+        <div className="mx-auto w-full max-w-6xl px-2 sm:px-4 py-4 text-sm space-y-4">
           {error && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
               <div className="text-destructive text-xs">
@@ -783,34 +811,33 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
               </div>
             </div>
           )}
-          {emptyStateContent}
-          {/* Render all messages and state */}
-          {renderMessages()}
 
-          {renderExternalToolCalls()}
-          {/* Render thinking indicator at the end */}
-          {renderThinkingIndicator()}
-          {browserEnabled && browserFrame && (
-            <RendererWrapper className="max-w-full px-0">
-              <div className="w-full rounded-xl border bg-muted/40 overflow-hidden">
-                <img
-                  src={browserFrame}
-                  alt="Browser screenshot"
-                  className="block w-full h-auto object-contain"
-                />
-                <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground bg-background/60">
-                  <span>Live browser preview</span>
-                  {browserTimestampLabel && (
-                    <span className="text-[11px]">Updated {browserTimestampLabel}</span>
-                  )}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+            <div className="flex-1 min-w-0 space-y-4">
+              {emptyStateContent}
+              {/* Render all messages and state */}
+              {renderMessages()}
+
+              {renderExternalToolCalls()}
+              {/* Render thinking indicator at the end */}
+              {renderThinkingIndicator()}
+              {/* Render pending message after thinking indicator */}
+              {renderPendingMessage()}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {showBrowserPreview && browserFrame && (
+              <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
+                <div className="lg:sticky lg:top-4 space-y-3">
+                  <BrowserPreviewPanel
+                    frameSrc={browserFrame}
+                    timestampLabel={browserTimestampLabel}
+                  />
                 </div>
               </div>
-            </RendererWrapper>
-          )}
-          {/* Render pending message after thinking indicator */}
-          {renderPendingMessage()}
-
-          <div ref={messagesEndRef} />
+            )}
+          </div>
         </div>
       </div>
 

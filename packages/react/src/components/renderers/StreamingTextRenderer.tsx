@@ -1,9 +1,30 @@
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import type { Options as RehypeSanitizeOptions } from 'rehype-sanitize';
+
+const markdownSanitizeOptions: RehypeSanitizeOptions = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [
+      ...(defaultSchema.attributes?.code ?? []),
+      ['className']
+    ],
+    span: [
+      ...(defaultSchema.attributes?.span ?? []),
+      ['className']
+    ],
+    div: [
+      ...(defaultSchema.attributes?.div ?? []),
+      ['className']
+    ]
+  }
+};
 
 /**
  * Process <agent_response> blocks to extract only <thought> content
@@ -75,7 +96,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
     return (
       <div className={`prose prose-sm max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         <ReactMarkdown
-          rehypePlugins={[rehypeRaw]}
+          rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeOptions]]}
           remarkPlugins={[remarkGfm]}
           remarkRehypeOptions={{
             passThrough: ['link'],
@@ -110,7 +131,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                 return !isInline && language ? (
                   <div className="w-full max-w-full overflow-hidden" style={{ maxWidth: '100%' }}>
                     <SyntaxHighlighter
-                      style={tomorrow}
+                      style={vscDarkPlus}
                       language={language}
                       PreTag="div"
                       className="!mt-0 !mb-0 rounded-md text-sm"

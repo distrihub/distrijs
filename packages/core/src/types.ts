@@ -408,6 +408,21 @@ export interface AgentDefinition {
 
   tools?: DistriBaseTool[];
 
+  browser_config?: BrowserAgentConfig;
+
+}
+
+export interface BrowserAgentConfig {
+  enabled?: boolean;
+  persist_session?: boolean;
+  runtime?: DistriBrowserRuntimeConfig | null;
+}
+
+export interface DistriBrowserRuntimeConfig {
+  window_size?: [number, number];
+  headless?: boolean;
+  enable_stealth_mode?: boolean;
+  enable_real_emulation?: boolean;
 }
 
 
