@@ -1,8 +1,11 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useTheme, useThreads } from '@distri/react'
+import Logo from "@/assets/logo.svg";
+import LogoSmall from "@/assets/logo_small.svg";
 import {
   Sidebar,
+  useSidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -19,7 +22,7 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar'
 import {
-  Bot,
+
   ChevronUp,
   CreditCard,
   FileCode,
@@ -37,10 +40,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAccount } from '@/components/AccountProvider'
 
 const navItems = [
-  { id: 'agents', label: 'Agents', href: '/home', icon: Users },
   { id: 'new', label: 'New Agent', href: '/home/new', icon: Plus },
+  { id: 'agents', label: 'Agents', href: '/home', icon: Users },
   { id: 'workspace', label: 'Workspace', href: '/home/workspace', icon: FileCode },
 ]
+
+function LogoContainer() {
+  const { open } = useSidebar();
+  if (open) {
+    return <img src={Logo} alt="Distri" className="h-6" />;
+  } else {
+    return <img src={LogoSmall} alt="Distri" className="h-6" />;
+  }
+}
 
 export default function HomeLayout() {
   const [defaultOpen, setDefaultOpen] = useState(true)
@@ -70,11 +82,14 @@ export default function HomeLayout() {
   )
 }
 
+
 const HomeSidebar = () => {
   const { theme, setTheme } = useTheme()
   const { accountInfo } = useAccount()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const { open } = useSidebar();
 
   const isActiveRoute = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`)
@@ -87,14 +102,14 @@ const HomeSidebar = () => {
     navigate(`/home/agents/${encodeURIComponent(thread.agent_id)}?${params.toString()}`)
   }
 
+
   return (
     <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={() => navigate('/home')}>
-              <Bot />
-              Distri Agents
+              <LogoContainer />
             </SidebarMenuButton>
             <SidebarMenuAction
               onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -116,9 +131,9 @@ const HomeSidebar = () => {
       <SidebarSeparator />
 
       <SidebarContent>
-        <ThreadsSidebarSection onSelect={handleThreadSelect} />
+
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -132,6 +147,7 @@ const HomeSidebar = () => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {open && <ThreadsSidebarSection onSelect={handleThreadSelect} />}
       </SidebarContent>
 
       <SidebarFooter>
