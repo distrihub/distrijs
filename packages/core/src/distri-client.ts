@@ -2,6 +2,8 @@ import { A2AClient, Message, MessageSendParams, Task, SendMessageResponse, GetTa
 import {
   DistriMessage,
   DistriPart,
+  ConfigurationResponse,
+  DistriConfiguration,
   AgentDefinition,
   DistriThread,
   InvokeContext,
@@ -15,6 +17,53 @@ import {
   ToolResult
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
+
+export type ChatCompletionRole = 'system' | 'user' | 'assistant' | 'tool';
+
+export interface ChatCompletionMessage {
+  role: ChatCompletionRole;
+  content: string;
+}
+
+export type ChatCompletionResponseFormat =
+  | { type: 'text' }
+  | {
+    type: 'json_schema';
+    json_schema: {
+      name: string;
+      schema: Record<string, unknown>;
+      strict?: boolean;
+    };
+  };
+
+export interface ChatCompletionRequest {
+  model: string;
+  messages: ChatCompletionMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  response_format?: ChatCompletionResponseFormat;
+  tools?: unknown[];
+  tool_choice?: 'none' | 'auto' | Record<string, unknown>;
+}
+
+export interface ChatCompletionChoice {
+  index: number;
+  finish_reason?: string | null;
+  message: ChatCompletionMessage;
+}
+
+export interface ChatCompletionResponse {
+  id: string;
+  created: number;
+  model: string;
+  object: string;
+  choices: ChatCompletionChoice[];
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+}
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
  */
@@ -99,11 +148,12 @@ export class DistriClient {
               this.debug('Speech-to-text session ended');
               options.onEnd?.();
               break;
-            case 'error':
+            case 'error': {
               const error = new Error(data.message || 'WebSocket error');
               this.debug('Speech-to-text error:', error);
               options.onError?.(error);
               break;
+            }
             default:
               this.debug('Unknown message type:', data.type);
           }
@@ -179,6 +229,61 @@ export class DistriClient {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to transcribe audio', 'TRANSCRIPTION_ERROR', error);
     }
+  }
+
+  async getConfiguration(): Promise<ConfigurationResponse> {
+    const response = await this.fetch(`/configuration`, {
+      method: 'GET',
+      headers: {
+        ...this.config.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to load configuration', response.status);
+    }
+
+    return response.json();
+  }
+
+  async updateConfiguration(configuration: DistriConfiguration): Promise<ConfigurationResponse> {
+    const response = await this.fetch(`/configuration`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify(configuration),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to update configuration', response.status);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Minimal chat completion helper that proxies to the Distri server
+   */
+  async llm(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+    const response = await this.fetch(`/chat/completion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.error || response.statusText || 'LLM request failed';
+      throw new ApiError(`LLM request failed: ${message}`, response.status);
+    }
+
+    return response.json();
   }
 
   /**

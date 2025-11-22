@@ -441,11 +441,11 @@ export interface ModelSettings {
   model: string;
   temperature: number;
   max_tokens: number;
+  context_size: number;
   top_p: number;
   frequency_penalty: number;
   presence_penalty: number;
-  max_iterations: number;
-  provider: ModelProvider;
+  provider: ModelProviderConfig;
   /** Additional parameters for the agent, if any. */
   parameters?: any;
 
@@ -455,7 +455,13 @@ export interface ModelSettings {
 
 export type McpServerType = 'tool' | 'agent';
 
-export type ModelProvider = 'openai' | 'aigateway';
+export type ModelProviderName = 'openai' | 'openai_compat' | 'vllora' | string;
+
+export type ModelProviderConfig =
+  | { name: 'openai' }
+  | { name: 'openai_compat'; base_url: string; api_key?: string; project_id?: string }
+  | { name: 'vllora'; base_url?: string }
+  | { name: string; [key: string]: any };
 
 /**
  * Distri Thread type for conversation management
@@ -516,6 +522,44 @@ export interface DistriClientConfig {
   debug?: boolean;
   headers?: Record<string, string>;
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
+}
+
+export interface ExternalMcpServer {
+  name: string;
+  [key: string]: any;
+}
+
+export interface ServerConfig {
+  base_url?: string;
+  host?: string;
+  port?: number;
+  [key: string]: any;
+}
+
+export interface DistriConfiguration {
+  name: string;
+  version: string;
+  description?: string;
+  license?: string;
+  working_directory?: string;
+  agents?: string[];
+  mcp_servers?: ExternalMcpServer[];
+  server?: ServerConfig;
+  model_settings?: ModelSettings;
+  analysis_model_settings?: ModelSettings;
+  keywords?: string[];
+  [key: string]: any;
+}
+
+export interface ConfigurationMeta {
+  base_path: string;
+  overrides_path: string;
+  overrides_active: boolean;
+}
+
+export interface ConfigurationResponse {
+  configuration: DistriConfiguration;
+  meta: ConfigurationMeta;
 }
 
 /**

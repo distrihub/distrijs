@@ -46,43 +46,6 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     }
   }, [getApprovalPreferences]);
 
-  // Check for auto-approval preference - but only for live stream tool calls
-  useEffect(() => {
-    if (!isLiveStream) return; // Don't auto-execute historical tool calls
-
-    const preferences = getApprovalPreferences();
-    const autoApprove = preferences[toolName];
-
-    if (autoApprove === undefined) return;
-    if (hasExecuted || isProcessing) return;
-    if (hasTriggeredRef.current) return;
-
-    hasTriggeredRef.current = true;
-
-    if (autoApprove) {
-      handleExecute();
-    } else {
-      handleCancel();
-    }
-  }, [getApprovalPreferences, handleCancel, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
-
-  // Auto-execute if enabled - but only for live stream tool calls and if no user preference exists
-  useEffect(() => {
-    if (!isLiveStream) return; // Don't auto-execute historical tool calls
-
-    const preferences = getApprovalPreferences();
-    const hasPreference = preferences[toolName] !== undefined;
-
-    // Only auto-execute if there's no saved user preference, autoExecute is enabled, and it's from live stream
-    if (!autoExecute || hasPreference || hasExecuted || isProcessing) {
-      return;
-    }
-    if (hasTriggeredRef.current) return;
-
-    hasTriggeredRef.current = true;
-    handleExecute();
-  }, [autoExecute, getApprovalPreferences, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
-
   const handleExecute = useCallback(async () => {
     if (isProcessing || hasExecuted) return;
     if (!hasTriggeredRef.current) {
@@ -149,6 +112,43 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
     completeTool(toolResult);
   }, [completeTool, dontAskAgain, hasExecuted, isProcessing, saveApprovalPreference, toolCall.tool_call_id, toolName]);
+
+  // Check for auto-approval preference - but only for live stream tool calls
+  useEffect(() => {
+    if (!isLiveStream) return; // Don't auto-execute historical tool calls
+
+    const preferences = getApprovalPreferences();
+    const autoApprove = preferences[toolName];
+
+    if (autoApprove === undefined) return;
+    if (hasExecuted || isProcessing) return;
+    if (hasTriggeredRef.current) return;
+
+    hasTriggeredRef.current = true;
+
+    if (autoApprove) {
+      handleExecute();
+    } else {
+      handleCancel();
+    }
+  }, [getApprovalPreferences, handleCancel, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
+
+  // Auto-execute if enabled - but only for live stream tool calls and if no user preference exists
+  useEffect(() => {
+    if (!isLiveStream) return; // Don't auto-execute historical tool calls
+
+    const preferences = getApprovalPreferences();
+    const hasPreference = preferences[toolName] !== undefined;
+
+    // Only auto-execute if there's no saved user preference, autoExecute is enabled, and it's from live stream
+    if (!autoExecute || hasPreference || hasExecuted || isProcessing) {
+      return;
+    }
+    if (hasTriggeredRef.current) return;
+
+    hasTriggeredRef.current = true;
+    handleExecute();
+  }, [autoExecute, getApprovalPreferences, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
 
   // Show completed state
   if (hasExecuted && !isProcessing) {

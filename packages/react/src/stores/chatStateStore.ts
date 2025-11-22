@@ -124,6 +124,7 @@ export interface ChatStateStore extends ChatState {
   // Streaming indicator actions
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
   setCurrentThought: (thought: string | undefined) => void;
+  setBrowserFrame: (frameSrc: string, format?: string) => void;
 
   // State actions
   addMessage: (message: DistriChatMessage) => void;
@@ -209,6 +210,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   setCurrentThought: (thought: string | undefined) => {
     set({ currentThought: thought });
+  },
+
+  setBrowserFrame: (frameSrc: string, format?: string) => {
+    set({
+      browserFrame: frameSrc,
+      browserFrameFormat: format ?? 'png',
+      browserFrameUpdatedAt: Date.now(),
+    });
   },
 
   getToolByName: (toolName: string): ChatStateTool | undefined => {

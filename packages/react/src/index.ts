@@ -12,6 +12,9 @@ export * from './components/AgentsPage';
 export * from './components/AppSidebar';
 export * from './components/ChatInput';
 export * from './components/VoiceInput';
+export * from './components/BrowserPreviewPanel';
+export * from './components/BrowserViewport';
+export * from './components/ConfigurationPanel';
 export * from './components/ThemeProvider';
 export * from './components/ThemeToggle';
 export * from './components/Toast';
@@ -26,6 +29,7 @@ export * from './types';
 export * from './hooks/useChatMessages';
 export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
+export * from './hooks/useConfiguration';
 export * from './stores/chatStateStore';
 
 // Utility exports

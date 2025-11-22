@@ -74,6 +74,7 @@ export interface ChatProps {
     speed?: number;
   };
   initialInput?: string;
+  allowBrowserPreview?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -108,6 +109,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   useSpeechRecognition = false,
   ttsConfig,
   initialInput = '',
+  allowBrowserPreview = true,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -135,7 +137,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const browserFrameUpdatedAt = useChatStateStore(state => state.browserFrameUpdatedAt);
   const clearBrowserFrame = useChatStateStore(state => state.clearBrowserFrame);
   const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
-  const supportsBrowserStreaming = Boolean(agentDefinition?.browser_config);
+  const supportsBrowserStreaming = allowBrowserPreview && Boolean(agentDefinition?.browser_config);
   const browserAgentIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
