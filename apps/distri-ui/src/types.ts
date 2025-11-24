@@ -30,3 +30,17 @@ export interface Enrichment {
   is_draft: boolean
   created_at: string
 }
+
+export type DeviceStorageScope = 'home' | 'workspace'
+
+export interface DeviceProfile {
+  device_id: string
+  device_type: string
+  os: string
+  arch: string
+  hostname?: string | null
+  created_at: string
+  updated_at: string
+  storage_path: string
+  storage_scope: DeviceStorageScope
+}
