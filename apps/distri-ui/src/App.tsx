@@ -32,25 +32,27 @@ function App() {
     }
   }, []);
 
+  const basePath = import.meta.env.BASE_URL || '/ui/';
+
   return (
 
     <ThemeProvider defaultTheme="dark" storageKey="distri-theme">
       <ThreadProvider>
-        <Router>
+        <Router basename={basePath}>
           <SessionProvider>
 
             <Routes>
               {/* Root redirect */}
-              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/" element={<Navigate to="home" replace />} />
 
               {/* Auth routes */}
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/auth/success" element={<AuthSuccess />} />
-              <Route path="/login" element={<LoginPage />} />
+              <Route path="auth" element={<AuthPage />} />
+              <Route path="auth/callback" element={<AuthCallback />} />
+              <Route path="auth/success" element={<AuthSuccess />} />
+              <Route path="login" element={<LoginPage />} />
 
               {/* Protected routes with layout */}
-              <Route path="/home" element={<LayoutWithProviders />}>
+              <Route path="home" element={<LayoutWithProviders />}>
                 <Route element={<HomeLayout />}>
                   <Route index element={<AgentsPage />} />
                   <Route path="new" element={<NewAgentPage />} />
@@ -63,10 +65,10 @@ function App() {
               </Route>
 
               {/* Payment routes */}
-              <Route path="/payment/success" element={<PaymentSuccess />} />
+              <Route path="payment/success" element={<PaymentSuccess />} />
 
               {/* Catch all */}
-              <Route path="*" element={<Navigate to="/home" replace />} />
+              <Route path="*" element={<Navigate to="home" replace />} />
             </Routes>
 
             <Toaster position="top-right" richColors closeButton />
