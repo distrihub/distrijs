@@ -1,5 +1,5 @@
 {
-  "name": "@distri/workspace",
+  "name": "@distri",
   "version": "0.2.4",
   "private": true,
   "packageManager": "pnpm@10.11.1",
@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "exports": {
-    "./core": {
+    ".": {
       "types": "./packages/core/dist/index.d.ts",
       "import": "./packages/core/dist/index.mjs",
       "require": "./packages/core/dist/index.js"
@@ -17,16 +17,22 @@
       "import": "./packages/react/dist/index.js",
       "require": "./packages/react/dist/index.cjs"
     },
+    "./components": {
+      "types": "./packages/components/dist/index.d.ts",
+      "import": "./packages/components/dist/index.mjs",
+      "require": "./packages/components/dist/index.js"
+    },
     "./fs": {
-      "types": "./packages/react/dist/index.d.ts",
-      "import": "./packages/react/dist/index.js",
-      "require": "./packages/react/dist/index.cjs"
+      "types": "./packages/fs/dist/index.d.ts",
+      "import": "./packages/fs/dist/index.js",
+      "require": "./packages/fs/dist/index.cjs"
     }
   },
   "files": [
     "packages/core/dist/",
     "packages/fs/dist/",
     "packages/react/dist/",
+    "packages/components/dist/",
     "README.md"
   ],
   "scripts": {
