@@ -17,6 +17,7 @@
       "import": "./packages/react/dist/index.js",
       "require": "./packages/react/dist/index.cjs"
     },
+    "./react/globals.css": "./packages/react/dist/globals.css",
     "./components": {
       "types": "./packages/components/dist/index.d.ts",
       "import": "./packages/components/dist/index.mjs",
