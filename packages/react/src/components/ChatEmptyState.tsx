@@ -31,9 +31,10 @@ export interface ChatEmptyStateOptions {
 interface DefaultChatEmptyStateProps {
   controller: ChatEmptyStateController;
   options?: ChatEmptyStateOptions;
+  maxWidth?: string;
 }
 
-export const DefaultChatEmptyState: React.FC<DefaultChatEmptyStateProps> = ({ controller, options }) => {
+export const DefaultChatEmptyState: React.FC<DefaultChatEmptyStateProps> = ({ controller, options, maxWidth }) => {
   const disabled = controller.isLoading || controller.isStreaming;
   const categories = options?.categories ?? [];
 
@@ -53,7 +54,10 @@ export const DefaultChatEmptyState: React.FC<DefaultChatEmptyStateProps> = ({ co
 
   return (
     <div className="py-4 sm:py-8">
-      <div className="mx-auto w-full max-w-4xl px-2">
+      <div 
+        className="mx-auto w-full px-2"
+        style={maxWidth ? { maxWidth } : undefined}
+      >
         <div className="">
           <div className="flex flex-col gap-6">
 
