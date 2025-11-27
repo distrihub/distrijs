@@ -16,7 +16,7 @@ import {
   RunErrorEvent,
   ToolExecutionStartEvent,
   ToolExecutionEndEvent,
-  ToolResultPart,
+  DistriPart,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -816,7 +816,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     );
 
     return completedToolCalls.map((toolCallState): ToolResult => {
-      const fallbackPart: ToolResultPart = {
+      const fallbackPart: DistriPart = {
         part_type: 'data',
         data: { result: null, error: 'No result', success: false },
       };

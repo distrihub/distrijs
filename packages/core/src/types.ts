@@ -148,23 +148,20 @@ export type ImagePart = { part_type: 'image'; data: FileType }
 export type DataPart = { part_type: 'data'; data: object }
 export type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart | DataPart;
 
-/**
- * Union type for parts that can appear in ToolResult (frontend or backend format)
- */
-export type ToolResultPart = DistriPart;
-
 
 
 /**
  * File type for images
  */
 export interface FileBytes {
+  type: 'bytes';
   mime_type: string;
   data: string; // Base64 encoded data
   name?: string;
 }
 
 export interface FileUrl {
+  type: 'url';
   mime_type: string;
   url: string; // File Url
   name?: string;
@@ -194,7 +191,7 @@ export interface DistriFnTool extends DistriBaseTool {
  * Tool handler function
  */
 export interface ToolHandler {
-  (input: any): Promise<string | number | boolean | null | object>;
+  (input: any): Promise<string | number | boolean | null | DistriPart[] | object>;
 }
 
 
@@ -213,7 +210,7 @@ export interface ToolCall {
 export interface ToolResult {
   readonly tool_call_id: string;
   readonly tool_name: string;
-  readonly parts: readonly ToolResultPart[];
+  readonly parts: readonly DistriPart[];
 }
 
 /**
@@ -225,6 +222,9 @@ export interface ToolResultData {
   error?: string;
 }
 
+export function isArrayParts(result: any): boolean {
+  return Array.isArray(result) && result[0].part_type
+}
 /**
  * Type-safe helper to create a successful ToolResult
  * Uses proper DistriPart structure - conversion to backend format happens in encoder
@@ -232,19 +232,20 @@ export interface ToolResultData {
 export function createSuccessfulToolResult(
   toolCallId: string,
   toolName: string,
-  result: string | number | boolean | null | object
+  result: string | number | boolean | null | object | DistriPart[]
 ): ToolResult {
+  const parts = isArrayParts(result) ? result as DistriPart[] : [{
+    part_type: 'data' as const,
+    data: {
+      result,
+      success: true,
+      error: undefined
+    } satisfies ToolResultData
+  }];
   return {
     tool_call_id: toolCallId,
     tool_name: toolName,
-    parts: [{
-      part_type: 'data' as const,
-      data: {
-        result,
-        success: true,
-        error: undefined
-      } satisfies ToolResultData
-    }]
+    parts
   };
 }
 
@@ -461,7 +462,7 @@ export type ModelProviderConfig =
   | { name: 'openai' }
   | { name: 'openai_compat'; base_url: string; api_key?: string; project_id?: string }
   | { name: 'vllora'; base_url?: string }
-  | { name: string; [key: string]: any };
+  | { name: string;[key: string]: any };
 
 /**
  * Distri Thread type for conversation management
