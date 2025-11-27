@@ -68,7 +68,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
         const toolResult = createSuccessfulToolResult(
           toolCall.tool_call_id,
           toolName,
-          typeof result === 'string' ? result : JSON.stringify(result)
+          result
         );
 
         await completeTool(toolResult);
