@@ -1,5 +1,6 @@
 // Core exports
 export * from './types';
+export type { LLMResponse } from './types';
 export * from './events';
 export * from './distri-client';
 export * from './agent';
