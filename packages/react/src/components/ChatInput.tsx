@@ -1,13 +1,12 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import CodeMirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
-import 'codemirror/theme/material-darker.css';
+import 'codemirror/theme/dracula.css';
 import 'codemirror/addon/display/placeholder';
 import { Send, Square, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
 import { cn } from '../lib/utils';
-
 export interface AttachedImage {
   id: string;
   file: File;
@@ -15,6 +14,7 @@ export interface AttachedImage {
   name: string;
 }
 
+const DARK_THEME = 'dracula';
 export interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -102,22 +102,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     const cm = CodeMirror.fromTextArea(textareaRef.current, {
       lineWrapping: true,
-      theme: variant === 'hero' || isDarkMode ? 'material-darker' : 'default',
+      theme: variant === 'hero' || isDarkMode ? DARK_THEME : 'default',
       placeholder,
       viewportMargin: Infinity,
     });
 
     const wrapper = cm.getWrapperElement();
     const scroller = cm.getScrollerElement();
-    const heroWrapperClasses = [
-      'rounded-2xl', 'border', 'border-primary/30', 'bg-transparent', 'text-foreground', 'text-base', 'leading-7'
-    ];
-    const defaultWrapperClasses = [
-      'rounded-2xl', 'border', 'border-primary/30', 'bg-transparent', 'text-foreground', 'text-sm', 'leading-6'
-    ];
-    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1');
-    scroller.style.background = 'transparent';
-    scroller.style.padding = variant === 'hero' ? '0.25rem 0.5rem 0.5rem' : '0.25rem 0.35rem 0.5rem';
+    const baseWrapperClasses = ['rounded-2xl', 'border', 'border-transparent', 'bg-[#1c1f23]', 'text-foreground'];
+    const heroWrapperClasses = [...baseWrapperClasses, 'text-base', 'leading-7'];
+    const defaultWrapperClasses = [...baseWrapperClasses, 'text-sm', 'leading-6'];
+    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1', 'shadow-[0_14px_40px_rgba(0,0,0,0.35)]');
+    scroller.style.background = '#1c1f23';
+    scroller.style.padding = variant === 'hero' ? '1rem 1.25rem 1.25rem' : '0.35rem 0.5rem 0.75rem';
     if (variant === 'hero') {
       wrapper.classList.add(...heroWrapperClasses);
     } else {
@@ -141,7 +138,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
     });
 
-    const fixedHeight = variant === 'hero' ? '220px' : '140px';
+    const fixedHeight = variant === 'hero' ? '220px' : '100px';
     cm.setSize('100%', fixedHeight);
 
     codeMirrorRef.current = cm;
@@ -153,7 +150,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   useEffect(() => {
     if (!codeMirrorRef.current) return;
-    codeMirrorRef.current.setOption('theme', variant === 'hero' || isDarkMode ? 'material-darker' : 'default');
+    codeMirrorRef.current.setOption('theme', variant === 'hero' || isDarkMode ? DARK_THEME : 'default');
     codeMirrorRef.current.setOption('placeholder', placeholder);
   }, [isDarkMode, placeholder, variant]);
 
@@ -311,12 +308,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const shellClass = 'rounded-2xl bg-transparent';
   const innerShell = cn(
-    'rounded-2xl border border-primary/30 bg-background/95 px-4 py-3 flex flex-col gap-3 shadow-sm',
-    variant === 'hero' && 'sm:px-6 sm:py-4'
+    'relative rounded-2xl bg-transparent px-2 py-2 flex flex-col gap-3',
+    variant === 'hero' && 'p-0 min-h-[240px]'
   );
   const wrapperClass = 'mx-0 sm:mx-1';
   const previewClass = 'gap-2 mb-2';
-  const toolbarButton = 'flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 text-muted-foreground transition hover:text-primary';
+  const toolbarButton = 'flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 text-muted-foreground transition hover:text-primary';
   const toolbarButtonActive = 'bg-primary/10 text-primary border-primary/50';
 
   return (
@@ -354,89 +351,122 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                rows={variant === 'hero' ? 4 : 2}
+                rows={variant === 'hero' ? 6 : 3}
                 disabled={disabled}
                 className="absolute inset-0 h-full w-full resize-none bg-transparent text-transparent caret-transparent opacity-0"
               />
-
             </div>
 
-            <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBrowserToggle}
-                  className={cn(toolbarButton, browserEnabled && toolbarButtonActive)}
-                  disabled={disabled || !onToggleBrowser}
-                  title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
-                >
-                  <Globe className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className={toolbarButton}
-                  disabled={disabled}
-                  title="Attach image"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-
-                {voiceEnabled && !useSpeechRecognition ? (
+            {variant === 'hero' ? (
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute bottom-6 left-6">
                   <button
                     type="button"
-                    onClick={handleVoiceToggle}
-                  className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-200')}
-                    title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
-                    disabled={isStreaming || disabled}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={disabled}
+                    className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#1c1f23] text-muted-foreground transition hover:border-white/40 hover:text-foreground"
+                    title="Attach image"
                   >
-                    {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    <Plus className="h-4 w-4" />
                   </button>
-                ) : null}
-
-                {onStartStreamingVoice && !useSpeechRecognition ? (
+                </div>
+                <div className="absolute bottom-6 right-6">
                   <button
                     type="button"
-                    onClick={onStartStreamingVoice}
-                  className={cn(toolbarButton, isStreamingVoice && toolbarButtonActive)}
-                    disabled={isStreaming || disabled || isRecording}
-                    title="Start streaming voice conversation"
+                    onClick={() => (isStreaming ? handleStop() : void handleSend())}
+                    disabled={isStreaming ? false : (!hasContent || isDisabled)}
+                    className={cn(
+                      'pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition',
+                      isStreaming
+                        ? 'bg-amber-400 text-amber-950 hover:bg-amber-300'
+                        : hasContent
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'bg-muted text-muted-foreground'
+                    )}
+                    title={isStreaming ? 'Stop' : 'Send'}
                   >
-                    <Radio className="h-4 w-4" />
+                    {isStreaming ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                   </button>
-                ) : null}
-
-                {useSpeechRecognition ? (
-                  <VoiceInput
-                    onTranscript={handleSpeechTranscript}
-                    disabled={isDisabled || isStreaming}
-                    onError={(error) => console.error('Voice input error:', error)}
-                    useBrowserSpeechRecognition={true}
-                    language="en-US"
-                    interimResults={true}
-                  />
-                ) : null}
+                </div>
               </div>
+            ) : (
+              <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBrowserToggle}
+                    className={cn(toolbarButton, browserEnabled && toolbarButtonActive)}
+                    disabled={disabled || !onToggleBrowser}
+                    title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={toolbarButton}
+                    disabled={disabled}
+                    title="Attach image"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => (isStreaming ? handleStop() : void handleSend())}
-                  disabled={isStreaming ? false : (!hasContent || isDisabled)}
-                  className={cn(
-                    'flex h-11 w-11 items-center justify-center rounded-full transition shadow-sm',
-                    isStreaming
-                      ? 'bg-amber-400 text-amber-950 hover:bg-amber-300'
-                      : hasContent
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                        : 'bg-muted text-muted-foreground'
-                  )}
-                  title={isStreaming ? 'Stop' : 'Send'}
-                >
-                  {isStreaming ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}
-                </button>
+                  {voiceEnabled && !useSpeechRecognition ? (
+                    <button
+                      type="button"
+                      onClick={handleVoiceToggle}
+                      className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-200')}
+                      title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
+                      disabled={isStreaming || disabled}
+                    >
+                      {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  ) : null}
+
+                  {onStartStreamingVoice && !useSpeechRecognition ? (
+                    <button
+                      type="button"
+                      onClick={onStartStreamingVoice}
+                      className={cn(toolbarButton, isStreamingVoice && toolbarButtonActive)}
+                      disabled={isStreaming || disabled || isRecording}
+                      title="Start streaming voice conversation"
+                    >
+                      <Radio className="h-4 w-4" />
+                    </button>
+                  ) : null}
+
+                  {useSpeechRecognition ? (
+                    <VoiceInput
+                      onTranscript={handleSpeechTranscript}
+                      disabled={isDisabled || isStreaming}
+                      onError={(error) => console.error('Voice input error:', error)}
+                      useBrowserSpeechRecognition={true}
+                      language="en-US"
+                      interimResults={true}
+                    />
+                  ) : null}
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => (isStreaming ? handleStop() : void handleSend())}
+                    disabled={isStreaming ? false : (!hasContent || isDisabled)}
+                    className={cn(
+                      'flex h-11 w-11 items-center justify-center rounded-full transition shadow-sm',
+                      isStreaming
+                        ? 'bg-amber-400 text-amber-950 hover:bg-amber-300'
+                        : hasContent
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'bg-muted text-muted-foreground'
+                    )}
+                    title={isStreaming ? 'Stop' : 'Send'}
+                  >
+                    {isStreaming ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
