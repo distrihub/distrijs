@@ -275,6 +275,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           parts.push({
             part_type: 'image',
             data: {
+              type: 'bytes',
               mime_type: image.file.type,
               data: base64Data,
               name: image.name,

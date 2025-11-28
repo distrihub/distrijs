@@ -75,6 +75,8 @@ export interface ChatProps {
   };
   initialInput?: string;
   allowBrowserPreview?: boolean;
+  // Optional max width for chat content (defaults to flexible, respects container width)
+  maxWidth?: string;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -110,6 +112,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   ttsConfig,
   initialInput = '',
   allowBrowserPreview = true,
+  maxWidth,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -690,7 +693,19 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     emptyState,
   ]);
 
-  const emptyStateComposer = useMemo(() => renderComposer('hero', 'w-full max-w-2xl mx-auto empty-state-composer'), [renderComposer]);
+  const emptyStateComposer = useMemo(() => {
+    const baseClass = 'w-full mx-auto empty-state-composer';
+    const className = maxWidth ? baseClass : `${baseClass} max-w-2xl`;
+    const composer = renderComposer('hero', className);
+    if (maxWidth) {
+      return (
+        <div style={{ maxWidth }}>
+          {composer}
+        </div>
+      );
+    }
+    return composer;
+  }, [renderComposer, maxWidth]);
   const footerComposer = useMemo(() => renderComposer('default', 'w-full'), [renderComposer]);
 
   const controllerWithComposer = useMemo<ChatEmptyStateController>(() => ({
@@ -706,9 +721,9 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       return renderEmptyState(controllerWithComposer);
     }
     return (
-      <DefaultChatEmptyState controller={controllerWithComposer} options={emptyState} />
+      <DefaultChatEmptyState controller={controllerWithComposer} options={emptyState} maxWidth={maxWidth} />
     );
-  }, [showEmptyState, renderEmptyState, controllerWithComposer, emptyState]);
+  }, [showEmptyState, renderEmptyState, controllerWithComposer, emptyState, maxWidth]);
 
   const shouldRenderFooterComposer = !showEmptyState || Boolean(renderEmptyState);
   const footerHasContent = shouldRenderFooterComposer
@@ -805,7 +820,10 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       )}
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground dark:selection:bg-primary/40">
-        <div className="mx-auto w-full max-w-6xl px-2 sm:px-4 py-4 text-sm space-y-4">
+        <div 
+          className="mx-auto w-full px-2 sm:px-4 py-4 text-sm space-y-4"
+          style={maxWidth ? { maxWidth, width: '100%', boxSizing: 'border-box' } : undefined}
+        >
           {error && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
               <div className="text-destructive text-xs">
@@ -814,8 +832,11 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             </div>
           )}
 
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-            <div className="flex-1 min-w-0 space-y-4">
+          <div 
+            className="flex flex-col gap-4 lg:flex-row lg:items-start"
+            style={maxWidth ? { maxWidth: '100%' } : undefined}
+          >
+            <div className="flex-1 min-w-0 space-y-4" style={{ maxWidth: '100%' }}>
               {emptyStateContent}
               {/* Render all messages and state */}
               {renderMessages()}
@@ -850,7 +871,10 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60
   pb-[env(safe-area-inset-bottom)]
 ">
-          <div className="max-w-4xl mx-auto w-full px-4 py-3 sm:py-4 space-y-3">
+          <div 
+            className="mx-auto w-full px-4 py-3 sm:py-4 space-y-3"
+            style={maxWidth ? { maxWidth } : undefined}
+          >
 
             {models && models.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
