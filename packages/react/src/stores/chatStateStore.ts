@@ -260,7 +260,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             id: messageId,
             role,
             parts: [{ part_type: 'text', data: '' }],
-            created_at: new Date().toISOString(),
+            created_at: new Date().getTime(),
             step_id: stepId,
             is_final: isFinal
           };

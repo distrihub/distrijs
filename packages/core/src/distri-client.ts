@@ -642,7 +642,7 @@ export class DistriClient {
     role: DistriMessage['role'],
     parts: DistriPart[],
     id?: string,
-    created_at?: string,
+    created_at?: number,
   ): DistriMessage {
     return {
       id: id || uuidv4(),
