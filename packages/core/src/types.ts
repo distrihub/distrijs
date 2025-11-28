@@ -15,7 +15,7 @@ export interface DistriMessage {
   id: string;
   role: MessageRole;
   parts: DistriPart[];
-  created_at?: number;
+  created_at: number;
   step_id?: string;
   is_final?: boolean;
 }
