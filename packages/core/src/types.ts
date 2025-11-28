@@ -20,6 +20,13 @@ export interface DistriMessage {
   is_final?: boolean;
 }
 
+export interface LlmExecuteOptions {
+  thread_id?: string;
+  parent_task_id?: string;
+  run_id?: string;
+  model_settings?: any;
+  is_sub_task?: boolean
+};
 export interface AssistantWithToolCalls {
   id: string;
   type: 'llm_response';

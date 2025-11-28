@@ -15,7 +15,8 @@ import {
   SpeechToTextConfig,
   StreamingTranscriptionOptions,
   ToolResult,
-  LLMResponse
+  LLMResponse,
+  LlmExecuteOptions
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -269,11 +270,8 @@ export class DistriClient {
   /**
    * Minimal LLM helper that proxies to the Distri server using Distri messages.
    */
-  async llm(messages: DistriMessage[], tools: any[] = [], options?: { thread_id?: string; parent_task_id?: string; run_id?: string; model_settings?: any }): Promise<LLMResponse> {
+  async llm(messages: DistriMessage[], tools: unknown[] = [], options?: LlmExecuteOptions): Promise<LLMResponse> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (options?.thread_id) headers['x-thread-id'] = options.thread_id;
-    if (options?.parent_task_id) headers['x-parent-task-id'] = options.parent_task_id;
-    if (options?.run_id) headers['x-run-id'] = options.run_id;
     const response = await this.fetch(`/llm/execute`, {
       method: 'POST',
       headers,
