@@ -275,11 +275,11 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
       return { part_type: 'text', data: a2aPart.text };
     case 'file':
       if ('uri' in a2aPart.file) {
-        const fileUrl: FileUrl = { mime_type: a2aPart.file.mimeType || 'application/octet-stream', url: a2aPart.file.uri || '' };
+        const fileUrl: FileUrl = { type: 'url', mime_type: a2aPart.file.mimeType || 'application/octet-stream', url: a2aPart.file.uri || '' };
         return { part_type: 'image', data: fileUrl };
       }
       else {
-        const fileBytes: FileBytes = { mime_type: a2aPart.file.mimeType || 'application/octet-stream', data: a2aPart.file.bytes || '' };
+        const fileBytes: FileBytes = { type: 'bytes', mime_type: a2aPart.file.mimeType || 'application/octet-stream', data: a2aPart.file.bytes || '' };
         return { part_type: 'image', data: fileBytes };
       }
     case 'data':

@@ -15,7 +15,7 @@ export interface DistriMessage {
   id: string;
   role: MessageRole;
   parts: DistriPart[];
-  created_at?: string;
+  created_at?: number;
   step_id?: string;
   is_final?: boolean;
 }
@@ -523,6 +523,14 @@ export interface DistriClientConfig {
   debug?: boolean;
   headers?: Record<string, string>;
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
+}
+
+export interface LLMResponse {
+  finish_reason: string;
+  content: string;
+  tool_calls: ToolCall[];
+  token_usage: number;
+  tools?: any[];
 }
 
 export interface ExternalMcpServer {

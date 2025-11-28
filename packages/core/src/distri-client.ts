@@ -14,7 +14,8 @@ import {
   A2AStreamEventData,
   SpeechToTextConfig,
   StreamingTranscriptionOptions,
-  ToolResult
+  ToolResult,
+  LLMResponse
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -37,7 +38,7 @@ export type ChatCompletionResponseFormat =
   };
 
 export interface ChatCompletionRequest {
-  model: string;
+  model?: string;
   messages: ChatCompletionMessage[];
   temperature?: number;
   max_tokens?: number;
@@ -266,15 +267,15 @@ export class DistriClient {
   }
 
   /**
-   * Minimal chat completion helper that proxies to the Distri server
+   * Minimal LLM helper that proxies to the Distri server using Distri messages.
    */
-  async llm(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const response = await this.fetch(`/chat/completion`, {
+  async llm(messages: DistriMessage[], tools: any[] = []): Promise<LLMResponse> {
+    const response = await this.fetch(`/llm/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify({ messages, tools }),
     });
 
     if (!response.ok) {
