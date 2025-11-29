@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ChatState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
-import { DistriAnyTool } from '@/types';
+import { DistriAnyTool, ToolRendererMap } from '@/types';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions } from './ChatEmptyState';
 import { BrowserPreviewPanel } from './BrowserPreviewPanel';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
@@ -49,6 +49,7 @@ export interface ChatProps {
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
   externalTools?: DistriAnyTool[];
+  toolRenderers?: ToolRendererMap;
   // Tool wrapping options
   executionOptions?: ToolExecutionOptions;
   // Initial messages to use instead of fetching
@@ -113,6 +114,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   initialInput = '',
   allowBrowserPreview = true,
   maxWidth,
+  toolRenderers,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -576,6 +578,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
           key={`message-${index}`}
           message={message}
           index={index}
+          toolRenderers={toolRenderers}
           isExpanded={expandedTools.has(message.id || `message-${index}`)}
           onToggle={() => {
             const messageId = message.id || `message-${index}`;
@@ -820,7 +823,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       )}
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground dark:selection:bg-primary/40">
-        <div 
+        <div
           className="mx-auto w-full px-2 sm:px-4 py-4 text-sm space-y-4"
           style={maxWidth ? { maxWidth, width: '100%', boxSizing: 'border-box' } : undefined}
         >
@@ -832,7 +835,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             </div>
           )}
 
-          <div 
+          <div
             className="flex flex-col gap-4 lg:flex-row lg:items-start"
             style={maxWidth ? { maxWidth: '100%' } : undefined}
           >
@@ -871,7 +874,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60
   pb-[env(safe-area-inset-bottom)]
 ">
-          <div 
+          <div
             className="mx-auto w-full px-4 py-3 sm:py-4 space-y-3"
             style={maxWidth ? { maxWidth } : undefined}
           >
