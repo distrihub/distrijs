@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { LoadingShimmer } from './ThinkingRenderer';
-import { extractToolResultData } from '@distri/core';
+import { extractToolResultData, ToolCall } from '@distri/core';
+import { ToolRendererMap } from '@/types';
 
 interface ToolExecutionRendererProps {
   event: any; // Can be ToolCallsEvent or ToolResultsEvent
   toolCallStates: Map<string, ToolCallState>;
+  toolRenderers?: ToolRendererMap;
 }
 
 interface ToolCallData {
@@ -162,6 +164,7 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCall, state, renderResu
 export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
   event,
   toolCallStates,
+  toolRenderers,
 }) => {
   const toolCalls = event.data?.tool_calls || [];
   if (toolCalls.length === 0) {
@@ -187,14 +190,31 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
     <>
       {toolCalls
         .filter((toolCall: ToolCallData) => toolCall.tool_name !== 'final')
-        .map((toolCall: ToolCallData) => (
-          <ToolCallCard
-            key={toolCall.tool_call_id}
-            toolCall={toolCall}
-            state={toolCallStates.get(toolCall.tool_call_id)}
-            renderResultData={renderResultData}
-          />
-        ))}
+        .map((toolCall: ToolCallData) => {
+          const state = toolCallStates.get(toolCall.tool_call_id);
+          const renderer = toolRenderers?.[toolCall.tool_name];
+          if (renderer) {
+            // Cast event tool call into ToolCall shape best-effort
+            const toolCallPayload: ToolCall = {
+              tool_call_id: toolCall.tool_call_id,
+              tool_name: toolCall.tool_name,
+              input: toolCall.input,
+            };
+            return (
+              <div key={toolCall.tool_call_id}>
+                {renderer({ toolCall: toolCallPayload, state })}
+              </div>
+            );
+          }
+          return (
+            <ToolCallCard
+              key={toolCall.tool_call_id}
+              toolCall={toolCall}
+              state={state}
+              renderResultData={renderResultData}
+            />
+          );
+        })}
     </>
   );
 };

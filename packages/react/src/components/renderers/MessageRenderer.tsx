@@ -4,11 +4,13 @@ import { UserMessageRenderer } from './UserMessageRenderer';
 import { StepBasedRenderer } from './StepBasedRenderer';
 import { ToolExecutionRenderer } from './ToolExecutionRenderer';
 import { useChatStateStore } from '@/stores/chatStateStore';
+import { ToolRendererMap } from '@/types';
 export interface MessageRendererProps {
   message: DistriChatMessage;
   index: number;
   isExpanded?: boolean;
   onToggle?: () => void;
+  toolRenderers?: ToolRendererMap;
 }
 
 // Wrapper component to ensure full width with max constraint for readability
@@ -26,6 +28,7 @@ const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string 
 export function MessageRenderer({
   message,
   index,
+  toolRenderers,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
   // Don't render messages with empty content
@@ -119,6 +122,7 @@ export function MessageRenderer({
             <ToolExecutionRenderer
               event={event}
               toolCallStates={toolCallsState}
+              toolRenderers={toolRenderers}
             />
           </RendererWrapper>
         );
