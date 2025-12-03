@@ -6,7 +6,7 @@ import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { TypingIndicator } from './renderers/TypingIndicator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { ChatState, useChatStateStore } from '../stores/chatStateStore';
+import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap } from '@/types';
@@ -64,6 +64,7 @@ export interface ChatProps {
   onChatInstanceReady?: (instance: ChatInstance) => void;
 
   onChatStateChange?: (state: ChatState) => void;
+  onTaskFinish?: (task: TaskState) => void;
   renderEmptyState?: (controller: ChatEmptyStateController) => React.ReactNode;
   emptyState?: ChatEmptyStateOptions;
   // Voice support
@@ -106,6 +107,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   onModelChange,
   onChatInstanceReady,
   onChatStateChange,
+  onTaskFinish,
   renderEmptyState,
   emptyState,
   voiceEnabled = false,
@@ -221,7 +223,6 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
   const currentThought = useChatStateStore(state => state.currentThought);
-
   const currentState = useChatStateStore(state => state);
   useEffect(() => {
     if (onChatStateChange) {
@@ -522,6 +523,20 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
       onChatInstanceReady(chatInstance);
     }
   }, [onChatInstanceReady, chatInstance]);
+
+  const completedTaskIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!onTaskFinish) return;
+    const unsub = useChatStateStore.subscribe((state) => state.tasks);
+    const tasks = useChatStateStore.getState().tasks;
+    tasks.forEach((task) => {
+      if (task.status === 'completed' && !completedTaskIdsRef.current.has(task.id)) {
+        completedTaskIdsRef.current.add(task.id);
+        onTaskFinish(task);
+      }
+    });
+    return () => unsub();
+  }, [onTaskFinish]);
 
   const toggleToolExpansion = useCallback((toolId: string) => {
     setExpandedTools(prev => {
