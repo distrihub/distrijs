@@ -175,6 +175,7 @@ export interface InlineHookRequestedEvent {
       run_id: string;
     };
     timeout_ms?: number;
+    fire_and_forget?: boolean;
     message?: any;
     plan?: any;
     result?: any;

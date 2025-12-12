@@ -210,6 +210,7 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
             run_id: statusUpdate.agentId,
           },
           timeout_ms: metadata.request?.timeout_ms || metadata.timeout_ms,
+          fire_and_forget: metadata.request?.fire_and_forget ?? metadata.fire_and_forget,
           message: metadata.request?.message || metadata.message,
           plan: metadata.request?.plan || metadata.plan,
           result: metadata.request?.result || metadata.result,

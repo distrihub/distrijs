@@ -66,10 +66,13 @@ export interface InlineHookRequest {
   hook: string;
   context: HookContext;
   timeout_ms?: number;
+  fire_and_forget?: boolean;
   message?: any;
   plan?: any;
   result?: any;
 }
+
+export interface InlineHookEventData extends InlineHookRequest {}
 
 export type HookHandler = (req: InlineHookRequest) => Promise<HookMutation> | HookMutation;
 
