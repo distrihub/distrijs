@@ -163,6 +163,24 @@ export interface BrowserScreenshotEvent {
   };
 }
 
+export interface InlineHookRequestedEvent {
+  type: 'inline_hook_requested';
+  data: {
+    hook_id: string;
+    hook: string;
+    context: {
+      agent_id: string;
+      thread_id: string;
+      task_id: string;
+      run_id: string;
+    };
+    timeout_ms?: number;
+    message?: any;
+    plan?: any;
+    result?: any;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -183,4 +201,5 @@ export type DistriEvent =
   | FeedbackReceivedEvent
   | ToolCallsEvent
   | ToolResultsEvent
-  | BrowserScreenshotEvent;
+  | BrowserScreenshotEvent
+  | InlineHookRequestedEvent;

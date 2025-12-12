@@ -4,6 +4,7 @@ import {
   DistriBaseTool,
   DistriChatMessage,
   ToolResult,
+  HookHandler,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
@@ -38,6 +39,8 @@ export interface InvokeResult {
 export class Agent {
   private client: DistriClient;
   private agentDefinition: AgentDefinition;
+  private hookHandlers: Map<string, HookHandler> = new Map();
+  private defaultHookHandler: HookHandler | null = null;
 
   constructor(agentDefinition: AgentDefinition, client: DistriClient) {
     this.agentDefinition = agentDefinition;
@@ -83,7 +86,10 @@ export class Agent {
   /**
    * Direct (non-streaming) invoke
    */
-  public async invoke(params: MessageSendParams, tools?: DistriBaseTool[]): Promise<Message> {
+  public async invoke(params: MessageSendParams, tools?: DistriBaseTool[], hooks?: Record<string, HookHandler>): Promise<Message> {
+    if (hooks) {
+      this.registerHooks(hooks);
+    }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
     return await this.client.sendMessage(this.agentDefinition.id, enhancedParams) as Message;
@@ -92,20 +98,36 @@ export class Agent {
   /**
    * Streaming invoke
    */
-  public async invokeStream(params: MessageSendParams, tools?: DistriBaseTool[]): Promise<AsyncGenerator<DistriChatMessage>> {
+  public async invokeStream(params: MessageSendParams, tools?: DistriBaseTool[], hooks?: Record<string, HookHandler>): Promise<AsyncGenerator<DistriChatMessage>> {
+    if (hooks) {
+      this.registerHooks(hooks);
+    }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
 
 
+    const self = this;
     return (async function* () {
-      const events = [];
-      const mappedEvents = [];
       for await (const event of a2aStream) {
-        events.push(event);
         const converted = decodeA2AStreamEvent(event);
-        mappedEvents.push(converted);
-        if (converted) {
+        if (converted && (converted as any).type === 'inline_hook_requested') {
+          const hookReq: any = (converted as any).data;
+          const handler =
+            self.hookHandlers.get(hookReq.hook) ||
+            self.defaultHookHandler;
+          if (handler) {
+            try {
+              const mutation = await handler(hookReq);
+              await self.client.completeInlineHook(hookReq.hook_id, mutation);
+            } catch (err) {
+              await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+            }
+          } else {
+            await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+          }
+          yield converted;
+        } else if (converted) {
           yield converted;
         }
       }
@@ -129,6 +151,18 @@ export class Agent {
       ...params,
       metadata
     };
+  }
+
+  /**
+   * Register multiple hooks at once.
+   */
+  registerHooks(hooks: Record<string, HookHandler>, defaultHandler?: HookHandler) {
+    Object.entries(hooks).forEach(([hook, handler]) => {
+      this.hookHandlers.set(hook, handler);
+    });
+    if (defaultHandler) {
+      this.defaultHookHandler = defaultHandler;
+    }
   }
 
 
