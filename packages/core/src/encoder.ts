@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -195,6 +195,28 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         }
       };
       return browserScreenshotResult;
+    }
+
+    case 'inline_hook_requested': {
+      const hookRequested: InlineHookRequestedEvent = {
+        type: 'inline_hook_requested',
+        data: {
+          hook_id: metadata.request?.hook_id || metadata.hook_id || '',
+          hook: metadata.request?.hook || metadata.hook || '',
+          context: metadata.request?.context || metadata.context || {
+            agent_id: statusUpdate.agentId,
+            thread_id: statusUpdate.contextId,
+            task_id: statusUpdate.taskId,
+            run_id: statusUpdate.agentId,
+          },
+          timeout_ms: metadata.request?.timeout_ms || metadata.timeout_ms,
+          fire_and_forget: metadata.request?.fire_and_forget ?? metadata.fire_and_forget,
+          message: metadata.request?.message || metadata.message,
+          plan: metadata.request?.plan || metadata.plan,
+          result: metadata.request?.result || metadata.result,
+        },
+      };
+      return hookRequested;
     }
 
     default: {

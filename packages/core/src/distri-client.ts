@@ -547,6 +547,27 @@ export class DistriClient {
   }
 
   /**
+   * Complete an inline hook with a mutation payload.
+   */
+  async completeInlineHook(hookId: string, mutation: any): Promise<void> {
+    const response = await this.fetch(`/event/hooks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify({
+        hook_id: hookId,
+        mutation,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new ApiError(`Failed to complete inline hook: ${response.statusText}`, response.status);
+    }
+  }
+
+  /**
    * Get the base URL for making direct requests
    */
   get baseUrl(): string {

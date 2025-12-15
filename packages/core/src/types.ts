@@ -50,6 +50,32 @@ export interface ToolExecutionOptions {
   autoExecute?: boolean;
 }
 
+export interface HookMutation {
+  dynamic_values: Record<string, any>;
+}
+
+export interface HookContext {
+  agent_id: string;
+  thread_id: string;
+  task_id: string;
+  run_id: string;
+}
+
+export interface InlineHookRequest {
+  hook_id: string;
+  hook: string;
+  context: HookContext;
+  timeout_ms?: number;
+  fire_and_forget?: boolean;
+  message?: any;
+  plan?: any;
+  result?: any;
+}
+
+export interface InlineHookEventData extends InlineHookRequest {}
+
+export type HookHandler = (req: InlineHookRequest) => Promise<HookMutation> | HookMutation;
+
 
 export interface ToolResults {
   id: string;
