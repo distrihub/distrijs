@@ -854,7 +854,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
             className="flex flex-col gap-4 lg:flex-row lg:items-start"
             style={maxWidth ? { maxWidth: '100%' } : undefined}
           >
-            <div className="flex-1 min-w-0 space-y-4" style={{ maxWidth: '100%' }}>
+            <div className="flex-1 min-w-0 space-y-4 w-full">
               {emptyStateContent}
               {/* Render all messages and state */}
               {renderMessages()}
