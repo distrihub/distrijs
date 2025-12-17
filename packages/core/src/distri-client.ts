@@ -583,6 +583,35 @@ export class DistriClient {
     // Construct the full URL using baseUrl
     let lastError: Error | undefined;
 
+    // Merge headers (config first, then init) and always ensure a Content-Type for body requests
+    const headers = new Headers();
+    const applyHeaders = (src?: HeadersInit) => {
+      if (!src) return;
+      if (src instanceof Headers) {
+        src.forEach((value, key) => headers.set(key, value));
+      } else if (Array.isArray(src)) {
+        src.forEach(([key, value]) => headers.set(key, value));
+      } else if (typeof src === 'object') {
+        Object.entries(src).forEach(([key, value]) => {
+          if (typeof value === 'string') {
+            headers.set(key, value);
+          }
+        });
+      }
+    };
+
+    applyHeaders(this.config.headers);
+    applyHeaders(init?.headers);
+
+    const hasBody =
+      init?.body !== undefined &&
+      !(init.body instanceof FormData) &&
+      !(init.body instanceof Blob);
+
+    if (!headers.has('content-type') && hasBody) {
+      headers.set('Content-Type', 'application/json');
+    }
+
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
       try {
         const controller = new AbortController();
@@ -591,10 +620,7 @@ export class DistriClient {
         const response = await fetch(url, {
           ...init,
           signal: controller.signal,
-          headers: {
-            ...this.config.headers,
-            ...init?.headers
-          }
+          headers,
         });
 
         clearTimeout(timeoutId);
