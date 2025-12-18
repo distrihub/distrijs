@@ -89,6 +89,132 @@ export class DistriClient {
   }
 
   /**
+   * Session store: set a value (optionally with expiry)
+   */
+  async setSessionValue(sessionId: string, key: string, value: unknown, expiry?: Date | string): Promise<void> {
+    const body: any = { key, value };
+    if (expiry) {
+      body.expiry = typeof expiry === 'string' ? expiry : (expiry as Date).toISOString();
+    }
+    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok && resp.status !== 204) {
+      const errorData = await resp.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to set session value', resp.status);
+    }
+  }
+
+  /**
+   * Session store: get a single value
+   */
+  async getSessionValue<T = unknown>(sessionId: string, key: string): Promise<T | null> {
+    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values/${encodeURIComponent(key)}`, {
+      method: 'GET',
+      headers: {
+        ...this.config.headers,
+      },
+    });
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to get session value', resp.status);
+    }
+    const data = await resp.json().catch(() => ({ value: null }));
+    return (data?.value ?? null) as T | null;
+  }
+
+  /**
+   * Session store: get all values in a session
+   */
+  async getSessionValues(sessionId: string): Promise<Record<string, unknown>> {
+    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values`, {
+      method: 'GET',
+      headers: {
+        ...this.config.headers,
+      },
+    });
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to get session values', resp.status);
+    }
+    const data = await resp.json().catch(() => ({ values: {} }));
+    return (data?.values ?? {}) as Record<string, unknown>;
+  }
+
+  /**
+   * Session store: delete a single key
+   */
+  async deleteSessionValue(sessionId: string, key: string): Promise<void> {
+    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values/${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+      headers: {
+        ...this.config.headers,
+      },
+    });
+    if (!resp.ok && resp.status !== 204) {
+      const errorData = await resp.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to delete session value', resp.status);
+    }
+  }
+
+  /**
+   * Session store: clear all keys in a session
+   */
+  async clearSession(sessionId: string): Promise<void> {
+    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+      headers: {
+        ...this.config.headers,
+      },
+    });
+    if (!resp.ok && resp.status !== 204) {
+      const errorData = await resp.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to clear session', resp.status);
+    }
+  }
+
+  // ============================================================
+  // Additional User Message Parts API
+  // ============================================================
+  // These methods allow external tools to append parts (text, images)
+  // to the user message in the next agent iteration.
+  // The parts are stored under the key "__additional_user_parts".
+
+  private static readonly ADDITIONAL_PARTS_KEY = '__additional_user_parts';
+
+  /**
+   * Set additional user message parts for the next agent iteration.
+   * These parts will be appended to the user message in the prompt.
+   * @param sessionId - The thread/session ID
+   * @param parts - Array of DistriPart objects to append to user message
+   */
+  async setAdditionalUserParts(sessionId: string, parts: DistriPart[]): Promise<void> {
+    await this.setSessionValue(sessionId, DistriClient.ADDITIONAL_PARTS_KEY, parts);
+  }
+
+  /**
+   * Get the current additional user message parts.
+   * @param sessionId - The thread/session ID
+   * @returns Array of DistriPart objects or null if not set
+   */
+  async getAdditionalUserParts(sessionId: string): Promise<DistriPart[] | null> {
+    return this.getSessionValue<DistriPart[]>(sessionId, DistriClient.ADDITIONAL_PARTS_KEY);
+  }
+
+  /**
+   * Clear/delete the additional user message parts.
+   * @param sessionId - The thread/session ID
+   */
+  async clearAdditionalUserParts(sessionId: string): Promise<void> {
+    await this.deleteSessionValue(sessionId, DistriClient.ADDITIONAL_PARTS_KEY);
+  }
+
+  /**
    * Start streaming speech-to-text transcription via WebSocket
    */
   async streamingTranscription(options: StreamingTranscriptionOptions = {}) {
