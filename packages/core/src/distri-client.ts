@@ -16,7 +16,8 @@ import {
   StreamingTranscriptionOptions,
   ToolResult,
   LLMResponse,
-  LlmExecuteOptions
+  LlmExecuteOptions,
+  DEFAULT_BASE_URL
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -66,14 +67,41 @@ export interface ChatCompletionResponse {
     total_tokens?: number;
   };
 }
+
+/**
+ * Configuration with resolved defaults
+ */
+interface ResolvedConfig extends Required<Omit<DistriClientConfig, 'apiKey'>> {
+  apiKey?: string;
+}
+
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
+ *
+ * @example
+ * // Local development
+ * const client = new DistriClient({ baseUrl: 'http://localhost:3033' });
+ *
+ * // Cloud with default URL (https://api.distri.dev)
+ * const client = DistriClient.create({ apiKey: 'your-api-key' });
+ *
+ * // With explicit API key authentication
+ * const client = new DistriClient({
+ *   baseUrl: 'https://api.distri.dev',
+ *   apiKey: 'your-api-key'
+ * });
  */
 export class DistriClient {
-  private config: Required<DistriClientConfig>;
+  private config: ResolvedConfig;
   private agentClients = new Map<string, { url: string; client: A2AClient }>();
 
   constructor(config: DistriClientConfig) {
+    // If apiKey is provided, add it to headers as x-api-key
+    const headers = { ...config.headers };
+    if (config.apiKey) {
+      headers['x-api-key'] = config.apiKey;
+    }
+
     this.config = {
       baseUrl: config.baseUrl.replace(/\/$/, ''),
       apiVersion: config.apiVersion || 'v1',
@@ -81,11 +109,42 @@ export class DistriClient {
       retryAttempts: config.retryAttempts || 3,
       retryDelay: config.retryDelay || 1000,
       debug: config.debug || false,
-      headers: config.headers || {},
-      interceptor: config.interceptor || ((init?: RequestInit) => Promise.resolve(init))
+      headers,
+      interceptor: config.interceptor || ((init?: RequestInit) => Promise.resolve(init)),
+      apiKey: config.apiKey
     };
 
-    this.debug('DistriClient initialized with config:', this.config);
+    this.debug('DistriClient initialized with config:', {
+      baseUrl: this.config.baseUrl,
+      hasApiKey: !!this.config.apiKey,
+      timeout: this.config.timeout
+    });
+  }
+
+  /**
+   * Create a client with default cloud configuration.
+   *
+   * @param overrides - Optional overrides for the default config
+   */
+  static create(overrides: Partial<DistriClientConfig> = {}): DistriClient {
+    return new DistriClient({
+      baseUrl: DEFAULT_BASE_URL,
+      ...overrides
+    });
+  }
+
+  /**
+   * Check if this client has authentication configured.
+   */
+  hasAuth(): boolean {
+    return !!this.config.apiKey;
+  }
+
+  /**
+   * Check if this client is configured for local development.
+   */
+  isLocal(): boolean {
+    return this.config.baseUrl.includes('localhost') || this.config.baseUrl.includes('127.0.0.1');
   }
 
   /**
@@ -212,6 +271,58 @@ export class DistriClient {
    */
   async clearAdditionalUserParts(sessionId: string): Promise<void> {
     await this.deleteSessionValue(sessionId, DistriClient.ADDITIONAL_PARTS_KEY);
+  }
+
+  // ============================================================
+  // Short-Lived Token API
+  // ============================================================
+  // Issue short-lived tokens for temporary authentication (e.g., frontend use)
+
+  /**
+   * Response from the token endpoint
+   */
+  static readonly TokenType = {
+    Main: 'main',
+    Short: 'short',
+  } as const;
+
+  /**
+   * Issue a short-lived token for temporary authentication.
+   * Requires an existing authenticated session (API key or main token).
+   * 
+   * @returns Token response with token string, type, and expiry timestamp
+   * @throws ApiError if not authenticated or token issuance fails
+   * 
+   * @example
+   * ```typescript
+   * const client = new DistriClient({
+   *   baseUrl: 'https://api.distri.dev',
+   *   apiKey: 'your-api-key',
+   * });
+   * 
+   * const { token, expires_at } = await client.issueShortToken();
+   * // Use this token for frontend requests
+   * ```
+   */
+  async issueShortToken(): Promise<{
+    token: string;
+    token_type: 'main' | 'short';
+    expires_at: number;
+  }> {
+    const response = await this.fetch('/tokens', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to issue short token', response.status);
+    }
+
+    return response.json();
   }
 
   /**
