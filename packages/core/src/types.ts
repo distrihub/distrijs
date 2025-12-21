@@ -545,17 +545,59 @@ export interface StreamingTranscriptionOptions {
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 /**
+ * Default base URL for the Distri cloud service
+ */
+export const DEFAULT_BASE_URL = 'https://api.distri.dev';
+
+/**
  * Distri Client Configuration
  */
 export interface DistriClientConfig {
+  /**
+   * Base URL of the Distri server
+   * Default: https://api.distri.dev
+   */
   baseUrl: string;
+
+  /**
+   * API version (currently unused)
+   */
   apiVersion?: string;
+
+  /**
+   * Request timeout in milliseconds (default: 30000)
+   */
   timeout?: number;
+
+  /**
+   * Number of retry attempts for failed requests (default: 3)
+   */
   retryAttempts?: number;
+
+  /**
+   * Delay between retry attempts in milliseconds (default: 1000)
+   */
   retryDelay?: number;
+
+  /**
+   * Enable debug logging
+   */
   debug?: boolean;
+
+  /**
+   * Custom headers to include in all requests
+   */
   headers?: Record<string, string>;
+
+  /**
+   * Request interceptor for modifying requests before sending
+   */
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
+
+  /**
+   * API key for authentication (optional, not needed for local development)
+   */
+  apiKey?: string;
 }
 
 export interface LLMResponse {
