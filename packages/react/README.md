@@ -28,6 +28,37 @@ function App() {
 }
 ```
 
+## Auth Tokens
+
+For cloud auth, pass both access and refresh tokens to the provider. The client will
+auto-refresh when the access token expires and call `onTokenRefresh` so you can persist
+the updated tokens.
+
+```tsx
+import React from 'react';
+import { DistriProvider } from '@distri/react';
+
+const accessToken = '<access-token>';
+const refreshToken = '<refresh-token>';
+
+export function App() {
+  return (
+    <DistriProvider
+      config={{
+        baseUrl: 'http://localhost:8080/api/v1',
+        accessToken,
+        refreshToken,
+        onTokenRefresh: ({ accessToken, refreshToken }) => {
+          // Persist refreshed tokens here (localStorage, cookies, etc.)
+        },
+      }}
+    >
+      {/* ... */}
+    </DistriProvider>
+  );
+}
+```
+
 ## Using Built-in Tools
 
 DistriJS provides built-in tools that render as React components within chat messages:

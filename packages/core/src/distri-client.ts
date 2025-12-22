@@ -71,9 +71,10 @@ export interface ChatCompletionResponse {
 /**
  * Configuration with resolved defaults
  */
-interface ResolvedConfig extends Required<Omit<DistriClientConfig, 'apiKey'>> {
-  apiKey?: string;
-}
+interface ResolvedConfig
+  extends Required<
+    Omit<DistriClientConfig, 'accessToken' | 'refreshToken' | 'tokenRefreshSkewMs' | 'onTokenRefresh'>
+  > {}
 
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
@@ -83,24 +84,24 @@ interface ResolvedConfig extends Required<Omit<DistriClientConfig, 'apiKey'>> {
  * const client = new DistriClient({ baseUrl: 'http://localhost:3033' });
  *
  * // Cloud with default URL (https://api.distri.dev)
- * const client = DistriClient.create({ apiKey: 'your-api-key' });
- *
- * // With explicit API key authentication
- * const client = new DistriClient({
- *   baseUrl: 'https://api.distri.dev',
- *   apiKey: 'your-api-key'
- * });
+ * const client = DistriClient.create();
  */
 export class DistriClient {
   private config: ResolvedConfig;
+  private accessToken?: string;
+  private refreshToken?: string;
+  private tokenRefreshSkewMs: number;
+  private onTokenRefresh?: (tokens: { accessToken: string; refreshToken: string }) => void;
+  private refreshPromise?: Promise<void>;
   private agentClients = new Map<string, { url: string; client: A2AClient }>();
 
   constructor(config: DistriClientConfig) {
-    // If apiKey is provided, add it to headers as x-api-key
     const headers = { ...config.headers };
-    if (config.apiKey) {
-      headers['x-api-key'] = config.apiKey;
-    }
+
+    this.accessToken = config.accessToken;
+    this.refreshToken = config.refreshToken;
+    this.tokenRefreshSkewMs = config.tokenRefreshSkewMs ?? 60000;
+    this.onTokenRefresh = config.onTokenRefresh;
 
     this.config = {
       baseUrl: config.baseUrl.replace(/\/$/, ''),
@@ -110,13 +111,13 @@ export class DistriClient {
       retryDelay: config.retryDelay || 1000,
       debug: config.debug || false,
       headers,
-      interceptor: config.interceptor || ((init?: RequestInit) => Promise.resolve(init)),
-      apiKey: config.apiKey
+      interceptor: config.interceptor || ((init?: RequestInit) => Promise.resolve(init))
     };
 
     this.debug('DistriClient initialized with config:', {
       baseUrl: this.config.baseUrl,
-      hasApiKey: !!this.config.apiKey,
+      hasAccessToken: !!this.accessToken,
+      hasRefreshToken: !!this.refreshToken,
       timeout: this.config.timeout
     });
   }
@@ -137,7 +138,7 @@ export class DistriClient {
    * Check if this client has authentication configured.
    */
   hasAuth(): boolean {
-    return !!this.config.apiKey;
+    return !!this.accessToken || !!this.refreshToken;
   }
 
   /**
@@ -274,9 +275,9 @@ export class DistriClient {
   }
 
   // ============================================================
-  // Short-Lived Token API
+  // Token API
   // ============================================================
-  // Issue short-lived tokens for temporary authentication (e.g., frontend use)
+  // Issue access + refresh tokens for temporary authentication (e.g., frontend use)
 
   /**
    * Response from the token endpoint
@@ -287,29 +288,20 @@ export class DistriClient {
   } as const;
 
   /**
-   * Issue a short-lived token for temporary authentication.
-   * Requires an existing authenticated session (API key or main token).
-   * 
-   * @returns Token response with token string, type, and expiry timestamp
+   * Issue an access token + refresh token for temporary authentication.
+   * Requires an existing authenticated session (bearer token).
+   *
+   * @returns Token response with access/refresh token strings
    * @throws ApiError if not authenticated or token issuance fails
-   * 
+   *
    * @example
    * ```typescript
-   * const client = new DistriClient({
-   *   baseUrl: 'https://api.distri.dev',
-   *   apiKey: 'your-api-key',
-   * });
-   * 
-   * const { token, expires_at } = await client.issueShortToken();
-   * // Use this token for frontend requests
+   * const { access_token, refresh_token } = await client.issueToken();
+   * // Persist the refresh token and use access_token for requests
    * ```
    */
-  async issueShortToken(): Promise<{
-    token: string;
-    token_type: 'main' | 'short';
-    expires_at: number;
-  }> {
-    const response = await this.fetch('/tokens', {
+  async issueToken(): Promise<{ access_token: string; refresh_token: string; expires_at: number }> {
+    const response = await this.fetch('/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -319,10 +311,34 @@ export class DistriClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(errorData.error || 'Failed to issue short token', response.status);
+      throw new ApiError(errorData.error || 'Failed to issue token', response.status);
     }
 
-    return response.json();
+    const tokens = await response.json();
+    if (!tokens?.access_token || !tokens?.refresh_token || typeof tokens?.expires_at !== 'number') {
+      throw new ApiError('Invalid token response', response.status);
+    }
+    this.applyTokens(tokens.access_token, tokens.refresh_token, false);
+    return tokens;
+  }
+
+  /**
+   * Get the current access/refresh tokens.
+   */
+  getTokens(): { accessToken?: string; refreshToken?: string } {
+    return { accessToken: this.accessToken, refreshToken: this.refreshToken };
+  }
+
+  /**
+   * Update the access/refresh tokens in memory.
+   */
+  setTokens(tokens: { accessToken?: string; refreshToken?: string }): void {
+    if (tokens.accessToken !== undefined) {
+      this.accessToken = tokens.accessToken;
+    }
+    if (tokens.refreshToken !== undefined) {
+      this.refreshToken = tokens.refreshToken;
+    }
   }
 
   /**
@@ -811,11 +827,134 @@ export class DistriClient {
     return this.config.baseUrl;
   }
 
+  private applyTokens(accessToken: string, refreshToken: string, notify: boolean): void {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+    if (notify && this.onTokenRefresh) {
+      this.onTokenRefresh({ accessToken, refreshToken });
+    }
+  }
+
+  private async ensureAccessToken(): Promise<void> {
+    if (!this.refreshToken) {
+      return;
+    }
+
+    if (!this.accessToken || this.isTokenExpiring(this.accessToken)) {
+      try {
+        await this.refreshTokens();
+      } catch (error) {
+        this.debug('Token refresh failed:', error);
+      }
+    }
+  }
+
+  private async refreshTokens(): Promise<void> {
+    if (!this.refreshToken) {
+      return;
+    }
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.performTokenRefresh().finally(() => {
+        this.refreshPromise = undefined;
+      });
+    }
+    return this.refreshPromise;
+  }
+
+  private async performTokenRefresh(): Promise<void> {
+    const response = await this.fetchAbsolute(
+      `${this.config.baseUrl}/token`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.config.headers,
+        },
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          refresh_token: this.refreshToken,
+        }),
+      },
+      { skipAuth: true, retryOnAuth: false }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to refresh token', response.status);
+    }
+
+    const tokens = await response.json();
+    if (!tokens?.access_token || !tokens?.refresh_token) {
+      throw new ApiError('Invalid token response', response.status);
+    }
+    this.applyTokens(tokens.access_token, tokens.refresh_token, true);
+  }
+
+  private isTokenExpiring(token: string): boolean {
+    const expiresAt = this.getTokenExpiry(token);
+    if (!expiresAt) {
+      return false;
+    }
+    return expiresAt <= Date.now() + this.tokenRefreshSkewMs;
+  }
+
+  private getTokenExpiry(token: string): number | null {
+    const payload = this.decodeJwtPayload(token);
+    const exp = payload?.exp;
+    if (typeof exp !== 'number') {
+      return null;
+    }
+    return exp * 1000;
+  }
+
+  private decodeJwtPayload(token: string): Record<string, any> | null {
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      return null;
+    }
+    const decoded = this.decodeBase64Url(parts[1]);
+    if (!decoded) {
+      return null;
+    }
+    try {
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
+  }
+
+  private decodeBase64Url(value: string): string | null {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    try {
+      if (typeof atob === 'function') {
+        return atob(padded);
+      }
+      const buffer = (globalThis as any).Buffer;
+      if (typeof buffer !== 'undefined') {
+        return buffer.from(padded, 'base64').toString('utf8');
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  private applyAuthHeader(headers: Headers): void {
+    if (this.accessToken && !headers.has('authorization')) {
+      headers.set('Authorization', `Bearer ${this.accessToken}`);
+    }
+  }
+
   /**
    * Enhanced fetch with retry logic
    */
-  private async fetchAbsolute(url: RequestInfo | URL, initialInit?: RequestInit): Promise<Response> {
-
+  private async fetchAbsolute(
+    url: RequestInfo | URL,
+    initialInit?: RequestInit,
+    options?: { skipAuth?: boolean; retryOnAuth?: boolean }
+  ): Promise<Response> {
+    const { skipAuth = false, retryOnAuth = true } = options ?? {};
     const init = await this.config.interceptor(initialInit);
     // Construct the full URL using baseUrl
     let lastError: Error | undefined;
@@ -849,6 +988,11 @@ export class DistriClient {
       headers.set('Content-Type', 'application/json');
     }
 
+    if (!skipAuth) {
+      await this.ensureAccessToken();
+      this.applyAuthHeader(headers);
+    }
+
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
       try {
         const controller = new AbortController();
@@ -861,6 +1005,12 @@ export class DistriClient {
         });
 
         clearTimeout(timeoutId);
+        if (!skipAuth && retryOnAuth && response.status === 401 && this.refreshToken) {
+          const refreshed = await this.refreshTokens().then(() => true).catch(() => false);
+          if (refreshed) {
+            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false });
+          }
+        }
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));

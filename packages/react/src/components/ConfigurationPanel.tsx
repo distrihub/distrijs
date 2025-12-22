@@ -165,7 +165,7 @@ export function ConfigurationPanel({ className, title = 'Agent Settings' }: Conf
         />
         {activeName === 'openai_compat' && (
           <p className="text-xs text-muted-foreground">
-            Base URL for your compatible gateway. API keys are pulled from the backend environment when available.
+            Base URL for your compatible gateway. Credentials are pulled from the backend environment when available.
           </p>
         )}
       </div>

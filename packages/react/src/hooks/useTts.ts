@@ -9,7 +9,7 @@ export interface TtsRequest {
 
 export interface TtsConfig {
   baseUrl?: string;
-  apiKey?: string;
+  accessToken?: string;
 }
 
 export interface StreamingTtsOptions {
@@ -29,11 +29,12 @@ export const useTts = (config: TtsConfig = {}) => {
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const synthesize = useCallback(async (request: TtsRequest): Promise<Blob> => {
+    const authHeader = config.accessToken ? `Bearer ${config.accessToken}` : undefined;
     const response = await fetch(`${baseUrl}/tts/synthesize`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(config.apiKey && { Authorization: `Bearer ${config.apiKey}` }),
+        ...(authHeader && { Authorization: authHeader }),
       },
       body: JSON.stringify(request),
     });
@@ -44,12 +45,13 @@ export const useTts = (config: TtsConfig = {}) => {
     }
 
     return response.blob();
-  }, [baseUrl, config.apiKey]);
+  }, [baseUrl, config.accessToken]);
 
   const getAvailableVoices = useCallback(async () => {
+    const authHeader = config.accessToken ? `Bearer ${config.accessToken}` : undefined;
     const response = await fetch(`${baseUrl}/tts/voices`, {
       headers: {
-        ...(config.apiKey && { Authorization: `Bearer ${config.apiKey}` }),
+        ...(authHeader && { Authorization: authHeader }),
       },
     });
 
@@ -58,7 +60,7 @@ export const useTts = (config: TtsConfig = {}) => {
     }
 
     return response.json();
-  }, [baseUrl, config.apiKey]);
+  }, [baseUrl, config.accessToken]);
 
   const playAudio = useCallback((audioBlob: Blob) => {
     const audioUrl = URL.createObjectURL(audioBlob);
