@@ -493,7 +493,7 @@ export type ModelProviderName = 'openai' | 'openai_compat' | 'vllora' | string;
 
 export type ModelProviderConfig =
   | { name: 'openai' }
-  | { name: 'openai_compat'; base_url: string; api_key?: string; project_id?: string }
+  | { name: 'openai_compat'; base_url: string; project_id?: string }
   | { name: 'vllora'; base_url?: string }
   | { name: string;[key: string]: any };
 
@@ -595,9 +595,24 @@ export interface DistriClientConfig {
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
 
   /**
-   * API key for authentication (optional, not needed for local development)
+   * Access token for bearer auth (optional)
    */
-  apiKey?: string;
+  accessToken?: string;
+
+  /**
+   * Refresh token for bearer auth (optional)
+   */
+  refreshToken?: string;
+
+  /**
+   * Token refresh skew in milliseconds (default: 60000)
+   */
+  tokenRefreshSkewMs?: number;
+
+  /**
+   * Callback invoked when tokens are refreshed
+   */
+  onTokenRefresh?: (tokens: { accessToken: string; refreshToken: string }) => void;
 }
 
 export interface LLMResponse {
