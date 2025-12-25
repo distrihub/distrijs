@@ -34,8 +34,8 @@ cargo run --bin distri-server
 
 The following endpoints are available:
 
-- `POST /api/v1/tts/synthesize` - Convert text to speech
-- `GET /api/v1/tts/voices` - Get available voices for each provider
+- `POST /v1/tts/synthesize` - Convert text to speech
+- `GET /v1/tts/voices` - Get available voices for each provider
 
 ## Frontend Integration
 

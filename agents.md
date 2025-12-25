@@ -179,7 +179,7 @@ The `test-event-processing.js` file validates the new event-based architecture:
   the `@distri/fs` workspace for authoring skill bundles (scripts + docs).
 - Use `distrijs/samples/file-tools-demo` as the reference implementation when
   adding filesystem features or workspace behaviours.
-- Skill persistence flows through the backend `POST /api/v1/skills` endpoints
+- Skill persistence flows through the backend `POST /v1/skills` endpoints
   defined in `../distri-server/src/routes.rs`.
 - Coordinate with the `agents/scripter.md` persona when the UI needs
   automation or default script scaffolding for new skills.
