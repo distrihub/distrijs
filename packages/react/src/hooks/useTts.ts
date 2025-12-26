@@ -23,7 +23,7 @@ export interface StreamingTtsOptions {
 }
 
 export const useTts = (config: TtsConfig = {}) => {
-  const baseUrl = config.baseUrl || 'http://localhost:8080/api/v1';
+  const baseUrl = config.baseUrl || 'http://localhost:8080/v1';
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -121,7 +121,7 @@ export const useTts = (config: TtsConfig = {}) => {
 
     // Connect to backend voice streaming endpoint
     const wsUrl = baseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/voice/stream';
-    
+
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     setIsSynthesizing(true);
@@ -132,7 +132,7 @@ export const useTts = (config: TtsConfig = {}) => {
         type: 'start_session'
       };
       ws.send(JSON.stringify(configMessage));
-      
+
       // Send config if voice/speed are specified
       if (options.voice || options.speed) {
         const configUpdate = {
@@ -141,7 +141,7 @@ export const useTts = (config: TtsConfig = {}) => {
         };
         ws.send(JSON.stringify(configUpdate));
       }
-      
+
       options.onStart?.();
     };
 

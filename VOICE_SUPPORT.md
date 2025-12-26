@@ -73,7 +73,7 @@ function MyComponent() {
   });
   
   const tts = useTts({
-    baseUrl: 'http://localhost:8080/api/v1'
+    baseUrl: 'http://localhost:8080/v1'
   });
 
   const handleAudioBlob = async (audioBlob: Blob) => {

@@ -113,7 +113,7 @@ function MyApp() {
 
 function App() {
   return (
-    <DistriProvider config={{ baseUrl: 'http://localhost:8080/api/v1' }}>
+    <DistriProvider config={{ baseUrl: 'http://localhost:8080/v1' }}>
       <MyApp />
     </DistriProvider>
   );

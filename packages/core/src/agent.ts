@@ -3,6 +3,7 @@ import {
   AgentDefinition,
   DistriBaseTool,
   DistriChatMessage,
+  DistriError,
   ToolResult,
   HookHandler,
 } from './types';
@@ -31,6 +32,39 @@ export interface InvokeResult {
   task?: any;
   /** Whether the response was streamed */
   streamed: boolean;
+}
+
+export interface ExternalToolValidationResult {
+  isValid: boolean;
+  requiredTools: string[];
+  providedTools: string[];
+  missingTools: string[];
+  message?: string;
+}
+
+export class ExternalToolValidationError extends DistriError {
+  missingTools: string[];
+  requiredTools: string[];
+  providedTools: string[];
+  agentName: string;
+
+  constructor(agentName: string, result: ExternalToolValidationResult) {
+    super(
+      result.message || 'Missing required external tools for agent invocation.',
+      'EXTERNAL_TOOL_VALIDATION_ERROR',
+      {
+        agentName,
+        missingTools: result.missingTools,
+        requiredTools: result.requiredTools,
+        providedTools: result.providedTools,
+      }
+    );
+    this.name = 'ExternalToolValidationError';
+    this.agentName = agentName;
+    this.missingTools = result.missingTools;
+    this.requiredTools = result.requiredTools;
+    this.providedTools = result.providedTools;
+  }
 }
 
 /**
@@ -135,9 +169,41 @@ export class Agent {
   }
 
   /**
+   * Validate that required external tools are registered before invoking.
+   */
+  public validateExternalTools(tools: DistriBaseTool[] = []): ExternalToolValidationResult {
+    const requiredTools = this.getRequiredExternalTools();
+    const providedTools = tools.map((tool) => tool.name);
+
+    if (requiredTools.length === 0) {
+      return {
+        isValid: true,
+        requiredTools: [],
+        providedTools,
+        missingTools: [],
+      };
+    }
+
+    const providedSet = new Set(providedTools);
+    const missingTools = requiredTools.filter((tool) => !providedSet.has(tool));
+    const isValid = missingTools.length === 0;
+
+    return {
+      isValid,
+      requiredTools,
+      providedTools,
+      missingTools,
+      message: isValid
+        ? undefined
+        : this.formatExternalToolValidationMessage(requiredTools, missingTools),
+    };
+  }
+
+  /**
    * Enhance message params with tool definitions
    */
   private enhanceParamsWithTools(params: MessageSendParams, tools?: DistriBaseTool[]): MessageSendParams {
+    this.assertExternalTools(tools);
     const metadata = {
       ...params.metadata,
       external_tools: tools?.map(tool => ({
@@ -151,6 +217,45 @@ export class Agent {
       ...params,
       metadata
     };
+  }
+
+  private assertExternalTools(tools?: DistriBaseTool[]) {
+    const result = this.validateExternalTools(tools ?? []);
+    if (!result.isValid) {
+      throw new ExternalToolValidationError(this.agentDefinition.name || this.agentDefinition.id, result);
+    }
+  }
+
+  private getRequiredExternalTools(): string[] {
+    const toolConfig = this.resolveToolConfig();
+    if (!toolConfig?.external || !Array.isArray(toolConfig.external)) {
+      return [];
+    }
+    return toolConfig.external.filter((tool) => typeof tool === 'string' && tool.trim().length > 0);
+  }
+
+  private resolveToolConfig(): { external?: string[] } | null {
+    const root = this.agentDefinition as any;
+    return (
+      this.extractToolConfig(root) ||
+      this.extractToolConfig(root?.agent) ||
+      this.extractToolConfig(root?.definition)
+    );
+  }
+
+  private extractToolConfig(candidate: any): { external?: string[] } | null {
+    if (!candidate) return null;
+    const tools = candidate.tools;
+    if (!tools || Array.isArray(tools) || typeof tools !== 'object') {
+      return null;
+    }
+    return tools;
+  }
+
+  private formatExternalToolValidationMessage(requiredTools: string[], missingTools: string[]): string {
+    const requiredList = requiredTools.join(', ');
+    const missingList = missingTools.join(', ');
+    return `Agent has external tools that are not registered: ${missingList}. This is an embedded agent that can run within the parent application. Register DistriWidget for embedding the parent component. Required tools: ${requiredList}.`;
   }
 
   /**
