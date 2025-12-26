@@ -18,7 +18,7 @@ function App() {
   const { agent } = useAgent({ agentId: 'assistant' });
 
   return (
-    <DistriProvider config={{ baseUrl: 'http://localhost:8080/api/v1' }}>
+    <DistriProvider config={{ baseUrl: 'http://localhost:8080/v1' }}>
       <EmbeddableChat 
         agent={agent}
         placeholder="Ask me anything..."
@@ -45,7 +45,7 @@ export function App() {
   return (
     <DistriProvider
       config={{
-        baseUrl: 'http://localhost:8080/api/v1',
+        baseUrl: 'http://localhost:8080/v1',
         accessToken,
         refreshToken,
         onTokenRefresh: ({ accessToken, refreshToken }) => {
@@ -84,7 +84,7 @@ function App() {
   }, [agent]);
 
   return (
-    <DistriProvider config={{ baseUrl: 'http://localhost:8080/api/v1' }}>
+    <DistriProvider config={{ baseUrl: 'http://localhost:8080/v1' }}>
       <EmbeddableChat 
         agent={agent}
         placeholder="Ask me anything..."
