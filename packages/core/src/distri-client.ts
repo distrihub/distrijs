@@ -74,7 +74,7 @@ export interface ChatCompletionResponse {
 interface ResolvedConfig
   extends Required<
     Omit<DistriClientConfig, 'accessToken' | 'refreshToken' | 'tokenRefreshSkewMs' | 'onTokenRefresh'>
-  > {}
+  > { }
 
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
@@ -1025,9 +1025,10 @@ export class DistriClient {
   }
 
   /**
-   * Enhanced fetch with retry logic
+   * Enhanced fetch with retry logic and auth headers.
+   * Exposed publicly for extensions like DistriHomeClient.
    */
-  private async fetch(input: RequestInfo | URL, initialInit?: RequestInit): Promise<Response> {
+  public async fetch(input: RequestInfo | URL, initialInit?: RequestInit): Promise<Response> {
     // Construct the full URL using baseUrl
     const url = `${this.config.baseUrl}${input}`;
     return this.fetchAbsolute(url, initialInit);
