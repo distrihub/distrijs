@@ -86,21 +86,3 @@ export function useDistri(): DistriContextValue {
   }
   return context;
 }
-
-export function useDistriClient(): DistriClient {
-  const { client, error, isLoading } = useDistri();
-
-  if (isLoading) {
-    throw new Error('Distri client is still loading');
-  }
-
-  if (error) {
-    throw new Error(`Distri client initialization failed: ${error.message}`);
-  }
-
-  if (!client) {
-    throw new Error('Distri client is not initialized');
-  }
-
-  return client;
-}
