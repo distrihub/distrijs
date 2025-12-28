@@ -17,7 +17,8 @@ import {
   ToolResult,
   LLMResponse,
   LlmExecuteOptions,
-  DEFAULT_BASE_URL
+  DEFAULT_BASE_URL,
+  AgentConfigWithTools
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -572,7 +573,7 @@ export class DistriClient {
   /**
    * Get specific agent by ID
    */
-  async getAgent(agentId: string): Promise<AgentDefinition> {
+  async getAgent(agentId: string): Promise<AgentConfigWithTools> {
     try {
       const response = await this.fetch(`/agents/${agentId}`, {
         headers: {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ConfigurationMeta, ConfigurationResponse, DistriConfiguration } from '@distri/core';
-import { useDistriClient } from '../DistriProvider';
+import { useDistri } from '@/DistriProvider';
 
 export type UseConfigurationResult = {
   configuration: DistriConfiguration | null;
@@ -13,7 +13,7 @@ export type UseConfigurationResult = {
 };
 
 export function useConfiguration(): UseConfigurationResult {
-  const client = useDistriClient();
+  const { client, isLoading } = useDistri();
   const [configuration, setConfiguration] = useState<DistriConfiguration | null>(null);
   const [meta, setMeta] = useState<ConfigurationMeta | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -22,6 +22,7 @@ export function useConfiguration(): UseConfigurationResult {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
+      if (isLoading || !client) return;
       const response = await client.getConfiguration();
       setConfiguration(response.configuration);
       setMeta(response.meta);
@@ -32,13 +33,13 @@ export function useConfiguration(): UseConfigurationResult {
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, [client, isLoading]);
 
   const saveConfiguration = useCallback(
     async (config: DistriConfiguration) => {
       setLoading(true);
       try {
-        const response = await client.updateConfiguration(config);
+        const response = await client!.updateConfiguration(config);
         setConfiguration(response.configuration);
         setMeta(response.meta);
         setError(null);

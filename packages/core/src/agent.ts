@@ -1,11 +1,11 @@
 import { DistriClient } from './distri-client';
 import {
-  AgentDefinition,
   DistriBaseTool,
   DistriChatMessage,
   DistriError,
   ToolResult,
   HookHandler,
+  AgentConfigWithTools,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
@@ -72,11 +72,11 @@ export class ExternalToolValidationError extends DistriError {
  */
 export class Agent {
   private client: DistriClient;
-  private agentDefinition: AgentDefinition;
+  private agentDefinition: AgentConfigWithTools;
   private hookHandlers: Map<string, HookHandler> = new Map();
   private defaultHookHandler: HookHandler | null = null;
 
-  constructor(agentDefinition: AgentDefinition, client: DistriClient) {
+  constructor(agentDefinition: AgentConfigWithTools, client: DistriClient) {
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
@@ -96,7 +96,7 @@ export class Agent {
   }
 
   get agentType(): string | undefined {
-    return this.agentDefinition.agent_type ?? this.agentDefinition.agentType;
+    return this.agentDefinition.agent_type;
   }
 
   get iconUrl(): string | undefined {
@@ -106,7 +106,7 @@ export class Agent {
   /**
    * Get the full agent definition (including backend tools)
    */
-  getDefinition(): AgentDefinition {
+  getDefinition(): AgentConfigWithTools {
     return this.agentDefinition;
   }
 
@@ -141,6 +141,7 @@ export class Agent {
     const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
 
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return (async function* () {
       for await (const event of a2aStream) {
@@ -274,14 +275,15 @@ export class Agent {
   /**
    * Create an agent instance from an agent ID
    */
-  static async create(agentIdOrDef: string | AgentDefinition, client: DistriClient): Promise<Agent> {
+  static async create(agentIdOrDef: string | AgentConfigWithTools, client: DistriClient): Promise<Agent> {
     const agentDefinition = typeof agentIdOrDef === 'string' ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
+    const tools = agentDefinition?.resolved_tools || [];
     console.log('🤖 Agent definition loaded:', {
       id: agentDefinition.id,
       name: agentDefinition.name,
-      tools: agentDefinition.tools?.map(t => ({
+      tools: tools.map(t => ({
         name: t.name,
-        type: t.type || 'function'
+        type: 'function'
       })) || [],
       toolCount: agentDefinition.tools?.length || 0
     });

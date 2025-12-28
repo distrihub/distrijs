@@ -26,7 +26,8 @@ export interface LlmExecuteOptions {
   run_id?: string;
   model_settings?: any;
   is_sub_task?: boolean
-};
+}
+
 export interface AssistantWithToolCalls {
   id: string;
   type: 'llm_response';
@@ -72,7 +73,7 @@ export interface InlineHookRequest {
   result?: any;
 }
 
-export interface InlineHookEventData extends InlineHookRequest {}
+export interface InlineHookEventData extends InlineHookRequest { }
 
 export type HookHandler = (req: InlineHookRequest) => Promise<HookMutation> | HookMutation;
 
@@ -201,14 +202,19 @@ export interface FileUrl {
 }
 export type FileType = FileBytes | FileUrl;
 
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: object; // JSON Schema
+  examples?: string;
+  output_schema?: object;
+}
 /**
  * Tool definition interface following AG-UI pattern
  */
-export interface DistriBaseTool {
-  name: string;
+export interface DistriBaseTool extends ToolDefinition {
   type: 'function' | 'ui';
-  description: string;
-  parameters: object; // JSON Schema
   is_final?: boolean;
   autoExecute?: boolean;
   isExternal?: boolean; // True if frontend handles execution, false if backend handles it
@@ -392,6 +398,10 @@ export function extractToolResultData(toolResult: ToolResult): ToolResultData | 
   return null;
 }
 
+export interface AgentConfigWithTools extends AgentDefinition {
+  markdown?: string,
+  resolved_tools?: ToolDefinition[]
+}
 
 /**
  * Distri-specific Agent type that wraps A2A AgentCard
@@ -420,6 +430,9 @@ export interface AgentDefinition {
   /** Settings related to the model used by the agent. */
   model_settings?: ModelSettings;
 
+  /** Secondary Model Settings used for analysis */
+  analysis_model_settings?: ModelSettings;
+
   /** The size of the history to maintain for the agent. */
   history_size?: number;
 
@@ -436,9 +449,9 @@ export interface AgentDefinition {
   /** List of sub-agents that this agent can transfer control to */
   sub_agents?: string[];
 
-
-  agentType?: string;
   agent_type?: string;
+
+  context_size?: number;
 
   tools?: DistriBaseTool[];
 

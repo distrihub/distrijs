@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { Agent, DistriChatMessage } from '@distri/core';
 import { decodeA2AStreamEvent } from '../../../core/src/encoder';
+import { useDistri } from '@/DistriProvider';
 
 export interface UseChatMessagesOptions {
   initialMessages?: DistriChatMessage[];
@@ -20,13 +21,13 @@ export interface UseChatMessagesReturn {
 
 export function useChatMessages({
   initialMessages = [],
-  agent,
   threadId,
   onError,
 }: UseChatMessagesOptions = {}): UseChatMessagesReturn {
   // Store callbacks in refs to avoid dependency issues
   const onErrorRef = useRef(onError);
 
+  const { client } = useDistri();
   // Update refs when callbacks change
   useEffect(() => {
     onErrorRef.current = onError;
@@ -57,12 +58,12 @@ export function useChatMessages({
   }, []);
 
   const fetchMessages = useCallback(async () => {
-    if (!agent || !threadId) return;
+    if (!client || !threadId) return;
 
     try {
       setIsLoading(true);
       setError(null);
-      const a2aMessages = await agent.getThreadMessages(threadId);
+      const a2aMessages = await client.getThreadMessages(threadId);
       const distriMessages = a2aMessages.map(decodeA2AStreamEvent).filter(Boolean) as (DistriChatMessage)[];
 
       // Replace all messages with fetched ones
@@ -75,14 +76,14 @@ export function useChatMessages({
     } finally {
       setIsLoading(false);
     }
-  }, [agent, threadId]);
+  }, [client, threadId]);
 
   // Fetch messages on mount and when threadId/agent changes (only if no initialMessages)
   useEffect(() => {
-    if (threadId && agent && !initialMessagesLength) {
+    if (threadId && client && !initialMessagesLength) {
       fetchMessages();
     }
-  }, [agent, fetchMessages, initialMessagesLength, threadId]);
+  }, [client, fetchMessages, initialMessagesLength, threadId]);
 
   return {
     messages,
