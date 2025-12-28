@@ -1,0 +1,119 @@
+/**
+ * Distri Default Theme
+ * 
+ * This file contains the default light and dark mode color variables.
+ * Consumers can override any variable by defining it in their own CSS.
+ * 
+ * Usage:
+ *   // Option 1: Use default theme
+ *   import '@distri/react/theme.css';
+ *   import '@distri/react/globals.css';
+ * 
+ *   // Option 2: Custom theme - define your own variables, skip theme.css
+ *   import '@distri/react/globals.css';
+ *   // Then define all --* variables in your own CSS
+ */
+
+@layer base {
+  :root {
+    /* Background & Foreground */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    /* Cards & Popovers */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Primary: Teal #007C91 */
+    --primary: 188 100% 28%;
+    --primary-foreground: 0 0% 100%;
+    --highlight: 188 70% 45%;
+
+    /* Secondary & Muted */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Accent */
+    --accent: 188 55% 92%;
+    --accent-foreground: 188 80% 20%;
+
+    /* Destructive */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Border & Input */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 188 100% 28%;
+
+    /* Sizing */
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 188 100% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 188 100% 32%;
+
+    /* Layout */
+    --thread-content-max-width: 768px;
+  }
+
+  .dark {
+    /* Background: #121418 */
+    --background: 220 16% 8%;
+    /* Foreground: #eef2f6 */
+    --foreground: 210 33% 95%;
+
+    /* Surface/Card: #1a1d23 */
+    --card: 220 17% 12%;
+    --card-foreground: 210 33% 95%;
+    --popover: 220 17% 12%;
+    --popover-foreground: 210 33% 95%;
+
+    /* Primary: #007C91, Highlight: rgb(34,174,195) */
+    --primary: 188 100% 28%;
+    --primary-foreground: 0 0% 100%;
+    --highlight: 188 70% 45%;
+
+    /* Secondary/Muted: reusable gray #24282f */
+    --secondary: 220 18% 16%;
+    --secondary-foreground: 210 33% 95%;
+    --muted: 220 18% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent */
+    --accent: 188 30% 22%;
+    --accent-foreground: 188 70% 85%;
+
+    /* Destructive */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Border: #2a2f3a */
+    --border: 220 18% 20%;
+    --input: 220 18% 20%;
+    --ring: 188 70% 45%;
+
+    /* Sidebar: #0c0e11 (darker than background) */
+    --sidebar: 216 18% 6%;
+    --sidebar-foreground: 210 33% 95%;
+    --sidebar-primary: 188 70% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 18% 14%;
+    --sidebar-accent-foreground: 210 33% 95%;
+    --sidebar-border: 220 18% 18%;
+    --sidebar-ring: 188 70% 45%;
+
+    /* Layout */
+    --thread-content-max-width: 768px;
+  }
+}
