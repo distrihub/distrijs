@@ -321,6 +321,74 @@ distrijs/
 └── scripts/           # Build and release scripts
 ```
 
+## 💾 Session Store API
+
+The Distri client provides a comprehensive session store API for managing thread-scoped key-value storage. Session values can be used to store state, share data between agent iterations, and attach additional content to user messages.
+
+### Basic Session Operations
+
+```typescript
+import { DistriClient } from '@distri/core';
+
+const client = DistriClient.create({ baseUrl: 'http://localhost:8080/v1' });
+const sessionId = 'thread-123';
+
+// Set a session value
+await client.setSessionValue(
+  sessionId,
+  'user_preference',
+  { theme: 'dark', language: 'en' }
+);
+
+// Set with optional expiry
+const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+await client.setSessionValue(
+  sessionId,
+  'temporary_data',
+  { data: 'value' },
+  expiry
+);
+
+// Get a single session value
+const value = await client.getSessionValue(sessionId, 'user_preference');
+console.log('User preference:', value);
+
+// Get all session values as a map
+const allValues = await client.getSessionValues(sessionId);
+for (const [key, value] of Object.entries(allValues)) {
+  console.log(`${key}:`, value);
+}
+
+// Delete a specific key
+await client.deleteSessionValue(sessionId, 'user_preference');
+
+// Clear all values in a session
+await client.clearSession(sessionId);
+```
+
+### Use Cases
+
+- **Browser Automation**: Store screenshots, DOM observations, and user interactions
+- **State Management**: Maintain conversation context and user preferences  
+- **Tool Integration**: Share data between external tools and agent iterations
+- **Multi-step Workflows**: Persist intermediate results across agent calls
+- **Agent Message Overrides**: Use session values in agent definitions with `UserMessageOverrides` and `PartDefinition::SessionKey`
+
+### Integration with Agent Definitions
+
+Session values can be referenced in agent definitions using `UserMessageOverrides`:
+
+```yaml
+# Agent definition
+user_message_overrides:
+  parts:
+    - type: session_key
+      key: "observation"  # References session value with key "observation"
+  include_artifacts: true
+```
+
+When the agent processes a message, it will automatically include the session value in the user message parts.
+
 ## 📚 Documentation
 
 - **[API Reference](./docs/api/)** - Complete API documentation
