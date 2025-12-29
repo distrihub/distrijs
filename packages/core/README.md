@@ -137,4 +137,63 @@ const part: DistriPart = {
     code: 'console.log("Hello");'
   }
 };
-``` 
+```
+
+## Session Store API
+
+The `DistriClient` provides a comprehensive session store API for managing thread-scoped key-value storage.
+
+### Basic Operations
+
+```typescript
+import { DistriClient } from '@distri/core';
+
+const client = DistriClient.create();
+const sessionId = 'thread-123';
+
+// Set a session value
+await client.setSessionValue(sessionId, 'key', { data: 'value' });
+
+// Get a session value
+const value = await client.getSessionValue(sessionId, 'key');
+
+// Get all session values (returns a map)
+const allValues = await client.getSessionValues(sessionId);
+
+// Delete a session value
+await client.deleteSessionValue(sessionId, 'key');
+
+// Clear all session values
+await client.clearSession(sessionId);
+```
+
+### API Endpoints
+
+All session methods use the following endpoints (mounted at `/v1/sessions/`):
+
+- `POST /sessions/{sessionId}/values` - Set a session value
+- `GET /sessions/{sessionId}/values` - Get all session values (returns map)
+- `GET /sessions/{sessionId}/values/{key}` - Get a specific session value
+- `DELETE /sessions/{sessionId}/values/{key}` - Delete a session value
+- `DELETE /sessions/{sessionId}` - Clear all session values
+
+### Integration with Agent Definitions
+
+Session values can be referenced in agent definitions using `UserMessageOverrides`:
+
+```yaml
+# Agent definition
+user_message_overrides:
+  parts:
+    - type: session_key
+      key: "observation"  # References session value with key "observation"
+    - type: template
+      template: "custom_user_template"
+  include_artifacts: true
+```
+
+When the agent processes a message, it will automatically:
+1. Load all session values as a map
+2. Resolve `PartDefinition::SessionKey` references from the map
+3. Merge override parts with the default message parts
+4. Include the merged message in the LLM prompt 

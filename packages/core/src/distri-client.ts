@@ -157,7 +157,7 @@ export class DistriClient {
     if (expiry) {
       body.expiry = typeof expiry === 'string' ? expiry : (expiry as Date).toISOString();
     }
-    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values`, {
+    const resp = await this.fetch(`/sessions/${encodeURIComponent(sessionId)}/values`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ export class DistriClient {
    * Session store: get a single value
    */
   async getSessionValue<T = unknown>(sessionId: string, key: string): Promise<T | null> {
-    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values/${encodeURIComponent(key)}`, {
+    const resp = await this.fetch(`/sessions/${encodeURIComponent(sessionId)}/values/${encodeURIComponent(key)}`, {
       method: 'GET',
       headers: {
         ...this.config.headers,
@@ -193,7 +193,7 @@ export class DistriClient {
    * Session store: get all values in a session
    */
   async getSessionValues(sessionId: string): Promise<Record<string, unknown>> {
-    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values`, {
+    const resp = await this.fetch(`/sessions/${encodeURIComponent(sessionId)}/values`, {
       method: 'GET',
       headers: {
         ...this.config.headers,
@@ -211,7 +211,7 @@ export class DistriClient {
    * Session store: delete a single key
    */
   async deleteSessionValue(sessionId: string, key: string): Promise<void> {
-    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}/values/${encodeURIComponent(key)}`, {
+    const resp = await this.fetch(`/sessions/${encodeURIComponent(sessionId)}/values/${encodeURIComponent(key)}`, {
       method: 'DELETE',
       headers: {
         ...this.config.headers,
@@ -227,7 +227,7 @@ export class DistriClient {
    * Session store: clear all keys in a session
    */
   async clearSession(sessionId: string): Promise<void> {
-    const resp = await this.fetch(`/session/${encodeURIComponent(sessionId)}`, {
+    const resp = await this.fetch(`/sessions/${encodeURIComponent(sessionId)}`, {
       method: 'DELETE',
       headers: {
         ...this.config.headers,
@@ -237,42 +237,6 @@ export class DistriClient {
       const errorData = await resp.json().catch(() => ({}));
       throw new ApiError(errorData.error || 'Failed to clear session', resp.status);
     }
-  }
-
-  // ============================================================
-  // Additional User Message Parts API
-  // ============================================================
-  // These methods allow external tools to append parts (text, images)
-  // to the user message in the next agent iteration.
-  // The parts are stored under the key "__additional_user_parts".
-
-  private static readonly ADDITIONAL_PARTS_KEY = '__additional_user_parts';
-
-  /**
-   * Set additional user message parts for the next agent iteration.
-   * These parts will be appended to the user message in the prompt.
-   * @param sessionId - The thread/session ID
-   * @param parts - Array of DistriPart objects to append to user message
-   */
-  async setAdditionalUserParts(sessionId: string, parts: DistriPart[]): Promise<void> {
-    await this.setSessionValue(sessionId, DistriClient.ADDITIONAL_PARTS_KEY, parts);
-  }
-
-  /**
-   * Get the current additional user message parts.
-   * @param sessionId - The thread/session ID
-   * @returns Array of DistriPart objects or null if not set
-   */
-  async getAdditionalUserParts(sessionId: string): Promise<DistriPart[] | null> {
-    return this.getSessionValue<DistriPart[]>(sessionId, DistriClient.ADDITIONAL_PARTS_KEY);
-  }
-
-  /**
-   * Clear/delete the additional user message parts.
-   * @param sessionId - The thread/session ID
-   */
-  async clearAdditionalUserParts(sessionId: string): Promise<void> {
-    await this.deleteSessionValue(sessionId, DistriClient.ADDITIONAL_PARTS_KEY);
   }
 
   // ============================================================
