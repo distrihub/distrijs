@@ -1,6 +1,6 @@
 {
   "name": "@distri/fs",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "description": "IndexedDB-backed filesystem tools and React workspace components for Distri agents",
   "type": "module",
   "main": "dist/index.cjs",
