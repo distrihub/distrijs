@@ -6,6 +6,7 @@ export * from './useThreads';
 
 // Component exports
 export * from './components/Chat';
+export * from './components/ChatEmbed';
 export * from './components/AgentList';
 export * from './components/AgentSelect';
 export * from './components/AgentsPage';

@@ -8,6 +8,7 @@ import { useDistri } from './DistriProvider';
 
 export interface UseAgentOptions {
   agentIdOrDef: string | AgentDefinition;
+  enabled?: boolean;
 }
 
 export interface UseAgentResult {
@@ -25,6 +26,7 @@ export interface UseAgentResult {
  */
 export function useAgent({
   agentIdOrDef,
+  enabled = true,
 }: UseAgentOptions): UseAgentResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -36,6 +38,7 @@ export function useAgent({
 
   // Initialize agent
   const initializeAgent = useCallback(async () => {
+    console.log('[useAgent] initializeAgent called', { hasClient: !!client, agentIdOrDef });
     if (!client || !agentIdOrDef) return;
 
     // Check if we need to create a new agent
@@ -47,37 +50,45 @@ export function useAgent({
       return; // Same agent, no need to recreate
     }
 
-    try {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      // Clear previous agent if switching to a different one
-      if (
-        currentAgentIdRef.current !== agentIdOrDef ||
-        currentClientRef.current !== client
-      ) {
-        agentRef.current = null;
-        setAgent(null);
+    try {
+      let newAgent: Agent;
+      if (typeof agentIdOrDef === 'string') {
+        console.log('[useAgent] Fetching agent config for:', agentIdOrDef);
+        // Fetch agent config from server and create Agent instance
+        const agentConfig = await client.getAgent(agentIdOrDef);
+        newAgent = new Agent(agentConfig, client);
+      } else {
+        console.log('[useAgent] Using provided agent definition');
+        // AgentDefinition passed directly - create Agent instance
+        newAgent = new Agent(agentIdOrDef, client);
       }
 
-      const newAgent = await Agent.create(agentIdOrDef, client);
+      console.log('[useAgent] Agent initialized successfully');
+
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
       currentClientRef.current = client;
       setAgent(newAgent);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to create agent'));
+      console.error('Failed to initialize agent:', err);
+      const initError = err instanceof Error ? err : new Error('Failed to initialize agent');
+      setError(initError);
+      agentRef.current = null;
     } finally {
       setLoading(false);
     }
   }, [client, agentIdOrDef]);
 
-  // Auto-initialize agent when client is ready or agentId changes
   React.useEffect(() => {
-    if (!clientLoading && !clientError && client) {
+    if (!clientLoading && !clientError && client && enabled) {
       initializeAgent();
+    } else if (enabled) {
+      console.log('[useAgent] Waiting for client...', { clientLoading, clientError: !!clientError, hasClient: !!client });
     }
-  }, [clientLoading, clientError, client, agentIdOrDef, initializeAgent]);
+  }, [clientLoading, clientError, client, agentIdOrDef, initializeAgent, enabled]);
 
   // Reset agent when agentId changes
   React.useEffect(() => {
@@ -106,4 +117,3 @@ export function useAgent({
     error: error || clientError,
   };
 }
-

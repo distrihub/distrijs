@@ -12,6 +12,8 @@ import { useTts } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap } from '@/types';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions } from './ChatEmptyState';
 import { BrowserPreviewPanel } from './BrowserPreviewPanel';
+import { useAgent } from '../useAgent';
+import { useChatMessages } from '../hooks/useChatMessages';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
 
 export interface ModelOption {
@@ -43,7 +45,7 @@ export interface ChatEmptyStateController {
 
 export interface ChatProps {
   threadId: string;
-  agent?: Agent;
+  agent?: Agent | null;
   onMessage?: (message: DistriChatMessage) => void;
   beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
   onError?: (error: Error) => void;
@@ -79,6 +81,12 @@ export interface ChatProps {
   allowBrowserPreview?: boolean;
   // Optional max width for chat content (defaults to flexible, respects container width)
   maxWidth?: string;
+  // Optional class name for the container
+  className?: string;
+  // Agent loading
+  agentId?: string;
+  // History loading
+  enableHistory?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -91,7 +99,14 @@ const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string 
   </div>
 );
 
-export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
+// Helper to determine theme classes
+const getThemeClasses = (theme: 'light' | 'dark' | 'auto') => {
+  if (theme === 'dark') return 'dark';
+  if (theme === 'light') return 'light';
+  return '';
+};
+
+export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner({
   threadId,
   agent,
   onMessage,
@@ -116,6 +131,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
   initialInput = '',
   allowBrowserPreview = true,
   maxWidth,
+  className = '',
   toolRenderers,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
@@ -198,15 +214,16 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     messages
   } = useChat({
     threadId,
-    agent,
+    agent: agent as any,
     onMessage,
     onError,
     getMetadata: mergedMetadataProvider,
-    externalTools,
+    externalTools: externalTools as any,
     executionOptions,
     initialMessages,
     beforeSendMessage,
   });
+  console.log('[ChatInner] useChat state:', { isStreaming, isLoading, error, messagesLength: messages.length });
 
   const browserTimestampLabel = useMemo(() => {
     if (!browserFrameUpdatedAt) return null;
@@ -220,7 +237,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
   // Get reactive state from store
   const toolCalls = useChatStateStore(state => state.toolCalls);
-  const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
+  const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls());
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
   const currentThought = useChatStateStore(state => state.currentThought);
   const currentState = useChatStateStore(state => state);
@@ -333,7 +350,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
   const handleTriggerTool = useCallback(async (toolName: string, input: any) => {
     // Create a tool call with a unique ID
-    const toolCallId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const toolCallId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 11)} `;
 
     const toolCall: ToolCall = {
       tool_call_id: toolCallId,
@@ -574,13 +591,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     }
   }, [toolCalls, expandedTools]);
 
-  // Determine theme classes
-  const getThemeClasses = () => {
-    if (theme === 'dark') return 'dark';
-    if (theme === 'light') return 'light';
-    // For 'auto', we'll let the system handle it
-    return '';
-  };
+
 
   // Render messages using the new MessageRenderer
   const renderMessages = (): React.ReactNode[] => {
@@ -671,7 +682,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
               ? 'Message will be queued…'
               : basePlaceholder
         }
-        disabled={isLoading || hasPendingToolCalls() || isStreamingVoice}
+        disabled={isLoading || hasPendingToolCalls || isStreamingVoice}
         isStreaming={isStreaming}
         attachedImages={attachedImages}
         onRemoveImage={removeImage}
@@ -822,10 +833,13 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
     );
   };
 
+  if (!agent)
+    return <div> Agent not available</div>
 
   return (
     <div
-      className={`flex flex-col h-full ${getThemeClasses()} relative`}
+      className={`flex flex-col h-full bg-background font-sans overflow-hidden relative ${getThemeClasses(theme)} ${className}`}
+      style={{ maxWidth }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -944,4 +958,89 @@ export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat({
 
     </div >
   );
+});
+
+// Container component that handles loading and error states
+import { useDistri } from '../DistriProvider';
+import { AlertCircle, Loader2 } from 'lucide-react';
+
+export interface ChatContainerProps extends ChatProps { }
+
+export const Chat = forwardRef<ChatInstance, ChatContainerProps>(function Chat(
+  { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, ...props },
+  ref
+) {
+  const { isLoading: clientLoading, client } = useDistri();
+
+  useEffect(() => {
+    console.log('[ChatContainer] State:', {
+      clientLoading,
+      hasClient: !!client,
+      agentId,
+      agentProp: !!agentProp,
+      enableHistory,
+      threadId
+    });
+  }, [clientLoading, client, agentId, agentProp, enableHistory, threadId]);
+
+  // Fetch agent if agentId is provided but agentProp is not
+  const { agent: fetchedAgent, loading: agentLoading, error: agentError } = useAgent({
+    agentIdOrDef: agentId || '',
+    enabled: !agentProp && !!agentId
+  });
+
+  useEffect(() => {
+    console.log('[ChatContainer] Agent Fetch:', {
+      agentLoading,
+      hasAgent: !!(agentProp || fetchedAgent),
+      agentError: agentError?.message
+    });
+  }, [agentLoading, agentProp, fetchedAgent, agentError]);
+
+  const agent = agentProp || fetchedAgent;
+
+  // Fetch history if enableHistory is true
+  const { messages: fetchedMessages, isLoading: historyLoading, error: historyError } = useChatMessages({
+    threadId,
+    enabled: !!enableHistory && !initialMessagesProp && !!threadId
+  });
+
+  useEffect(() => {
+    console.log('[ChatContainer] History Fetch:', {
+      historyLoading,
+      hasMessages: !!(initialMessagesProp || fetchedMessages),
+      historyError: historyError?.message
+    });
+  }, [historyLoading, initialMessagesProp, fetchedMessages, historyError]);
+
+  const initialMessages = initialMessagesProp || fetchedMessages;
+
+  // Loading state - client, agent or history is initializing
+  if (clientLoading || agentLoading || (enableHistory && historyLoading)) {
+    console.log('[ChatContainer] Rendering Loading State:', { clientLoading, agentLoading, historyLoading, enableHistory });
+    return (
+      <div className={`flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground font-sans text-sm">Initializing...</p>
+      </div>
+    );
+  }
+
+  // Agent not provided
+  if (!agent) {
+    return (
+      <div className={`flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
+        <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-lg font-semibold text-foreground mb-2">Agent Not Available</h2>
+        <p className="text-muted-foreground font-sans text-sm mb-4">
+          No agent has been configured or the backend is not responding.
+        </p>
+        <p className="text-muted-foreground font-sans text-xs">
+          Make sure your Distri backend is running and accessible.
+        </p>
+      </div>
+    );
+  }
+
+  return <ChatInner ref={ref} agent={agent} threadId={threadId} initialMessages={initialMessages} theme={theme} {...props} />;
 });

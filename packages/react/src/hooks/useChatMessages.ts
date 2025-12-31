@@ -8,6 +8,7 @@ export interface UseChatMessagesOptions {
   agent?: Agent;
   threadId?: string;
   onError?: (error: Error) => void;
+  enabled?: boolean;
 }
 
 export interface UseChatMessagesReturn {
@@ -23,6 +24,7 @@ export function useChatMessages({
   initialMessages = [],
   threadId,
   onError,
+  enabled = true,
 }: UseChatMessagesOptions = {}): UseChatMessagesReturn {
   // Store callbacks in refs to avoid dependency issues
   const onErrorRef = useRef(onError);
@@ -78,12 +80,11 @@ export function useChatMessages({
     }
   }, [client, threadId]);
 
-  // Fetch messages on mount and when threadId/agent changes (only if no initialMessages)
   useEffect(() => {
-    if (threadId && client && !initialMessagesLength) {
+    if (threadId && client && !initialMessagesLength && enabled) {
       fetchMessages();
     }
-  }, [client, fetchMessages, initialMessagesLength, threadId]);
+  }, [client, fetchMessages, initialMessagesLength, threadId, enabled]);
 
   return {
     messages,
