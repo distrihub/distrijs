@@ -74,8 +74,11 @@ export interface ChatCompletionResponse {
  */
 interface ResolvedConfig
   extends Required<
-    Omit<DistriClientConfig, 'accessToken' | 'refreshToken' | 'tokenRefreshSkewMs' | 'onTokenRefresh'>
-  > { }
+    Omit<DistriClientConfig, 'accessToken' | 'refreshToken' | 'tokenRefreshSkewMs' | 'onTokenRefresh' | 'clientId'>
+  > {
+  onTokenRefresh?: () => Promise<string | null>;
+  clientId?: string;
+}
 
 /**
  * Enhanced Distri Client that wraps A2AClient and adds Distri-specific features
@@ -92,7 +95,7 @@ export class DistriClient {
   private accessToken?: string;
   private refreshToken?: string;
   private tokenRefreshSkewMs: number;
-  private onTokenRefresh?: (tokens: { accessToken: string; refreshToken: string }) => void;
+  private onTokenRefresh?: () => Promise<string | null>;
   private refreshPromise?: Promise<void>;
   private agentClients = new Map<string, { url: string; client: A2AClient }>();
 
@@ -105,22 +108,31 @@ export class DistriClient {
     this.onTokenRefresh = config.onTokenRefresh;
 
     this.config = {
-      baseUrl: config.baseUrl.replace(/\/$/, ''),
+      baseUrl: config.baseUrl?.replace(/\/$/, '') || DEFAULT_BASE_URL,
       apiVersion: config.apiVersion || 'v1',
-      timeout: config.timeout || 30000,
-      retryAttempts: config.retryAttempts || 3,
-      retryDelay: config.retryDelay || 1000,
-      debug: config.debug || false,
+      timeout: config.timeout ?? 30000,
+      retryAttempts: config.retryAttempts ?? 3,
+      retryDelay: config.retryDelay ?? 1000,
+      debug: config.debug ?? false,
       headers,
-      interceptor: config.interceptor || ((init?: RequestInit) => Promise.resolve(init))
+      interceptor: config.interceptor ?? (async (init?: RequestInit) => Promise.resolve(init)),
+      onTokenRefresh: config.onTokenRefresh,
+      clientId: config.clientId
     };
+  }
 
-    this.debug('DistriClient initialized with config:', {
-      baseUrl: this.config.baseUrl,
-      hasAccessToken: !!this.accessToken,
-      hasRefreshToken: !!this.refreshToken,
-      timeout: this.config.timeout
-    });
+  /**
+   * Get the configured client ID.
+   */
+  get clientId(): string | undefined {
+    return this.config.clientId;
+  }
+
+  /**
+   * Set the client ID for embed token issuance.
+   */
+  set clientId(value: string | undefined) {
+    this.config.clientId = value;
   }
 
   /**
@@ -283,7 +295,7 @@ export class DistriClient {
     if (!tokens?.access_token || !tokens?.refresh_token || typeof tokens?.expires_at !== 'number') {
       throw new ApiError('Invalid token response', response.status);
     }
-    this.applyTokens(tokens.access_token, tokens.refresh_token, false);
+    this.applyTokens(tokens.access_token, tokens.refresh_token);
     return tokens;
   }
 
@@ -298,12 +310,8 @@ export class DistriClient {
    * Update the access/refresh tokens in memory.
    */
   setTokens(tokens: { accessToken?: string; refreshToken?: string }): void {
-    if (tokens.accessToken !== undefined) {
-      this.accessToken = tokens.accessToken;
-    }
-    if (tokens.refreshToken !== undefined) {
-      this.refreshToken = tokens.refreshToken;
-    }
+    this.accessToken = tokens.accessToken;
+    this.refreshToken = tokens.refreshToken;
   }
 
   /**
@@ -792,16 +800,18 @@ export class DistriClient {
     return this.config.baseUrl;
   }
 
-  private applyTokens(accessToken: string, refreshToken: string, notify: boolean): void {
+  private applyTokens(accessToken: string, refreshToken?: string): void {
     this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (notify && this.onTokenRefresh) {
-      this.onTokenRefresh({ accessToken, refreshToken });
+    if (refreshToken) {
+      this.refreshToken = refreshToken;
     }
   }
 
+  /**
+   * Ensure access token is valid, refreshing if necessary
+   */
   private async ensureAccessToken(): Promise<void> {
-    if (!this.refreshToken) {
+    if (!this.refreshToken && !this.onTokenRefresh) {
       return;
     }
 
@@ -827,6 +837,18 @@ export class DistriClient {
   }
 
   private async performTokenRefresh(): Promise<void> {
+    if (this.onTokenRefresh) {
+      const newToken = await this.onTokenRefresh();
+      if (newToken) {
+        this.applyTokens(newToken);
+        return;
+      }
+    }
+
+    if (!this.refreshToken) {
+      return;
+    }
+
     const response = await this.fetchAbsolute(
       `${this.config.baseUrl}/token`,
       {
@@ -852,7 +874,7 @@ export class DistriClient {
     if (!tokens?.access_token || !tokens?.refresh_token) {
       throw new ApiError('Invalid token response', response.status);
     }
-    this.applyTokens(tokens.access_token, tokens.refresh_token, true);
+    this.applyTokens(tokens.access_token, tokens.refresh_token);
   }
 
   private isTokenExpiring(token: string): boolean {

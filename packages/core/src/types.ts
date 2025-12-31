@@ -608,6 +608,12 @@ export interface DistriClientConfig {
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
 
   /**
+   * Hook to refresh the access token when it expires.
+   * Useful for public clients where only an access token is available.
+   */
+  onTokenRefresh?: () => Promise<string | null>;
+
+  /**
    * Access token for bearer auth (optional)
    */
   accessToken?: string;
@@ -623,9 +629,9 @@ export interface DistriClientConfig {
   tokenRefreshSkewMs?: number;
 
   /**
-   * Callback invoked when tokens are refreshed
+   * Client ID for public/embed authentication (optional).
    */
-  onTokenRefresh?: (tokens: { accessToken: string; refreshToken: string }) => void;
+  clientId?: string;
 }
 
 export interface LLMResponse {

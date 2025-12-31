@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
 import { DistriClient, DistriClientConfig } from '@distri/core';
 import { ThemeProvider } from './components/ThemeProvider';
 
@@ -8,10 +8,10 @@ interface DistriContextValue {
   isLoading: boolean;
 }
 
-const DistriContext = createContext<DistriContextValue>({
+export const DistriContext = createContext<DistriContextValue>({
   client: null,
   error: null,
-  isLoading: true
+  isLoading: true,
 });
 
 interface DistriProviderProps {
@@ -20,55 +20,53 @@ interface DistriProviderProps {
   defaultTheme?: 'dark' | 'light' | 'system';
 }
 
-const debug = (config: DistriClientConfig, ...args: any[]): void => {
-  if (config.debug) {
-    console.log('[DistriProvider]', ...args);
-  }
-}
-
-
+/**
+ * Core provider for Distri SDK. Initializes the DistriClient.
+ * 
+ * For cloud authentication (embed tokens via Turnstile), wrap your app with
+ * DistriCloudAuthProvider inside this provider.
+ * 
+ * @example
+ * ```tsx
+ * // Basic usage (self-hosted or API key auth)
+ * <DistriProvider config={{ baseUrl }}>
+ *   <App />
+ * </DistriProvider>
+ * 
+ * // Cloud usage with embed auth
+ * <DistriProvider config={{ baseUrl, clientId }}>
+ *   <DistriCloudAuthProvider>
+ *     <App />
+ *   </DistriCloudAuthProvider>
+ * </DistriProvider>
+ * ```
+ */
 export function DistriProvider({ config, children, defaultTheme = 'dark' }: DistriProviderProps) {
   const [client, setClient] = useState<DistriClient | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initialize client
   useEffect(() => {
-    let currentClient: DistriClient | null = null;
-
     try {
-      debug(config, '[DistriProvider] Initializing client with config:', config);
-      currentClient = new DistriClient(config);
+      if (config.debug) {
+        console.log('[DistriProvider] Initializing client');
+      }
+      const currentClient = new DistriClient(config);
       setClient(currentClient);
-      setError(null);
       setIsLoading(false);
-      debug(config, '[DistriProvider] Client initialized successfully');
     } catch (err) {
-      debug(config, '[DistriProvider] Failed to initialize client:', err);
-      const error = err instanceof Error ? err : new Error('Failed to initialize client');
-      setError(error);
-      setClient(null);
+      const initError = err instanceof Error ? err : new Error('Failed to initialize client');
+      setError(initError);
       setIsLoading(false);
     }
+  }, [config]);
 
-  }, [config]); // Depend on the entire config object since we memoize it now
-
-  const contextValue: DistriContextValue = {
+  const contextValue: DistriContextValue = useMemo(() => ({
     client,
     error,
-    isLoading
-  };
-
-  if (error) {
-    console.error(config, '[DistriProvider] Rendering error state:', error.message);
-  }
-
-  if (isLoading) {
-    debug(config, '[DistriProvider] Rendering loading state');
-  }
-
-  if (client) {
-    debug(config, '[DistriProvider] Rendering with client available');
-  }
+    isLoading,
+  }), [client, error, isLoading]);
 
   return (
     <ThemeProvider defaultTheme={defaultTheme}>

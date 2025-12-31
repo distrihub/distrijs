@@ -10,7 +10,7 @@ import { DistriAnyTool } from './types';
 
 export interface UseChatOptions {
   threadId: string;
-  agent?: Agent;
+  agent: Agent | null;
   onMessage?: (message: DistriChatMessage) => void;
   onError?: (error: Error) => void;
   // Ability to override metadata for the stream

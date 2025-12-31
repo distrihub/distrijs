@@ -12,7 +12,12 @@ export interface UseThreadsResult {
   updateThread: (threadId: string, localId?: string) => Promise<void>;
 }
 
-export function useThreads(): UseThreadsResult {
+export interface UseThreadsOptions {
+  enabled?: boolean;
+}
+
+export function useThreads(options: UseThreadsOptions = {}): UseThreadsResult {
+  const { enabled = true } = options;
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [threads, setThreads] = useState<DistriThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,46 +61,38 @@ export function useThreads(): UseThreadsResult {
     if (!client) {
       throw new Error('Client not available');
     }
-
-    try {
-      // Try to delete from server (may not exist yet for local threads)
-      const response = await fetch(`${client.baseUrl}/threads/${threadId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete thread');
-      }
-
-      // Remove from local state regardless of server response
-      setThreads(prev => prev.filter(thread => thread.id !== threadId));
-    } catch (err) {
-      // Still remove from local state even if server delete fails
-      setThreads(prev => prev.filter(thread => thread.id !== threadId));
-      console.warn('Failed to delete thread from server, but removed locally:', err);
-    }
+    // Note: deleteThread is not implemented in DistriClient yet
+    // For now, just remove from local state
+    setThreads((prev) => prev.filter((t) => t.id !== threadId));
   }, [client]);
 
   const updateThread = useCallback(async (threadId: string, localId?: string) => {
     if (!client) {
+      console.warn('Client not available for thread update');
       return;
     }
-
     try {
-      const response = await fetch(`${client.baseUrl}/threads/${threadId}`);
-      if (response.ok) {
-        const updatedThread = await response.json();
-        setThreads(prev => {
-          // If a local thread with localId exists, replace it with the backend thread
-          if (localId && prev.some(thread => thread.id === localId)) {
-            return [
-              updatedThread,
-              ...prev.filter(thread => thread.id !== localId && thread.id !== threadId)
-            ];
+      const updatedThread = await client.getThread(threadId);
+      if (updatedThread) {
+        setThreads((prev) => {
+          // Check if thread already exists
+          const exists = prev.some((t) => t.id === threadId);
+          if (exists) {
+            return prev.map((thread) =>
+              thread.id === threadId ? updatedThread : thread
+            );
           }
-          // Otherwise, just update by threadId
-          return prev.map(thread =>
-            thread.id === threadId ? updatedThread : thread
-          );
+          // If localId is provided, replace the local thread
+          if (localId) {
+            const localIndex = prev.findIndex((t) => t.id === localId);
+            if (localIndex !== -1) {
+              const newThreads = [...prev];
+              newThreads[localIndex] = updatedThread;
+              return newThreads;
+            }
+          }
+          // Otherwise add as new
+          return [updatedThread, ...prev];
         });
       }
     } catch (err) {
@@ -115,12 +112,12 @@ export function useThreads(): UseThreadsResult {
       return;
     }
 
-    if (client) {
+    if (client && enabled) {
       fetchThreads();
     } else {
       setLoading(false);
     }
-  }, [clientLoading, clientError, client, fetchThreads]);
+  }, [clientLoading, clientError, client, fetchThreads, enabled]);
 
   return {
     threads,
