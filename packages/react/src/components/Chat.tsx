@@ -14,6 +14,7 @@ import { DefaultChatEmptyState, type ChatEmptyStateOptions } from './ChatEmptySt
 import { BrowserPreviewPanel } from './BrowserPreviewPanel';
 import { useAgent } from '../useAgent';
 import { useChatMessages } from '../hooks/useChatMessages';
+import { AuthLoading } from './AuthLoading';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
 
 export interface ModelOption {
@@ -966,7 +967,18 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 export interface ChatContainerProps extends ChatProps { }
 
-export const Chat = forwardRef<ChatInstance, ChatContainerProps>(function Chat(
+/**
+ * The main Chat component that handles authentication via AuthLoading guardian.
+ */
+export const Chat = forwardRef<ChatInstance, ChatProps>((props, ref) => {
+  return (
+    <AuthLoading>
+      <ChatContainer ref={ref} {...props} />
+    </AuthLoading>
+  );
+});
+
+const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function ChatContainer(
   { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, ...props },
   ref
 ) {

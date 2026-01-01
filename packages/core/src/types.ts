@@ -629,7 +629,7 @@ export interface DistriClientConfig {
   tokenRefreshSkewMs?: number;
 
   /**
-   * Client ID for public/embed authentication (optional).
+   * Client ID from Distri Cloud. 
    */
   clientId?: string;
 }

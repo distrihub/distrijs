@@ -311,7 +311,17 @@ export class DistriClient {
    */
   setTokens(tokens: { accessToken?: string; refreshToken?: string }): void {
     this.accessToken = tokens.accessToken;
-    this.refreshToken = tokens.refreshToken;
+    if (tokens.refreshToken) {
+      this.refreshToken = tokens.refreshToken;
+    }
+  }
+
+  /**
+   * Reset all authentication tokens.
+   */
+  resetTokens(): void {
+    this.accessToken = undefined;
+    this.refreshToken = undefined;
   }
 
   /**
@@ -825,7 +835,7 @@ export class DistriClient {
   }
 
   private async refreshTokens(): Promise<void> {
-    if (!this.refreshToken) {
+    if (!this.refreshToken && !this.onTokenRefresh) {
       return;
     }
     if (!this.refreshPromise) {
@@ -838,6 +848,9 @@ export class DistriClient {
 
   private async performTokenRefresh(): Promise<void> {
     if (this.onTokenRefresh) {
+      // If we are using a callback, we MUST reset the token first to ensure
+      // any concurrent requests also wait for the new token.
+      this.accessToken = undefined;
       const newToken = await this.onTokenRefresh();
       if (newToken) {
         this.applyTokens(newToken);
@@ -992,7 +1005,7 @@ export class DistriClient {
         });
 
         clearTimeout(timeoutId);
-        if (!skipAuth && retryOnAuth && response.status === 401 && this.refreshToken) {
+        if (!skipAuth && retryOnAuth && response.status === 401 && (this.refreshToken || this.onTokenRefresh)) {
           const refreshed = await this.refreshTokens().then(() => true).catch(() => false);
           if (refreshed) {
             return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false });
