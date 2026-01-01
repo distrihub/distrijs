@@ -6,7 +6,6 @@ export * from './useThreads';
 
 // Component exports
 export * from './components/Chat';
-export * from './components/ChatEmbed';
 export * from './components/AgentList';
 export * from './components/AgentSelect';
 export * from './components/AgentsPage';
@@ -19,9 +18,11 @@ export * from './components/ConfigurationPanel';
 export * from './components/ThemeProvider';
 export * from './components/ThemeToggle';
 export * from './components/Toast';
+export * from './components/AuthLoading';
 
 // Provider exports
 export * from './DistriProvider';
+export * from './DistriAuthProvider';
 
 // Type exports
 export * from './types';
