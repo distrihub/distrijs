@@ -116,7 +116,7 @@ export function useChat({
   }, [agent, setAgent]);
 
   // Store cleanup functions in refs to avoid dependency changes
-  const cleanupRef = useRef<() => void>();
+  const cleanupRef = useRef<(() => void) | undefined>(undefined);
   cleanupRef.current = () => {
     setStreamingIndicator(undefined);
     setStreaming(false);
