@@ -5,17 +5,19 @@ import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { TypingIndicator } from './renderers/TypingIndicator';
+import { LoadingAnimation, type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap } from '@/types';
-import { DefaultChatEmptyState, type ChatEmptyStateOptions } from './ChatEmptyState';
+import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
 import { BrowserPreviewPanel } from './BrowserPreviewPanel';
 import { useAgent } from '../useAgent';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { AuthLoading } from './AuthLoading';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
+export type { LoadingAnimationConfig, LoadingAnimationPreset } from './renderers/LoadingAnimation';
 
 export interface ModelOption {
   id: string;
@@ -70,6 +72,22 @@ export interface ChatProps {
   onTaskFinish?: (task: TaskState) => void;
   renderEmptyState?: (controller: ChatEmptyStateController) => React.ReactNode;
   emptyState?: ChatEmptyStateOptions;
+  /**
+   * Starter commands shown in empty state. These are quick-action buttons
+   * that users can click to send predefined prompts.
+   * Alternative to emptyState.categories - if provided, these will be merged.
+   */
+  starterCommands?: ChatEmptyStateStarter[];
+  /**
+   * Configuration for the loading/typing animation shown while waiting for responses.
+   * Supports presets like 'typing-dots', 'teacher-typing', 'pulse-ring', 'spinner', 'wave'.
+   */
+  loadingAnimation?: LoadingAnimationConfig;
+  /**
+   * Custom render function for the loading animation.
+   * If provided, overrides loadingAnimation config.
+   */
+  renderLoadingAnimation?: () => React.ReactNode;
   // Voice support
   voiceEnabled?: boolean;
   useSpeechRecognition?: boolean;
@@ -125,7 +143,10 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   onChatStateChange,
   onTaskFinish,
   renderEmptyState,
-  emptyState,
+  emptyState: emptyStateProp,
+  starterCommands,
+  loadingAnimation,
+  renderLoadingAnimation,
   voiceEnabled = false,
   useSpeechRecognition = false,
   ttsConfig,
@@ -235,6 +256,31 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       return null;
     }
   }, [browserFrameUpdatedAt]);
+
+  // Merge starterCommands with emptyState categories
+  const emptyState = useMemo<ChatEmptyStateOptions | undefined>(() => {
+    if (!emptyStateProp && !starterCommands) return undefined;
+
+    // If starterCommands provided, create a default category for them
+    const starterCategory = starterCommands && starterCommands.length > 0
+      ? { id: '_starter_commands', starters: starterCommands }
+      : null;
+
+    if (!emptyStateProp) {
+      return starterCategory ? { categories: [starterCategory] } : undefined;
+    }
+
+    // Merge starterCommands into existing categories
+    if (starterCategory) {
+      const existingCategories = emptyStateProp.categories ?? [];
+      return {
+        ...emptyStateProp,
+        categories: [...existingCategories, starterCategory],
+      };
+    }
+
+    return emptyStateProp;
+  }, [emptyStateProp, starterCommands]);
 
   // Get reactive state from store
   const toolCalls = useChatStateStore(state => state.toolCalls);
@@ -765,6 +811,23 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // Render thinking indicator separately at the end
   const renderThinkingIndicator = () => {
     if (streamingIndicator === 'typing') {
+      // Use custom render function if provided
+      if (renderLoadingAnimation) {
+        return (
+          <RendererWrapper key={`typing-indicator`} className="distri-typing-indicator">
+            {renderLoadingAnimation()}
+          </RendererWrapper>
+        );
+      }
+      // Use LoadingAnimation with custom config if provided
+      if (loadingAnimation) {
+        return (
+          <RendererWrapper key={`typing-indicator`} className="distri-typing-indicator">
+            <LoadingAnimation config={loadingAnimation} />
+          </RendererWrapper>
+        );
+      }
+      // Default typing indicator
       return (
         <RendererWrapper key={`typing-indicator`} className="distri-typing-indicator">
           <TypingIndicator />
