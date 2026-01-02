@@ -7,6 +7,7 @@ export default defineConfig({
   sourcemap: false,
   clean: true,
   external: ['react', 'react-dom'],
+  noExternal: ['codemirror', 'react-syntax-highlighter'],
   injectStyle: false,
   minify: false,
   outDir: 'dist',
