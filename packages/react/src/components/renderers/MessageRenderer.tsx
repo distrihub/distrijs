@@ -14,12 +14,16 @@ export interface MessageRendererProps {
 }
 
 // Wrapper component to ensure full width with max constraint for readability
-const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
+const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string; isUserMessage?: boolean }> = ({
   children,
-  className = ''
+  className = '',
+  isUserMessage = false
 }) => (
   <div className={`w-full px-4 overflow-hidden ${className}`} style={{ maxWidth: '100%', wordBreak: 'break-word' }}>
-    <div className="w-full max-w-4xl mx-auto overflow-hidden" style={{ maxWidth: 'min(100%, 56rem)', wordBreak: 'break-word' }}>
+    <div
+      className={`w-full overflow-hidden ${isUserMessage ? 'ml-auto' : 'max-w-4xl mx-auto'}`}
+      style={{ maxWidth: isUserMessage ? '100%' : 'min(100%, 56rem)', wordBreak: 'break-word' }}
+    >
       {children}
     </div>
   </div>
@@ -55,7 +59,7 @@ export function MessageRenderer({
     switch (distriMessage.role) {
       case 'user':
         return (
-          <RendererWrapper key={`user-${index}`} className="distri-user-message">
+          <RendererWrapper key={`user-${index}`} className="distri-user-message" isUserMessage>
             <UserMessageRenderer
               message={distriMessage}
             />
