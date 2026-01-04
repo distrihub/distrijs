@@ -1,12 +1,16 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import CodeMirror from 'codemirror';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/theme/dracula.css';
-import 'codemirror/addon/display/placeholder';
 import { Send, Square, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
 import { cn } from '../lib/utils';
+
+declare global {
+  interface Window {
+    CodeMirror?: any;
+    __distriCodeMirrorLoader?: Promise<void>;
+  }
+}
+
 export interface AttachedImage {
   id: string;
   file: File;
@@ -14,7 +18,6 @@ export interface AttachedImage {
   name: string;
 }
 
-const DARK_THEME = 'dracula';
 export interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -37,6 +40,11 @@ export interface ChatInputProps {
   onSpeechTranscript?: (text: string) => void;
   variant?: 'default' | 'hero';
 }
+
+const CM_CSS = 'https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.css';
+const CM_THEME = 'https://cdn.jsdelivr.net/npm/codemirror@5/theme/material-darker.min.css';
+const CM_JS = 'https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.js';
+const CM_PLACEHOLDER = 'https://cdn.jsdelivr.net/npm/codemirror@5/addon/display/placeholder.min.js';
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   value,
@@ -69,8 +77,63 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [isCodeMirrorReady, setIsCodeMirrorReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const imageAttachments = useMemo(() => attachedImages ?? [], [attachedImages]);
+
+  const ensureCodeMirrorAssets = useCallback(async () => {
+    if (typeof window === 'undefined' || window.CodeMirror) {
+      setIsCodeMirrorReady(!!window.CodeMirror);
+      return;
+    }
+
+    if (!window.__distriCodeMirrorLoader) {
+      window.__distriCodeMirrorLoader = (async () => {
+        const loadCss = (href: string) => new Promise<void>((resolve, reject) => {
+          if (document.querySelector(`link[href="${href}"]`)) {
+            resolve();
+            return;
+          }
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = href;
+          link.onload = () => resolve();
+          link.onerror = reject;
+          document.head.appendChild(link);
+        });
+
+        const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = src;
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
+
+        await loadCss(CM_CSS);
+        await loadCss(CM_THEME);
+        await loadScript(CM_JS);
+        await loadScript(CM_PLACEHOLDER);
+      })();
+    }
+
+    try {
+      await window.__distriCodeMirrorLoader;
+    } catch (error) {
+      console.error('Failed to load CodeMirror assets', error);
+    }
+
+    setIsCodeMirrorReady(!!window.CodeMirror);
+  }, []);
+
+  useEffect(() => {
+    void ensureCodeMirrorAssets();
+  }, [ensureCodeMirrorAssets]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -95,26 +158,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!textareaRef.current || codeMirrorRef.current) {
+    if (!isCodeMirrorReady || !textareaRef.current || codeMirrorRef.current) {
+      return;
+    }
+
+    const CodeMirror = window.CodeMirror;
+    if (!CodeMirror) {
       return;
     }
 
     const cm = CodeMirror.fromTextArea(textareaRef.current, {
       lineWrapping: true,
-      theme: variant === 'hero' || isDarkMode ? DARK_THEME : 'default',
+      theme: variant === 'hero' || isDarkMode ? 'material-darker' : 'default',
       placeholder,
       viewportMargin: Infinity,
     });
 
     const wrapper = cm.getWrapperElement();
     const scroller = cm.getScrollerElement();
-    const baseWrapperClasses = ['rounded-2xl', 'border', 'border-transparent', 'bg-[#1c1f23]', 'text-foreground'];
-    const heroWrapperClasses = [...baseWrapperClasses, 'text-base', 'leading-7'];
-    const defaultWrapperClasses = [...baseWrapperClasses, 'text-sm', 'leading-6'];
-    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1', 'shadow-[0_14px_40px_rgba(0,0,0,0.35)]');
-    scroller.style.background = '#1c1f23';
-    scroller.style.padding = variant === 'hero' ? '1rem 1.25rem 1.25rem' : '0.35rem 0.5rem 0.75rem';
+    const heroWrapperClasses = [
+      'rounded-2xl', 'bg-transparent', 'text-foreground', 'text-base', 'leading-7'
+    ];
+    const defaultWrapperClasses = [
+      'rounded-2xl', 'bg-transparent', 'text-foreground', 'text-sm', 'leading-6'
+    ];
+    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1');
+    scroller.style.background = 'transparent';
+    scroller.style.padding = variant === 'hero' ? '0.25rem 0.5rem 0.5rem' : '0.25rem 0.35rem 0.5rem';
     if (variant === 'hero') {
       wrapper.classList.add(...heroWrapperClasses);
     } else {
@@ -138,7 +208,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
     });
 
-    const fixedHeight = variant === 'hero' ? '220px' : '100px';
+    const fixedHeight = variant === 'hero' ? '220px' : '140px';
     cm.setSize('100%', fixedHeight);
 
     codeMirrorRef.current = cm;
@@ -146,13 +216,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       cm.toTextArea();
       codeMirrorRef.current = null;
     };
-  }, [isDarkMode, placeholder, variant]);
-
-  useEffect(() => {
-    if (!codeMirrorRef.current) return;
-    codeMirrorRef.current.setOption('theme', variant === 'hero' || isDarkMode ? DARK_THEME : 'default');
-    codeMirrorRef.current.setOption('placeholder', placeholder);
-  }, [isDarkMode, placeholder, variant]);
+  }, [isDarkMode, isCodeMirrorReady, placeholder, variant]);
 
   useEffect(() => {
     valueRef.current = value;
@@ -306,15 +370,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const hasContent = value.trim().length > 0 || imageAttachments.length > 0;
   const isDisabled = disabled;
 
-  const shellClass = 'rounded-2xl bg-transparent';
+  const shellClass = 'rounded-3xl p-[1px] bg-gradient-to-r from-primary/40 via-primary/20 to-primary/40';
   const innerShell = cn(
-    'relative rounded-2xl bg-transparent px-2 py-2 flex flex-col gap-3',
-    variant === 'hero' && 'p-0 min-h-[240px]'
+    'rounded-3xl bg-card px-5 py-4 flex flex-col shadow-lg shadow-primary/5',
+    variant === 'hero' && 'sm:px-6 sm:py-5'
   );
   const wrapperClass = 'mx-0 sm:mx-1';
   const previewClass = 'gap-2 mb-2';
-  const toolbarButton = 'flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 text-muted-foreground transition hover:text-primary';
-  const toolbarButtonActive = 'bg-primary/10 text-primary border-primary/50';
+  const toolbarButton = 'flex h-9 w-9 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
+  const toolbarButtonActive = 'bg-primary/20 text-primary';
+  const subtleTextClass = variant === 'hero' ? 'text-base leading-7' : 'text-sm leading-6';
 
   return (
     <div className={cn('relative w-full', className)}>
@@ -351,122 +416,103 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                rows={variant === 'hero' ? 6 : 3}
+                rows={variant === 'hero' ? 4 : 2}
                 disabled={disabled}
                 className="absolute inset-0 h-full w-full resize-none bg-transparent text-transparent caret-transparent opacity-0"
               />
+
+              {!isCodeMirrorReady && (
+                <textarea
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder={placeholder}
+                  rows={variant === 'hero' ? 4 : 2}
+                  disabled={disabled}
+                  className={cn('w-full resize-none bg-transparent outline-none border-none placeholder:text-muted-foreground/60 text-foreground', subtleTextClass)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                      e.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                />
+              )}
             </div>
 
-            {variant === 'hero' ? (
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute bottom-6 left-6">
+            <div className="flex items-center justify-between pt-4">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBrowserToggle}
+                  className={cn(toolbarButton, browserEnabled && toolbarButtonActive)}
+                  disabled={disabled || !onToggleBrowser}
+                  title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
+                >
+                  <Globe className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={toolbarButton}
+                  disabled={disabled}
+                  title="Attach image"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+
+                {voiceEnabled && !useSpeechRecognition ? (
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={disabled}
-                    className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#1c1f23] text-muted-foreground transition hover:border-white/40 hover:text-foreground"
-                    title="Attach image"
+                    onClick={handleVoiceToggle}
+                    className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-200')}
+                    title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
+                    disabled={isStreaming || disabled}
                   >
-                    <Plus className="h-4 w-4" />
+                    {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   </button>
-                </div>
-                <div className="absolute bottom-6 right-6">
+                ) : null}
+
+                {onStartStreamingVoice && !useSpeechRecognition ? (
                   <button
                     type="button"
-                    onClick={() => (isStreaming ? handleStop() : void handleSend())}
-                    disabled={isStreaming ? false : (!hasContent || isDisabled)}
-                    className={cn(
-                      'pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition',
-                      isStreaming
-                        ? 'bg-amber-400 text-amber-950 hover:bg-amber-300'
-                        : hasContent
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          : 'bg-muted text-muted-foreground'
-                    )}
-                    title={isStreaming ? 'Stop' : 'Send'}
+                    onClick={onStartStreamingVoice}
+                    className={cn(toolbarButton, isStreamingVoice && toolbarButtonActive)}
+                    disabled={isStreaming || disabled || isRecording}
+                    title="Start streaming voice conversation"
                   >
-                    {isStreaming ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                    <Radio className="h-4 w-4" />
                   </button>
-                </div>
+                ) : null}
+
+                {useSpeechRecognition ? (
+                  <VoiceInput
+                    onTranscript={handleSpeechTranscript}
+                    disabled={isDisabled || isStreaming}
+                    onError={(error) => console.error('Voice input error:', error)}
+                    useBrowserSpeechRecognition={true}
+                    language="en-US"
+                    interimResults={true}
+                  />
+                ) : null}
               </div>
-            ) : (
-              <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleBrowserToggle}
-                    className={cn(toolbarButton, browserEnabled && toolbarButtonActive)}
-                    disabled={disabled || !onToggleBrowser}
-                    title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
-                  >
-                    <Globe className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={toolbarButton}
-                    disabled={disabled}
-                    title="Attach image"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
 
-                  {voiceEnabled && !useSpeechRecognition ? (
-                    <button
-                      type="button"
-                      onClick={handleVoiceToggle}
-                      className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-200')}
-                      title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
-                      disabled={isStreaming || disabled}
-                    >
-                      {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                    </button>
-                  ) : null}
-
-                  {onStartStreamingVoice && !useSpeechRecognition ? (
-                    <button
-                      type="button"
-                      onClick={onStartStreamingVoice}
-                      className={cn(toolbarButton, isStreamingVoice && toolbarButtonActive)}
-                      disabled={isStreaming || disabled || isRecording}
-                      title="Start streaming voice conversation"
-                    >
-                      <Radio className="h-4 w-4" />
-                    </button>
-                  ) : null}
-
-                  {useSpeechRecognition ? (
-                    <VoiceInput
-                      onTranscript={handleSpeechTranscript}
-                      disabled={isDisabled || isStreaming}
-                      onError={(error) => console.error('Voice input error:', error)}
-                      useBrowserSpeechRecognition={true}
-                      language="en-US"
-                      interimResults={true}
-                    />
-                  ) : null}
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => (isStreaming ? handleStop() : void handleSend())}
-                    disabled={isStreaming ? false : (!hasContent || isDisabled)}
-                    className={cn(
-                      'flex h-11 w-11 items-center justify-center rounded-full transition shadow-sm',
-                      isStreaming
-                        ? 'bg-amber-400 text-amber-950 hover:bg-amber-300'
-                        : hasContent
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          : 'bg-muted text-muted-foreground'
-                    )}
-                    title={isStreaming ? 'Stop' : 'Send'}
-                  >
-                    {isStreaming ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={() => (isStreaming ? handleStop() : void handleSend())}
+                disabled={isStreaming ? false : (!hasContent || isDisabled)}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+                  isStreaming
+                    ? 'bg-amber-500 text-white hover:bg-amber-400'
+                    : hasContent
+                      ? 'bg-muted/50 text-foreground hover:bg-muted'
+                      : 'text-muted-foreground/50'
+                )}
+                title={isStreaming ? 'Stop' : 'Send'}
+              >
+                {isStreaming ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
         </div>
 

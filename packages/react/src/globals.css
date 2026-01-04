@@ -59,4 +59,15 @@
     padding-bottom: 100px;
     /* Space for the absolutely positioned input */
   }
+
+  /* ChatInput: Override theme background only - keep all other CM styles intact */
+  .distri-chat-editor.CodeMirror,
+  .distri-chat-editor .CodeMirror-scroll {
+    background: transparent !important;
+  }
+
+  .distri-chat-editor .CodeMirror-placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+    opacity: 0.7;
+  }
 }
