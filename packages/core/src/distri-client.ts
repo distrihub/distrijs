@@ -18,7 +18,10 @@ import {
   LLMResponse,
   LlmExecuteOptions,
   DEFAULT_BASE_URL,
-  AgentConfigWithTools
+  AgentConfigWithTools,
+  ThreadListParams,
+  ThreadListResponse,
+  AgentUsageInfo
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -684,11 +687,24 @@ export class DistriClient {
   }
 
   /**
-   * Get threads from Distri server
+   * Get threads from Distri server with filtering and pagination
    */
-  async getThreads(): Promise<DistriThread[]> {
+  async getThreads(params: ThreadListParams = {}): Promise<ThreadListResponse> {
     try {
-      const response = await this.fetch(`/threads`);
+      const searchParams = new URLSearchParams();
+      if (params.agent_id) searchParams.set('agent_id', params.agent_id);
+      if (params.external_id) searchParams.set('external_id', params.external_id);
+      if (params.search) searchParams.set('search', params.search);
+      if (params.from_date) searchParams.set('from_date', params.from_date);
+      if (params.to_date) searchParams.set('to_date', params.to_date);
+      if (params.tags?.length) searchParams.set('tags', params.tags.join(','));
+      if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+      if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+
+      const queryString = searchParams.toString();
+      const url = queryString ? `/threads?${queryString}` : '/threads';
+
+      const response = await this.fetch(url);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch threads: ${response.statusText}`, response.status);
       }
@@ -697,6 +713,22 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch threads', 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Get agents sorted by thread count (most active first)
+   */
+  async getAgentsByUsage(): Promise<AgentUsageInfo[]> {
+    try {
+      const response = await this.fetch('/threads/agents');
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch agents by usage: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to fetch agents by usage', 'FETCH_ERROR', error);
     }
   }
 

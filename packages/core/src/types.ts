@@ -521,6 +521,9 @@ export interface DistriThread {
   updated_at: string;
   message_count: number;
   last_message?: string;
+  user_id?: string;
+  external_id?: string;
+  tags?: string[];
 }
 
 export interface Thread {
@@ -531,6 +534,42 @@ export interface Thread {
   updated_at: string;
   message_count: number;
   last_message?: string;
+  user_id?: string;
+  external_id?: string;
+  tags?: string[];
+}
+
+/**
+ * Parameters for listing threads with filtering and pagination
+ */
+export interface ThreadListParams {
+  agent_id?: string;
+  external_id?: string;
+  search?: string;
+  from_date?: string;  // ISO 8601 format
+  to_date?: string;    // ISO 8601 format
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Paginated response for thread listing
+ */
+export interface ThreadListResponse {
+  threads: DistriThread[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+/**
+ * Agent usage information for sorting agents by thread count
+ */
+export interface AgentUsageInfo {
+  agent_id: string;
+  agent_name: string;
+  thread_count: number;
 }
 
 export interface ChatProps {
