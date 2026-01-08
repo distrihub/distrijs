@@ -104,10 +104,10 @@ export interface ChatState {
   externalTools?: DistriAnyTool[];
   wrapOptions?: { autoExecute?: boolean };
 
-  // Browser streaming state
-  browserFrame?: string;
-  browserFrameFormat?: string;
-  browserFrameUpdatedAt?: number;
+  // Browser session state (iframe connects directly to browsr)
+  browserSessionId?: string;
+  browserViewerUrl?: string;
+  browserStreamUrl?: string;
 }
 
 type ChatStateTool = DistriAnyTool & {
@@ -124,14 +124,14 @@ export interface ChatStateStore extends ChatState {
   // Streaming indicator actions
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
   setCurrentThought: (thought: string | undefined) => void;
-  setBrowserFrame: (frameSrc: string, format?: string) => void;
+  setBrowserSession: (sessionId: string, viewerUrl?: string, streamUrl?: string) => void;
+  clearBrowserSession: () => void;
 
   // State actions
   addMessage: (message: DistriChatMessage) => void;
   processMessage: (message: DistriChatMessage, isFromStream?: boolean) => void;
   clearAllStates: () => void;
   clearTask: (taskId: string) => void;
-  clearBrowserFrame: () => void;
   getToolByName: (toolName: string) => ChatStateTool | undefined;
   completeRunningSteps: () => void;
   resetStreamingStates: () => void;
@@ -182,9 +182,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   streamingIndicator: undefined,
   currentThought: undefined,
   messages: [],
-  browserFrame: undefined,
-  browserFrameFormat: undefined,
-  browserFrameUpdatedAt: undefined,
+  browserSessionId: undefined,
+  browserViewerUrl: undefined,
+  browserStreamUrl: undefined,
   tools: {
     tools: [],
     agent_tools: new Map(),
@@ -212,11 +212,19 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     set({ currentThought: thought });
   },
 
-  setBrowserFrame: (frameSrc: string, format?: string) => {
+  setBrowserSession: (sessionId: string, viewerUrl?: string, streamUrl?: string) => {
     set({
-      browserFrame: frameSrc,
-      browserFrameFormat: format ?? 'png',
-      browserFrameUpdatedAt: Date.now(),
+      browserSessionId: sessionId,
+      browserViewerUrl: viewerUrl,
+      browserStreamUrl: streamUrl,
+    });
+  },
+
+  clearBrowserSession: () => {
+    set({
+      browserSessionId: undefined,
+      browserViewerUrl: undefined,
+      browserStreamUrl: undefined,
     });
   },
 
@@ -235,18 +243,13 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       if (isDistriEvent(message)) {
         const event = message as DistriEvent;
 
-        if (event.type === 'browser_screenshot') {
-          if (event.data.image) {
-            const format = event.data.format || 'png';
-            const frameSrc = `data:image/${format};base64,${event.data.image}`;
-            return {
-              ...state,
-              browserFrame: frameSrc,
-              browserFrameFormat: format,
-              browserFrameUpdatedAt: event.data.timestamp_ms || Date.now(),
-            };
-          }
-          return state;
+        if (event.type === 'browser_session_started') {
+          return {
+            ...state,
+            browserSessionId: event.data.session_id,
+            browserViewerUrl: event.data.viewer_url,
+            browserStreamUrl: event.data.stream_url,
+          };
         }
 
         if (event.type === 'text_message_start') {
@@ -862,9 +865,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       isStreaming: false,
       isLoading: false,
       error: null,
-      browserFrame: undefined,
-      browserFrameFormat: undefined,
-      browserFrameUpdatedAt: undefined,
+      browserSessionId: undefined,
+      browserViewerUrl: undefined,
+      browserStreamUrl: undefined,
     });
   },
 
@@ -905,14 +908,6 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       }
 
       return newState;
-    });
-  },
-
-  clearBrowserFrame: () => {
-    set({
-      browserFrame: undefined,
-      browserFrameFormat: undefined,
-      browserFrameUpdatedAt: undefined,
     });
   },
 

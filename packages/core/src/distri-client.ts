@@ -21,7 +21,8 @@ import {
   AgentConfigWithTools,
   ThreadListParams,
   ThreadListResponse,
-  AgentUsageInfo
+  AgentUsageInfo,
+  BrowserSession
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -585,6 +586,33 @@ export class DistriClient {
   }
 
   /**
+   * Update an agent's definition (markdown only)
+   */
+  async updateAgent(agentId: string, update: { markdown: string }): Promise<AgentConfigWithTools> {
+    try {
+      const response = await this.fetch(`/agents/${agentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.config.headers,
+        },
+        body: JSON.stringify(update),
+      });
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Agent not found: ${agentId}`, 404);
+        }
+        throw new ApiError(`Failed to update agent: ${response.statusText}`, response.status);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to update agent ${agentId}`, 'UPDATE_ERROR', error);
+    }
+  }
+
+  /**
    * Get or create A2AClient for an agent
    */
   private getA2AClient(agentId: string): A2AClient {
@@ -729,6 +757,25 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch agents by usage', 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Create a new browser session
+   * Returns session info including viewer_url and stream_url from browsr
+   */
+  async createBrowserSession(): Promise<BrowserSession> {
+    try {
+      const response = await this.fetch('/browser/session', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new ApiError(`Failed to create browser session: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to create browser session', 'FETCH_ERROR', error);
     }
   }
 

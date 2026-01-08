@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -217,6 +217,18 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         },
       };
       return hookRequested;
+    }
+
+    case 'browser_session_started': {
+      const browserSessionStarted: BrowserSessionStartedEvent = {
+        type: 'browser_session_started',
+        data: {
+          session_id: metadata.session_id || '',
+          viewer_url: metadata.viewer_url,
+          stream_url: metadata.stream_url,
+        },
+      };
+      return browserSessionStarted;
     }
 
     default: {
