@@ -38,7 +38,6 @@ export function useAgent({
 
   // Initialize agent
   const initializeAgent = useCallback(async () => {
-    console.log('[useAgent] initializeAgent called', { hasClient: !!client, agentIdOrDef });
     if (!client || !agentIdOrDef) return;
 
     // Check if we need to create a new agent
@@ -56,17 +55,13 @@ export function useAgent({
     try {
       let newAgent: Agent;
       if (typeof agentIdOrDef === 'string') {
-        console.log('[useAgent] Fetching agent config for:', agentIdOrDef);
         // Fetch agent config from server and create Agent instance
         const agentConfig = await client.getAgent(agentIdOrDef);
         newAgent = new Agent(agentConfig, client);
       } else {
-        console.log('[useAgent] Using provided agent definition');
         // AgentDefinition passed directly - create Agent instance
         newAgent = new Agent(agentIdOrDef, client);
       }
-
-      console.log('[useAgent] Agent initialized successfully');
 
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
@@ -85,8 +80,6 @@ export function useAgent({
   React.useEffect(() => {
     if (!clientLoading && !clientError && client && enabled) {
       initializeAgent();
-    } else if (enabled) {
-      console.log('[useAgent] Waiting for client...', { clientLoading, clientError: !!clientError, hasClient: !!client });
     }
   }, [clientLoading, clientError, client, agentIdOrDef, initializeAgent, enabled]);
 

@@ -1,4 +1,8 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import 'codemirror/lib/codemirror.css';
+import 'codemirror/theme/material-darker.css';
+import 'codemirror/theme/eclipse.css';
+import 'codemirror/addon/display/placeholder';
 import { Send, Square, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
@@ -18,6 +22,8 @@ export interface AttachedImage {
   name: string;
 }
 
+const DARK_THEME = 'material-darker';
+const LIGHT_THEME = 'eclipse';
 export interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -39,6 +45,7 @@ export interface ChatInputProps {
   useSpeechRecognition?: boolean;
   onSpeechTranscript?: (text: string) => void;
   variant?: 'default' | 'hero';
+  theme?: 'light' | 'dark' | 'auto';
 }
 
 const CM_CSS = 'https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.css';
@@ -67,6 +74,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   useSpeechRecognition = false,
   onSpeechTranscript,
   variant = 'default',
+  theme = 'auto',
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const codeMirrorRef = useRef<any>(null);
@@ -136,11 +144,30 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [ensureCodeMirrorAssets]);
 
   useEffect(() => {
+    // If theme is explicitly set, use it directly
+    if (theme === 'light') {
+      setIsDarkMode(false);
+      return;
+    }
+    if (theme === 'dark') {
+      setIsDarkMode(true);
+      return;
+    }
+
+    // Auto mode: detect from DOM
     if (typeof window === 'undefined') return;
     const root = document.documentElement;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
 
     const update = () => {
+      const dataTheme = root.getAttribute('data-theme');
+      // Check data-theme attribute first (explicit theme setting)
+      if (dataTheme) {
+        const isDark = dataTheme.toLowerCase().includes('dark') || dataTheme === 'midnight';
+        setIsDarkMode(isDark);
+        return;
+      }
+      // Fallback to class or system preference
       const dark = root.classList.contains('dark') || media.matches;
       setIsDarkMode(dark);
     };
@@ -155,7 +182,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       media.removeEventListener('change', update);
       observer.disconnect();
     };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     if (!isCodeMirrorReady || !textareaRef.current || codeMirrorRef.current) {
@@ -169,22 +196,39 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     const cm = CodeMirror.fromTextArea(textareaRef.current, {
       lineWrapping: true,
-      theme: variant === 'hero' || isDarkMode ? 'material-darker' : 'default',
+      theme: variant === 'hero' || isDarkMode ? DARK_THEME : LIGHT_THEME,
       placeholder,
       viewportMargin: Infinity,
     });
 
     const wrapper = cm.getWrapperElement();
     const scroller = cm.getScrollerElement();
-    const heroWrapperClasses = [
-      'rounded-2xl', 'bg-transparent', 'text-foreground', 'text-base', 'leading-7'
-    ];
-    const defaultWrapperClasses = [
-      'rounded-2xl', 'bg-transparent', 'text-foreground', 'text-sm', 'leading-6'
-    ];
-    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1');
-    scroller.style.background = 'transparent';
-    scroller.style.padding = variant === 'hero' ? '0.25rem 0.5rem 0.5rem' : '0.25rem 0.35rem 0.5rem';
+    const darkBg = '#1c1f23';
+    const lightBg = '#f8f9fa';
+    const darkText = '#e0e0e0';
+    const lightText = '#1a1a1a';
+    const bgColor = isDarkMode ? darkBg : lightBg;
+    const textColor = isDarkMode ? darkText : lightText;
+    const shadowStyle = isDarkMode ? 'shadow-[0_14px_40px_rgba(0,0,0,0.35)]' : 'shadow-[0_4px_16px_rgba(0,0,0,0.1)]';
+    const borderStyle = isDarkMode ? 'border-transparent' : 'border-gray-200';
+    const baseWrapperClasses = ['rounded-2xl', 'border', borderStyle];
+    const heroWrapperClasses = [...baseWrapperClasses, 'text-base', 'leading-7'];
+    const defaultWrapperClasses = [...baseWrapperClasses, 'text-sm', 'leading-6'];
+    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1', shadowStyle);
+    wrapper.style.backgroundColor = bgColor;
+    wrapper.style.color = textColor;
+    scroller.style.background = bgColor;
+    scroller.style.color = textColor;
+    scroller.style.padding = variant === 'hero' ? '1rem 1.25rem 1.25rem' : '0.35rem 0.5rem 0.75rem';
+    // Set cursor and placeholder colors
+    const customStyles = document.createElement('style');
+    const placeholderColor = isDarkMode ? '#888' : '#999';
+    customStyles.textContent = `
+      .distri-chat-editor .CodeMirror-cursor { border-left-color: ${textColor} !important; }
+      .distri-chat-editor .CodeMirror-placeholder { color: ${placeholderColor} !important; }
+      .distri-chat-editor .CodeMirror-line span { color: ${textColor}; }
+    `;
+    wrapper.appendChild(customStyles);
     if (variant === 'hero') {
       wrapper.classList.add(...heroWrapperClasses);
     } else {
@@ -216,7 +260,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       cm.toTextArea();
       codeMirrorRef.current = null;
     };
-  }, [isDarkMode, isCodeMirrorReady, placeholder, variant]);
+  }, [isDarkMode, placeholder, variant]);
+
+  useEffect(() => {
+    if (!codeMirrorRef.current) return;
+    codeMirrorRef.current.setOption('theme', variant === 'hero' || isDarkMode ? DARK_THEME : LIGHT_THEME);
+    codeMirrorRef.current.setOption('placeholder', placeholder);
+  }, [isDarkMode, placeholder, variant]);
 
   useEffect(() => {
     valueRef.current = value;

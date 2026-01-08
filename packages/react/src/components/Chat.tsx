@@ -742,6 +742,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         onSpeechTranscript={handleSpeechTranscript}
         className={className}
         variant={variant}
+        theme={theme}
       />
     );
   }, [
@@ -767,6 +768,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     handleSpeechTranscript,
     showEmptyState,
     emptyState,
+    theme,
   ]);
 
   const emptyStateComposer = useMemo(() => {

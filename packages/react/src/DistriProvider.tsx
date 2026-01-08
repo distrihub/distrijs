@@ -17,7 +17,7 @@ export const DistriContext = createContext<DistriContextValue>({
 });
 
 interface DistriProviderProps {
-  config: DistriClientConfig;
+  config: DistriClientConfig & { authReady?: boolean };
   children: ReactNode;
   defaultTheme?: 'dark' | 'light' | 'system';
 }
@@ -26,16 +26,17 @@ interface DistriProviderProps {
  * Inner component to synchronize client with auth state
  */
 function DistriProviderInner({ config, children }: DistriProviderProps) {
-  const { token, status, error: authError, requestAuth } = useDistriAuth();
+  const { token, error: authError, requestAuth } = useDistriAuth();
   const [client, setClient] = useState<DistriClient | null>(null);
   const [initError, setInitError] = useState<Error | null>(null);
 
-  // Initialize client once
+  // authReady defaults to true if not provided (backwards compatible)
+  const authReady = config.authReady !== false;
+
+  // Initialize client only when authReady is true
   useEffect(() => {
     try {
-      if (!client) {
-        if (config.debug) console.log('[DistriProvider] Initializing client');
-
+      if (!client && authReady) {
         const currentClient = new DistriClient({
           ...config,
           accessToken: token || config.accessToken,
@@ -48,16 +49,15 @@ function DistriProviderInner({ config, children }: DistriProviderProps) {
       console.error('[DistriProvider] Failed to initialize client:', err);
       setInitError(err instanceof Error ? err : new Error('Failed to initialize client'));
     }
-  }, [config, client, requestAuth, token]);
+  }, [config, client, requestAuth, token, authReady]);
 
   const contextValue: DistriContextValue = useMemo(() => ({
     client,
     error: initError || (authError ? new Error(authError) : null),
-    // We are loading only if the client isn't ready. 
-    // Auth status is handled by AuthLoading guardian in UI.
-    isLoading: !client,
+    // We are loading if the client isn't ready OR authReady is false
+    isLoading: !client || !authReady,
     token,
-  }), [client, initError, authError, status, token]);
+  }), [client, initError, authError, authReady, token]);
 
   return (
     <DistriContext.Provider value={contextValue}>

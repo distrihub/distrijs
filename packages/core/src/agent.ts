@@ -232,6 +232,10 @@ export class Agent {
     if (!toolConfig?.external || !Array.isArray(toolConfig.external)) {
       return [];
     }
+    // Wildcard "*" means accept any external tools - no specific tools required
+    if (toolConfig.external.includes('*')) {
+      return [];
+    }
     return toolConfig.external.filter((tool) => typeof tool === 'string' && tool.trim().length > 0);
   }
 
