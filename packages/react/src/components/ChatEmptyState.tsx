@@ -55,15 +55,20 @@ export const DefaultChatEmptyState: React.FC<DefaultChatEmptyStateProps> = ({ co
 
   const handleStarterClick = (starter: ChatEmptyStateStarter) => {
     const prompt = starter.prompt ?? starter.label;
+    console.log('[ChatEmptyState] Starter clicked:', { label: starter.label, prompt, autoSend: starter.autoSend });
+
     controller.setInput(prompt);
 
     const shouldSubmit = starter.autoSend ?? options?.autoSendOnStarterClick ?? true;
+    console.log('[ChatEmptyState] Should submit:', shouldSubmit);
+
     if (!shouldSubmit) {
       return;
     }
 
-    void controller.submit(prompt).catch(() => {
-      // Errors surface through Chat onError; nothing to do here.
+    console.log('[ChatEmptyState] Submitting prompt:', prompt);
+    void controller.submit(prompt).catch((err) => {
+      console.error('[ChatEmptyState] Submit error:', err);
     });
   };
 
@@ -77,12 +82,16 @@ export const DefaultChatEmptyState: React.FC<DefaultChatEmptyStateProps> = ({ co
         type="button"
         variant={variant}
         size="sm"
-        className={`h-auto whitespace-normal rounded-lg border-border/50 bg-background text-left text-sm font-normal hover:border-primary/40 hover:bg-primary/5 transition-all ${
+        className={`h-auto whitespace-normal rounded-lg border-border/50 bg-background text-left text-sm font-normal hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer select-none ${
           isGrid
             ? 'flex-col items-center justify-center p-4 gap-2'
             : 'justify-start px-3 py-3'
         }`}
-        onClick={() => handleStarterClick(starter)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleStarterClick(starter);
+        }}
         disabled={disabled}
       >
         {starter.icon && (

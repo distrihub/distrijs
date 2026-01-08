@@ -1,19 +1,14 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import CodeMirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/material-darker.css';
 import 'codemirror/theme/eclipse.css';
 import 'codemirror/addon/display/placeholder';
-import { Send, Square, X, Mic, MicOff, Radio, Plus, Globe } from 'lucide-react';
+import { Send, Square, X, Mic, MicOff, Radio, Globe, ImagePlus } from 'lucide-react';
+
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
 import { cn } from '../lib/utils';
-
-declare global {
-  interface Window {
-    CodeMirror?: any;
-    __distriCodeMirrorLoader?: Promise<void>;
-  }
-}
 
 export interface AttachedImage {
   id: string;
@@ -30,6 +25,8 @@ export interface ChatInputProps {
   onSend: (content: string | DistriPart[]) => void;
   onStop?: () => void;
   browserEnabled?: boolean;
+  /** Whether browser has an active session (used for highlighting) */
+  browserHasSession?: boolean;
   onToggleBrowser?: (enabled: boolean) => void;
   placeholder?: string;
   disabled?: boolean;
@@ -48,11 +45,6 @@ export interface ChatInputProps {
   theme?: 'light' | 'dark' | 'auto';
 }
 
-const CM_CSS = 'https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.css';
-const CM_THEME = 'https://cdn.jsdelivr.net/npm/codemirror@5/theme/material-darker.min.css';
-const CM_JS = 'https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.js';
-const CM_PLACEHOLDER = 'https://cdn.jsdelivr.net/npm/codemirror@5/addon/display/placeholder.min.js';
-
 export const ChatInput: React.FC<ChatInputProps> = ({
   value,
   onChange,
@@ -62,6 +54,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   disabled = false,
   isStreaming = false,
   browserEnabled = false,
+  browserHasSession = false,
   onToggleBrowser,
   className = '',
   attachedImages,
@@ -85,63 +78,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [isCodeMirrorReady, setIsCodeMirrorReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const imageAttachments = useMemo(() => attachedImages ?? [], [attachedImages]);
-
-  const ensureCodeMirrorAssets = useCallback(async () => {
-    if (typeof window === 'undefined' || window.CodeMirror) {
-      setIsCodeMirrorReady(!!window.CodeMirror);
-      return;
-    }
-
-    if (!window.__distriCodeMirrorLoader) {
-      window.__distriCodeMirrorLoader = (async () => {
-        const loadCss = (href: string) => new Promise<void>((resolve, reject) => {
-          if (document.querySelector(`link[href="${href}"]`)) {
-            resolve();
-            return;
-          }
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = href;
-          link.onload = () => resolve();
-          link.onerror = reject;
-          document.head.appendChild(link);
-        });
-
-        const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
-          if (document.querySelector(`script[src="${src}"]`)) {
-            resolve();
-            return;
-          }
-          const script = document.createElement('script');
-          script.src = src;
-          script.async = true;
-          script.onload = () => resolve();
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-
-        await loadCss(CM_CSS);
-        await loadCss(CM_THEME);
-        await loadScript(CM_JS);
-        await loadScript(CM_PLACEHOLDER);
-      })();
-    }
-
-    try {
-      await window.__distriCodeMirrorLoader;
-    } catch (error) {
-      console.error('Failed to load CodeMirror assets', error);
-    }
-
-    setIsCodeMirrorReady(!!window.CodeMirror);
-  }, []);
-
-  useEffect(() => {
-    void ensureCodeMirrorAssets();
-  }, [ensureCodeMirrorAssets]);
 
   useEffect(() => {
     // If theme is explicitly set, use it directly
@@ -185,18 +123,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [theme]);
 
   useEffect(() => {
-    if (!isCodeMirrorReady || !textareaRef.current || codeMirrorRef.current) {
-      return;
-    }
-
-    const CodeMirror = window.CodeMirror;
-    if (!CodeMirror) {
+    if (!textareaRef.current || codeMirrorRef.current) {
       return;
     }
 
     const cm = CodeMirror.fromTextArea(textareaRef.current, {
       lineWrapping: true,
-      theme: variant === 'hero' || isDarkMode ? DARK_THEME : LIGHT_THEME,
+      theme: variant === 'hero' || isDarkMode ? 'material-darker' : 'eclipse',
       placeholder,
       viewportMargin: Infinity,
     });
@@ -420,16 +353,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const hasContent = value.trim().length > 0 || imageAttachments.length > 0;
   const isDisabled = disabled;
 
-  const shellClass = 'rounded-3xl p-[1px] bg-gradient-to-r from-primary/40 via-primary/20 to-primary/40';
+  const shellClass = 'rounded-3xl p-[1px] bg-gradient-to-r from-border/60 via-border/30 to-border/60 dark:from-primary/40 dark:via-primary/20 dark:to-primary/40';
   const innerShell = cn(
-    'rounded-3xl bg-card px-5 py-4 flex flex-col shadow-lg shadow-primary/5',
+    'rounded-3xl bg-background border border-border/50 px-5 py-4 flex flex-col shadow-sm dark:shadow-lg dark:shadow-primary/5 dark:border-0',
     variant === 'hero' && 'sm:px-6 sm:py-5'
   );
   const wrapperClass = 'mx-0 sm:mx-1';
   const previewClass = 'gap-2 mb-2';
-  const toolbarButton = 'flex h-9 w-9 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
+  const toolbarButton = 'flex h-9 w-9 items-center justify-center rounded-full bg-muted/30 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground dark:bg-muted/50';
   const toolbarButtonActive = 'bg-primary/20 text-primary';
-  const subtleTextClass = variant === 'hero' ? 'text-base leading-7' : 'text-sm leading-6';
 
   return (
     <div className={cn('relative w-full', className)}>
@@ -468,38 +400,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 placeholder={placeholder}
                 rows={variant === 'hero' ? 4 : 2}
                 disabled={disabled}
-                className="absolute inset-0 h-full w-full resize-none bg-transparent text-transparent caret-transparent opacity-0"
               />
-
-              {!isCodeMirrorReady && (
-                <textarea
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                  placeholder={placeholder}
-                  rows={variant === 'hero' ? 4 : 2}
-                  disabled={disabled}
-                  className={cn('w-full resize-none bg-transparent outline-none border-none placeholder:text-muted-foreground/60 text-foreground', subtleTextClass)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                />
-              )}
             </div>
 
             <div className="flex items-center justify-between pt-4">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBrowserToggle}
-                  className={cn(toolbarButton, browserEnabled && toolbarButtonActive)}
-                  disabled={disabled || !onToggleBrowser}
-                  title={browserEnabled ? 'Browser streaming enabled' : 'Enable browser streaming'}
-                >
-                  <Globe className="h-4 w-4" />
-                </button>
+                {onToggleBrowser && (
+                  <button
+                    type="button"
+                    onClick={handleBrowserToggle}
+                    className={cn(toolbarButton, browserEnabled && browserHasSession && toolbarButtonActive)}
+                    disabled={disabled}
+                    title={browserEnabled ? (browserHasSession ? 'Browser session active' : 'Browser enabled (click to disable)') : 'Enable browser'}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -507,7 +423,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   disabled={disabled}
                   title="Attach image"
                 >
-                  <Plus className="h-4 w-4" />
+                  <ImagePlus className="h-4 w-4" />
                 </button>
 
                 {voiceEnabled && !useSpeechRecognition ? (

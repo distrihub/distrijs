@@ -17,6 +17,21 @@ export const DistriContext = createContext<DistriContextValue>({
 });
 
 interface DistriProviderProps {
+  /**
+   * Distri client config. Include `authReady: false` while waiting for auth token.
+   * When authReady is false, isLoading will be true and hooks will wait.
+   * Defaults to true (auth is ready).
+   *
+   * @example
+   * const [token, setToken] = useState<string | null>(null);
+   * useEffect(() => { fetchToken().then(setToken); }, []);
+   *
+   * <DistriProvider config={{
+   *   baseUrl: '...',
+   *   accessToken: token,
+   *   authReady: token !== null
+   * }} />
+   */
   config: DistriClientConfig & { authReady?: boolean };
   children: ReactNode;
   defaultTheme?: 'dark' | 'light' | 'system';
@@ -25,13 +40,11 @@ interface DistriProviderProps {
 /**
  * Inner component to synchronize client with auth state
  */
-function DistriProviderInner({ config, children }: DistriProviderProps) {
-  const { token, error: authError, requestAuth } = useDistriAuth();
+function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'authReady'>) {
+  const authReady = config.authReady ?? true;
+  const { token, status, error: authError, requestAuth } = useDistriAuth();
   const [client, setClient] = useState<DistriClient | null>(null);
   const [initError, setInitError] = useState<Error | null>(null);
-
-  // authReady defaults to true if not provided (backwards compatible)
-  const authReady = config.authReady !== false;
 
   // Initialize client only when authReady is true
   useEffect(() => {
@@ -51,13 +64,19 @@ function DistriProviderInner({ config, children }: DistriProviderProps) {
     }
   }, [config, client, requestAuth, token, authReady]);
 
+  // Determine if we're still loading:
+  // - Client not created yet
+  // - Auth is in progress (status is 'loading')
+  // - External authReady flag is false (waiting for backend token)
+  const isAuthInProgress = status === 'loading';
+  const isLoading = !client || isAuthInProgress || !authReady;
+
   const contextValue: DistriContextValue = useMemo(() => ({
     client,
     error: initError || (authError ? new Error(authError) : null),
-    // We are loading if the client isn't ready OR authReady is false
-    isLoading: !client || !authReady,
+    isLoading,
     token,
-  }), [client, initError, authError, authReady, token]);
+  }), [client, initError, authError, isLoading, token]);
 
   return (
     <DistriContext.Provider value={contextValue}>

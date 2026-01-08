@@ -12,10 +12,10 @@ import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap } from '@/types';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
-import { BrowserPreviewPanel } from './BrowserPreviewPanel';
 import { useAgent } from '../useAgent';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { AuthLoading } from './AuthLoading';
+import { useDistri } from '../DistriProvider';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
 export type { LoadingAnimationConfig, LoadingAnimationPreset } from './renderers/LoadingAnimation';
 
@@ -178,9 +178,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const [streamingTranscript, setStreamingTranscript] = useState('');
   const [audioChunks, setAudioChunks] = useState<Uint8Array[]>([]);
   const [browserEnabled, setBrowserEnabled] = useState(false);
-  const browserFrame = useChatStateStore(state => state.browserFrame);
-  const browserFrameUpdatedAt = useChatStateStore(state => state.browserFrameUpdatedAt);
-  const clearBrowserFrame = useChatStateStore(state => state.clearBrowserFrame);
+  const browserViewerUrl = useChatStateStore(state => state.browserViewerUrl);
   const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
   const supportsBrowserStreaming = allowBrowserPreview && Boolean(agentDefinition?.browser_config);
   const browserAgentIdRef = useRef<string | undefined>(undefined);
@@ -191,7 +189,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     if (!agentDefinition || !supportsBrowserStreaming) {
       setBrowserEnabled(false);
       browserAgentIdRef.current = agentId;
-      clearBrowserFrame();
       return;
     }
 
@@ -199,11 +196,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       browserAgentIdRef.current = agentId;
       const defaultEnabled = agentDefinition.browser_config?.enabled ?? false;
       setBrowserEnabled(defaultEnabled);
-      if (!defaultEnabled) {
-        clearBrowserFrame();
-      }
+
     }
-  }, [agentDefinition, supportsBrowserStreaming, clearBrowserFrame]);
+  }, [agentDefinition, supportsBrowserStreaming]);
 
   useEffect(() => {
     if (typeof initialInput === 'string' && initialInput !== initialInputRef.current) {
@@ -212,6 +207,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     }
   }, [initialInput]);
 
+
+  const browserSessionId = useChatStateStore(state => state.browserSessionId);
 
   const mergedMetadataProvider = useCallback(async () => {
     const baseMetadata = (await getMetadataProp?.()) ?? {};
@@ -224,8 +221,10 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     return {
       ...baseMetadata,
       definition_overrides: overrides,
+      // Include browser_session_id if we have one so browsr reuses the same session
+      ...(browserSessionId ? { browser_session_id: browserSessionId } : {}),
     };
-  }, [browserEnabled, getMetadataProp, supportsBrowserStreaming]);
+  }, [browserEnabled, browserSessionId, getMetadataProp, supportsBrowserStreaming]);
 
   const {
     sendMessage,
@@ -245,17 +244,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     initialMessages,
     beforeSendMessage,
   });
-  console.log('[ChatInner] useChat state:', { isStreaming, isLoading, error, messagesLength: messages.length });
-
-  const browserTimestampLabel = useMemo(() => {
-    if (!browserFrameUpdatedAt) return null;
-    try {
-      const date = new Date(browserFrameUpdatedAt);
-      return date.toLocaleTimeString();
-    } catch {
-      return null;
-    }
-  }, [browserFrameUpdatedAt]);
 
   // Merge starterCommands with emptyState categories
   const emptyState = useMemo<ChatEmptyStateOptions | undefined>(() => {
@@ -294,13 +282,23 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     }
   }, [currentState, onChatStateChange]);
 
-  const handleToggleBrowser = useCallback((enabled: boolean) => {
+  // Get distri client for browser session creation
+  const { client: distriClient } = useDistri();
+
+  const handleToggleBrowser = useCallback(async (enabled: boolean) => {
     if (!supportsBrowserStreaming) return;
     setBrowserEnabled(enabled);
-    if (!enabled) {
-      clearBrowserFrame();
+
+    // When enabling browser, create a session immediately
+    if (enabled && !browserSessionId && distriClient) {
+      try {
+        const session = await distriClient.createBrowserSession();
+        useChatStateStore.getState().setBrowserSession(session.session_id, session.viewer_url);
+      } catch (err) {
+        console.error('Failed to create browser session:', err);
+      }
     }
-  }, [supportsBrowserStreaming, clearBrowserFrame]);
+  }, [supportsBrowserStreaming, browserSessionId, distriClient]);
 
 
   // Image upload functions moved from ChatInput
@@ -690,10 +688,13 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const showEmptyState = messages.length === 0 && !isLoading && !error;
 
   const submitFromEmptyState = useCallback(async (value?: string | DistriPart[]) => {
+    console.log('[Chat] submitFromEmptyState called with:', value);
     if (typeof value === 'string' || Array.isArray(value)) {
+      console.log('[Chat] Sending message:', value);
       await handleSendMessage(value);
       return;
     }
+    console.log('[Chat] Sending input:', input);
     await handleSendMessage(input);
   }, [handleSendMessage, input]);
 
@@ -721,6 +722,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         onSend={handleSendMessage}
         onStop={handleStopStreaming}
         browserEnabled={supportsBrowserStreaming && browserEnabled}
+        browserHasSession={Boolean(browserSessionId)}
         onToggleBrowser={supportsBrowserStreaming ? handleToggleBrowser : undefined}
         placeholder={
           isStreamingVoice
@@ -751,6 +753,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     handleSendMessage,
     handleStopStreaming,
     browserEnabled,
+    browserSessionId,
     supportsBrowserStreaming,
     handleToggleBrowser,
     isStreamingVoice,
@@ -807,7 +810,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const footerHasContent = shouldRenderFooterComposer
     || (models && models.length > 0)
     || (voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript));
-  const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserFrame);
+  const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserViewerUrl);
 
 
   // Render thinking indicator separately at the end
@@ -920,7 +923,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       <div className="flex-1 overflow-y-auto bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground dark:selection:bg-primary/40">
         <div
           className="mx-auto w-full px-2 sm:px-4 py-4 text-sm space-y-4"
-          style={maxWidth ? { maxWidth, width: '100%', boxSizing: 'border-box' } : undefined}
+          style={{ maxWidth: maxWidth || '768px', width: '100%', boxSizing: 'border-box' }}
         >
           {error && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
@@ -948,13 +951,17 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               <div ref={messagesEndRef} />
             </div>
 
-            {showBrowserPreview && browserFrame && (
+            {showBrowserPreview && browserViewerUrl && (
               <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
                 <div className="lg:sticky lg:top-4 space-y-3">
-                  <BrowserPreviewPanel
-                    frameSrc={browserFrame}
-                    timestampLabel={browserTimestampLabel}
-                  />
+                  <div className="overflow-hidden rounded-xl border border-border/40 bg-background">
+                    <iframe
+                      src={browserViewerUrl}
+                      className="h-[400px] w-full border-0"
+                      title="Browser Viewer"
+                      sandbox="allow-scripts allow-same-origin allow-forms"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -971,7 +978,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 ">
           <div
             className="mx-auto w-full px-4 py-3 sm:py-4 space-y-3"
-            style={maxWidth ? { maxWidth } : undefined}
+            style={{ maxWidth: maxWidth || '768px' }}
           >
 
             {models && models.length > 0 && (
@@ -1027,7 +1034,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 });
 
 // Container component that handles loading and error states
-import { useDistri } from '../DistriProvider';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export interface ChatContainerProps extends ChatProps { }
@@ -1047,54 +1053,27 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, ...props },
   ref
 ) {
-  const { isLoading: clientLoading, client } = useDistri();
+  const { isLoading: clientLoading } = useDistri();
 
-  useEffect(() => {
-    console.log('[ChatContainer] State:', {
-      clientLoading,
-      hasClient: !!client,
-      agentId,
-      agentProp: !!agentProp,
-      enableHistory,
-      threadId
-    });
-  }, [clientLoading, client, agentId, agentProp, enableHistory, threadId]);
 
   // Fetch agent if agentId is provided but agentProp is not
-  const { agent: fetchedAgent, loading: agentLoading, error: agentError } = useAgent({
+  const { agent: fetchedAgent, loading: agentLoading } = useAgent({
     agentIdOrDef: agentId || '',
     enabled: !agentProp && !!agentId
   });
 
-  useEffect(() => {
-    console.log('[ChatContainer] Agent Fetch:', {
-      agentLoading,
-      hasAgent: !!(agentProp || fetchedAgent),
-      agentError: agentError?.message
-    });
-  }, [agentLoading, agentProp, fetchedAgent, agentError]);
-
   const agent = agentProp || fetchedAgent;
 
   // Fetch history if enableHistory is true
-  const { messages: fetchedMessages, isLoading: historyLoading, error: historyError } = useChatMessages({
+  const { messages: fetchedMessages, isLoading: historyLoading } = useChatMessages({
     threadId,
     enabled: !!enableHistory && !initialMessagesProp && !!threadId
   });
-
-  useEffect(() => {
-    console.log('[ChatContainer] History Fetch:', {
-      historyLoading,
-      hasMessages: !!(initialMessagesProp || fetchedMessages),
-      historyError: historyError?.message
-    });
-  }, [historyLoading, initialMessagesProp, fetchedMessages, historyError]);
 
   const initialMessages = initialMessagesProp || fetchedMessages;
 
   // Loading state - client, agent or history is initializing
   if (clientLoading || agentLoading || (enableHistory && historyLoading)) {
-    console.log('[ChatContainer] Rendering Loading State:', { clientLoading, agentLoading, historyLoading, enableHistory });
     return (
       <div className={`flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />

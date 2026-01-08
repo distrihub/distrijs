@@ -163,6 +163,15 @@ export interface BrowserScreenshotEvent {
   };
 }
 
+export interface BrowserSessionStartedEvent {
+  type: 'browser_session_started';
+  data: {
+    session_id: string;
+    viewer_url?: string;
+    stream_url?: string;
+  };
+}
+
 export interface InlineHookRequestedEvent {
   type: 'inline_hook_requested';
   data: {
@@ -203,4 +212,5 @@ export type DistriEvent =
   | ToolCallsEvent
   | ToolResultsEvent
   | BrowserScreenshotEvent
+  | BrowserSessionStartedEvent
   | InlineHookRequestedEvent;

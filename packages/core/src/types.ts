@@ -457,6 +457,17 @@ export interface AgentDefinition {
 
   browser_config?: BrowserAgentConfig;
 
+  /** Agent usage statistics */
+  stats?: AgentStats;
+}
+
+/**
+ * Agent usage statistics
+ */
+export interface AgentStats {
+  thread_count: number;
+  sub_agent_usage_count: number;
+  last_used_at?: string | null;
 }
 
 export interface BrowserAgentConfig {
@@ -570,6 +581,16 @@ export interface AgentUsageInfo {
   agent_id: string;
   agent_name: string;
   thread_count: number;
+}
+
+/**
+ * Browser session info returned when creating a session
+ */
+export interface BrowserSession {
+  session_id: string;
+  viewer_url?: string;
+  stream_url?: string;
+  frame_token?: string;
 }
 
 export interface ChatProps {
