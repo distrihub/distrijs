@@ -922,7 +922,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground dark:selection:bg-primary/40">
         <div
-          className="mx-auto w-full px-2 sm:px-4 py-4 text-sm space-y-4"
+          className="mx-auto w-full px-2 py-4 text-sm space-y-4"
           style={{ maxWidth: maxWidth || '768px', width: '100%', boxSizing: 'border-box' }}
         >
           {error && (

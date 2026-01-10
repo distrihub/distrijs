@@ -1,10 +1,8 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import CodeMirror from 'codemirror';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/theme/material-darker.css';
-import 'codemirror/theme/eclipse.css';
-import 'codemirror/addon/display/placeholder';
-import { Send, Square, X, Mic, MicOff, Radio, Globe, ImagePlus } from 'lucide-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import { Send, Square, X, Mic, MicOff, Radio, Globe, Plus } from 'lucide-react';
 
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
@@ -17,15 +15,12 @@ export interface AttachedImage {
   name: string;
 }
 
-const DARK_THEME = 'material-darker';
-const LIGHT_THEME = 'eclipse';
 export interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: (content: string | DistriPart[]) => void;
   onStop?: () => void;
   browserEnabled?: boolean;
-  /** Whether browser has an active session (used for highlighting) */
   browserHasSession?: boolean;
   onToggleBrowser?: (enabled: boolean) => void;
   placeholder?: string;
@@ -69,149 +64,63 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   variant = 'default',
   theme = 'auto',
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const codeMirrorRef = useRef<any>(null);
-  const valueRef = useRef(value);
-  const onChangeRef = useRef(onChange);
-  const handleSendRef = useRef<() => void>(() => { });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const imageAttachments = useMemo(() => attachedImages ?? [], [attachedImages]);
+  const onChangeRef = useRef(onChange);
+  const handleSendRef = useRef<() => void>(() => {});
 
+  const isDarkMode = theme === 'dark';
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+        bulletList: false,
+        orderedList: false,
+        blockquote: false,
+        codeBlock: false,
+        horizontalRule: false,
+      }),
+      Placeholder.configure({
+        placeholder,
+        emptyEditorClass: 'is-editor-empty',
+      }),
+    ],
+    content: value,
+    editable: !disabled,
+    onUpdate: ({ editor }) => {
+      const text = editor.getText();
+      onChangeRef.current(text);
+    },
+    editorProps: {
+      attributes: {
+        class: 'distri-editor-content outline-none min-h-[1.5em]',
+      },
+      handleKeyDown: (_view, event) => {
+        if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+          event.preventDefault();
+          handleSendRef.current();
+          return true;
+        }
+        return false;
+      },
+    },
+  });
+
+  // Sync value changes from parent
   useEffect(() => {
-    // If theme is explicitly set, use it directly
-    if (theme === 'light') {
-      setIsDarkMode(false);
-      return;
+    if (editor && editor.getText() !== value) {
+      editor.commands.setContent(value || '');
     }
-    if (theme === 'dark') {
-      setIsDarkMode(true);
-      return;
-    }
+  }, [value, editor]);
 
-    // Auto mode: detect from DOM
-    if (typeof window === 'undefined') return;
-    const root = document.documentElement;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const update = () => {
-      const dataTheme = root.getAttribute('data-theme');
-      // Check data-theme attribute first (explicit theme setting)
-      if (dataTheme) {
-        const isDark = dataTheme.toLowerCase().includes('dark') || dataTheme === 'midnight';
-        setIsDarkMode(isDark);
-        return;
-      }
-      // Fallback to class or system preference
-      const dark = root.classList.contains('dark') || media.matches;
-      setIsDarkMode(dark);
-    };
-
-    update();
-
-    media.addEventListener('change', update);
-    const observer = new MutationObserver(update);
-    observer.observe(root, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-
-    return () => {
-      media.removeEventListener('change', update);
-      observer.disconnect();
-    };
-  }, [theme]);
-
+  // Update refs
   useEffect(() => {
-    if (!textareaRef.current || codeMirrorRef.current) {
-      return;
-    }
-
-    const cm = CodeMirror.fromTextArea(textareaRef.current, {
-      lineWrapping: true,
-      theme: variant === 'hero' || isDarkMode ? 'material-darker' : 'eclipse',
-      placeholder,
-      viewportMargin: Infinity,
-    });
-
-    const wrapper = cm.getWrapperElement();
-    const scroller = cm.getScrollerElement();
-    const darkBg = '#1c1f23';
-    const lightBg = '#f8f9fa';
-    const darkText = '#e0e0e0';
-    const lightText = '#1a1a1a';
-    const bgColor = isDarkMode ? darkBg : lightBg;
-    const textColor = isDarkMode ? darkText : lightText;
-    const shadowStyle = isDarkMode ? 'shadow-[0_14px_40px_rgba(0,0,0,0.35)]' : 'shadow-[0_4px_16px_rgba(0,0,0,0.1)]';
-    const borderStyle = isDarkMode ? 'border-transparent' : 'border-gray-200';
-    const baseWrapperClasses = ['rounded-2xl', 'border', borderStyle];
-    const heroWrapperClasses = [...baseWrapperClasses, 'text-base', 'leading-7'];
-    const defaultWrapperClasses = [...baseWrapperClasses, 'text-sm', 'leading-6'];
-    wrapper.classList.add('distri-chat-editor', 'px-1', 'py-1', shadowStyle);
-    wrapper.style.backgroundColor = bgColor;
-    wrapper.style.color = textColor;
-    scroller.style.background = bgColor;
-    scroller.style.color = textColor;
-    scroller.style.padding = variant === 'hero' ? '1rem 1.25rem 1.25rem' : '0.35rem 0.5rem 0.75rem';
-    // Set cursor and placeholder colors
-    const customStyles = document.createElement('style');
-    const placeholderColor = isDarkMode ? '#888' : '#999';
-    customStyles.textContent = `
-      .distri-chat-editor .CodeMirror-cursor { border-left-color: ${textColor} !important; }
-      .distri-chat-editor .CodeMirror-placeholder { color: ${placeholderColor} !important; }
-      .distri-chat-editor .CodeMirror-line span { color: ${textColor}; }
-    `;
-    wrapper.appendChild(customStyles);
-    if (variant === 'hero') {
-      wrapper.classList.add(...heroWrapperClasses);
-    } else {
-      wrapper.classList.add(...defaultWrapperClasses);
-    }
-
-    const initialValue = textareaRef.current?.value ?? '';
-    cm.setValue(initialValue);
-
-    cm.on('change', (instance: any) => {
-      const nextValue = instance.getValue();
-      if (nextValue !== valueRef.current) {
-        onChangeRef.current(nextValue);
-      }
-    });
-
-    cm.on('keydown', (_instance: any, event: KeyboardEvent) => {
-      if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-        event.preventDefault();
-        void handleSendRef.current();
-      }
-    });
-
-    const fixedHeight = variant === 'hero' ? '220px' : '140px';
-    cm.setSize('100%', fixedHeight);
-
-    codeMirrorRef.current = cm;
-    return () => {
-      cm.toTextArea();
-      codeMirrorRef.current = null;
-    };
-  }, [isDarkMode, placeholder, variant]);
-
-  useEffect(() => {
-    if (!codeMirrorRef.current) return;
-    codeMirrorRef.current.setOption('theme', variant === 'hero' || isDarkMode ? DARK_THEME : LIGHT_THEME);
-    codeMirrorRef.current.setOption('placeholder', placeholder);
-  }, [isDarkMode, placeholder, variant]);
-
-  useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
-
-  useEffect(() => {
-    if (codeMirrorRef.current && codeMirrorRef.current.getValue() !== value) {
-      const cursor = codeMirrorRef.current.getCursor();
-      codeMirrorRef.current.setValue(value);
-      codeMirrorRef.current.setCursor(cursor);
-    }
-  }, [value]);
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const convertFileToBase64 = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -331,10 +240,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         onSend(value);
       }
       onChange('');
+      editor?.commands.clearContent();
     } catch (error) {
       console.error('Error processing images:', error);
     }
-  }, [value, imageAttachments, disabled, isStreaming, onSend, onChange, convertFileToBase64]);
+  }, [value, imageAttachments, disabled, isStreaming, onSend, onChange, convertFileToBase64, editor]);
 
   const handleStop = () => {
     if (isStreaming && onStop) {
@@ -343,79 +253,96 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
-
-  useEffect(() => {
     handleSendRef.current = handleSend;
   }, [handleSend]);
 
   const hasContent = value.trim().length > 0 || imageAttachments.length > 0;
   const isDisabled = disabled;
 
-  const shellClass = 'rounded-3xl p-[1px] bg-gradient-to-r from-border/60 via-border/30 to-border/60 dark:from-primary/40 dark:via-primary/20 dark:to-primary/40';
-  const innerShell = cn(
-    'rounded-3xl bg-background border border-border/50 px-5 py-4 flex flex-col shadow-sm dark:shadow-lg dark:shadow-primary/5 dark:border-0',
-    variant === 'hero' && 'sm:px-6 sm:py-5'
+  const isHero = variant === 'hero';
+  const editorHeight = isHero ? 'min-h-[180px]' : 'min-h-[100px]';
+
+  const toolbarButton = cn(
+    'flex h-10 w-10 items-center justify-center rounded-full transition-colors',
+    isDarkMode
+      ? 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+      : 'bg-black/5 text-black/60 hover:bg-black/10 hover:text-black'
   );
-  const wrapperClass = 'mx-0 sm:mx-1';
-  const previewClass = 'gap-2 mb-2';
-  const toolbarButton = 'flex h-9 w-9 items-center justify-center rounded-full bg-muted/30 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground dark:bg-muted/50';
-  const toolbarButtonActive = 'bg-primary/20 text-primary';
+  const toolbarButtonActive = isDarkMode
+    ? 'bg-[var(--distri-accent,#3b82f6)]/30 text-[var(--distri-accent,#3b82f6)]'
+    : 'bg-[var(--distri-accent,#3b82f6)]/20 text-[var(--distri-accent,#3b82f6)]';
 
   return (
     <div className={cn('relative w-full', className)}>
       <div className="flex flex-col w-full">
+        {/* Image previews */}
         {imageAttachments.length > 0 && (
-          <div className={cn('flex flex-wrap', previewClass, wrapperClass)}>
+          <div className="flex flex-wrap gap-2 mb-2 mx-1">
             {imageAttachments.map((image) => (
               <div key={image.id} className="relative group">
                 <img
                   src={image.preview}
                   alt={image.name}
-                  className="w-16 h-16 object-cover rounded-lg border border-primary/20 bg-background/60"
+                  className={cn(
+                    'w-16 h-16 object-cover rounded-lg border',
+                    isDarkMode ? 'border-white/20' : 'border-black/10'
+                  )}
                 />
                 <button
                   type="button"
                   onClick={() => onRemoveImage?.(image.id)}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                 >
                   <X className="w-3 h-3" />
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg truncate">
-                  {image.name}
-                </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className={cn(wrapperClass, shellClass)}>
-          <div className={innerShell}>
-            <div className="relative">
-              <textarea
-                ref={textareaRef}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                rows={variant === 'hero' ? 4 : 2}
-                disabled={disabled}
+        {/* Main input container with gradient border */}
+        <div
+          className={cn(
+            'distri-chat-input-wrapper rounded-2xl',
+            isDarkMode
+              ? 'p-[1px] bg-gradient-to-r from-[var(--distri-accent,#3b82f6)]/60 via-[var(--distri-accent,#3b82f6)]/30 to-[var(--distri-accent,#3b82f6)]/60'
+              : 'border border-gray-200 shadow-sm'
+          )}
+        >
+          <div
+            className={cn(
+              'distri-chat-input rounded-2xl flex flex-col',
+              isDarkMode ? 'bg-[#0d0d0d]' : 'bg-white'
+            )}
+          >
+            {/* Editor area */}
+            <div className={cn('px-4 pt-4 pb-2', editorHeight)}>
+              <EditorContent
+                editor={editor}
+                className={cn(
+                  'distri-editor w-full h-full',
+                  isDarkMode ? 'text-white/90' : 'text-gray-900',
+                  '[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+                  '[&_.is-editor-empty:first-child::before]:float-left',
+                  '[&_.is-editor-empty:first-child::before]:h-0',
+                  '[&_.is-editor-empty:first-child::before]:pointer-events-none',
+                  isDarkMode
+                    ? '[&_.is-editor-empty:first-child::before]:text-white/40'
+                    : '[&_.is-editor-empty:first-child::before]:text-gray-400',
+                  '[&_.ProseMirror]:outline-none',
+                  '[&_.ProseMirror]:min-h-full',
+                  isHero ? 'text-base' : 'text-sm'
+                )}
               />
             </div>
 
-            <div className="flex items-center justify-between pt-4">
-              <div className="flex items-center gap-2">
-                {onToggleBrowser && (
-                  <button
-                    type="button"
-                    onClick={handleBrowserToggle}
-                    className={cn(toolbarButton, browserEnabled && browserHasSession && toolbarButtonActive)}
-                    disabled={disabled}
-                    title={browserEnabled ? (browserHasSession ? 'Browser session active' : 'Browser enabled (click to disable)') : 'Enable browser'}
-                  >
-                    <Globe className="h-4 w-4" />
-                  </button>
-                )}
+            {/* Toolbar */}
+            <div className={cn(
+              'flex items-center justify-between px-3 pb-3',
+              isDarkMode ? 'border-white/5' : 'border-black/5'
+            )}>
+              <div className="flex items-center gap-1">
+                {/* Add/Plus button */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -423,22 +350,34 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   disabled={disabled}
                   title="Attach image"
                 >
-                  <ImagePlus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                 </button>
 
-                {voiceEnabled && !useSpeechRecognition ? (
+                {onToggleBrowser && (
+                  <button
+                    type="button"
+                    onClick={handleBrowserToggle}
+                    className={cn(toolbarButton, browserEnabled && browserHasSession && toolbarButtonActive)}
+                    disabled={disabled}
+                    title={browserEnabled ? (browserHasSession ? 'Browser session active' : 'Browser enabled') : 'Enable browser'}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </button>
+                )}
+
+                {voiceEnabled && !useSpeechRecognition && (
                   <button
                     type="button"
                     onClick={handleVoiceToggle}
-                    className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-200')}
+                    className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-400')}
                     title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
                     disabled={isStreaming || disabled}
                   >
                     {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   </button>
-                ) : null}
+                )}
 
-                {onStartStreamingVoice && !useSpeechRecognition ? (
+                {onStartStreamingVoice && !useSpeechRecognition && (
                   <button
                     type="button"
                     onClick={onStartStreamingVoice}
@@ -448,9 +387,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   >
                     <Radio className="h-4 w-4" />
                   </button>
-                ) : null}
+                )}
 
-                {useSpeechRecognition ? (
+                {useSpeechRecognition && (
                   <VoiceInput
                     onTranscript={handleSpeechTranscript}
                     disabled={isDisabled || isStreaming}
@@ -459,20 +398,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     language="en-US"
                     interimResults={true}
                   />
-                ) : null}
+                )}
               </div>
 
+              {/* Send button */}
               <button
                 type="button"
                 onClick={() => (isStreaming ? handleStop() : void handleSend())}
                 disabled={isStreaming ? false : (!hasContent || isDisabled)}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+                  'flex h-10 w-10 items-center justify-center rounded-full transition-colors',
                   isStreaming
                     ? 'bg-amber-500 text-white hover:bg-amber-400'
                     : hasContent
-                      ? 'bg-muted/50 text-foreground hover:bg-muted'
-                      : 'text-muted-foreground/50'
+                      ? isDarkMode
+                        ? 'bg-white text-black hover:bg-white/90'
+                        : 'bg-[var(--distri-accent,#3b82f6)] text-white hover:bg-[var(--distri-accent,#3b82f6)]/90'
+                      : isDarkMode
+                        ? 'bg-white/10 text-white/30'
+                        : 'bg-black/5 text-black/30'
                 )}
                 title={isStreaming ? 'Stop' : 'Send'}
               >
