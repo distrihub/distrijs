@@ -17,6 +17,7 @@ import {
   ToolExecutionStartEvent,
   ToolExecutionEndEvent,
   DistriPart,
+  TextPart,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -297,12 +298,25 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           if (existingIndex >= 0) {
             const existingMessage = state.messages[existingIndex] as DistriMessage;
-            let textPart = existingMessage.parts.find(p => p.part_type === 'text') as { part_type: 'text'; data: string } | undefined;
-            textPart = { part_type: 'text', data: delta };
-            // Create new parts array with the new text part
+            const textPartIndex = existingMessage.parts.findIndex(p => p.part_type === 'text');
+
+            let updatedParts: DistriPart[];
+            if (textPartIndex >= 0) {
+              // Append delta to existing text part
+              const existingTextPart = existingMessage.parts[textPartIndex] as TextPart;
+              updatedParts = existingMessage.parts.map((part, idx) =>
+                idx === textPartIndex
+                  ? { part_type: 'text' as const, data: existingTextPart.data + delta }
+                  : part
+              );
+            } else {
+              // No existing text part, create one
+              updatedParts = [...existingMessage.parts, { part_type: 'text' as const, data: delta }];
+            }
+
             const updatedMessage = {
               ...existingMessage,
-              parts: [...existingMessage.parts, textPart]
+              parts: updatedParts
             };
             // Create new messages array with only the updated message replaced
             const messages = state.messages.map((msg, idx) =>
