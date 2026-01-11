@@ -97,7 +97,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'distri-editor-content outline-none min-h-[1.5em]',
+        class: 'distri-editor-content outline-none h-full',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
@@ -316,11 +316,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             )}
           >
             {/* Editor area */}
-            <div className={cn('px-4 pt-4 pb-2', editorHeight)}>
+            <div className={cn('px-4 pt-4 pb-2 flex flex-col', editorHeight)}>
               <EditorContent
                 editor={editor}
                 className={cn(
-                  'distri-editor w-full h-full',
+                  'distri-editor w-full flex-1 flex flex-col [&>div]:flex-1',
                   isDarkMode ? 'text-white/90' : 'text-gray-900',
                   '[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
                   '[&_.is-editor-empty:first-child::before]:float-left',
@@ -330,7 +330,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     ? '[&_.is-editor-empty:first-child::before]:text-white/40'
                     : '[&_.is-editor-empty:first-child::before]:text-gray-400',
                   '[&_.ProseMirror]:outline-none',
-                  '[&_.ProseMirror]:min-h-full',
+                  '[&_.ProseMirror]:h-full',
                   isHero ? 'text-base' : 'text-sm'
                 )}
               />
