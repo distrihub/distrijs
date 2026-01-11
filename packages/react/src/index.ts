@@ -19,6 +19,7 @@ export * from './components/ThemeProvider';
 export * from './components/ThemeToggle';
 export * from './components/Toast';
 export * from './components/AuthLoading';
+export * from './components/AskFollowUp';
 
 // Provider exports
 export * from './DistriProvider';

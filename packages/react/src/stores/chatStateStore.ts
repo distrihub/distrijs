@@ -718,7 +718,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       try {
         if (distriTool?.type === 'ui') {
           const uiTool = distriTool as DistriUiTool;
-          component = uiTool.component({
+          // Use React.createElement to properly render the component within React's context
+          // Direct function calls (component({...})) break React hooks
+          component = React.createElement(uiTool.component, {
             toolCall,
             toolCallState,
             completeTool: completeToolFn,
