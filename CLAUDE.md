@@ -97,6 +97,29 @@ const myTool = createTool(
 **Tool Registration:**
 Use `useTools` hook with agent instance - tools auto-execute when called by AI.
 
+**Plugin Tool Execution:**
+Execute plugin tools via the `/v1/distri/tools/call` endpoint using full plugin names:
+```typescript
+// Call a plugin tool directly
+const response = await fetch('/v1/distri/tools/call', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    tool_name: 'vivek/slack:send_message',  // full_name:tool_name format
+    input: { channel: '#general', message: 'Hello!' }
+  })
+});
+// Response is the raw tool result (e.g., { messageId: 'msg123' })
+```
+
+**Tool Name Formats:**
+- `tool_name` - Built-in tool
+- `package:tool_name` - Package-scoped (e.g., `slack:send_message`)
+- `owner/plugin:tool_name` - Full plugin name (e.g., `vivek/slack:send_message`)
+
 ## Message Processing
 
 The framework processes three main event types from SSE streams:
