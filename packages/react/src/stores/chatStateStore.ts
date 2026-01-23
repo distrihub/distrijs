@@ -146,6 +146,7 @@ export interface ChatStateStore extends ChatState {
   completeTool: (toolCall: ToolCall, result: ToolResult) => Promise<void>;
   executeTool: (toolCall: ToolCall, distriTool: DistriAnyTool) => void;
   hasPendingToolCalls: () => boolean;
+  failAllPendingToolCalls: (errorMessage: string) => void;
   clearToolResults: () => void;
   getExternalToolResponses: () => ToolResult[];
 
@@ -808,6 +809,23 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     return Array.from(state.toolCalls.values()).some(toolCall =>
       toolCall.status === 'pending' || toolCall.status === 'running'
     );
+  },
+
+  failAllPendingToolCalls: (errorMessage: string) => {
+    set((state: ChatState) => {
+      const newToolCalls = new Map(state.toolCalls);
+      newToolCalls.forEach((toolCall, id) => {
+        if (toolCall.status === 'pending' || toolCall.status === 'running') {
+          newToolCalls.set(id, {
+            ...toolCall,
+            status: 'error',
+            error: errorMessage,
+            resultSent: true, // Mark as processed so it doesn't block
+          });
+        }
+      });
+      return { ...state, toolCalls: newToolCalls };
+    });
   },
 
   clearToolResults: () => {

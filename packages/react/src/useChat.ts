@@ -64,6 +64,7 @@ export function useChat({
   const setStreaming = useChatStateStore(state => state.setStreaming);
   const setAgent = useChatStateStore(state => state.setAgent);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
+  const failAllPendingToolCalls = useChatStateStore(state => state.failAllPendingToolCalls);
   const setStreamingIndicator = useChatStateStore(state => state.setStreamingIndicator);
   const setExternalTools = useChatStateStore(state => state.setExternalTools);
   const errorState = useChatStateStore(state => state.error);
@@ -216,6 +217,9 @@ export function useChat({
       setError(error);
       onErrorRef.current?.(error);
 
+      // **FIX**: Fail all pending tool calls so input isn't blocked
+      failAllPendingToolCalls(error.message);
+
       // **FIX**: Clear streaming indicators immediately on error
       setStreamingIndicator(undefined);
       setStreaming(false);
@@ -227,7 +231,7 @@ export function useChat({
       abortControllerRef.current = null;
       console.log('✅ [useChat sendMessage] Streaming cleanup completed');
     }
-  }, [agent, beforeSendMessage, createInvokeContext, currentTaskId, externalTools, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator]);
+  }, [agent, beforeSendMessage, createInvokeContext, currentTaskId, externalTools, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
   const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
     if (!agent) return;
@@ -286,6 +290,9 @@ export function useChat({
       setError(error);
       onErrorRef.current?.(error);
 
+      // **FIX**: Fail all pending tool calls so input isn't blocked
+      failAllPendingToolCalls(error.message);
+
       // **FIX**: Clear streaming indicators immediately on error
       setStreamingIndicator(undefined);
       setStreaming(false);
@@ -301,7 +308,7 @@ export function useChat({
       abortControllerRef.current = null;
       console.log('✅ [useChat sendMessageStream] Streaming cleanup completed');
     }
-  }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator]);
+  }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
 
   const stopStreaming = useCallback(() => {

@@ -346,7 +346,9 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
       break;
     case 'system':
     case 'tool':
+    case 'developer':
       // A2A doesn't support these roles, map to user as fallback
+      // Developer messages are context messages that should be treated like user input
       role = 'user';
       break;
     default:

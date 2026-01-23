@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { DistriClient, DistriClientConfig } from '@distri/core';
 import { ThemeProvider } from './components/ThemeProvider';
 import { DistriAuthProvider, useDistriAuth } from './DistriAuthProvider';
@@ -8,6 +8,8 @@ interface DistriContextValue {
   error: Error | null;
   isLoading: boolean;
   token?: string | null;
+  workspaceId?: string | null;
+  setWorkspaceId?: (workspaceId: string | null) => void;
 }
 
 export const DistriContext = createContext<DistriContextValue>({
@@ -45,6 +47,7 @@ function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'au
   const { token, status, error: authError, requestAuth } = useDistriAuth();
   const [client, setClient] = useState<DistriClient | null>(null);
   const [initError, setInitError] = useState<Error | null>(null);
+  const [workspaceId, setWorkspaceIdState] = useState<string | null>(config.workspaceId || null);
 
   // Initialize client only when authReady is true
   useEffect(() => {
@@ -53,6 +56,7 @@ function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'au
         const currentClient = new DistriClient({
           ...config,
           accessToken: token || config.accessToken,
+          workspaceId: workspaceId || config.workspaceId,
           // If clientId is provided, we use the requestAuth logic from our provider
           onTokenRefresh: config.clientId ? requestAuth : config.onTokenRefresh
         });
@@ -62,7 +66,26 @@ function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'au
       console.error('[DistriProvider] Failed to initialize client:', err);
       setInitError(err instanceof Error ? err : new Error('Failed to initialize client'));
     }
-  }, [config, client, requestAuth, token, authReady]);
+  }, [config, client, requestAuth, token, authReady, workspaceId]);
+
+  // Sync workspaceId from config when it changes externally
+  useEffect(() => {
+    const configWorkspaceId = config.workspaceId || null;
+    if (configWorkspaceId !== workspaceId) {
+      setWorkspaceIdState(configWorkspaceId);
+      if (client) {
+        client.workspaceId = configWorkspaceId || undefined;
+      }
+    }
+  }, [config.workspaceId, client, workspaceId]);
+
+  // Update client's workspaceId when it changes
+  const setWorkspaceId = useCallback((newWorkspaceId: string | null) => {
+    setWorkspaceIdState(newWorkspaceId);
+    if (client) {
+      client.workspaceId = newWorkspaceId || undefined;
+    }
+  }, [client]);
 
   // Determine if we're still loading:
   // - Client not created yet
@@ -76,7 +99,9 @@ function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'au
     error: initError || (authError ? new Error(authError) : null),
     isLoading,
     token,
-  }), [client, initError, authError, isLoading, token]);
+    workspaceId,
+    setWorkspaceId,
+  }), [client, initError, authError, isLoading, token, workspaceId, setWorkspaceId]);
 
   return (
     <DistriContext.Provider value={contextValue}>
@@ -128,4 +153,9 @@ export function useDistri(): DistriContextValue {
 export function useDistriToken() {
   const { token, isLoading } = useDistri();
   return { token, isLoading };
+}
+
+export function useWorkspace() {
+  const { workspaceId, setWorkspaceId, isLoading } = useDistri();
+  return { workspaceId, setWorkspaceId, isLoading };
 }
