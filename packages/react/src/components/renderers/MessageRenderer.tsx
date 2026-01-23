@@ -11,6 +11,8 @@ export interface MessageRendererProps {
   isExpanded?: boolean;
   onToggle?: () => void;
   toolRenderers?: ToolRendererMap;
+  /** Enable debug mode to show developer messages */
+  debug?: boolean;
 }
 
 // Wrapper component to ensure full width with max constraint for readability
@@ -33,6 +35,7 @@ export function MessageRenderer({
   message,
   index,
   toolRenderers,
+  debug = false,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
   // Don't render messages with empty content
@@ -72,6 +75,22 @@ export function MessageRenderer({
             <StepBasedRenderer
               message={distriMessage}
             />
+          </RendererWrapper>
+        );
+
+      case 'developer':
+        // Developer messages are hidden by default, shown only in debug mode
+        if (!debug) {
+          return null;
+        }
+        return (
+          <RendererWrapper key={`developer-${index}`} className="distri-developer-message">
+            <div className="p-3 bg-muted/50 border border-dashed border-muted-foreground/30 rounded text-sm">
+              <div className="text-xs text-muted-foreground font-medium mb-1">Developer Context</div>
+              <UserMessageRenderer
+                message={distriMessage}
+              />
+            </div>
           </RendererWrapper>
         );
 

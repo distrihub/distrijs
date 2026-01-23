@@ -6,7 +6,7 @@ import { Agent } from './agent';
 /**
  * Message roles supported by Distri
  */
-export type MessageRole = 'system' | 'assistant' | 'user' | 'tool';
+export type MessageRole = 'system' | 'assistant' | 'user' | 'tool' | 'developer';
 
 /**
  * Distri-specific message structure with parts
@@ -689,9 +689,15 @@ export interface DistriClientConfig {
   tokenRefreshSkewMs?: number;
 
   /**
-   * Client ID from Distri Cloud. 
+   * Client ID from Distri Cloud.
    */
   clientId?: string;
+
+  /**
+   * Workspace ID for multi-tenant support (Distri Cloud).
+   * When provided, all requests will include X-Workspace-Id header.
+   */
+  workspaceId?: string;
 }
 
 export interface LLMResponse {

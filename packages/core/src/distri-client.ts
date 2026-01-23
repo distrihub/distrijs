@@ -78,10 +78,11 @@ export interface ChatCompletionResponse {
  */
 interface ResolvedConfig
   extends Required<
-    Omit<DistriClientConfig, 'accessToken' | 'refreshToken' | 'tokenRefreshSkewMs' | 'onTokenRefresh' | 'clientId'>
+    Omit<DistriClientConfig, 'accessToken' | 'refreshToken' | 'tokenRefreshSkewMs' | 'onTokenRefresh' | 'clientId' | 'workspaceId'>
   > {
   onTokenRefresh?: () => Promise<string | null>;
   clientId?: string;
+  workspaceId?: string;
 }
 
 /**
@@ -104,7 +105,12 @@ export class DistriClient {
   private agentClients = new Map<string, { url: string; client: A2AClient }>();
 
   constructor(config: DistriClientConfig) {
-    const headers = { ...config.headers };
+    const headers: Record<string, string> = { ...config.headers };
+
+    // Add workspace header if workspaceId is provided
+    if (config.workspaceId) {
+      headers['X-Workspace-Id'] = config.workspaceId;
+    }
 
     this.accessToken = config.accessToken;
     this.refreshToken = config.refreshToken;
@@ -121,7 +127,8 @@ export class DistriClient {
       headers,
       interceptor: config.interceptor ?? (async (init?: RequestInit) => Promise.resolve(init)),
       onTokenRefresh: config.onTokenRefresh,
-      clientId: config.clientId
+      clientId: config.clientId,
+      workspaceId: config.workspaceId
     };
   }
 
@@ -137,6 +144,26 @@ export class DistriClient {
    */
   set clientId(value: string | undefined) {
     this.config.clientId = value;
+  }
+
+  /**
+   * Get the configured workspace ID.
+   */
+  get workspaceId(): string | undefined {
+    return this.config.workspaceId;
+  }
+
+  /**
+   * Set the workspace ID for multi-tenant support.
+   * Updates the X-Workspace-Id header for all subsequent requests.
+   */
+  set workspaceId(value: string | undefined) {
+    this.config.workspaceId = value;
+    if (value) {
+      this.config.headers['X-Workspace-Id'] = value;
+    } else {
+      delete this.config.headers['X-Workspace-Id'];
+    }
   }
 
   /**
@@ -671,9 +698,62 @@ export class DistriClient {
       yield* await client.sendMessageStream(params);
     } catch (error) {
       console.error(error);
-      throw new DistriError(`Failed to stream message to agent ${agentId}`, 'STREAM_MESSAGE_ERROR', error);
-
+      // Extract the actual error message from nested errors
+      const errorMessage = this.extractErrorMessage(error);
+      throw new DistriError(errorMessage, 'STREAM_MESSAGE_ERROR', error);
     }
+  }
+
+  /**
+   * Extract a user-friendly error message from potentially nested errors
+   */
+  private extractErrorMessage(error: unknown): string {
+    if (!error) return 'Unknown error occurred';
+
+    // Handle JSON-RPC style errors (from A2A protocol)
+    if (typeof error === 'object' && error !== null) {
+      const err = error as Record<string, unknown>;
+
+      // Check for JSON-RPC error structure: { error: { message: "..." } }
+      if (err.error && typeof err.error === 'object') {
+        const jsonRpcError = err.error as Record<string, unknown>;
+        if (typeof jsonRpcError.message === 'string') {
+          return jsonRpcError.message;
+        }
+      }
+
+      // Check for standard Error with message
+      if (err.message && typeof err.message === 'string') {
+        return err.message;
+      }
+
+      // Check for A2AProtocolError or DistriError with details
+      if (err.details && typeof err.details === 'object') {
+        const details = err.details as Record<string, unknown>;
+        if (details.message && typeof details.message === 'string') {
+          return details.message;
+        }
+        // Check nested error structure in details
+        if (details.error && typeof details.error === 'object') {
+          const nestedError = details.error as Record<string, unknown>;
+          if (typeof nestedError.message === 'string') {
+            return nestedError.message;
+          }
+        }
+      }
+
+      // Check for cause (newer Error pattern)
+      if (err.cause && typeof err.cause === 'object') {
+        return this.extractErrorMessage(err.cause);
+      }
+    }
+
+    // Fallback: convert to string
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
   }
 
   /**

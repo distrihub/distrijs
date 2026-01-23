@@ -106,6 +106,11 @@ export interface ChatProps {
   agentId?: string;
   // History loading
   enableHistory?: boolean;
+  /**
+   * Enable debug mode to show developer messages in the chat.
+   * Developer messages are hidden by default.
+   */
+  debug?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -155,6 +160,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   maxWidth,
   className = '',
   toolRenderers,
+  debug = false,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -655,6 +661,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             const messageId = message.id || `message-${index}`;
             toggleToolExpansion(messageId);
           }}
+          debug={debug}
         />
       );
 
