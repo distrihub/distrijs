@@ -101,6 +101,15 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
     return (
       <div className="flex items-start gap-4">
         <div className="w-full">
+          {/* Agent badge - shown when agent_id or agent_name is present */}
+          {(distriMessage.agent_id || distriMessage.agent_name) && (
+            <div className="mb-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                {distriMessage.agent_name || distriMessage.agent_id}
+              </span>
+            </div>
+          )}
+
           {/* Step indicator */}
           {step && <StepIndicator step={step} />}
 

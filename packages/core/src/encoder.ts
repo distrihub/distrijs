@@ -10,11 +10,24 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
   // Map A2A roles to Distri roles (A2A only supports 'agent' and 'user')
   const role: MessageRole = a2aMessage.role === 'agent' ? 'assistant' : 'user';
 
+  // Extract agent metadata from A2A message metadata (A2A extension)
+  let agent_id: string | undefined;
+  let agent_name: string | undefined;
+  if (a2aMessage.metadata) {
+    const metadata = a2aMessage.metadata as any;
+    if (metadata.agent) {
+      agent_id = metadata.agent.agent_id;
+      agent_name = metadata.agent.agent_name;
+    }
+  }
+
   return {
     id: a2aMessage.messageId,
     role,
     parts: a2aMessage.parts.map(convertA2APartToDistri),
     created_at: (a2aMessage as any).createdAt,
+    agent_id,
+    agent_name,
   };
 }
 
