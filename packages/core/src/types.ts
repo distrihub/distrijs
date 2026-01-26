@@ -18,6 +18,10 @@ export interface DistriMessage {
   created_at: number;
   step_id?: string;
   is_final?: boolean;
+  /** The ID of the agent that generated this message (for assistant messages) */
+  agent_id?: string;
+  /** The name of the agent that generated this message (for assistant messages) */
+  agent_name?: string;
 }
 
 export interface LlmExecuteOptions {
