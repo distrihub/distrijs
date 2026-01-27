@@ -33,6 +33,7 @@ export * from './hooks/useChatMessages';
 export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
+export * from './hooks/useMessageFeedback';
 export * from './stores/chatStateStore';
 
 // Utility exports

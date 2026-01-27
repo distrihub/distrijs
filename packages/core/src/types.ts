@@ -800,3 +800,55 @@ export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
 }
 
 export type DistriChatMessage = DistriEvent | DistriMessage;
+
+// ========== Message Read Status Types ==========
+
+/**
+ * Vote type for message feedback
+ */
+export type VoteType = 'upvote' | 'downvote';
+
+/**
+ * Record of a message being read
+ */
+export interface MessageReadStatus {
+  thread_id: string;
+  message_id: string;
+  user_id: string;
+  read_at: string; // ISO 8601 format
+}
+
+/**
+ * Request to vote on a message
+ */
+export interface VoteMessageRequest {
+  vote_type: VoteType;
+  /** Required for downvotes */
+  comment?: string;
+}
+
+/**
+ * A vote on a message with optional feedback comment
+ */
+export interface MessageVote {
+  id: string;
+  thread_id: string;
+  message_id: string;
+  user_id: string;
+  vote_type: VoteType;
+  /** Comment is required for downvotes, optional for upvotes */
+  comment?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Summary of votes for a message
+ */
+export interface MessageVoteSummary {
+  message_id: string;
+  upvotes: number;
+  downvotes: number;
+  /** Current user's vote on this message, if any */
+  user_vote?: VoteType;
+}

@@ -4,10 +4,15 @@ import { useChatStateStore, StepState } from '../../stores/chatStateStore';
 import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { LoadingShimmer } from './ThinkingRenderer';
+import { MessageFeedback } from './MessageFeedback';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export interface StepBasedRendererProps {
   message: DistriMessage;
+  /** Thread ID for feedback functionality */
+  threadId?: string;
+  /** Enable message feedback (voting) UI */
+  enableFeedback?: boolean;
 }
 
 const StepIndicator: React.FC<{ step: StepState }> = ({ step }) => {
@@ -79,7 +84,9 @@ const StepIndicator: React.FC<{ step: StepState }> = ({ step }) => {
 };
 
 export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
-  message
+  message,
+  threadId,
+  enableFeedback = false,
 }) => {
   const steps = useChatStateStore(state => state.steps);
 
@@ -96,8 +103,12 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
     return <UserMessageRenderer message={distriMessage} />;
   }
 
+  console.log(distriMessage);
   // For assistant messages, show step-based rendering
   if (distriMessage.role === 'assistant') {
+    // Only show feedback when message is complete (not streaming)
+    const showFeedback = enableFeedback && threadId && distriMessage.id && step?.status !== 'running';
+
     return (
       <div className="flex items-start gap-4">
         <div className="w-full">
@@ -117,6 +128,17 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
           <div className="transition-all duration-200 ease-in-out">
             <AssistantMessageRenderer message={distriMessage} />
           </div>
+
+          {/* Message feedback (voting) */}
+          {showFeedback && (
+            <div className="mt-3 pt-2 border-t border-border/30">
+              <MessageFeedback
+                threadId={threadId}
+                messageId={distriMessage.id}
+                compact
+              />
+            </div>
+          )}
         </div>
       </div>
     );

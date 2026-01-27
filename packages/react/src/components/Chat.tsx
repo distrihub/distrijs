@@ -3,6 +3,7 @@ import { Agent, DistriChatMessage, DistriMessage, DistriPart, ToolCall, ToolExec
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
+import { MessageReadProvider } from './renderers/MessageReadContext';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
 import { TypingIndicator } from './renderers/TypingIndicator';
 import { LoadingAnimation, type LoadingAnimationConfig } from './renderers/LoadingAnimation';
@@ -111,6 +112,11 @@ export interface ChatProps {
    * Developer messages are hidden by default.
    */
   debug?: boolean;
+  /**
+   * Enable message feedback (voting) UI on assistant messages.
+   * Shows thumbs up/down buttons for rating responses.
+   */
+  enableFeedback?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -161,6 +167,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   className = '',
   toolRenderers,
   debug = false,
+  enableFeedback = false,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -662,6 +669,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             toggleToolExpansion(messageId);
           }}
           debug={debug}
+          threadId={threadId}
+          enableFeedback={enableFeedback}
         />
       );
 
@@ -944,19 +953,21 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             className="flex flex-col gap-4 lg:flex-row lg:items-start"
             style={maxWidth ? { maxWidth: '100%' } : undefined}
           >
-            <div className="flex-1 min-w-0 space-y-4 w-full">
-              {emptyStateContent}
-              {/* Render all messages and state */}
-              {renderMessages()}
+            <MessageReadProvider threadId={threadId} enabled={enableFeedback}>
+              <div className="flex-1 min-w-0 space-y-4 w-full">
+                {emptyStateContent}
+                {/* Render all messages and state */}
+                {renderMessages()}
 
-              {renderExternalToolCalls()}
-              {/* Render thinking indicator at the end */}
-              {renderThinkingIndicator()}
-              {/* Render pending message after thinking indicator */}
-              {renderPendingMessage()}
+                {renderExternalToolCalls()}
+                {/* Render thinking indicator at the end */}
+                {renderThinkingIndicator()}
+                {/* Render pending message after thinking indicator */}
+                {renderPendingMessage()}
 
-              <div ref={messagesEndRef} />
-            </div>
+                <div ref={messagesEndRef} />
+              </div>
+            </MessageReadProvider>
 
             {showBrowserPreview && browserViewerUrl && (
               <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
@@ -1057,7 +1068,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>((props, ref) => {
 });
 
 const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function ChatContainer(
-  { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, ...props },
+  { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, enableFeedback, ...props },
   ref
 ) {
   const { isLoading: clientLoading } = useDistri();
@@ -1105,5 +1116,5 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
     );
   }
 
-  return <ChatInner ref={ref} agent={agent} threadId={threadId} initialMessages={initialMessages} theme={theme} {...props} />;
+  return <ChatInner ref={ref} agent={agent} threadId={threadId} initialMessages={initialMessages} theme={theme} enableFeedback={enableFeedback} {...props} />;
 });
