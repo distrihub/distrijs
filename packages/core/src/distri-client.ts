@@ -22,7 +22,11 @@ import {
   ThreadListParams,
   ThreadListResponse,
   AgentUsageInfo,
-  BrowserSession
+  BrowserSession,
+  MessageReadStatus,
+  MessageVote,
+  MessageVoteSummary,
+  VoteMessageRequest,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -898,6 +902,147 @@ export class DistriClient {
   async getThreadMessagesAsDistri(threadId: string): Promise<DistriMessage[]> {
     const messages = await this.getThreadMessages(threadId);
     return messages.map(convertA2AMessageToDistri);
+  }
+
+  // ========== Message Read Status Methods ==========
+
+  /**
+   * Mark a message as read
+   */
+  async markMessageRead(threadId: string, messageId: string): Promise<MessageReadStatus> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/read`,
+        { method: 'POST' }
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to mark message as read: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to mark message ${messageId} as read`, 'MARK_READ_ERROR', error);
+    }
+  }
+
+  /**
+   * Get read status for a specific message
+   */
+  async getMessageReadStatus(threadId: string, messageId: string): Promise<MessageReadStatus | null> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/read`
+      );
+      if (response.status === 404) {
+        return null;
+      }
+      if (!response.ok) {
+        throw new ApiError(`Failed to get message read status: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get read status for message ${messageId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Get read status for all messages in a thread
+   */
+  async getThreadReadStatus(threadId: string): Promise<MessageReadStatus[]> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/read-status`
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to get thread read status: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get read status for thread ${threadId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  // ========== Message Voting Methods ==========
+
+  /**
+   * Vote on a message (upvote or downvote)
+   * Downvotes require a comment explaining the issue
+   */
+  async voteMessage(threadId: string, messageId: string, request: VoteMessageRequest): Promise<MessageVote> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/vote`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(errorData.error || `Failed to vote on message: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to vote on message ${messageId}`, 'VOTE_ERROR', error);
+    }
+  }
+
+  /**
+   * Remove vote from a message
+   */
+  async removeVote(threadId: string, messageId: string): Promise<void> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/vote`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok && response.status !== 204) {
+        throw new ApiError(`Failed to remove vote: ${response.statusText}`, response.status);
+      }
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to remove vote from message ${messageId}`, 'VOTE_ERROR', error);
+    }
+  }
+
+  /**
+   * Get vote summary for a message (counts + current user's vote)
+   */
+  async getMessageVoteSummary(threadId: string, messageId: string): Promise<MessageVoteSummary> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/vote`
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to get vote summary: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get vote summary for message ${messageId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Get all votes for a message (admin/analytics use)
+   */
+  async getMessageVotes(threadId: string, messageId: string): Promise<MessageVote[]> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/votes`
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to get message votes: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get votes for message ${messageId}`, 'FETCH_ERROR', error);
+    }
   }
 
   /**
