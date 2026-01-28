@@ -188,21 +188,33 @@ export function useThreads(options: UseThreadsOptions = {}): UseThreadsResult {
 }
 
 /**
- * Hook to get agents sorted by usage (thread count)
+ * Hook to get agents sorted by usage (thread count).
+ * Includes all registered agents, even those with 0 threads.
  */
 export interface UseAgentsByUsageResult {
   agents: AgentUsageInfo[];
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
+  search: string;
+  setSearch: (search: string) => void;
 }
 
-export function useAgentsByUsage(): UseAgentsByUsageResult {
+export interface UseAgentsByUsageOptions {
+  /** Initial search query */
+  search?: string;
+}
+
+export function useAgentsByUsage(options?: UseAgentsByUsageOptions): UseAgentsByUsageResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
   const [agents, setAgents] = useState<AgentUsageInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [search, setSearch] = useState(options?.search || '');
 
+  // Fetch all agents initially (no search filter).
+  // Components handle local filtering for immediate UX.
+  // The search API param is available via refetch for server-side filtering.
   const fetchAgents = useCallback(async () => {
     if (!client) {
       setError(new Error('Client not available'));
@@ -247,6 +259,8 @@ export function useAgentsByUsage(): UseAgentsByUsageResult {
     loading: loading || clientLoading,
     error: error || clientError,
     refetch: fetchAgents,
+    search,
+    setSearch,
   };
 }
 
