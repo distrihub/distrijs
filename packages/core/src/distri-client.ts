@@ -27,6 +27,7 @@ import {
   MessageVote,
   MessageVoteSummary,
   VoteMessageRequest,
+  DynamicMetadata,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -1392,13 +1393,23 @@ export class DistriClient {
   }
 
   /**
-   * Helper method to create message send parameters
+   * Helper method to create message send parameters.
+   *
+   * Pass `dynamicMetadata` to inject `dynamic_sections` and/or `dynamic_values`
+   * into the metadata so the server can apply them to prompt templates.
    */
   static initMessageParams(
     message: Message,
     configuration?: MessageSendParams['configuration'],
-    metadata?: any
+    metadata?: any,
+    dynamicMetadata?: DynamicMetadata,
   ): MessageSendParams {
+    const mergedMetadata = {
+      ...metadata,
+      ...(dynamicMetadata?.dynamic_sections ? { dynamic_sections: dynamicMetadata.dynamic_sections } : {}),
+      ...(dynamicMetadata?.dynamic_values ? { dynamic_values: dynamicMetadata.dynamic_values } : {}),
+    };
+
     return {
       message,
       configuration: {
@@ -1406,19 +1417,31 @@ export class DistriClient {
         blocking: false, // Default to non-blocking for streaming
         ...configuration
       },
-      metadata
+      metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : metadata,
     };
   }
 
   /**
-   * Create MessageSendParams from a DistriMessage using InvokeContext
+   * Create MessageSendParams from a DistriMessage using InvokeContext.
+   *
+   * Pass `dynamicMetadata` to inject `dynamic_sections` and/or `dynamic_values`
+   * into the metadata so the server can apply them to prompt templates.
    */
-  static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams {
+  static initDistriMessageParams(
+    message: DistriMessage,
+    context: InvokeContext,
+    dynamicMetadata?: DynamicMetadata,
+  ): MessageSendParams {
     const a2aMessage = convertDistriMessageToA2A(message, context);
     const contextMetadata = context.getMetadata?.() || {};
+    const mergedMetadata = {
+      ...contextMetadata,
+      ...(dynamicMetadata?.dynamic_sections ? { dynamic_sections: dynamicMetadata.dynamic_sections } : {}),
+      ...(dynamicMetadata?.dynamic_values ? { dynamic_values: dynamicMetadata.dynamic_values } : {}),
+    };
     return {
       message: a2aMessage,
-      metadata: contextMetadata
+      metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : contextMetadata,
     };
   }
 }

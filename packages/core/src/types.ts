@@ -166,6 +166,25 @@ export type DistriStreamEvent = DistriMessage | DistriEvent;
 
 
 /**
+ * A named prompt section that can be dynamically injected into templates per-call.
+ */
+export interface PromptSection {
+  key: string;
+  content: string;
+}
+
+/**
+ * Dynamic metadata that can be provided per invoke call to customise
+ * prompt template rendering on the server.
+ */
+export interface DynamicMetadata {
+  /** Dynamic prompt sections injected into the template per-call */
+  dynamic_sections?: PromptSection[];
+  /** Dynamic key-value pairs available in templates per-call */
+  dynamic_values?: Record<string, unknown>;
+}
+
+/**
  * Context required for constructing A2A messages from DistriMessage
  */
 export interface InvokeContext {
