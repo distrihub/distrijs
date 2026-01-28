@@ -830,11 +830,19 @@ export class DistriClient {
   }
 
   /**
-   * Get agents sorted by thread count (most active first)
+   * Get agents sorted by thread count (most active first).
+   * Includes all registered agents, even those with 0 threads.
+   * Optionally filter by name with search parameter.
    */
-  async getAgentsByUsage(): Promise<AgentUsageInfo[]> {
+  async getAgentsByUsage(options?: { search?: string }): Promise<AgentUsageInfo[]> {
     try {
-      const response = await this.fetch('/threads/agents');
+      const params = new URLSearchParams();
+      if (options?.search) {
+        params.set('search', options.search);
+      }
+      const query = params.toString();
+      const url = query ? `/threads/agents?${query}` : '/threads/agents';
+      const response = await this.fetch(url);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents by usage: ${response.statusText}`, response.status);
       }
