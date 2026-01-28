@@ -103,7 +103,6 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
     return <UserMessageRenderer message={distriMessage} />;
   }
 
-  console.log(distriMessage);
   // For assistant messages, show step-based rendering
   if (distriMessage.role === 'assistant') {
     // Only show feedback when message is complete (not streaming)
