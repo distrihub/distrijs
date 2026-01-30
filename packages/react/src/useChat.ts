@@ -225,11 +225,10 @@ export function useChat({
       setStreaming(false);
       setLoading(false);
     } finally {
-      console.log('🧹 [useChat sendMessage] Finally block - cleaning up streaming state');
+      setStreamingIndicator(undefined);
       setLoading(false);
       setStreaming(false);
       abortControllerRef.current = null;
-      console.log('✅ [useChat sendMessage] Streaming cleanup completed');
     }
   }, [agent, beforeSendMessage, createInvokeContext, currentTaskId, externalTools, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
@@ -298,15 +297,10 @@ export function useChat({
       setStreaming(false);
       setLoading(false);
     } finally {
-      console.log('🧹 [useChat sendMessageStream] Finally block - cleaning up streaming state');
-      // **FIX**: When stream ends naturally, force stop all streaming indicators
-      // regardless of pending tool calls, because backend has closed the stream
-      console.log('🛑 [useChat sendMessageStream] Backend stream ended - force stopping all streaming indicators');
-      setStreamingIndicator(undefined); // Clear typing indicator
+      setStreamingIndicator(undefined);
       setLoading(false);
       setStreaming(false);
       abortControllerRef.current = null;
-      console.log('✅ [useChat sendMessageStream] Streaming cleanup completed');
     }
   }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
