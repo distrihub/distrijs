@@ -368,7 +368,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         } else {
           // Don't add state-only events to messages (they only update store state)
           const stateOnlyEvents = [
-            'run_started', 'run_finished', 'run_error',
+            'run_started', 'run_finished',
             'plan_started', 'plan_finished',
             'step_started', 'step_completed',
             'tool_results'
