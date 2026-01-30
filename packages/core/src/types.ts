@@ -174,6 +174,17 @@ export interface PromptSection {
 }
 
 /**
+ * Metadata for individual message parts.
+ * Used to control part behavior such as persistence.
+ */
+export interface PartMetadata {
+  /** If false, this part will be filtered out before saving to the database.
+   *  Useful for ephemeral/dynamic content that should only be sent in the current turn.
+   *  Defaults to true. */
+  save?: boolean;
+}
+
+/**
  * Dynamic metadata that can be provided per invoke call to customise
  * prompt template rendering on the server.
  */
@@ -182,6 +193,9 @@ export interface DynamicMetadata {
   dynamic_sections?: PromptSection[];
   /** Dynamic key-value pairs available in templates per-call */
   dynamic_values?: Record<string, unknown>;
+  /** Per-part metadata indexed by part position (0-based).
+   *  Parts not listed will use default metadata (save: true). */
+  parts?: Record<number, PartMetadata>;
 }
 
 /**

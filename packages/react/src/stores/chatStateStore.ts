@@ -18,6 +18,8 @@ import {
   ToolExecutionEndEvent,
   DistriPart,
   TextPart,
+  TodoItem,
+  TodosUpdatedEvent,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -109,6 +111,9 @@ export interface ChatState {
   browserSessionId?: string;
   browserViewerUrl?: string;
   browserStreamUrl?: string;
+
+  // Todos state
+  todos: TodoItem[];
 }
 
 type ChatStateTool = DistriAnyTool & {
@@ -127,6 +132,9 @@ export interface ChatStateStore extends ChatState {
   setCurrentThought: (thought: string | undefined) => void;
   setBrowserSession: (sessionId: string, viewerUrl?: string, streamUrl?: string) => void;
   clearBrowserSession: () => void;
+
+  // Todos actions
+  setTodos: (todos: TodoItem[]) => void;
 
   // State actions
   addMessage: (message: DistriChatMessage) => void;
@@ -187,6 +195,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   browserSessionId: undefined,
   browserViewerUrl: undefined,
   browserStreamUrl: undefined,
+  todos: [],
   tools: {
     tools: [],
     agent_tools: new Map(),
@@ -228,6 +237,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       browserViewerUrl: undefined,
       browserStreamUrl: undefined,
     });
+  },
+
+  setTodos: (todos: TodoItem[]) => {
+    set({ todos });
   },
 
   getToolByName: (toolName: string): ChatStateTool | undefined => {
@@ -592,6 +605,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Handle agent handover events
           break;
 
+        case 'todos_updated': {
+          const todosEvent = event as TodosUpdatedEvent;
+          if (todosEvent.data.todos) {
+            get().setTodos(todosEvent.data.todos);
+          }
+          break;
+        }
+
         default:
           // Handle any other events
           break;
@@ -902,6 +923,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       browserSessionId: undefined,
       browserViewerUrl: undefined,
       browserStreamUrl: undefined,
+      todos: [],
     });
   },
 

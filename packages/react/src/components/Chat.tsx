@@ -5,6 +5,7 @@ import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { ThinkingRenderer } from './renderers/ThinkingRenderer';
+import { TodosDisplay } from './renderers/TodosDisplay';
 import { TypingIndicator } from './renderers/TypingIndicator';
 import { LoadingAnimation, type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -289,6 +290,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
   const currentThought = useChatStateStore(state => state.currentThought);
   const currentState = useChatStateStore(state => state);
+  const todos = useChatStateStore(state => state.todos);
   useEffect(() => {
     if (onChatStateChange) {
       onChatStateChange(currentState);
@@ -947,6 +949,11 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 <strong>Error:</strong> {error.message}
               </div>
             </div>
+          )}
+
+          {/* Todos display */}
+          {todos && todos.length > 0 && (
+            <TodosDisplay todos={todos} className="mb-4" />
           )}
 
           <div
