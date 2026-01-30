@@ -57,8 +57,8 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       const runErrorResult: RunErrorEvent = {
         type: 'run_error',
         data: {
-          message: statusUpdate.error,
-          code: statusUpdate.code
+          message: metadata.message || statusUpdate.status?.message || 'Unknown error',
+          code: metadata.code
         }
       };
       return runErrorResult;
