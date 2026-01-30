@@ -25,6 +25,10 @@ export interface InvokeConfig {
   dynamic_sections?: DynamicMetadata['dynamic_sections'];
   /** Dynamic key-value pairs available in templates per-call */
   dynamic_values?: DynamicMetadata['dynamic_values'];
+  /** Per-part metadata indexed by part position (0-based).
+   *  Use to control which parts are saved to the database.
+   *  Parts with `save: false` will be filtered out before saving. */
+  parts?: DynamicMetadata['parts'];
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -244,6 +244,21 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       return browserSessionStarted;
     }
 
+    case 'todos_updated': {
+      // Parse the formatted_todos string into TodoItem array
+      const todos = parseTodosFromFormatted(metadata.formatted_todos || '');
+      const todosUpdated: TodosUpdatedEvent = {
+        type: 'todos_updated',
+        data: {
+          formatted_todos: metadata.formatted_todos || '',
+          action: metadata.action || 'write_todos',
+          todo_count: metadata.todo_count || 0,
+          todos,
+        },
+      };
+      return todosUpdated;
+    }
+
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
@@ -485,4 +500,48 @@ export function extractToolResultsFromDistriMessage(message: DistriMessage): any
   return message.parts
     .filter(part => part.part_type === 'tool_result')
     .map(part => (part as { part_type: 'tool_result'; data: any }).data);
+}
+
+/**
+ * Parse the formatted todos string from backend into TodoItem array
+ * Format from backend:
+ *   □ Open todo
+ *   ◐ In progress todo
+ *   ■ Done todo
+ */
+function parseTodosFromFormatted(formatted: string): TodoItem[] {
+  if (!formatted || formatted === '□ No todos') {
+    return [];
+  }
+
+  const lines = formatted.split('\n').filter(line => line.trim());
+  return lines.map((line, index) => {
+    const trimmed = line.trim();
+    let status: TodoStatus = 'open';
+    let content = trimmed;
+
+    // Parse status icon and extract content
+    if (trimmed.startsWith('■')) {
+      status = 'done';
+      content = trimmed.slice(1).trim();
+    } else if (trimmed.startsWith('◐')) {
+      status = 'in_progress';
+      content = trimmed.slice(1).trim();
+    } else if (trimmed.startsWith('□')) {
+      status = 'open';
+      content = trimmed.slice(1).trim();
+    }
+
+    // Remove notes in parentheses for cleaner display if needed
+    // const notesMatch = content.match(/^(.+?)\s*\((.+)\)$/);
+    // if (notesMatch) {
+    //   content = notesMatch[1];
+    // }
+
+    return {
+      id: `todo_${index}`,
+      content,
+      status,
+    };
+  });
 }
