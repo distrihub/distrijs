@@ -17,6 +17,7 @@ import {
   ToolResult,
   LLMResponse,
   LlmExecuteOptions,
+  ToolDefinition,
   DEFAULT_BASE_URL,
   AgentConfigWithTools,
   ThreadListParams,
@@ -542,7 +543,7 @@ export class DistriClient {
   /**
    * Minimal LLM helper that proxies to the Distri server using Distri messages.
    */
-  async llm(messages: DistriMessage[], tools: unknown[] = [], options?: LlmExecuteOptions): Promise<LLMResponse> {
+  async llm(messages: DistriMessage[], tools: ToolDefinition[] = [], options?: LlmExecuteOptions): Promise<LLMResponse> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const response = await this.fetch(`/llm/execute`, {
       method: 'POST',
