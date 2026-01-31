@@ -29,7 +29,12 @@ export interface LlmExecuteOptions {
   parent_task_id?: string;
   run_id?: string;
   model_settings?: any;
-  is_sub_task?: boolean
+  is_sub_task?: boolean;
+  headers?: Record<string, string>;
+  agent_id?: string;
+  external_id?: string;
+  load_history?: boolean;
+  title?: string;
 }
 
 export interface AssistantWithToolCalls {
