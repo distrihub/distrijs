@@ -10,6 +10,7 @@ import {
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
+import { RunErrorEvent } from './events';
 
 /**
  * Configuration for Agent invoke method
@@ -153,27 +154,40 @@ export class Agent {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return (async function* () {
-      for await (const event of a2aStream) {
-        const converted = decodeA2AStreamEvent(event);
-        if (converted && (converted as any).type === 'inline_hook_requested') {
-          const hookReq: any = (converted as any).data;
-          const handler =
-            self.hookHandlers.get(hookReq.hook) ||
-            self.defaultHookHandler;
-          if (handler) {
-            try {
-              const mutation = await handler(hookReq);
-              await self.client.completeInlineHook(hookReq.hook_id, mutation);
-            } catch (err) {
+      try {
+        for await (const event of a2aStream) {
+          const converted = decodeA2AStreamEvent(event);
+          if (converted && (converted as any).type === 'inline_hook_requested') {
+            const hookReq: any = (converted as any).data;
+            const handler =
+              self.hookHandlers.get(hookReq.hook) ||
+              self.defaultHookHandler;
+            if (handler) {
+              try {
+                const mutation = await handler(hookReq);
+                await self.client.completeInlineHook(hookReq.hook_id, mutation);
+              } catch (err) {
+                await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+              }
+            } else {
               await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
             }
-          } else {
-            await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+            yield converted;
+          } else if (converted) {
+            yield converted;
           }
-          yield converted;
-        } else if (converted) {
-          yield converted;
         }
+      } catch (error) {
+        // Convert stream errors to RunErrorEvent so the UI displays them in-chat
+        const message = error instanceof Error ? error.message : String(error);
+        const runError: RunErrorEvent = {
+          type: 'run_error',
+          data: {
+            message,
+            code: 'STREAM_ERROR',
+          },
+        };
+        yield runError;
       }
     })();
   }

@@ -754,9 +754,16 @@ export class DistriClient {
       }
     }
 
-    // Fallback: convert to string
+    // Fallback: try to extract the real error from A2A SDK wrapped messages
     if (error instanceof Error) {
-      return error.message;
+      const msg = error.message;
+      // "SSE event contained an error: <real message> (Code: -32603) Data: ..."
+      const sseMatch = msg.match(/SSE event contained an error:\s*(.+?)\s*\(Code:/);
+      if (sseMatch) return sseMatch[1];
+      // "HTTP error establishing stream ... RPC Error: <real message> (Code: ...)"
+      const rpcMatch = msg.match(/RPC Error:\s*(.+?)\s*\(Code:/);
+      if (rpcMatch) return rpcMatch[1];
+      return msg;
     }
 
     return String(error);
