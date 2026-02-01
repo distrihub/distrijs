@@ -110,6 +110,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     },
   });
 
+  // Sync editable state when disabled prop changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!disabled);
+    }
+  }, [editor, disabled]);
+
   // Sync value changes from parent
   useEffect(() => {
     if (editor && editor.getText() !== value) {

@@ -451,6 +451,22 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+
+          // Clean up orphaned tool calls that never received a tool_execution_end event.
+          // Without this, hasPendingToolCalls() stays true and the chat input remains locked.
+          const currentToolCalls = get().toolCalls;
+          let toolCallsChanged = false;
+          currentToolCalls.forEach((tc) => {
+            if (tc.status === 'pending' || tc.status === 'running') {
+              tc.status = 'completed';
+              tc.endTime = Date.now();
+              toolCallsChanged = true;
+            }
+          });
+          if (toolCallsChanged) {
+            set({ toolCalls: new Map(currentToolCalls) });
+          }
+
           set({ isStreaming: false, isLoading: false });
           get().setStreamingIndicator(undefined);
           get().setCurrentThought(undefined);
@@ -472,6 +488,21 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Only clear indicators and stop streaming if this is the main task error
           if (errorTaskId === currentMainTaskIdForError) {
             console.log('🛑 Stopping streaming - main task errored');
+
+            // Clean up orphaned tool calls so the input unlocks
+            const errorToolCalls = get().toolCalls;
+            let errorToolCallsChanged = false;
+            errorToolCalls.forEach((tc) => {
+              if (tc.status === 'pending' || tc.status === 'running') {
+                tc.status = 'error';
+                tc.endTime = Date.now();
+                errorToolCallsChanged = true;
+              }
+            });
+            if (errorToolCallsChanged) {
+              set({ toolCalls: new Map(errorToolCalls) });
+            }
+
             get().setStreamingIndicator(undefined);
             get().setCurrentThought(undefined);
             set({ isStreaming: false, isLoading: false });

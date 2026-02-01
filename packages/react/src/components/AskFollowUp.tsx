@@ -285,7 +285,7 @@ function AskFollowUpComponent({
             onChange={(e) => handleAnswer(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={currentQuestion.placeholder || 'Type your answer...'}
-            className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             autoFocus
           />
         )}
