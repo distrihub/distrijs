@@ -9,6 +9,23 @@ import { Agent } from './agent';
 export type MessageRole = 'system' | 'assistant' | 'user' | 'tool' | 'developer';
 
 /**
+ * Message metadata structure that matches the backend.
+ * The 'parts' field maps part indices to PartMetadata for save filtering.
+ */
+export interface DistriMessageMetadata {
+  /** Per-part metadata indexed by part position (0-based). Parts with save: false are filtered before DB save. */
+  parts?: Record<number, { save?: boolean }>;
+  /** Session ID for browser sessions */
+  session_id?: string;
+  /** Browser session ID */
+  browser_session_id?: string;
+  /** Model/definition overrides */
+  definition_overrides?: { model?: string };
+  /** Additional arbitrary metadata */
+  [key: string]: unknown;
+}
+
+/**
  * Distri-specific message structure with parts
  */
 export interface DistriMessage {
@@ -22,6 +39,8 @@ export interface DistriMessage {
   agent_id?: string;
   /** The name of the agent that generated this message (for assistant messages) */
   agent_name?: string;
+  /** Message metadata including parts metadata for save filtering */
+  metadata?: DistriMessageMetadata;
 }
 
 export interface LlmExecuteOptions {
@@ -309,15 +328,30 @@ export function isArrayParts(result: any): boolean {
   return Array.isArray(result) && result[0].part_type
 }
 /**
+ * Part with optional inline metadata - used by tool handlers to mark parts as non-saveable
+ */
+export type DistriPartWithMetadata = DistriPart & { __metadata?: PartMetadata };
+
+/**
  * Type-safe helper to create a successful ToolResult
  * Uses proper DistriPart structure - conversion to backend format happens in encoder
+ *
+ * Parts can include __metadata property to specify part-level metadata (e.g., save: false).
+ * Image parts are automatically marked as save: false.
  */
 export function createSuccessfulToolResult(
   toolCallId: string,
   toolName: string,
-  result: string | number | boolean | null | object | DistriPart[]
+  result: string | number | boolean | null | object | DistriPartWithMetadata[],
+  explicitPartsMetadata?: Record<number, PartMetadata>
 ): ToolResult {
-  const parts = isArrayParts(result) ? result as DistriPart[] : [{
+  console.log('[createSuccessfulToolResult] toolName:', toolName);
+  console.log('[createSuccessfulToolResult] isArrayParts:', isArrayParts(result));
+  console.log('[createSuccessfulToolResult] result type:', typeof result, Array.isArray(result) ? `array[${(result as any[]).length}]` : '');
+  if (isArrayParts(result)) {
+    console.log('[createSuccessfulToolResult] parts:', (result as any[]).map((p: any) => ({ part_type: p.part_type, hasMetadata: !!p.__metadata })));
+  }
+  const rawParts = isArrayParts(result) ? result as DistriPartWithMetadata[] : [{
     part_type: 'data' as const,
     data: {
       result,
@@ -326,12 +360,22 @@ export function createSuccessfulToolResult(
     } satisfies ToolResultData
   }];
 
-  // Automatically mark image parts as non-saveable to prevent context bloat
-  const parts_metadata: Record<number, PartMetadata> = {};
-  parts.forEach((part, index) => {
-    if (part.part_type === 'image') {
+  // Build parts_metadata from explicit param, inline __metadata, and auto image detection
+  const parts_metadata: Record<number, PartMetadata> = { ...explicitPartsMetadata };
+
+  // Clean parts (remove __metadata) and collect metadata
+  const parts: DistriPart[] = rawParts.map((part, index) => {
+    // Extract inline metadata if present
+    if ('__metadata' in part && part.__metadata) {
+      parts_metadata[index] = { ...parts_metadata[index], ...part.__metadata };
+    }
+    // Auto-mark image parts as non-saveable
+    if (part.part_type === 'image' && !parts_metadata[index]) {
       parts_metadata[index] = { save: false };
     }
+    // Return clean part without __metadata
+    const { __metadata, ...cleanPart } = part as DistriPartWithMetadata;
+    return cleanPart as DistriPart;
   });
 
   return {
