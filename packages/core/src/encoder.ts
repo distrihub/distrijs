@@ -341,7 +341,7 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
         return { part_type: 'image', data: fileUrl };
       }
       else {
-        const fileBytes: FileBytes = { type: 'bytes', mime_type: a2aPart.file.mimeType || 'application/octet-stream', data: a2aPart.file.bytes || '' };
+        const fileBytes: FileBytes = { type: 'bytes', mime_type: a2aPart.file.mimeType || 'application/octet-stream', bytes: a2aPart.file.bytes || '' };
         return { part_type: 'image', data: fileBytes };
       }
     case 'data':
@@ -408,7 +408,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
         const fileUri: FileWithUri = { mimeType: distriPart.data.mime_type, uri: distriPart.data.url };
         result = { kind: 'file', file: fileUri };
       } else {
-        const fileBytes: FileWithBytes = { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data };
+        const fileBytes: FileWithBytes = { mimeType: distriPart.data.mime_type, bytes: distriPart.data.bytes };
         result = { kind: 'file', file: fileBytes };
       }
       break;
@@ -425,7 +425,8 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       // Convert ToolResult to proper ToolResponse structure with parts
       const toolResult = distriPart.data as ToolResult;
 
-      // Convert ToolResult parts to proper Part format
+      // Convert ToolResult parts to proper distri Part format for Rust deserialization
+      // The Rust Part enum uses #[serde(tag = "part_type", content = "data")]
       const parts = toolResult.parts.map(part => {
         if ('type' in part && part.type === 'data') {
           // Convert DistriPart data to Part::Data format
@@ -434,7 +435,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
             data: part.data
           };
         } else if ('part_type' in part) {
-          // Already in correct format
+          // DistriPart format already matches Rust Part format, pass through
           return part;
         } else {
           // Fallback - wrap as data part

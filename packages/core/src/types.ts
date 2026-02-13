@@ -227,12 +227,12 @@ export type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart
 
 
 /**
- * File type for images
+ * File type for images - matches Rust FileType::Bytes
  */
 export interface FileBytes {
   type: 'bytes';
   mime_type: string;
-  data: string; // Base64 encoded data
+  bytes: string; // Base64 encoded data
   name?: string;
 }
 
@@ -292,6 +292,8 @@ export interface ToolResult {
   readonly tool_call_id: string;
   readonly tool_name: string;
   readonly parts: readonly DistriPart[];
+  /** Per-part metadata indexed by part position (0-based). Parts with save: false will be filtered out when storing. */
+  readonly parts_metadata?: Record<number, PartMetadata>;
 }
 
 /**
@@ -323,10 +325,20 @@ export function createSuccessfulToolResult(
       error: undefined
     } satisfies ToolResultData
   }];
+
+  // Automatically mark image parts as non-saveable to prevent context bloat
+  const parts_metadata: Record<number, PartMetadata> = {};
+  parts.forEach((part, index) => {
+    if (part.part_type === 'image') {
+      parts_metadata[index] = { save: false };
+    }
+  });
+
   return {
     tool_call_id: toolCallId,
     tool_name: toolName,
-    parts
+    parts,
+    parts_metadata: Object.keys(parts_metadata).length > 0 ? parts_metadata : undefined
   };
 }
 

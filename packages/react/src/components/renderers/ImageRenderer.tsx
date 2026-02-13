@@ -83,9 +83,9 @@ export const ImageRenderer: React.FC<ImageRendererProps> = ({
   }
 
   const getImageSrc = (imageData: FileBytes | FileUrl): string => {
-    if ('data' in imageData) {
+    if ('bytes' in imageData) {
       // FileBytes - base64 data
-      return `data:${imageData.mime_type};base64,${imageData.data}`;
+      return `data:${imageData.mime_type};base64,${imageData.bytes}`;
     } else {
       // FileUrl - direct URL
       return imageData.url;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { LoadingShimmer } from './ThinkingRenderer';
-import { extractToolResultData, ToolCall } from '@distri/core';
+import { ToolCall, DistriPart, ToolResult } from '@distri/core';
 import { ToolRendererMap } from '@/types';
 
 interface ToolExecutionRendererProps {
@@ -22,6 +22,86 @@ interface ToolCallCardProps {
   state?: ToolCallState;
   renderResultData: (toolCallState?: ToolCallState) => React.ReactNode;
 }
+
+/**
+ * Helper to render a single DistriPart properly
+ */
+const renderPart = (part: DistriPart, index: number): React.ReactNode => {
+  switch (part.part_type) {
+    case 'text':
+      return (
+        <div key={index} className="whitespace-pre-wrap break-words">
+          {part.data}
+        </div>
+      );
+    case 'image': {
+      const imageData = part.data as { type: string; mime_type: string; bytes?: string; url?: string };
+      let src: string;
+      if (imageData.type === 'bytes' && imageData.bytes) {
+        // Base64 bytes - construct data URL
+        src = `data:${imageData.mime_type};base64,${imageData.bytes}`;
+      } else if (imageData.type === 'url' && imageData.url) {
+        src = imageData.url;
+      } else {
+        return <div key={index} className="text-muted-foreground italic">Invalid image data</div>;
+      }
+      return (
+        <div key={index} className="my-2">
+          <img
+            src={src}
+            alt="Tool result"
+            className="max-w-full max-h-[300px] rounded border border-border object-contain"
+          />
+        </div>
+      );
+    }
+    case 'data': {
+      const data = part.data;
+      // If data is a simple success/error object, render compactly
+      if (typeof data === 'object' && data !== null && 'success' in data) {
+        const result = data as { success: boolean; error?: string; result?: unknown };
+        if (result.error) {
+          return <div key={index} className="text-destructive">Error: {result.error}</div>;
+        }
+        if (result.result !== undefined) {
+          return (
+            <pre key={index} className="whitespace-pre-wrap break-words">
+              {typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)}
+            </pre>
+          );
+        }
+        return <div key={index} className="text-green-600">Success</div>;
+      }
+      // Otherwise stringify the data
+      return (
+        <pre key={index} className="whitespace-pre-wrap break-words">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      );
+    }
+    default:
+      return (
+        <pre key={index} className="whitespace-pre-wrap break-words">
+          {JSON.stringify(part, null, 2)}
+        </pre>
+      );
+  }
+};
+
+/**
+ * Render all parts from a ToolResult
+ */
+const renderToolResultParts = (result: ToolResult): React.ReactNode => {
+  if (!result.parts || result.parts.length === 0) {
+    return 'No result available';
+  }
+
+  return (
+    <div className="space-y-2">
+      {result.parts.map((part, index) => renderPart(part as DistriPart, index))}
+    </div>
+  );
+};
 
 // Friendly tool name mappings
 const getFriendlyToolMessage = (toolName: string, input: any): string => {
@@ -73,11 +153,15 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCall, state, renderResu
           </button>
         ))}
       </div>
-      <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words border border-muted rounded-md p-3">
-        {activeTab === 'input'
-          ? JSON.stringify(toolCall.input, null, 2)
-          : renderResultData(state)}
-      </pre>
+      {activeTab === 'input' ? (
+        <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words border border-muted rounded-md p-3">
+          {JSON.stringify(toolCall.input, null, 2)}
+        </pre>
+      ) : (
+        <div className="text-xs text-muted-foreground overflow-auto border border-muted rounded-md p-3">
+          {renderResultData(state)}
+        </div>
+      )}
       {state?.error && activeTab === 'output' && (
         <div className="mt-2 text-xs text-destructive">
           Error: {state.error}
@@ -171,19 +255,13 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
     return null;
   }
 
-  const renderResultData = (toolCallState?: ToolCallState) => {
+  const renderResultData = (toolCallState?: ToolCallState): React.ReactNode => {
     if (!toolCallState?.result) {
       return 'No result available';
     }
 
-    const resultData = extractToolResultData(toolCallState.result);
-    if (resultData) {
-      if (typeof resultData.result === 'object') {
-        return JSON.stringify(resultData.result, null, 2);
-      }
-      return String(resultData.result);
-    }
-    return JSON.stringify(toolCallState.result, null, 2);
+    // Use the new parts-aware renderer
+    return renderToolResultParts(toolCallState.result);
   };
 
   return (

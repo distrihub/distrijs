@@ -1080,6 +1080,7 @@ export class DistriClient {
    */
   async completeTool(agentId: string, result: ToolResult): Promise<void> {
     try {
+      // Send parts in Distri format (part_type/data) - backend expects this format
       const response = await this.fetch(`/agents/${agentId}/complete-tool`, {
         method: 'POST',
         headers: {
@@ -1088,7 +1089,12 @@ export class DistriClient {
         },
         body: JSON.stringify({
           tool_call_id: result.tool_call_id,
-          tool_response: result
+          tool_response: {
+            tool_call_id: result.tool_call_id,
+            tool_name: result.tool_name,
+            parts: result.parts,
+            parts_metadata: result.parts_metadata
+          }
         })
       });
 

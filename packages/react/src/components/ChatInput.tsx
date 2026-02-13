@@ -237,7 +237,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             data: {
               type: 'bytes',
               mime_type: image.file.type,
-              data: base64Data,
+              bytes: base64Data,
               name: image.name,
             },
           });
