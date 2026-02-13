@@ -744,12 +744,29 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       console.log(`✅ Tool completion sent to agent via API`);
 
     } catch (error) {
-      console.error(`❌ Error executing tool ${toolCall.tool_name}:`, error);
+      console.error(`❌ Error completing tool ${toolCall.tool_name}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Tool completion failed';
+
+      // Retry once
+      try {
+        console.log(`🔄 Retrying completeTool for ${toolCall.tool_name}`);
+        await agent.completeTool(result);
+        console.log(`✅ Retry successful for ${toolCall.tool_name}`);
+        return; // Success on retry, exit early
+      } catch (retryError) {
+        console.error(`❌ Retry also failed for ${toolCall.tool_name}:`, retryError);
+      }
+
+      // Both attempts failed - mark as error and stop streaming
       get().updateToolCallStatus(toolCall.tool_call_id, {
         status: 'error',
-        error: error instanceof Error ? error.message : 'Tool completion failed',
+        error: errorMessage,
         endTime: Date.now(),
       });
+
+      // Fail all pending tool calls and stop the run
+      get().failAllPendingToolCalls(`Tool completion failed: ${errorMessage}`);
+      set({ isStreaming: false, isLoading: false, streamingIndicator: undefined });
     } finally {
       completingToolCallIds.delete(toolCall.tool_call_id);
     }
