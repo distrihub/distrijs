@@ -390,6 +390,7 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
     kind: 'message',
     contextId: context.thread_id,
     taskId: context.task_id || context.run_id || undefined,
+    metadata: distriMessage.metadata,
   };
 }
 
