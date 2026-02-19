@@ -819,12 +819,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           const error = validateToolCallInput(toolCall);
           if (error) {
-            completeToolFn({
-              tool_call_id: toolCall.tool_call_id,
-              tool_name: toolCall.tool_name,
-              parts: [{ part_type: 'data', data: { result: null, error: error, success: false } }]
-            });
-            return;
+            throw new Error(error);
           }
           component = React.createElement(DefaultToolActions, {
             toolCall,
@@ -1104,7 +1099,15 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
 const validateToolCallInput = (toolCall: ToolCall): string | null => {
   const notValidJson = 'Input is not a valid JSON string or object';
+  if (toolCall.input === undefined || toolCall.input === null) {
+    toolCall.input = {};
+    return null;
+  }
   if (typeof toolCall.input === 'string') {
+    if (toolCall.input.trim() === '') {
+      toolCall.input = {};
+      return null;
+    }
     try {
       JSON.parse(toolCall.input);
       return null;
