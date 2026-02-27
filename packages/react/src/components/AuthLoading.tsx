@@ -82,6 +82,9 @@ export const AuthLoading: React.FC<AuthLoadingProps> = ({
       theme: config.theme,
       baseUrl: config.baseUrl,
     });
+    if (config.workspaceId) {
+      params.set('workspaceId', config.workspaceId);
+    }
     return `${embedBase}?${params.toString()}`;
   }, [config]);
 
