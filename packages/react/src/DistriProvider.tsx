@@ -133,6 +133,7 @@ export function DistriProvider(props: DistriProviderProps) {
         theme={defaultTheme === 'system' ? 'dark' : defaultTheme}
         debug={config.debug}
         baseUrl={config.baseUrl}
+        workspaceId={config.workspaceId}
       >
         {content}
       </DistriAuthProvider>
