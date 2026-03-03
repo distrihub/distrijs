@@ -7,7 +7,7 @@ export default defineConfig({
   sourcemap: false,
   clean: true,
   external: ['react', 'react-dom', 'react-syntax-highlighter'],
-  noExternal: ['codemirror'],
+  noExternal: ['codemirror', '@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-placeholder', '@tiptap/pm', '@tiptap/core'],
   injectStyle: false,
   minify: false,
   outDir: 'dist',
