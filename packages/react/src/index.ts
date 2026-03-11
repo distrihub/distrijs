@@ -8,8 +8,6 @@ export * from './useThreads';
 export * from './components/Chat';
 export * from './components/AgentList';
 export * from './components/AgentSelect';
-export * from './components/AgentsPage';
-export * from './components/AppSidebar';
 export * from './components/ChatInput';
 export * from './components/VoiceInput';
 export * from './components/BrowserPreviewPanel';
@@ -45,5 +43,6 @@ export * from './components/ui';
 // Renderer exports (for customization)
 export * from './components/renderers';
 
-// Default styles
-import './globals.css';
+// Styles are NOT imported here - consumers must explicitly import them:
+//   import '@distri/react/globals.css';  // Required utilities
+//   import '@distri/react/theme.css';    // Optional default theme
