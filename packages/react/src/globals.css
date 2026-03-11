@@ -13,11 +13,13 @@
 @tailwind utilities;
 
 @layer base {
-  * {
+  .distri-root *,
+  [data-distri] * {
     @apply border-border;
   }
 
-  body {
+  .distri-root,
+  [data-distri] {
     @apply bg-background text-foreground;
   }
 }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 type Theme = 'dark' | 'light' | 'system';
 
@@ -27,31 +27,15 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return defaultTheme === 'system' ? 'dark' : defaultTheme;
+    }
     const stored = localStorage.getItem(storageKey) as Theme;
     if (stored) {
       return stored;
     }
-    // If no theme is stored, default to dark instead of system
     return defaultTheme === 'system' ? 'dark' : defaultTheme;
   });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-
-    root.classList.remove('light', 'dark', 'chatgpt');
-
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
-        .matches
-        ? 'dark'
-        : 'light';
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme]);
 
   const value = {
     theme,
@@ -75,4 +59,4 @@ export const useTheme = () => {
     throw new Error('useTheme must be used within a ThemeProvider');
 
   return context;
-}; 
+};
