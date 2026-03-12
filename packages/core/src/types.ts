@@ -596,7 +596,7 @@ export interface McpDefinition {
 export interface ModelSettings {
   model: string;
   temperature: number;
-  max_tokens: number;
+  max_tokens?: number;
   context_size: number;
   top_p: number;
   frequency_penalty: number;
