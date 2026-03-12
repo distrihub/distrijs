@@ -704,11 +704,17 @@ export interface DistriClientConfig {
   workspaceId?: string;
 }
 
+export interface TokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+}
+
 export interface LLMResponse {
   finish_reason: string;
   content: string;
   tool_calls: ToolCall[];
-  token_usage: number;
+  usage?: TokenUsage;
   tools?: any[];
 }
 
