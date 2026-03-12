@@ -223,6 +223,48 @@ export interface DynamicMetadata {
 }
 
 /**
+ * Tier of context compaction applied by the server.
+ */
+export type CompactionTier = 'trim' | 'summarize' | 'reset';
+
+/**
+ * Emitted when the agent performs context compaction to stay within
+ * token budget limits. Mirrors the server-side ContextCompaction event.
+ */
+export interface ContextCompactionEvent {
+  type: 'context_compaction';
+  /** Which tier of compaction was applied */
+  tier: CompactionTier;
+  /** Token count before compaction */
+  tokens_before: number;
+  /** Token count after compaction */
+  tokens_after: number;
+  /** Number of entries removed or summarized */
+  entries_affected: number;
+  /** Context budget limit that triggered compaction */
+  context_limit: number;
+  /** Usage ratio that triggered compaction (0.0 - 1.0) */
+  usage_ratio: number;
+  /** Optional summary text (for Tier 2 summarization) */
+  summary?: string;
+}
+
+/**
+ * Current context health information derived from compaction events
+ * and usage tracking.
+ */
+export interface ContextHealth {
+  /** Current usage ratio (0.0 - 1.0) */
+  usage_ratio: number;
+  /** Estimated tokens currently used */
+  tokens_used: number;
+  /** Token budget limit */
+  tokens_limit: number;
+  /** Last compaction event, if any */
+  last_compaction?: ContextCompactionEvent;
+}
+
+/**
  * Context required for constructing A2A messages from DistriMessage
  */
 export interface InvokeContext {
