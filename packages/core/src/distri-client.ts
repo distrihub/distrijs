@@ -17,12 +17,18 @@ import {
   ToolResult,
   LLMResponse,
   LlmExecuteOptions,
+  ToolDefinition,
   DEFAULT_BASE_URL,
   AgentConfigWithTools,
   ThreadListParams,
   ThreadListResponse,
   AgentUsageInfo,
-  BrowserSession
+  BrowserSession,
+  MessageReadStatus,
+  MessageVote,
+  MessageVoteSummary,
+  VoteMessageRequest,
+  DynamicMetadata,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -537,7 +543,7 @@ export class DistriClient {
   /**
    * Minimal LLM helper that proxies to the Distri server using Distri messages.
    */
-  async llm(messages: DistriMessage[], tools: unknown[] = [], options?: LlmExecuteOptions): Promise<LLMResponse> {
+  async llm(messages: DistriMessage[], tools: ToolDefinition[] = [], options?: LlmExecuteOptions): Promise<LLMResponse> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const response = await this.fetch(`/llm/execute`, {
       method: 'POST',
@@ -748,9 +754,16 @@ export class DistriClient {
       }
     }
 
-    // Fallback: convert to string
+    // Fallback: try to extract the real error from A2A SDK wrapped messages
     if (error instanceof Error) {
-      return error.message;
+      const msg = error.message;
+      // "SSE event contained an error: <real message> (Code: -32603) Data: ..."
+      const sseMatch = msg.match(/SSE event contained an error:\s*(.+?)\s*\(Code:/);
+      if (sseMatch) return sseMatch[1];
+      // "HTTP error establishing stream ... RPC Error: <real message> (Code: ...)"
+      const rpcMatch = msg.match(/RPC Error:\s*(.+?)\s*\(Code:/);
+      if (rpcMatch) return rpcMatch[1];
+      return msg;
     }
 
     return String(error);
@@ -825,11 +838,19 @@ export class DistriClient {
   }
 
   /**
-   * Get agents sorted by thread count (most active first)
+   * Get agents sorted by thread count (most active first).
+   * Includes all registered agents, even those with 0 threads.
+   * Optionally filter by name with search parameter.
    */
-  async getAgentsByUsage(): Promise<AgentUsageInfo[]> {
+  async getAgentsByUsage(options?: { search?: string }): Promise<AgentUsageInfo[]> {
     try {
-      const response = await this.fetch('/threads/agents');
+      const params = new URLSearchParams();
+      if (options?.search) {
+        params.set('search', options.search);
+      }
+      const query = params.toString();
+      const url = query ? `/threads/agents?${query}` : '/threads/agents';
+      const response = await this.fetch(url);
       if (!response.ok) {
         throw new ApiError(`Failed to fetch agents by usage: ${response.statusText}`, response.status);
       }
@@ -900,6 +921,147 @@ export class DistriClient {
     return messages.map(convertA2AMessageToDistri);
   }
 
+  // ========== Message Read Status Methods ==========
+
+  /**
+   * Mark a message as read
+   */
+  async markMessageRead(threadId: string, messageId: string): Promise<MessageReadStatus> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/read`,
+        { method: 'POST' }
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to mark message as read: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to mark message ${messageId} as read`, 'MARK_READ_ERROR', error);
+    }
+  }
+
+  /**
+   * Get read status for a specific message
+   */
+  async getMessageReadStatus(threadId: string, messageId: string): Promise<MessageReadStatus | null> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/read`
+      );
+      if (response.status === 404) {
+        return null;
+      }
+      if (!response.ok) {
+        throw new ApiError(`Failed to get message read status: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get read status for message ${messageId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Get read status for all messages in a thread
+   */
+  async getThreadReadStatus(threadId: string): Promise<MessageReadStatus[]> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/read-status`
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to get thread read status: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get read status for thread ${threadId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  // ========== Message Voting Methods ==========
+
+  /**
+   * Vote on a message (upvote or downvote)
+   * Downvotes require a comment explaining the issue
+   */
+  async voteMessage(threadId: string, messageId: string, request: VoteMessageRequest): Promise<MessageVote> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/vote`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(errorData.error || `Failed to vote on message: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to vote on message ${messageId}`, 'VOTE_ERROR', error);
+    }
+  }
+
+  /**
+   * Remove vote from a message
+   */
+  async removeVote(threadId: string, messageId: string): Promise<void> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/vote`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok && response.status !== 204) {
+        throw new ApiError(`Failed to remove vote: ${response.statusText}`, response.status);
+      }
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to remove vote from message ${messageId}`, 'VOTE_ERROR', error);
+    }
+  }
+
+  /**
+   * Get vote summary for a message (counts + current user's vote)
+   */
+  async getMessageVoteSummary(threadId: string, messageId: string): Promise<MessageVoteSummary> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/vote`
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to get vote summary: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get vote summary for message ${messageId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Get all votes for a message (admin/analytics use)
+   */
+  async getMessageVotes(threadId: string, messageId: string): Promise<MessageVote[]> {
+    try {
+      const response = await this.fetch(
+        `/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/votes`
+      );
+      if (!response.ok) {
+        throw new ApiError(`Failed to get message votes: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to get votes for message ${messageId}`, 'FETCH_ERROR', error);
+    }
+  }
+
   /**
    * Send a DistriMessage to a thread
    */
@@ -918,6 +1080,7 @@ export class DistriClient {
    */
   async completeTool(agentId: string, result: ToolResult): Promise<void> {
     try {
+      // Send parts in Distri format (part_type/data) - backend expects this format
       const response = await this.fetch(`/agents/${agentId}/complete-tool`, {
         method: 'POST',
         headers: {
@@ -926,7 +1089,12 @@ export class DistriClient {
         },
         body: JSON.stringify({
           tool_call_id: result.tool_call_id,
-          tool_response: result
+          tool_response: {
+            tool_call_id: result.tool_call_id,
+            tool_name: result.tool_name,
+            parts: result.parts,
+            parts_metadata: result.parts_metadata
+          }
         })
       });
 
@@ -1247,13 +1415,23 @@ export class DistriClient {
   }
 
   /**
-   * Helper method to create message send parameters
+   * Helper method to create message send parameters.
+   *
+   * Pass `dynamicMetadata` to inject `dynamic_sections` and/or `dynamic_values`
+   * into the metadata so the server can apply them to prompt templates.
    */
   static initMessageParams(
     message: Message,
     configuration?: MessageSendParams['configuration'],
-    metadata?: any
+    metadata?: any,
+    dynamicMetadata?: DynamicMetadata,
   ): MessageSendParams {
+    const mergedMetadata = {
+      ...metadata,
+      ...(dynamicMetadata?.dynamic_sections ? { dynamic_sections: dynamicMetadata.dynamic_sections } : {}),
+      ...(dynamicMetadata?.dynamic_values ? { dynamic_values: dynamicMetadata.dynamic_values } : {}),
+    };
+
     return {
       message,
       configuration: {
@@ -1261,19 +1439,31 @@ export class DistriClient {
         blocking: false, // Default to non-blocking for streaming
         ...configuration
       },
-      metadata
+      metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : metadata,
     };
   }
 
   /**
-   * Create MessageSendParams from a DistriMessage using InvokeContext
+   * Create MessageSendParams from a DistriMessage using InvokeContext.
+   *
+   * Pass `dynamicMetadata` to inject `dynamic_sections` and/or `dynamic_values`
+   * into the metadata so the server can apply them to prompt templates.
    */
-  static initDistriMessageParams(message: DistriMessage, context: InvokeContext): MessageSendParams {
+  static initDistriMessageParams(
+    message: DistriMessage,
+    context: InvokeContext,
+    dynamicMetadata?: DynamicMetadata,
+  ): MessageSendParams {
     const a2aMessage = convertDistriMessageToA2A(message, context);
     const contextMetadata = context.getMetadata?.() || {};
+    const mergedMetadata = {
+      ...contextMetadata,
+      ...(dynamicMetadata?.dynamic_sections ? { dynamic_sections: dynamicMetadata.dynamic_sections } : {}),
+      ...(dynamicMetadata?.dynamic_values ? { dynamic_values: dynamicMetadata.dynamic_values } : {}),
+    };
     return {
       message: a2aMessage,
-      metadata: contextMetadata
+      metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : contextMetadata,
     };
   }
 }

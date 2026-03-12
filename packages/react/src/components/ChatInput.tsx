@@ -110,6 +110,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     },
   });
 
+  // Sync editable state when disabled prop changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!disabled);
+    }
+  }, [editor, disabled]);
+
   // Sync value changes from parent
   useEffect(() => {
     if (editor && editor.getText() !== value) {
@@ -230,7 +237,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             data: {
               type: 'bytes',
               mime_type: image.file.type,
-              data: base64Data,
+              bytes: base64Data,
               name: image.name,
             },
           });

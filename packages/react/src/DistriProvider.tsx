@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { DistriClient, DistriClientConfig } from '@distri/core';
-import { ThemeProvider } from './components/ThemeProvider';
 import { DistriAuthProvider, useDistriAuth } from './DistriAuthProvider';
 
 interface DistriContextValue {
@@ -36,6 +35,7 @@ interface DistriProviderProps {
    */
   config: DistriClientConfig & { authReady?: boolean };
   children: ReactNode;
+  /** @deprecated Theme is no longer managed by DistriProvider. Use ThemeProvider at app level instead. */
   defaultTheme?: 'dark' | 'light' | 'system';
 }
 
@@ -117,22 +117,19 @@ function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'au
  * using a dedicated headless provisioner.
  */
 export function DistriProvider(props: DistriProviderProps) {
-  const { config, defaultTheme = 'dark' } = props;
+  const { config, defaultTheme } = props;
 
-  const content = (
-    <ThemeProvider defaultTheme={defaultTheme}>
-      <DistriProviderInner {...props} />
-    </ThemeProvider>
-  );
+  const content = <DistriProviderInner {...props} />;
 
   // Wrap with AuthProvider if clientId is present to handle automatic token provisioning
   if (config.clientId) {
     return (
       <DistriAuthProvider
         clientId={config.clientId}
-        theme={defaultTheme === 'system' ? 'dark' : defaultTheme}
+        theme={defaultTheme === 'system' ? 'dark' : (defaultTheme || 'dark')}
         debug={config.debug}
         baseUrl={config.baseUrl}
+        workspaceId={config.workspaceId}
       >
         {content}
       </DistriAuthProvider>

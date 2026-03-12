@@ -6,9 +6,11 @@ import {
   ToolResult,
   HookHandler,
   AgentConfigWithTools,
+  DynamicMetadata,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
+import { RunErrorEvent } from './events';
 
 /**
  * Configuration for Agent invoke method
@@ -20,6 +22,14 @@ export interface InvokeConfig {
   contextId?: string;
   /** Metadata for the requests */
   metadata?: any;
+  /** Dynamic prompt sections injected into the template per-call */
+  dynamic_sections?: DynamicMetadata['dynamic_sections'];
+  /** Dynamic key-value pairs available in templates per-call */
+  dynamic_values?: DynamicMetadata['dynamic_values'];
+  /** Per-part metadata indexed by part position (0-based).
+   *  Use to control which parts are saved to the database.
+   *  Parts with `save: false` will be filtered out before saving. */
+  parts?: DynamicMetadata['parts'];
 }
 
 /**
@@ -144,27 +154,40 @@ export class Agent {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return (async function* () {
-      for await (const event of a2aStream) {
-        const converted = decodeA2AStreamEvent(event);
-        if (converted && (converted as any).type === 'inline_hook_requested') {
-          const hookReq: any = (converted as any).data;
-          const handler =
-            self.hookHandlers.get(hookReq.hook) ||
-            self.defaultHookHandler;
-          if (handler) {
-            try {
-              const mutation = await handler(hookReq);
-              await self.client.completeInlineHook(hookReq.hook_id, mutation);
-            } catch (err) {
+      try {
+        for await (const event of a2aStream) {
+          const converted = decodeA2AStreamEvent(event);
+          if (converted && (converted as any).type === 'inline_hook_requested') {
+            const hookReq: any = (converted as any).data;
+            const handler =
+              self.hookHandlers.get(hookReq.hook) ||
+              self.defaultHookHandler;
+            if (handler) {
+              try {
+                const mutation = await handler(hookReq);
+                await self.client.completeInlineHook(hookReq.hook_id, mutation);
+              } catch (err) {
+                await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+              }
+            } else {
               await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
             }
-          } else {
-            await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+            yield converted;
+          } else if (converted) {
+            yield converted;
           }
-          yield converted;
-        } else if (converted) {
-          yield converted;
         }
+      } catch (error) {
+        // Convert stream errors to RunErrorEvent so the UI displays them in-chat
+        const message = error instanceof Error ? error.message : String(error);
+        const runError: RunErrorEvent = {
+          type: 'run_error',
+          data: {
+            message,
+            code: 'STREAM_ERROR',
+          },
+        };
+        yield runError;
       }
     })();
   }
@@ -201,12 +224,16 @@ export class Agent {
   }
 
   /**
-   * Enhance message params with tool definitions
+   * Enhance message params with tool definitions and dynamic metadata.
+   *
+   * When `dynamic_sections` or `dynamic_values` are present in `params.metadata`,
+   * they are forwarded so the server injects them into the prompt template.
    */
   private enhanceParamsWithTools(params: MessageSendParams, tools?: DistriBaseTool[]): MessageSendParams {
     this.assertExternalTools(tools);
-    const metadata = {
-      ...params.metadata,
+    const existingMeta = params.metadata ?? {};
+    const metadata: Record<string, unknown> = {
+      ...existingMeta,
       external_tools: tools?.map(tool => ({
         name: tool.name,
         description: tool.description,
@@ -214,6 +241,8 @@ export class Agent {
         is_final: tool.is_final
       })) || []
     };
+    // Forward dynamic_sections / dynamic_values if they were placed in metadata
+    // (callers can set them on the params.metadata object directly)
     return {
       ...params,
       metadata

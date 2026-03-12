@@ -18,6 +18,8 @@ import {
   ToolExecutionEndEvent,
   DistriPart,
   TextPart,
+  TodoItem,
+  TodosUpdatedEvent,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -109,6 +111,9 @@ export interface ChatState {
   browserSessionId?: string;
   browserViewerUrl?: string;
   browserStreamUrl?: string;
+
+  // Todos state
+  todos: TodoItem[];
 }
 
 type ChatStateTool = DistriAnyTool & {
@@ -127,6 +132,9 @@ export interface ChatStateStore extends ChatState {
   setCurrentThought: (thought: string | undefined) => void;
   setBrowserSession: (sessionId: string, viewerUrl?: string, streamUrl?: string) => void;
   clearBrowserSession: () => void;
+
+  // Todos actions
+  setTodos: (todos: TodoItem[]) => void;
 
   // State actions
   addMessage: (message: DistriChatMessage) => void;
@@ -187,6 +195,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   browserSessionId: undefined,
   browserViewerUrl: undefined,
   browserStreamUrl: undefined,
+  todos: [],
   tools: {
     tools: [],
     agent_tools: new Map(),
@@ -228,6 +237,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       browserViewerUrl: undefined,
       browserStreamUrl: undefined,
     });
+  },
+
+  setTodos: (todos: TodoItem[]) => {
+    set({ todos });
   },
 
   getToolByName: (toolName: string): ChatStateTool | undefined => {
@@ -355,7 +368,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         } else {
           // Don't add state-only events to messages (they only update store state)
           const stateOnlyEvents = [
-            'run_started', 'run_finished', 'run_error',
+            'run_started', 'run_finished',
             'plan_started', 'plan_finished',
             'step_started', 'step_completed',
             'tool_results'
@@ -438,6 +451,22 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
               endTime: timestamp,
             });
           }
+
+          // Clean up orphaned tool calls that never received a tool_execution_end event.
+          // Without this, hasPendingToolCalls() stays true and the chat input remains locked.
+          const currentToolCalls = get().toolCalls;
+          let toolCallsChanged = false;
+          currentToolCalls.forEach((tc) => {
+            if (tc.status === 'pending' || tc.status === 'running') {
+              tc.status = 'completed';
+              tc.endTime = Date.now();
+              toolCallsChanged = true;
+            }
+          });
+          if (toolCallsChanged) {
+            set({ toolCalls: new Map(currentToolCalls) });
+          }
+
           set({ isStreaming: false, isLoading: false });
           get().setStreamingIndicator(undefined);
           get().setCurrentThought(undefined);
@@ -459,6 +488,21 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Only clear indicators and stop streaming if this is the main task error
           if (errorTaskId === currentMainTaskIdForError) {
             console.log('🛑 Stopping streaming - main task errored');
+
+            // Clean up orphaned tool calls so the input unlocks
+            const errorToolCalls = get().toolCalls;
+            let errorToolCallsChanged = false;
+            errorToolCalls.forEach((tc) => {
+              if (tc.status === 'pending' || tc.status === 'running') {
+                tc.status = 'error';
+                tc.endTime = Date.now();
+                errorToolCallsChanged = true;
+              }
+            });
+            if (errorToolCallsChanged) {
+              set({ toolCalls: new Map(errorToolCalls) });
+            }
+
             get().setStreamingIndicator(undefined);
             get().setCurrentThought(undefined);
             set({ isStreaming: false, isLoading: false });
@@ -592,6 +636,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // Handle agent handover events
           break;
 
+        case 'todos_updated': {
+          const todosEvent = event as TodosUpdatedEvent;
+          if (todosEvent.data.todos) {
+            get().setTodos(todosEvent.data.todos);
+          }
+          break;
+        }
+
         default:
           // Handle any other events
           break;
@@ -692,12 +744,29 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       console.log(`✅ Tool completion sent to agent via API`);
 
     } catch (error) {
-      console.error(`❌ Error executing tool ${toolCall.tool_name}:`, error);
+      console.error(`❌ Error completing tool ${toolCall.tool_name}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Tool completion failed';
+
+      // Retry once
+      try {
+        console.log(`🔄 Retrying completeTool for ${toolCall.tool_name}`);
+        await agent.completeTool(result);
+        console.log(`✅ Retry successful for ${toolCall.tool_name}`);
+        return; // Success on retry, exit early
+      } catch (retryError) {
+        console.error(`❌ Retry also failed for ${toolCall.tool_name}:`, retryError);
+      }
+
+      // Both attempts failed - mark as error and stop streaming
       get().updateToolCallStatus(toolCall.tool_call_id, {
         status: 'error',
-        error: error instanceof Error ? error.message : 'Tool completion failed',
+        error: errorMessage,
         endTime: Date.now(),
       });
+
+      // Fail all pending tool calls and stop the run
+      get().failAllPendingToolCalls(`Tool completion failed: ${errorMessage}`);
+      set({ isStreaming: false, isLoading: false, streamingIndicator: undefined });
     } finally {
       completingToolCallIds.delete(toolCall.tool_call_id);
     }
@@ -750,12 +819,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           const error = validateToolCallInput(toolCall);
           if (error) {
-            completeToolFn({
-              tool_call_id: toolCall.tool_call_id,
-              tool_name: toolCall.tool_name,
-              parts: [{ part_type: 'data', data: { result: null, error: error, success: false } }]
-            });
-            return;
+            throw new Error(error);
           }
           component = React.createElement(DefaultToolActions, {
             toolCall,
@@ -902,6 +966,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       browserSessionId: undefined,
       browserViewerUrl: undefined,
       browserStreamUrl: undefined,
+      todos: [],
     });
   },
 
@@ -1034,7 +1099,15 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
 const validateToolCallInput = (toolCall: ToolCall): string | null => {
   const notValidJson = 'Input is not a valid JSON string or object';
+  if (toolCall.input === undefined || toolCall.input === null) {
+    toolCall.input = {};
+    return null;
+  }
   if (typeof toolCall.input === 'string') {
+    if (toolCall.input.trim() === '') {
+      toolCall.input = {};
+      return null;
+    }
     try {
       JSON.parse(toolCall.input);
       return null;

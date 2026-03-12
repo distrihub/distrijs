@@ -8,8 +8,6 @@ export * from './useThreads';
 export * from './components/Chat';
 export * from './components/AgentList';
 export * from './components/AgentSelect';
-export * from './components/AgentsPage';
-export * from './components/AppSidebar';
 export * from './components/ChatInput';
 export * from './components/VoiceInput';
 export * from './components/BrowserPreviewPanel';
@@ -20,6 +18,7 @@ export * from './components/ThemeToggle';
 export * from './components/Toast';
 export * from './components/AuthLoading';
 export * from './components/AskFollowUp';
+export * from './components/ContextIndicator';
 
 // Provider exports
 export * from './DistriProvider';
@@ -33,6 +32,8 @@ export * from './hooks/useChatMessages';
 export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
+export * from './hooks/useMessageFeedback';
+export * from './hooks/useContextHealth';
 export * from './stores/chatStateStore';
 
 // Utility exports
@@ -44,5 +45,6 @@ export * from './components/ui';
 // Renderer exports (for customization)
 export * from './components/renderers';
 
-// Default styles
-import './globals.css';
+// Styles are NOT imported here - consumers must explicitly import them:
+//   import '@distri/react/globals.css';  // Required utilities
+//   import '@distri/react/theme.css';    // Optional default theme

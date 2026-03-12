@@ -191,6 +191,26 @@ export interface InlineHookRequestedEvent {
   };
 }
 
+// Todo types matching backend
+export type TodoStatus = 'open' | 'in_progress' | 'done';
+
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: TodoStatus;
+}
+
+export interface TodosUpdatedEvent {
+  type: 'todos_updated';
+  data: {
+    formatted_todos: string;
+    action: string;
+    todo_count: number;
+    /** Parsed todo items for rendering */
+    todos?: TodoItem[];
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -213,4 +233,5 @@ export type DistriEvent =
   | ToolResultsEvent
   | BrowserScreenshotEvent
   | BrowserSessionStartedEvent
-  | InlineHookRequestedEvent;
+  | InlineHookRequestedEvent
+  | TodosUpdatedEvent;

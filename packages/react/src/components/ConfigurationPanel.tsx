@@ -26,7 +26,7 @@ const defaultModelSettings = (settings?: ModelSettings): ModelSettings => {
   return {
     model: settings?.model || 'gpt-4.1-mini',
     temperature: settings?.temperature ?? 0.7,
-    max_tokens: settings?.max_tokens ?? 1000,
+    max_tokens: settings?.max_tokens,
     context_size: settings?.context_size ?? 20000,
     top_p: settings?.top_p ?? 1,
     frequency_penalty: settings?.frequency_penalty ?? 0,
