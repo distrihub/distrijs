@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -57,8 +57,8 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       const runErrorResult: RunErrorEvent = {
         type: 'run_error',
         data: {
-          message: statusUpdate.error,
-          code: statusUpdate.code
+          message: metadata.message || statusUpdate.status?.message || 'Unknown error',
+          code: metadata.code
         }
       };
       return runErrorResult;
@@ -244,6 +244,21 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       return browserSessionStarted;
     }
 
+    case 'todos_updated': {
+      // Parse the formatted_todos string into TodoItem array
+      const todos = parseTodosFromFormatted(metadata.formatted_todos || '');
+      const todosUpdated: TodosUpdatedEvent = {
+        type: 'todos_updated',
+        data: {
+          formatted_todos: metadata.formatted_todos || '',
+          action: metadata.action || 'write_todos',
+          todo_count: metadata.todo_count || 0,
+          todos,
+        },
+      };
+      return todosUpdated;
+    }
+
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
@@ -326,7 +341,7 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
         return { part_type: 'image', data: fileUrl };
       }
       else {
-        const fileBytes: FileBytes = { type: 'bytes', mime_type: a2aPart.file.mimeType || 'application/octet-stream', data: a2aPart.file.bytes || '' };
+        const fileBytes: FileBytes = { type: 'bytes', mime_type: a2aPart.file.mimeType || 'application/octet-stream', bytes: a2aPart.file.bytes || '' };
         return { part_type: 'image', data: fileBytes };
       }
     case 'data':
@@ -375,6 +390,7 @@ export function convertDistriMessageToA2A(distriMessage: DistriMessage, context:
     kind: 'message',
     contextId: context.thread_id,
     taskId: context.task_id || context.run_id || undefined,
+    metadata: distriMessage.metadata,
   };
 }
 
@@ -393,7 +409,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
         const fileUri: FileWithUri = { mimeType: distriPart.data.mime_type, uri: distriPart.data.url };
         result = { kind: 'file', file: fileUri };
       } else {
-        const fileBytes: FileWithBytes = { mimeType: distriPart.data.mime_type, bytes: distriPart.data.data };
+        const fileBytes: FileWithBytes = { mimeType: distriPart.data.mime_type, bytes: distriPart.data.bytes };
         result = { kind: 'file', file: fileBytes };
       }
       break;
@@ -410,7 +426,8 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       // Convert ToolResult to proper ToolResponse structure with parts
       const toolResult = distriPart.data as ToolResult;
 
-      // Convert ToolResult parts to proper Part format
+      // Convert ToolResult parts to proper distri Part format for Rust deserialization
+      // The Rust Part enum uses #[serde(tag = "part_type", content = "data")]
       const parts = toolResult.parts.map(part => {
         if ('type' in part && part.type === 'data') {
           // Convert DistriPart data to Part::Data format
@@ -419,7 +436,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
             data: part.data
           };
         } else if ('part_type' in part) {
-          // Already in correct format
+          // DistriPart format already matches Rust Part format, pass through
           return part;
         } else {
           // Fallback - wrap as data part
@@ -485,4 +502,48 @@ export function extractToolResultsFromDistriMessage(message: DistriMessage): any
   return message.parts
     .filter(part => part.part_type === 'tool_result')
     .map(part => (part as { part_type: 'tool_result'; data: any }).data);
+}
+
+/**
+ * Parse the formatted todos string from backend into TodoItem array
+ * Format from backend:
+ *   □ Open todo
+ *   ◐ In progress todo
+ *   ■ Done todo
+ */
+function parseTodosFromFormatted(formatted: string): TodoItem[] {
+  if (!formatted || formatted === '□ No todos') {
+    return [];
+  }
+
+  const lines = formatted.split('\n').filter(line => line.trim());
+  return lines.map((line, index) => {
+    const trimmed = line.trim();
+    let status: TodoStatus = 'open';
+    let content = trimmed;
+
+    // Parse status icon and extract content
+    if (trimmed.startsWith('■')) {
+      status = 'done';
+      content = trimmed.slice(1).trim();
+    } else if (trimmed.startsWith('◐')) {
+      status = 'in_progress';
+      content = trimmed.slice(1).trim();
+    } else if (trimmed.startsWith('□')) {
+      status = 'open';
+      content = trimmed.slice(1).trim();
+    }
+
+    // Remove notes in parentheses for cleaner display if needed
+    // const notesMatch = content.match(/^(.+?)\s*\((.+)\)$/);
+    // if (notesMatch) {
+    //   content = notesMatch[1];
+    // }
+
+    return {
+      id: `todo_${index}`,
+      content,
+      status,
+    };
+  });
 }

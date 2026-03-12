@@ -1,14 +1,17 @@
 import React from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { useTheme } from './ThemeProvider';
 
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+interface ThemeToggleProps {
+  theme?: 'dark' | 'light';
+  onThemeChange?: (theme: 'dark' | 'light') => void;
+}
+
+export function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) {
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        onClick={() => onThemeChange?.(theme === 'light' ? 'dark' : 'light')}
         className="flex items-center justify-center w-9 h-9 rounded-md border bg-background hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
       >
         <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
@@ -17,4 +20,4 @@ export function ThemeToggle() {
       </button>
     </div>
   );
-} 
+}

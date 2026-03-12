@@ -9,6 +9,23 @@ import { Agent } from './agent';
 export type MessageRole = 'system' | 'assistant' | 'user' | 'tool' | 'developer';
 
 /**
+ * Message metadata structure that matches the backend.
+ * The 'parts' field maps part indices to PartMetadata for save filtering.
+ */
+export interface DistriMessageMetadata {
+  /** Per-part metadata indexed by part position (0-based). Parts with save: false are filtered before DB save. */
+  parts?: Record<number, { save?: boolean }>;
+  /** Session ID for browser sessions */
+  session_id?: string;
+  /** Browser session ID */
+  browser_session_id?: string;
+  /** Model/definition overrides */
+  definition_overrides?: { model?: string };
+  /** Additional arbitrary metadata */
+  [key: string]: unknown;
+}
+
+/**
  * Distri-specific message structure with parts
  */
 export interface DistriMessage {
@@ -22,6 +39,8 @@ export interface DistriMessage {
   agent_id?: string;
   /** The name of the agent that generated this message (for assistant messages) */
   agent_name?: string;
+  /** Message metadata including parts metadata for save filtering */
+  metadata?: DistriMessageMetadata;
 }
 
 export interface LlmExecuteOptions {
@@ -29,7 +48,12 @@ export interface LlmExecuteOptions {
   parent_task_id?: string;
   run_id?: string;
   model_settings?: any;
-  is_sub_task?: boolean
+  is_sub_task?: boolean;
+  headers?: Record<string, string>;
+  agent_id?: string;
+  external_id?: string;
+  load_history?: boolean;
+  title?: string;
 }
 
 export interface AssistantWithToolCalls {
@@ -166,6 +190,81 @@ export type DistriStreamEvent = DistriMessage | DistriEvent;
 
 
 /**
+ * A named prompt section that can be dynamically injected into templates per-call.
+ */
+export interface PromptSection {
+  key: string;
+  content: string;
+}
+
+/**
+ * Metadata for individual message parts.
+ * Used to control part behavior such as persistence.
+ */
+export interface PartMetadata {
+  /** If false, this part will be filtered out before saving to the database.
+   *  Useful for ephemeral/dynamic content that should only be sent in the current turn.
+   *  Defaults to true. */
+  save?: boolean;
+}
+
+/**
+ * Dynamic metadata that can be provided per invoke call to customise
+ * prompt template rendering on the server.
+ */
+export interface DynamicMetadata {
+  /** Dynamic prompt sections injected into the template per-call */
+  dynamic_sections?: PromptSection[];
+  /** Dynamic key-value pairs available in templates per-call */
+  dynamic_values?: Record<string, unknown>;
+  /** Per-part metadata indexed by part position (0-based).
+   *  Parts not listed will use default metadata (save: true). */
+  parts?: Record<number, PartMetadata>;
+}
+
+/**
+ * Tier of context compaction applied by the server.
+ */
+export type CompactionTier = 'trim' | 'summarize' | 'reset';
+
+/**
+ * Emitted when the agent performs context compaction to stay within
+ * token budget limits. Mirrors the server-side ContextCompaction event.
+ */
+export interface ContextCompactionEvent {
+  type: 'context_compaction';
+  /** Which tier of compaction was applied */
+  tier: CompactionTier;
+  /** Token count before compaction */
+  tokens_before: number;
+  /** Token count after compaction */
+  tokens_after: number;
+  /** Number of entries removed or summarized */
+  entries_affected: number;
+  /** Context budget limit that triggered compaction */
+  context_limit: number;
+  /** Usage ratio that triggered compaction (0.0 - 1.0) */
+  usage_ratio: number;
+  /** Optional summary text (for Tier 2 summarization) */
+  summary?: string;
+}
+
+/**
+ * Current context health information derived from compaction events
+ * and usage tracking.
+ */
+export interface ContextHealth {
+  /** Current usage ratio (0.0 - 1.0) */
+  usage_ratio: number;
+  /** Estimated tokens currently used */
+  tokens_used: number;
+  /** Token budget limit */
+  tokens_limit: number;
+  /** Last compaction event, if any */
+  last_compaction?: ContextCompactionEvent;
+}
+
+/**
  * Context required for constructing A2A messages from DistriMessage
  */
 export interface InvokeContext {
@@ -189,12 +288,12 @@ export type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart
 
 
 /**
- * File type for images
+ * File type for images - matches Rust FileType::Bytes
  */
 export interface FileBytes {
   type: 'bytes';
   mime_type: string;
-  data: string; // Base64 encoded data
+  bytes: string; // Base64 encoded data
   name?: string;
 }
 
@@ -254,6 +353,8 @@ export interface ToolResult {
   readonly tool_call_id: string;
   readonly tool_name: string;
   readonly parts: readonly DistriPart[];
+  /** Per-part metadata indexed by part position (0-based). Parts with save: false will be filtered out when storing. */
+  readonly parts_metadata?: Record<number, PartMetadata>;
 }
 
 /**
@@ -269,15 +370,30 @@ export function isArrayParts(result: any): boolean {
   return Array.isArray(result) && result[0].part_type
 }
 /**
+ * Part with optional inline metadata - used by tool handlers to mark parts as non-saveable
+ */
+export type DistriPartWithMetadata = DistriPart & { __metadata?: PartMetadata };
+
+/**
  * Type-safe helper to create a successful ToolResult
  * Uses proper DistriPart structure - conversion to backend format happens in encoder
+ *
+ * Parts can include __metadata property to specify part-level metadata (e.g., save: false).
+ * Image parts are automatically marked as save: false.
  */
 export function createSuccessfulToolResult(
   toolCallId: string,
   toolName: string,
-  result: string | number | boolean | null | object | DistriPart[]
+  result: string | number | boolean | null | object | DistriPartWithMetadata[],
+  explicitPartsMetadata?: Record<number, PartMetadata>
 ): ToolResult {
-  const parts = isArrayParts(result) ? result as DistriPart[] : [{
+  console.log('[createSuccessfulToolResult] toolName:', toolName);
+  console.log('[createSuccessfulToolResult] isArrayParts:', isArrayParts(result));
+  console.log('[createSuccessfulToolResult] result type:', typeof result, Array.isArray(result) ? `array[${(result as any[]).length}]` : '');
+  if (isArrayParts(result)) {
+    console.log('[createSuccessfulToolResult] parts:', (result as any[]).map((p: any) => ({ part_type: p.part_type, hasMetadata: !!p.__metadata })));
+  }
+  const rawParts = isArrayParts(result) ? result as DistriPartWithMetadata[] : [{
     part_type: 'data' as const,
     data: {
       result,
@@ -285,10 +401,30 @@ export function createSuccessfulToolResult(
       error: undefined
     } satisfies ToolResultData
   }];
+
+  // Build parts_metadata from explicit param, inline __metadata, and auto image detection
+  const parts_metadata: Record<number, PartMetadata> = { ...explicitPartsMetadata };
+
+  // Clean parts (remove __metadata) and collect metadata
+  const parts: DistriPart[] = rawParts.map((part, index) => {
+    // Extract inline metadata if present
+    if ('__metadata' in part && part.__metadata) {
+      parts_metadata[index] = { ...parts_metadata[index], ...part.__metadata };
+    }
+    // Auto-mark image parts as non-saveable
+    if (part.part_type === 'image' && !parts_metadata[index]) {
+      parts_metadata[index] = { save: false };
+    }
+    // Return clean part without __metadata
+    const { __metadata, ...cleanPart } = part as DistriPartWithMetadata;
+    return cleanPart as DistriPart;
+  });
+
   return {
     tool_call_id: toolCallId,
     tool_name: toolName,
-    parts
+    parts,
+    parts_metadata: Object.keys(parts_metadata).length > 0 ? parts_metadata : undefined
   };
 }
 
@@ -502,7 +638,7 @@ export interface McpDefinition {
 export interface ModelSettings {
   model: string;
   temperature: number;
-  max_tokens: number;
+  max_tokens?: number;
   context_size: number;
   top_p: number;
   frequency_penalty: number;
@@ -806,3 +942,55 @@ export function isDistriEvent(event: DistriStreamEvent): event is DistriEvent {
 }
 
 export type DistriChatMessage = DistriEvent | DistriMessage;
+
+// ========== Message Read Status Types ==========
+
+/**
+ * Vote type for message feedback
+ */
+export type VoteType = 'upvote' | 'downvote';
+
+/**
+ * Record of a message being read
+ */
+export interface MessageReadStatus {
+  thread_id: string;
+  message_id: string;
+  user_id: string;
+  read_at: string; // ISO 8601 format
+}
+
+/**
+ * Request to vote on a message
+ */
+export interface VoteMessageRequest {
+  vote_type: VoteType;
+  /** Required for downvotes */
+  comment?: string;
+}
+
+/**
+ * A vote on a message with optional feedback comment
+ */
+export interface MessageVote {
+  id: string;
+  thread_id: string;
+  message_id: string;
+  user_id: string;
+  vote_type: VoteType;
+  /** Comment is required for downvotes, optional for upvotes */
+  comment?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Summary of votes for a message
+ */
+export interface MessageVoteSummary {
+  message_id: string;
+  upvotes: number;
+  downvotes: number;
+  /** Current user's vote on this message, if any */
+  user_vote?: VoteType;
+}

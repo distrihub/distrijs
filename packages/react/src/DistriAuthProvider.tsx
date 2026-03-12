@@ -18,6 +18,7 @@ interface DistriAuthContextValue {
     theme: 'dark' | 'light';
     baseUrl: string;
     debug: boolean;
+    workspaceId?: string;
   };
 }
 
@@ -29,6 +30,7 @@ interface DistriAuthProviderProps {
   children: ReactNode;
   debug?: boolean;
   baseUrl?: string;
+  workspaceId?: string;
 }
 
 export function DistriAuthProvider({
@@ -36,7 +38,8 @@ export function DistriAuthProvider({
   theme = 'dark',
   children,
   debug = false,
-  baseUrl = 'https://api.distri.dev/v1'
+  baseUrl = 'https://api.distri.dev/v1',
+  workspaceId,
 }: DistriAuthProviderProps) {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +77,9 @@ export function DistriAuthProvider({
     clientId,
     theme,
     baseUrl,
-    debug
-  }), [clientId, theme, baseUrl, debug]);
+    debug,
+    workspaceId,
+  }), [clientId, theme, baseUrl, debug, workspaceId]);
 
   const contextValue = useMemo(() => ({
     token,
@@ -108,7 +112,7 @@ export function useDistriAuth() {
       setStatus: () => { },
       setError: () => { },
       resolveAuth: () => { },
-      config: { clientId: '', theme: 'dark' as const, baseUrl: '', debug: false }
+      config: { clientId: '', theme: 'dark' as const, baseUrl: '', debug: false, workspaceId: undefined }
     };
   }
   return context;

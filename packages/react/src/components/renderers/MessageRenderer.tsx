@@ -3,6 +3,7 @@ import { DistriMessage, DistriEvent, isDistriMessage, isDistriEvent, DistriChatM
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { StepBasedRenderer } from './StepBasedRenderer';
 import { ToolExecutionRenderer } from './ToolExecutionRenderer';
+import { MessageReadTracker } from './MessageReadTracker';
 import { useChatStateStore } from '@/stores/chatStateStore';
 import { ToolRendererMap } from '@/types';
 export interface MessageRendererProps {
@@ -13,6 +14,10 @@ export interface MessageRendererProps {
   toolRenderers?: ToolRendererMap;
   /** Enable debug mode to show developer messages */
   debug?: boolean;
+  /** Thread ID for feedback functionality */
+  threadId?: string;
+  /** Enable message feedback (voting) UI */
+  enableFeedback?: boolean;
 }
 
 // Wrapper component to ensure full width with max constraint for readability
@@ -36,6 +41,8 @@ export function MessageRenderer({
   index,
   toolRenderers,
   debug = false,
+  threadId,
+  enableFeedback = false,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
   // Don't render messages with empty content
@@ -69,14 +76,31 @@ export function MessageRenderer({
           </RendererWrapper>
         );
 
-      case 'assistant':
+      case 'assistant': {
+        const shouldTrackRead = enableFeedback && distriMessage.id;
+        const content = (
+          <StepBasedRenderer
+            message={distriMessage}
+            threadId={threadId}
+            enableFeedback={enableFeedback}
+          />
+        );
+
         return (
           <RendererWrapper key={`assistant-${index}`} className="distri-assistant-message">
-            <StepBasedRenderer
-              message={distriMessage}
-            />
+            {shouldTrackRead ? (
+              <MessageReadTracker
+                messageId={distriMessage.id}
+                enabled={true}
+              >
+                {content}
+              </MessageReadTracker>
+            ) : (
+              content
+            )}
           </RendererWrapper>
         );
+      }
 
       case 'developer':
         // Developer messages are hidden by default, shown only in debug mode
