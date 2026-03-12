@@ -18,6 +18,7 @@ export * from './components/ThemeToggle';
 export * from './components/Toast';
 export * from './components/AuthLoading';
 export * from './components/AskFollowUp';
+export * from './components/ContextIndicator';
 
 // Provider exports
 export * from './DistriProvider';
@@ -32,6 +33,7 @@ export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
 export * from './hooks/useMessageFeedback';
+export * from './hooks/useContextHealth';
 export * from './stores/chatStateStore';
 
 // Utility exports
