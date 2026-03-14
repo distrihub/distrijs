@@ -29,6 +29,7 @@ import {
   MessageVoteSummary,
   VoteMessageRequest,
   DynamicMetadata,
+  ProviderModelsStatus,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -615,6 +616,28 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Fetch all available models grouped by provider, with configuration status.
+   * Each provider includes `configured: boolean` indicating whether the
+   * provider's required API key(s) are set on the server.
+   */
+  async fetchAvailableModels(): Promise<ProviderModelsStatus[]> {
+    try {
+      const response = await this.fetch(`/models`, {
+        headers: {
+          ...this.config.headers,
+        }
+      });
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch models: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to fetch available models', 'FETCH_ERROR', error);
     }
   }
 

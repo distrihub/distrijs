@@ -636,7 +636,7 @@ export interface McpDefinition {
 }
 
 export interface ModelSettings {
-  model: string;
+  model?: string;
   temperature: number;
   max_tokens?: number;
   context_size: number;
@@ -993,4 +993,46 @@ export interface MessageVoteSummary {
   downvotes: number;
   /** Current user's vote on this message, if any */
   user_vote?: VoteType;
+}
+
+// ========== Models API Types ==========
+
+/**
+ * Information about a single model
+ */
+export interface ModelInfo {
+  id: string;
+  name: string;
+}
+
+/**
+ * Models grouped by provider with configuration status
+ */
+export interface ProviderModelsStatus {
+  provider_id: string;
+  provider_label: string;
+  configured: boolean;
+  models: ModelInfo[];
+}
+
+// Usage analytics types for enhanced history API
+export interface UsageHistoryEntry {
+  date: string
+  tokens: number
+  identifier_id?: string | null
+  channel_id?: string | null
+  channel_name?: string | null
+  agent_id?: string | null
+}
+
+export interface ChannelUsageSummary {
+  id: string
+  name: string | null
+  provider: string
+}
+
+export interface UsageHistoryFilters {
+  identifier_id?: string
+  channel_id?: string
+  agent_id?: string
 }
