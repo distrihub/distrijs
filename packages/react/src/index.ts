@@ -3,6 +3,7 @@ export * from './useChat';
 export * from './useAgent';
 export * from './useAgentDefinitions';
 export * from './useThreads';
+export * from './useModels';
 
 // Component exports
 export * from './components/Chat';
