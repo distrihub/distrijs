@@ -675,6 +675,9 @@ export interface DistriThread {
   user_id?: string;
   external_id?: string;
   tags?: string[];
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
 }
 
 export interface Thread {
@@ -688,6 +691,9 @@ export interface Thread {
   user_id?: string;
   external_id?: string;
   tags?: string[];
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
 }
 
 /**

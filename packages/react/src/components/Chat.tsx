@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, ToolCall, ToolExecutionOptions } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -135,6 +135,35 @@ const getThemeClasses = (theme: 'light' | 'dark' | 'auto') => {
   if (theme === 'dark') return 'dark';
   if (theme === 'light') return 'light';
   return '';
+};
+
+function formatTokenCount(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
+  return String(tokens);
+}
+
+const ThreadTokensBanner: React.FC<{ thread: DistriThread | null }> = ({ thread }) => {
+  if (!thread || !(thread.total_tokens ?? 0)) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 py-1.5 text-[11px] text-muted-foreground/70">
+      <span>
+        <span className="opacity-60">In:</span>{' '}
+        <span className="font-medium text-muted-foreground">{formatTokenCount(thread.input_tokens ?? 0)}</span>
+      </span>
+      <span className="opacity-30">·</span>
+      <span>
+        <span className="opacity-60">Out:</span>{' '}
+        <span className="font-medium text-muted-foreground">{formatTokenCount(thread.output_tokens ?? 0)}</span>
+      </span>
+      <span className="opacity-30">·</span>
+      <span>
+        <span className="opacity-60">Total:</span>{' '}
+        <span className="font-medium text-foreground/70">{formatTokenCount(thread.total_tokens ?? 0)} tokens</span>
+      </span>
+    </div>
+  );
 };
 
 export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner({
@@ -299,6 +328,33 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Get distri client for browser session creation
   const { client: distriClient } = useDistri();
+
+  // Thread token usage tracking
+  const [threadDetails, setThreadDetails] = useState<DistriThread | null>(null);
+  const wasStreamingRef = useRef(false);
+
+  const refreshThreadDetails = useCallback(() => {
+    if (distriClient && threadId) {
+      distriClient.getThread(threadId)
+        .then(setThreadDetails)
+        .catch(() => {});
+    }
+  }, [distriClient, threadId]);
+
+  // Re-fetch thread details when streaming ends
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming) {
+      refreshThreadDetails();
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming, refreshThreadDetails]);
+
+  // Initial fetch for existing threads
+  useEffect(() => {
+    if (distriClient && threadId && initialMessages && initialMessages.length > 0) {
+      refreshThreadDetails();
+    }
+  }, [distriClient, threadId]); // intentionally only on mount/threadId change
 
   const handleToggleBrowser = useCallback(async (enabled: boolean) => {
     if (!supportsBrowserStreaming) return;
@@ -950,6 +1006,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               </div>
             </div>
           )}
+
+          {/* Thread token usage */}
+          <ThreadTokensBanner thread={threadDetails} />
 
           {/* Todos display */}
           {todos && todos.length > 0 && (
