@@ -690,6 +690,7 @@ export interface Thread {
   last_message?: string;
   user_id?: string;
   external_id?: string;
+  channel_id?: string;
   tags?: string[];
   input_tokens?: number;
   output_tokens?: number;
