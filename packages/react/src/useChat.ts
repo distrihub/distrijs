@@ -309,7 +309,13 @@ export function useChat({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-  }, []);
+    // Fail all pending tool calls so they don't complete after cancel
+    // and trigger the agent to restart via completeTool retry
+    failAllPendingToolCalls('User cancelled the operation');
+    setStreamingIndicator(undefined);
+    setStreaming(false);
+    setLoading(false);
+  }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
 
   return {
     isStreaming,
