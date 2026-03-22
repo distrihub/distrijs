@@ -638,14 +638,14 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           const handoverEvent = event as import('../../../core/src/events').AgentHandoverEvent;
           set({ currentAgentId: handoverEvent.data.to_agent });
           // Add a system-style message showing the handover
-          const handoverMsg: DistriChatMessage = {
+          const handoverMsg: DistriMessage = {
             id: `handover-${Date.now()}`,
-            role: 'system' as DistriChatMessage['role'],
+            role: 'system',
             parts: [{
-              type: 'text',
-              text: `Transferring to **${handoverEvent.data.to_agent}**${handoverEvent.data.reason ? ` — ${handoverEvent.data.reason}` : ''}`,
+              part_type: 'text',
+              data: `Transferring to **${handoverEvent.data.to_agent}**${handoverEvent.data.reason ? ` — ${handoverEvent.data.reason}` : ''}`,
             }],
-            createdAt: timestamp,
+            created_at: timestamp,
           };
           set((state) => ({ messages: [...state.messages, handoverMsg] }));
           break;
