@@ -8,6 +8,7 @@ export interface RunStartedEvent {
   data: {
     runId?: string;
     taskId?: string;
+    agentId?: string;
   }
 }
 
