@@ -95,6 +95,7 @@ export interface ChatState {
   currentRunId?: string;    // From AgentEvent runId
   currentTaskId?: string;   // From A2A status-update taskId - this is what we send back
   currentPlanId?: string;   // Generated locally
+  currentAgentId?: string;  // Current executing agent (changes on handover)
   messages: DistriChatMessage[];
 
   // Streaming indicator state
@@ -434,7 +435,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
           set({
             currentRunId: runId,
-            currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId
+            currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId,
+            currentAgentId: runStartedEvent.data.agentId || get().currentAgentId,
           });
           get().setStreamingIndicator('typing');
           set({ isStreaming: true });
@@ -632,9 +634,22 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           }
           break;
 
-        case 'agent_handover':
-          // Handle agent handover events
+        case 'agent_handover': {
+          const handoverEvent = event as import('../../../core/src/events').AgentHandoverEvent;
+          set({ currentAgentId: handoverEvent.data.to_agent });
+          // Add a system-style message showing the handover
+          const handoverMsg: DistriMessage = {
+            id: `handover-${Date.now()}`,
+            role: 'system',
+            parts: [{
+              part_type: 'text',
+              data: `Transferring to **${handoverEvent.data.to_agent}**${handoverEvent.data.reason ? ` — ${handoverEvent.data.reason}` : ''}`,
+            }],
+            created_at: timestamp,
+          };
+          set((state) => ({ messages: [...state.messages, handoverMsg] }));
           break;
+        }
 
         case 'todos_updated': {
           const todosEvent = event as TodosUpdatedEvent;
