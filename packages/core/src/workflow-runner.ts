@@ -135,8 +135,9 @@ function detectCycles(steps: WorkflowStep[]): string | null {
   const adj = new Map<string, string[]>()
   const ids = new Set(steps.map(s => s.id))
   for (const step of steps) {
-    adj.set(step.id, step.depends_on || [])
-    for (const dep of step.depends_on || []) {
+    const deps = step.depends_on || []
+    adj.set(step.id, deps)
+    for (const dep of deps) {
       if (!ids.has(dep)) return `Step '${step.id}' depends on '${dep}' which does not exist`
     }
   }
@@ -200,10 +201,16 @@ export class WorkflowRunner {
       env: this.options.env || {},
     }
 
-    // Clone workflow for mutation
+    // Clone workflow for mutation, apply defaults
     const workflow: WorkflowDefinition = JSON.parse(JSON.stringify(definition))
     workflow.status = 'running'
     workflow.context = ctx as unknown as Record<string, unknown>
+    // Ensure all steps have defaults
+    for (const step of workflow.steps) {
+      step.status = step.status || 'pending'
+      step.depends_on = step.depends_on || []
+      step.execution = step.execution || 'sequential'
+    }
 
     yield {
       event: 'workflow_started',
