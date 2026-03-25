@@ -42,6 +42,7 @@ export * from './utils/toolWrapper';
 
 // Workflow
 export * from './useWorkflow';
+export * from './useWorkflowRunner';
 export * from './components/WorkflowProgress';
 
 // UI Component exports (for customization)
