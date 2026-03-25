@@ -40,6 +40,10 @@ export * from './stores/chatStateStore';
 // Utility exports
 export * from './utils/toolWrapper';
 
+// Workflow
+export * from './useWorkflow';
+export * from './components/WorkflowProgress';
+
 // UI Component exports (for customization)
 export * from './components/ui';
 
