@@ -19,3 +19,6 @@ export {
 } from './encoder';
 
 export { uuidv4 } from './distri-client';
+
+// Workflow types
+export * from './workflow';
