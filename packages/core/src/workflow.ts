@@ -2,39 +2,53 @@
  * Workflow engine types — mirrors distri-workflow Rust crate.
  */
 
-export type WorkflowStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed'
-export type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped'
+export type WorkflowStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'blocked'
+export type StepStatus = 'pending' | 'blocked' | 'running' | 'done' | 'failed' | 'skipped'
 export type StepExecution = 'sequential' | 'parallel'
 
 export interface WorkflowDefinition {
   id: string
   workflow_type: string
-  status: WorkflowStatus
-  current_step: number
-  context: Record<string, unknown>
+  /** JSON Schema for required inputs. */
+  input_schema?: Record<string, unknown>
   steps: WorkflowStep[]
-  notes: WorkflowNote[]
-  created_at: string
-  updated_at: string
+  // Runtime state (defaults applied by runner, not required in templates)
+  status?: WorkflowStatus
+  current_step?: number
+  context?: Record<string, unknown>
+  notes?: WorkflowNote[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface WorkflowStep {
   id: string
   label: string
   kind: StepKind
-  status: StepStatus
+  depends_on?: string[]
+  execution?: StepExecution
+  requires?: StepRequirement[]
+  /** Explicit input mapping with {input.X}, {steps.X.Y}, {env.X} references. */
+  input?: Record<string, unknown>
+  // Runtime state (not in templates)
+  status?: StepStatus
   result?: unknown
   error?: string | null
   started_at?: string | null
   completed_at?: string | null
-  depends_on: string[]
-  execution: StepExecution
+}
+
+export interface StepRequirement {
+  skill: string
+  permissions?: string[]
+  config?: unknown
 }
 
 export type StepKind =
+  | { type: 'tool_call'; tool_name: string; input?: unknown; agent_id?: string }
   | { type: 'api_call'; method: string; url: string; body?: unknown; headers?: Record<string, string> }
-  | { type: 'script'; command: string; args?: string[] }
-  | { type: 'agent_run'; agent_id: string; prompt: string; tools?: string[] }
+  | { type: 'script'; command: string; args?: string[]; cwd?: string; timeout_secs?: number }
+  | { type: 'agent_run'; agent_id: string; prompt: string; tools?: string[]; skills?: string[]; model?: string }
   | { type: 'condition'; expression: string; if_true: StepKind; if_false?: StepKind }
   | { type: 'checkpoint'; message: string }
 
@@ -53,9 +67,10 @@ export interface WorkflowNote {
 
 /** Helper: count steps by status */
 export function countSteps(workflow: WorkflowDefinition) {
-  const counts = { pending: 0, running: 0, done: 0, failed: 0, skipped: 0 }
+  const counts = { pending: 0, blocked: 0, running: 0, done: 0, failed: 0, skipped: 0 }
   for (const step of workflow.steps) {
-    counts[step.status]++
+    const status = step.status || 'pending'
+    if (status in counts) counts[status as keyof typeof counts]++
   }
   return counts
 }
@@ -74,6 +89,7 @@ export function stepIcon(status: StepStatus): string {
     case 'failed': return '❌'
     case 'running': return '⏳'
     case 'skipped': return '⏭'
+    case 'blocked': return '🚫'
     case 'pending': return '⬜'
   }
 }

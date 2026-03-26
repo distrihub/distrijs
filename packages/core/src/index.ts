@@ -20,5 +20,6 @@ export {
 
 export { uuidv4 } from './distri-client';
 
-// Workflow types
+// Workflow types and runner
 export * from './workflow';
+export * from './workflow-runner';

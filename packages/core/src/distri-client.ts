@@ -1378,6 +1378,20 @@ export class DistriClient {
    * Enhanced fetch with retry logic and auth headers.
    * Exposed publicly for extensions like DistriHomeClient.
    */
+  /** Call a registered tool via the server's /tools/call endpoint. */
+  async callTool(toolName: string, input: Record<string, unknown>): Promise<unknown> {
+    const resp = await this.fetch('/tools/call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tool_name: toolName, input }),
+    })
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '')
+      throw new Error(`Tool '${toolName}' failed (${resp.status}): ${text}`)
+    }
+    return resp.json()
+  }
+
   public async fetch(input: RequestInfo | URL, initialInit?: RequestInit): Promise<Response> {
     // Construct the full URL using baseUrl
     const url = `${this.config.baseUrl}${input}`;
