@@ -3,7 +3,7 @@
  */
 
 export type WorkflowStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'blocked'
-export type StepStatus = 'pending' | 'blocked' | 'running' | 'done' | 'failed' | 'skipped'
+export type StepStatus = 'pending' | 'blocked' | 'running' | 'done' | 'failed' | 'skipped' | 'waiting_for_input'
 export type StepExecution = 'sequential' | 'parallel'
 
 export interface WorkflowDefinition {
@@ -75,6 +75,7 @@ export type StepKind =
   | { type: 'agent_run'; agent_id: string; prompt: string; tools?: string[]; skills?: string[]; model?: string }
   | { type: 'condition'; expression: string; if_true: StepKind; if_false?: StepKind }
   | { type: 'checkpoint'; message: string }
+  | { type: 'wait_for_input'; message: string; schema?: Record<string, unknown> }
 
 export interface StepResult {
   status: StepStatus
@@ -91,7 +92,7 @@ export interface WorkflowNote {
 
 /** Helper: count steps by status */
 export function countSteps(workflow: WorkflowDefinition) {
-  const counts = { pending: 0, blocked: 0, running: 0, done: 0, failed: 0, skipped: 0 }
+  const counts = { pending: 0, blocked: 0, running: 0, done: 0, failed: 0, skipped: 0, waiting_for_input: 0 }
   for (const step of workflow.steps) {
     const status = step.status || 'pending'
     if (status in counts) counts[status as keyof typeof counts]++
@@ -115,6 +116,7 @@ export function stepIcon(status: StepStatus): string {
     case 'skipped': return '⏭'
     case 'blocked': return '🚫'
     case 'pending': return '⬜'
+    case 'waiting_for_input': return '✋'
   }
 }
 
@@ -179,6 +181,47 @@ function reachableFrom(steps: WorkflowStep[], startStepId: string): Set<string> 
   }
 
   return reachable
+}
+
+/** Check if any step in the workflow is waiting for input. */
+export function isWaitingForInput(workflow: WorkflowDefinition): boolean {
+  return workflow.steps.some(s => s.status === 'waiting_for_input')
+}
+
+/** Get the step that is waiting for input, if any. */
+export function getWaitingStep(workflow: WorkflowDefinition): WorkflowStep | undefined {
+  return workflow.steps.find(s => s.status === 'waiting_for_input')
+}
+
+/**
+ * Resume a paused workflow by providing input for the waiting step.
+ * Returns a new workflow with the step marked done and its result stored in context.
+ */
+export function resumeStep(
+  workflow: WorkflowDefinition,
+  stepId: string,
+  result: unknown,
+): WorkflowDefinition {
+  const idx = workflow.steps.findIndex(s => s.id === stepId && s.status === 'waiting_for_input')
+  if (idx === -1) throw new Error(`Step '${stepId}' not found or not in waiting_for_input state`)
+
+  const steps = workflow.steps.map((s, i) => {
+    if (i !== idx) return { ...s }
+    return {
+      ...s,
+      status: 'done' as StepStatus,
+      result,
+      completed_at: new Date().toISOString(),
+    }
+  })
+
+  // Store result in context for downstream steps
+  const context = { ...workflow.context } as Record<string, unknown>
+  const stepsCtx = (context.steps as Record<string, unknown>) ?? {}
+  stepsCtx[stepId] = result
+  context.steps = stepsCtx
+
+  return { ...workflow, steps, context, status: 'running' }
 }
 
 /** Evaluate a skip_if expression against a structured execution context. */
