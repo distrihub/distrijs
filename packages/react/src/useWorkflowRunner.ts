@@ -38,8 +38,12 @@ export interface UseWorkflowRunnerOptions {
 export interface UseWorkflowRunnerReturn {
   /** Run a workflow with the given input. Optionally specify an entry point to start from. */
   run: (workflow: WorkflowDefinition, input?: Record<string, unknown>, entryPointId?: string) => Promise<WorkflowStatus>
+  /** Resume a paused workflow by providing input for the waiting step. */
+  resume: (stepId: string, input: unknown) => Promise<WorkflowStatus>
   /** Whether a workflow is currently running. */
   isRunning: boolean
+  /** Whether the workflow is paused waiting for human input. */
+  isPaused: boolean
   /** Current status (null if not started). */
   status: WorkflowStatus | null
   /** All events emitted so far. */
@@ -51,9 +55,11 @@ export interface UseWorkflowRunnerReturn {
 export function useWorkflowRunner(options: UseWorkflowRunnerOptions = {}): UseWorkflowRunnerReturn {
   const { client } = useDistri()
   const [isRunning, setIsRunning] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [status, setStatus] = useState<WorkflowStatus | null>(null)
   const [events, setEvents] = useState<WorkflowEvent[]>([])
   const stoppedRef = useRef(false)
+  const runnerRef = useRef<WorkflowRunner | null>(null)
 
   const run = useCallback(async (
     workflow: WorkflowDefinition,
@@ -67,8 +73,10 @@ export function useWorkflowRunner(options: UseWorkflowRunnerOptions = {}): UseWo
       env: options.env,
       executeStep: options.executeStep,
     })
+    runnerRef.current = runner
 
     setIsRunning(true)
+    setIsPaused(false)
     setStatus('running')
     setEvents([])
     stoppedRef.current = false
@@ -85,6 +93,10 @@ export function useWorkflowRunner(options: UseWorkflowRunnerOptions = {}): UseWo
         if (event.event === 'workflow_completed') {
           finalStatus = event.status
           setStatus(event.status)
+        } else if (event.event === 'workflow_paused') {
+          finalStatus = 'paused'
+          setStatus('paused')
+          setIsPaused(true)
         }
       }
     } catch (err) {
@@ -97,9 +109,47 @@ export function useWorkflowRunner(options: UseWorkflowRunnerOptions = {}): UseWo
     return finalStatus
   }, [client, options.buildRequest, options.env, options.executeStep, options.onEvent])
 
+  const resume = useCallback(async (stepId: string, input: unknown): Promise<WorkflowStatus> => {
+    const runner = runnerRef.current
+    if (!runner || !runner.isPaused) {
+      throw new Error('No paused workflow to resume')
+    }
+
+    setIsRunning(true)
+    setIsPaused(false)
+    setStatus('running')
+
+    let finalStatus: WorkflowStatus = 'failed'
+
+    try {
+      for await (const event of runner.resume(stepId, input)) {
+        if (stoppedRef.current) break
+
+        setEvents(prev => [...prev, event])
+        options.onEvent?.(event)
+
+        if (event.event === 'workflow_completed') {
+          finalStatus = event.status
+          setStatus(event.status)
+        } else if (event.event === 'workflow_paused') {
+          finalStatus = 'paused'
+          setStatus('paused')
+          setIsPaused(true)
+        }
+      }
+    } catch (err) {
+      finalStatus = 'failed'
+      setStatus('failed')
+    } finally {
+      setIsRunning(false)
+    }
+
+    return finalStatus
+  }, [options.onEvent])
+
   const stop = useCallback(() => {
     stoppedRef.current = true
   }, [])
 
-  return { run, isRunning, status, events, stop }
+  return { run, resume, isRunning, isPaused, status, events, stop }
 }

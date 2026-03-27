@@ -22,7 +22,7 @@ import type {
   WorkflowStatus,
   StepStatus,
 } from './workflow'
-import { applyEntryPoint, evaluateSkipCondition } from './workflow'
+import { applyEntryPoint, evaluateSkipCondition, resumeStep } from './workflow'
 
 // ── Event types ────────────────────────────────────────────────────────────
 
@@ -31,7 +31,9 @@ export type WorkflowEvent =
   | { event: 'step_started'; workflow_id: string; step_id: string; step_label: string }
   | { event: 'step_completed'; workflow_id: string; step_id: string; step_label: string; result?: unknown }
   | { event: 'step_failed'; workflow_id: string; step_id: string; step_label: string; error: string }
+  | { event: 'step_waiting'; workflow_id: string; step_id: string; step_label: string; message: string; schema?: unknown }
   | { event: 'workflow_completed'; workflow_id: string; status: WorkflowStatus; steps_done: number; steps_failed: number }
+  | { event: 'workflow_paused'; workflow_id: string; step_id: string; message: string }
 
 export type WorkflowEventCallback = (event: WorkflowEvent) => void
 
@@ -180,10 +182,165 @@ function detectCycles(steps: WorkflowStep[]): string | null {
 export class WorkflowRunner {
   private client: DistriClient
   private options: WorkflowRunnerOptions
+  /** Stored when workflow pauses for human input */
+  private _pausedWorkflow: WorkflowDefinition | null = null
+  private _pausedContext: ExecutionContext | null = null
 
   constructor(client: DistriClient, options: WorkflowRunnerOptions = {}) {
     this.client = client
     this.options = options
+  }
+
+  /** Whether this runner has a paused workflow waiting for input. */
+  get isPaused(): boolean {
+    return this._pausedWorkflow?.status === 'paused'
+  }
+
+  /** Get the paused workflow state (for inspection/UI). */
+  get pausedWorkflow(): WorkflowDefinition | null {
+    return this._pausedWorkflow
+  }
+
+  /**
+   * Resume a paused workflow by providing input for the waiting step.
+   * Returns an async generator of events (like run()).
+   */
+  async *resume(
+    stepId: string,
+    input: unknown,
+  ): AsyncGenerator<WorkflowEvent> {
+    if (!this._pausedWorkflow || !this._pausedContext) {
+      throw new Error('No paused workflow to resume')
+    }
+
+    // Apply the resume
+    const resumed = resumeStep(this._pausedWorkflow, stepId, input)
+    const ctx = this._pausedContext
+    ctx.steps[stepId] = input
+
+    // Clear paused state
+    this._pausedWorkflow = null
+    this._pausedContext = null
+
+    // Continue running from the resumed state
+    yield* this._continueRun(resumed, ctx)
+  }
+
+  /** Internal: continue running a workflow from its current state. */
+  private async *_continueRun(
+    workflow: WorkflowDefinition,
+    ctx: ExecutionContext,
+  ): AsyncGenerator<WorkflowEvent> {
+    // Ensure all steps have defaults
+    for (const step of workflow.steps) {
+      step.status = step.status || 'pending'
+      step.depends_on = step.depends_on || []
+      step.execution = step.execution || 'sequential'
+    }
+
+    // Run remaining steps (same loop as run())
+    while (true) {
+      // Evaluate skip_if conditions on pending steps
+      for (const step of workflow.steps) {
+        if (step.status === 'pending' && step.skip_if) {
+          if (evaluateSkipCondition(step.skip_if, ctx as unknown as Record<string, unknown>)) {
+            step.status = 'skipped' as StepStatus
+            step.completed_at = new Date().toISOString()
+          }
+        }
+      }
+
+      const runnableIndices = this.findRunnable(workflow)
+      if (runnableIndices.length === 0) break
+
+      let paused = false
+      for (const idx of runnableIndices) {
+        const step = workflow.steps[idx]
+
+        if (step.kind.type === 'wait_for_input') {
+          step.status = 'waiting_for_input' as StepStatus
+          step.started_at = new Date().toISOString()
+          workflow.status = 'paused'
+
+          yield {
+            event: 'step_waiting',
+            workflow_id: workflow.id,
+            step_id: step.id,
+            step_label: step.label,
+            message: step.kind.message,
+            schema: step.kind.schema,
+          }
+
+          yield {
+            event: 'workflow_paused',
+            workflow_id: workflow.id,
+            step_id: step.id,
+            message: step.kind.message,
+          }
+
+          this._pausedWorkflow = workflow
+          this._pausedContext = ctx
+          paused = true
+          break
+        }
+
+        yield {
+          event: 'step_started',
+          workflow_id: workflow.id,
+          step_id: step.id,
+          step_label: step.label,
+        }
+
+        step.status = 'running' as StepStatus
+        step.started_at = new Date().toISOString()
+
+        try {
+          const resolvedInput = resolveStepInput(step, ctx)
+          const result = this.options.executeStep
+            ? await this.options.executeStep(step, resolvedInput, ctx)
+            : await this.executeStep(step, resolvedInput, ctx)
+
+          step.status = result.status
+          step.result = result.result
+          step.error = result.error ?? null
+          step.completed_at = new Date().toISOString()
+
+          if (result.result != null) {
+            ctx.steps[step.id] = result.result
+          }
+
+          if (result.status === 'failed') {
+            yield { event: 'step_failed', workflow_id: workflow.id, step_id: step.id, step_label: step.label, error: result.error || 'Unknown error' }
+            workflow.status = 'failed'
+            break
+          } else {
+            yield { event: 'step_completed', workflow_id: workflow.id, step_id: step.id, step_label: step.label, result: result.result }
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err)
+          step.status = 'failed' as StepStatus
+          step.error = errMsg
+          step.completed_at = new Date().toISOString()
+          yield { event: 'step_failed', workflow_id: workflow.id, step_id: step.id, step_label: step.label, error: errMsg }
+          workflow.status = 'failed'
+          break
+        }
+      }
+
+      if (paused) break
+      if (workflow.status === 'failed') break
+    }
+
+    if (workflow.status !== 'failed' && workflow.status !== 'paused') {
+      const allDone = workflow.steps.every(s => s.status === 'done' || s.status === 'skipped')
+      workflow.status = allDone ? 'completed' : 'failed'
+    }
+
+    if (workflow.status !== 'paused') {
+      const stepsDone = workflow.steps.filter(s => s.status === 'done').length
+      const stepsFailed = workflow.steps.filter(s => s.status === 'failed').length
+      yield { event: 'workflow_completed', workflow_id: workflow.id, status: workflow.status, steps_done: stepsDone, steps_failed: stepsFailed }
+    }
   }
 
   /**
@@ -255,8 +412,39 @@ export class WorkflowRunner {
       const runnableIndices = this.findRunnable(workflow)
       if (runnableIndices.length === 0) break
 
+      // Check if any runnable step is a WaitForInput — pause on it
+      let paused = false
       for (const idx of runnableIndices) {
         const step = workflow.steps[idx]
+
+        // WaitForInput: pause workflow and yield waiting event
+        if (step.kind.type === 'wait_for_input') {
+          step.status = 'waiting_for_input' as StepStatus
+          step.started_at = new Date().toISOString()
+          workflow.status = 'paused'
+
+          yield {
+            event: 'step_waiting',
+            workflow_id: workflow.id,
+            step_id: step.id,
+            step_label: step.label,
+            message: step.kind.message,
+            schema: step.kind.schema,
+          }
+
+          yield {
+            event: 'workflow_paused',
+            workflow_id: workflow.id,
+            step_id: step.id,
+            message: step.kind.message,
+          }
+
+          // Store the paused workflow state so resume can use it
+          this._pausedWorkflow = workflow
+          this._pausedContext = ctx
+          paused = true
+          break
+        }
 
         yield {
           event: 'step_started',
@@ -321,24 +509,28 @@ export class WorkflowRunner {
         }
       }
 
+      if (paused) break
       if (workflow.status === 'failed') break
     }
 
     // Final status
-    if (workflow.status !== 'failed') {
+    if (workflow.status !== 'failed' && workflow.status !== 'paused') {
       const allDone = workflow.steps.every(s => s.status === 'done' || s.status === 'skipped')
       workflow.status = allDone ? 'completed' : 'failed'
     }
 
-    const stepsDone = workflow.steps.filter(s => s.status === 'done').length
-    const stepsFailed = workflow.steps.filter(s => s.status === 'failed').length
+    // Only emit workflow_completed if not paused (paused workflows will resume later)
+    if (workflow.status !== 'paused') {
+      const stepsDone = workflow.steps.filter(s => s.status === 'done').length
+      const stepsFailed = workflow.steps.filter(s => s.status === 'failed').length
 
-    yield {
-      event: 'workflow_completed',
-      workflow_id: workflow.id,
-      status: workflow.status,
-      steps_done: stepsDone,
-      steps_failed: stepsFailed,
+      yield {
+        event: 'workflow_completed',
+        workflow_id: workflow.id,
+        status: workflow.status,
+        steps_done: stepsDone,
+        steps_failed: stepsFailed,
+      }
     }
   }
 
