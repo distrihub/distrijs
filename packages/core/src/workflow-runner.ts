@@ -22,6 +22,7 @@ import type {
   WorkflowStatus,
   StepStatus,
 } from './workflow'
+import { applyEntryPoint, evaluateSkipCondition } from './workflow'
 
 // ── Event types ────────────────────────────────────────────────────────────
 
@@ -185,13 +186,25 @@ export class WorkflowRunner {
     this.options = options
   }
 
-  /** Run a workflow to completion. Returns an async generator of WorkflowEvents. */
+  /**
+   * Run a workflow to completion. Returns an async generator of WorkflowEvents.
+   * @param definition - The workflow definition to run
+   * @param input - Input data for the workflow
+   * @param entryPointId - Optional entry point ID to start from (skips earlier steps)
+   */
   async *run(
     definition: WorkflowDefinition,
     input: Record<string, unknown> = {},
+    entryPointId?: string,
   ): AsyncGenerator<WorkflowEvent> {
+    // Apply entry point if specified (skips earlier steps, pre-populates results)
+    let def = JSON.parse(JSON.stringify(definition)) as WorkflowDefinition
+    if (entryPointId) {
+      def = applyEntryPoint(def, entryPointId)
+    }
+
     // Validate DAG
-    const cycle = detectCycles(definition.steps)
+    const cycle = detectCycles(def.steps)
     if (cycle) throw new Error(cycle)
 
     // Build execution context
@@ -201,8 +214,16 @@ export class WorkflowRunner {
       env: this.options.env || {},
     }
 
+    // Merge preset results from entry point into execution context
+    if (entryPointId && def.context) {
+      const presetSteps = (def.context as Record<string, unknown>).steps as Record<string, unknown> | undefined
+      if (presetSteps) {
+        Object.assign(ctx.steps, presetSteps)
+      }
+    }
+
     // Clone workflow for mutation, apply defaults
-    const workflow: WorkflowDefinition = JSON.parse(JSON.stringify(definition))
+    const workflow: WorkflowDefinition = def
     workflow.status = 'running'
     workflow.context = ctx as unknown as Record<string, unknown>
     // Ensure all steps have defaults
@@ -221,6 +242,16 @@ export class WorkflowRunner {
 
     // Run steps in dependency order
     while (true) {
+      // Evaluate skip_if conditions on pending steps
+      for (const step of workflow.steps) {
+        if (step.status === 'pending' && step.skip_if) {
+          if (evaluateSkipCondition(step.skip_if, ctx as unknown as Record<string, unknown>)) {
+            step.status = 'skipped' as StepStatus
+            step.completed_at = new Date().toISOString()
+          }
+        }
+      }
+
       const runnableIndices = this.findRunnable(workflow)
       if (runnableIndices.length === 0) break
 
@@ -311,14 +342,15 @@ export class WorkflowRunner {
     }
   }
 
-  /** Find indices of steps that are pending with all dependencies met. */
+  /** Find indices of steps that are pending with all dependencies met.
+   *  Dependencies are "met" if the step is done or skipped (entry point skips count). */
   private findRunnable(workflow: WorkflowDefinition): number[] {
     const runnable: number[] = []
     for (let i = 0; i < workflow.steps.length; i++) {
       const step = workflow.steps[i]
       if (step.status !== 'pending') continue
       const depsMet = (step.depends_on || []).every(depId =>
-        workflow.steps.some(s => s.id === depId && s.status === 'done')
+        workflow.steps.some(s => s.id === depId && (s.status === 'done' || s.status === 'skipped'))
       )
       if (depsMet) runnable.push(i)
     }
