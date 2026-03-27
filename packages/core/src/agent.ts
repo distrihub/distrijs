@@ -289,7 +289,7 @@ export class Agent {
   private formatExternalToolValidationMessage(requiredTools: string[], missingTools: string[]): string {
     const requiredList = requiredTools.join(', ');
     const missingList = missingTools.join(', ');
-    return `Agent has external tools that are not registered: ${missingList}. This is an embedded agent that can run within the parent application. Register DistriWidget for embedding the parent component. Required tools: ${requiredList}.`;
+    return `Agent has external tools that are not registered: ${missingList}.`;
   }
 
   /**

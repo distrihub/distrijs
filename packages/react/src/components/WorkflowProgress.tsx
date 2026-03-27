@@ -2,8 +2,7 @@
  * WorkflowProgress — renders workflow step progress.
  */
 
-import React from 'react'
-import type { WorkflowDefinition } from '@distri/core'
+import type { StepStatus, WorkflowDefinition } from '@distri/core'
 import { stepIcon, workflowProgress } from '@distri/core'
 
 export interface WorkflowProgressProps {
@@ -55,7 +54,7 @@ export function WorkflowProgress({ workflow, className, detailed }: WorkflowProg
               opacity: step.status === 'skipped' ? 0.5 : 1,
             }}
           >
-            <span style={{ fontSize: 14, lineHeight: '20px' }}>{stepIcon(step.status)}</span>
+            <span style={{ fontSize: 14, lineHeight: '20px' }}>{stepIcon((step.status ?? 'pending') as StepStatus)}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 fontSize: 13,
@@ -71,9 +70,9 @@ export function WorkflowProgress({ workflow, className, detailed }: WorkflowProg
                   {step.error}
                 </div>
               )}
-              {detailed && step.result && step.status === 'done' && (
+              {detailed && step.result != null && step.status === 'done' && (
                 <div style={{ fontSize: 11, color: 'var(--muted-foreground, #6b7280)', marginTop: 2 }}>
-                  {typeof step.result === 'string' ? step.result : JSON.stringify(step.result).slice(0, 100)}
+                  {String(typeof step.result === 'string' ? step.result : JSON.stringify(step.result)).slice(0, 100)}
                 </div>
               )}
             </div>

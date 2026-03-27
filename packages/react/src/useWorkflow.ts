@@ -11,7 +11,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import type {
   WorkflowDefinition,
-  WorkflowStatus,
   StepStatus,
   StepResult,
 } from '@distri/core'
@@ -60,7 +59,7 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
       const step = workflow.steps[i]
       if (step.status !== 'pending') continue
 
-      const depsMet = step.depends_on.every(depId =>
+      const depsMet = (step.depends_on ?? []).every(depId =>
         workflow.steps.some(s => s.id === depId && s.status === 'done')
       )
       if (depsMet) return i
@@ -81,7 +80,7 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
     setIsRunning(true)
 
     try {
-      const result = await onExecuteStep(step.id, step, workflow.context)
+      const result = await onExecuteStep(step.id, step, workflow.context ?? {})
 
       const final_ = { ...updated }
       final_.steps = [...updated.steps]
@@ -128,7 +127,7 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
           for (let i = 0; i < current.steps.length; i++) {
             const step = current.steps[i]
             if (step.status !== 'pending') continue
-            const depsMet = step.depends_on.every(depId =>
+            const depsMet = (step.depends_on ?? []).every(depId =>
               current.steps.some(s => s.id === depId && s.status === 'done')
             )
             if (depsMet) return i
@@ -144,7 +143,7 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
         current.status = 'running'
         updateAndNotify(current)
 
-        const result = await onExecuteStep(step.id, step, current.context)
+        const result = await onExecuteStep(step.id, step, current.context ?? {})
 
         current = { ...current, steps: [...current.steps] }
         current.steps[idx] = {
