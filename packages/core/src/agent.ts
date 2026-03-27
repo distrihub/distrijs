@@ -286,8 +286,7 @@ export class Agent {
     return tools;
   }
 
-  private formatExternalToolValidationMessage(requiredTools: string[], missingTools: string[]): string {
-    const requiredList = requiredTools.join(', ');
+  private formatExternalToolValidationMessage(_requiredTools: string[], missingTools: string[]): string {
     const missingList = missingTools.join(', ');
     return `Agent has external tools that are not registered: ${missingList}.`;
   }

@@ -36,8 +36,8 @@ export interface UseWorkflowRunnerOptions {
 }
 
 export interface UseWorkflowRunnerReturn {
-  /** Run a workflow with the given input. */
-  run: (workflow: WorkflowDefinition, input?: Record<string, unknown>) => Promise<WorkflowStatus>
+  /** Run a workflow with the given input. Optionally specify an entry point to start from. */
+  run: (workflow: WorkflowDefinition, input?: Record<string, unknown>, entryPointId?: string) => Promise<WorkflowStatus>
   /** Whether a workflow is currently running. */
   isRunning: boolean
   /** Current status (null if not started). */
@@ -58,6 +58,7 @@ export function useWorkflowRunner(options: UseWorkflowRunnerOptions = {}): UseWo
   const run = useCallback(async (
     workflow: WorkflowDefinition,
     input: Record<string, unknown> = {},
+    entryPointId?: string,
   ): Promise<WorkflowStatus> => {
     if (!client) throw new Error('DistriClient not initialized')
 
@@ -75,7 +76,7 @@ export function useWorkflowRunner(options: UseWorkflowRunnerOptions = {}): UseWo
     let finalStatus: WorkflowStatus = 'failed'
 
     try {
-      for await (const event of runner.run(workflow, input)) {
+      for await (const event of runner.run(workflow, input, entryPointId)) {
         if (stoppedRef.current) break
 
         setEvents(prev => [...prev, event])
