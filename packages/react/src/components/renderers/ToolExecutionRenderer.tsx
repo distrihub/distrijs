@@ -9,6 +9,7 @@ interface ToolExecutionRendererProps {
   event: any; // Can be ToolCallsEvent or ToolResultsEvent
   toolCallStates: Map<string, ToolCallState>;
   toolRenderers?: ToolRendererMap;
+  debug?: boolean;
 }
 
 interface ToolCallData {
@@ -21,6 +22,7 @@ interface ToolCallCardProps {
   toolCall: ToolCallData;
   state?: ToolCallState;
   renderResultData: (toolCallState?: ToolCallState) => React.ReactNode;
+  debug?: boolean;
 }
 
 /**
@@ -103,141 +105,191 @@ const renderToolResultParts = (result: ToolResult): React.ReactNode => {
   );
 };
 
-// Friendly tool name mappings
-const getFriendlyToolMessage = (toolName: string, input: any): string => {
+/** Format tool call like CLI: `tool_name("key_param")` */
+const formatToolCall = (toolName: string, input: any): string => {
+  const str = (key: string) => input?.[key] || '?';
+  const truncate = (s: string, max: number) => s.length > max ? `${s.slice(0, max)}…` : s;
+
   switch (toolName) {
+    case 'load_skill':
+      return `load_skill("${str('skill_name')}")`;
+    case 'run_skill_script': {
+      const step = input?.step_index;
+      return step != null
+        ? `run_skill_script("${str('skill_name')}", step=${step})`
+        : `run_skill_script("${str('skill_name')}")`;
+    }
+    case 'create_skill':
+    case 'delete_skill':
+      return `${toolName}("${input?.name || input?.skill_name || '?'}")`;
     case 'search':
-      return `Searching "${input?.query || 'unknown query'}"`;
-    case 'call_search_agent':
-      return `Searching`;
-    case 'read_values':
-      return `Reading values`;
-    case 'get_sheet_info':
-      return `Getting sheet info`;
-    case 'get_context_pack':
-      return `Understanding the spreadsheet`;
-    case 'write_values':
-      return `Updating values`;
-    case 'clear_values':
-      return `Clearing values`;
-    case 'merge_cells':
-      return `Merging cells`;
-    case 'call_blink_ops_agent':
-      return `Planning sheet updates`;
-    case 'apply_blink_ops':
-      return `Applying sheet updates`;
-    default:
-      return `Executing ${toolName}`;
+      return `search("${truncate(str('query'), 60)}")`;
+    case 'tool_search':
+      return `tool_search("${truncate(str('query'), 60)}")`;
+    case 'execute_shell':
+      return `execute_shell("${truncate(str('command'), 60)}")`;
+    case 'start_shell':
+    case 'stop_shell':
+      return `${toolName}()`;
+    case 'browsr_scrape':
+    case 'browsr_crawl':
+      return `${toolName}("${truncate(str('url'), 60)}")`;
+    case 'transfer_to_agent':
+      return `transfer_to_agent("${str('agent_name')}")`;
+    case 'api_request': {
+      const method = input?.method || 'GET';
+      const path = input?.path;
+      const url = input?.url;
+      if (url) return `api_request(${method} ${truncate(url, 50)})`;
+      if (path) return `api_request(${method} ${path})`;
+      return `api_request(${method})`;
+    }
+    case 'final':
+    case 'reflect':
+      return `${toolName}()`;
+    default: {
+      const compact = JSON.stringify(input || {});
+      return `${toolName}(${truncate(compact, 80)})`;
+    }
   }
 };
 
-const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCall, state, renderResultData }) => {
+/** Summarize tool result into a short one-liner */
+const summarizeResult = (state: ToolCallState): string | null => {
+  if (!state.result?.parts?.length) return null;
+  for (const part of state.result.parts) {
+    const p = part as DistriPart;
+    if (p.part_type === 'text' && typeof p.data === 'string') {
+      const text = p.data.trim();
+      return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+    }
+    if (p.part_type === 'data' && typeof p.data === 'object' && p.data !== null) {
+      const obj = p.data as Record<string, unknown>;
+      if (obj.error) return `Error: ${obj.error}`;
+      if (obj.data && typeof obj.data === 'object') {
+        const inner = obj.data as Record<string, unknown>;
+        // Show count for arrays
+        if (Array.isArray(inner)) return `${inner.length} items`;
+        // Show a key field if available
+        const label = inner.name || inner.id || inner.title || inner.status;
+        if (label) return String(label);
+      }
+      if (obj.status && obj.data !== undefined) {
+        const compact = JSON.stringify(obj.data);
+        return compact.length > 100 ? `${compact.slice(0, 100)}…` : compact;
+      }
+    }
+  }
+  return null;
+};
+
+const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCall, state, renderResultData, debug = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
 
-  const friendlyMessage = getFriendlyToolMessage(toolCall.tool_name, toolCall.input);
+  const formatted = formatToolCall(toolCall.tool_name, toolCall.input);
   const executionTime = state?.endTime && state?.startTime
     ? state.endTime - state.startTime
     : undefined;
 
-  const renderTabs = () => (
-    <div className="mt-2">
-      <div className="mb-2 flex items-center gap-2">
+  const renderDebugTabs = () => (
+    <div className="mt-1.5 ml-5">
+      <div className="mb-1.5 flex items-center gap-1.5">
         {(['output', 'input'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`text-xs px-2 py-1 rounded border transition-colors ${activeTab === tab ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${activeTab === tab ? 'bg-muted-foreground/20 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {tab === 'output' ? 'Output' : 'Input'}
           </button>
         ))}
       </div>
       {activeTab === 'input' ? (
-        <pre className="text-xs text-muted-foreground whitespace-pre-wrap overflow-auto break-words border border-muted rounded-md p-3">
+        <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap overflow-auto break-words bg-muted/50 rounded p-2 max-h-[200px]">
           {JSON.stringify(toolCall.input, null, 2)}
         </pre>
       ) : (
-        <div className="text-xs text-muted-foreground overflow-auto border border-muted rounded-md p-3">
+        <div className="text-[11px] text-muted-foreground overflow-auto bg-muted/50 rounded p-2 max-h-[200px]">
           {renderResultData(state)}
-        </div>
-      )}
-      {state?.error && activeTab === 'output' && (
-        <div className="mt-2 text-xs text-destructive">
-          Error: {state.error}
         </div>
       )}
     </div>
   );
 
+  // Running/pending: shimmer with formatted tool call
   if (state?.status === 'pending' || state?.status === 'running') {
     return (
-      <div className="mb-2">
-        <LoadingShimmer text={friendlyMessage} />
+      <div className="mb-1">
+        <LoadingShimmer text={formatted} className="text-xs" showIcon={true} />
       </div>
     );
   }
 
+  // Completed
   if (state?.status === 'completed') {
     const time = executionTime || 0;
+    const summary = summarizeResult(state);
+
     return (
-      <div className="mb-2">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-            <span>
-              {friendlyMessage} completed
+      <div className="mb-1 group">
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <span
+              className={debug ? 'cursor-pointer hover:text-foreground transition-colors' : ''}
+              onClick={debug ? () => setIsExpanded(!isExpanded) : undefined}
+            >
+              {formatted}
               {time > 100 && (
-                <span className="ml-1 text-xs">
-                  ({(time / 1000).toFixed(1)}s)
+                <span className="ml-1 text-muted-foreground/60">
+                  {(time / 1000).toFixed(1)}s
                 </span>
               )}
+              {debug && (
+                isExpanded
+                  ? <ChevronDown className="inline h-3 w-3 ml-0.5" />
+                  : <ChevronRight className="inline h-3 w-3 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
             </span>
-          </div>
-
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1 text-xs transition-colors hover:text-foreground"
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
+            {summary && !isExpanded && (
+              <div className="text-muted-foreground/60 truncate">{`⎿ ${summary}`}</div>
             )}
-            View details
-          </button>
+          </div>
         </div>
-
-        {isExpanded && renderTabs()}
+        {debug && isExpanded && renderDebugTabs()}
       </div>
     );
   }
 
+  // Errors: always visible
   if (state?.status === 'error') {
     return (
-      <div className="mb-3">
-        <div className="mb-2 flex items-center gap-2 text-sm text-destructive">
-          <XCircle className="h-4 w-4" />
-          <span>
-            {friendlyMessage} failed
+      <div className="mb-1">
+        <div className="flex items-start gap-1.5 text-xs">
+          <XCircle className="h-3 w-3 text-destructive mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <span
+              className={`text-destructive ${debug ? 'cursor-pointer hover:text-destructive/80' : ''}`}
+              onClick={debug ? () => setIsExpanded(!isExpanded) : undefined}
+            >
+              {formatted} failed
+            </span>
             {state.error && (
-              <span className="ml-1 text-xs text-muted-foreground">
-                - {state.error}
-              </span>
+              <div className="text-muted-foreground/60 text-[11px] truncate">{`⎿ ${state.error}`}</div>
             )}
-          </span>
+          </div>
         </div>
-
-        {renderTabs()}
+        {debug && isExpanded && renderDebugTabs()}
       </div>
     );
   }
 
   if (state) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Clock className="h-4 w-4" />
-        <span>{friendlyMessage} ({state.status})</span>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+        <Clock className="h-3 w-3" />
+        <span>{formatted} ({state.status})</span>
       </div>
     );
   }
@@ -249,6 +301,7 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
   event,
   toolCallStates,
   toolRenderers,
+  debug = false,
 }) => {
   const toolCalls = event.data?.tool_calls || [];
   if (toolCalls.length === 0) {
@@ -290,6 +343,7 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
               toolCall={toolCall}
               state={state}
               renderResultData={renderResultData}
+              debug={debug}
             />
           );
         })}
