@@ -170,6 +170,7 @@ export function MessageRenderer({
               event={event}
               toolCallStates={toolCallsState}
               toolRenderers={toolRenderers}
+              debug={debug}
             />
           </RendererWrapper>
         );
