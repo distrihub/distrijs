@@ -1,4 +1,6 @@
 import React from 'react';
+import phrases from './thinkingPhrases.json';
+import { DistriLoadingIcon } from './DistriLoadingIcon';
 
 export type StreamingIndicator = 'typing' | 'thinking' | 'generating';
 export interface ThinkingRendererProps {
@@ -9,9 +11,9 @@ export interface ThinkingRendererProps {
   thoughtText?: string;
 }
 
-export const LoadingShimmer = ({ text, className }: { text: string, className?: string }) => {
-  return (<div className={`w-full ${className || ''}`}>
-
+export const LoadingShimmer = ({ text, className, showIcon = false }: { text: string, className?: string, showIcon?: boolean }) => {
+  return (<div className={`flex items-center gap-2 ${className || ''}`}>
+    {showIcon && <DistriLoadingIcon size={14} className="text-primary/70" />}
     <span className="font-medium text-shimmer">
       {text}
     </span>
@@ -35,8 +37,9 @@ export const LoadingShimmer = ({ text, className }: { text: string, className?: 
 export const ThinkingRenderer: React.FC<ThinkingRendererProps> = ({
   className = '',
 }) => {
-
-  const component = LoadingShimmer({ text: 'Thinking...' });
+  const pool = phrases.thinking;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const component = LoadingShimmer({ text: `${pick.text}…`, showIcon: true });
   return (
     <div className={`flex items-start gap-3 py-3 ${className}`}>
       <div className="w-full">
