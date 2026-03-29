@@ -1401,10 +1401,61 @@ export class DistriClient {
   }
 
   /**
-   * Enhanced fetch with retry logic and auth headers.
-   * Exposed publicly for extensions like DistriHomeClient.
+   * Resolve secret values by key names via the server's /secrets/resolve endpoint.
    */
+  async resolveSecrets(keys: string[]): Promise<Record<string, string>> {
+    const response = await this.fetch('/secrets/resolve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify({ keys }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to resolve secrets', response.status);
+    }
+    const data = await response.json();
+    return data.resolved;
+  }
+
+  /**
+   * Fetch an OAuth connection token by connection ID.
+   */
+  async getConnectionToken(connectionId: string): Promise<{ access_token: string; token_type?: string; expires_at?: string }> {
+    const response = await this.fetch(`/connections/${encodeURIComponent(connectionId)}/token`, {
+      method: 'POST',
+      headers: {
+        ...this.config.headers,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || 'Failed to get connection token', response.status);
+    }
+    return response.json();
+  }
+
   /** Call a registered tool via the server's /tools/call endpoint. */
+  /**
+   * Proxy an HTTP request through the Distri server.
+   *
+   * Sends the raw HttpRequestInput to `POST /request` so the server can
+   * resolve secrets, inject connection tokens, and execute the request.
+   */
+  async proxyRequest(input: import('./http-request').HttpRequestInput): Promise<import('./http-request').HttpRequestResponse> {
+    const response = await this.fetch('/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...this.config.headers },
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      throw new ApiError(`Request proxy failed: ${response.statusText}`, response.status);
+    }
+    return response.json();
+  }
+
   async callTool(toolName: string, input: Record<string, unknown>): Promise<unknown> {
     const resp = await this.fetch('/tools/call', {
       method: 'POST',
