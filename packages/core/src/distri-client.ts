@@ -620,6 +620,32 @@ export class DistriClient {
   }
 
   /**
+   * Delete an agent by ID
+   */
+  async deleteAgent(agentId: string): Promise<void> {
+    try {
+      const response = await this.fetch(`/agents/${encodeURIComponent(agentId)}`, {
+        method: 'DELETE',
+        headers: {
+          ...this.config.headers,
+        }
+      });
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Agent not found: ${agentId}`, 404);
+        }
+        if (response.status === 403) {
+          throw new ApiError(`Cannot delete this agent`, 403);
+        }
+        throw new ApiError(`Failed to delete agent: ${response.statusText}`, response.status);
+      }
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to delete agent', 'DELETE_ERROR', error);
+    }
+  }
+
+  /**
    * Fetch all available models grouped by provider, with configuration status.
    * Each provider includes `configured: boolean` indicating whether the
    * provider's required API key(s) are set on the server.
