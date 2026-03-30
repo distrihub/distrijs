@@ -87,6 +87,9 @@ export interface ChatState {
   error: Error | null;
   debug: boolean; // Debug flag for enhanced logging
 
+  // Verbosity mode for tool display
+  verbose: boolean;
+
   // Task/Plan/Step state
   tasks: Map<string, TaskState>;
   plans: Map<string, PlanState>;
@@ -127,6 +130,7 @@ export interface ChatStateStore extends ChatState {
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
   setDebug: (debug: boolean) => void;
+  setVerbose: (verbose: boolean) => void;
 
   // Streaming indicator actions
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
@@ -183,6 +187,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   isLoading: false,
   error: null,
   debug: false,
+  verbose: false,
   tasks: new Map(),
   plans: new Map(),
   steps: new Map(),
@@ -214,6 +219,9 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
   setDebug: (debug: boolean) => {
     set({ debug });
+  },
+  setVerbose: (verbose: boolean) => {
+    set({ verbose });
   },
 
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => {
