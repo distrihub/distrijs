@@ -92,7 +92,9 @@ describe('DistriClient distri_request injection', () => {
     const tools = getInjectedTools()
     expect(tools).toHaveLength(1)
     expect(tools[0].name).toBe('distri_request')
-    expect(tools[0].factory_type).toBe('http')
+    // Wire format must use "type" (matches Rust serde rename), NOT "factory_type"
+    expect(tools[0].type).toBe('http')
+    expect(tools[0]).not.toHaveProperty('factory_type')
 
     const config = tools[0].config as Record<string, unknown>
     expect(config.base_url).toBe('http://localhost:1341/v1')
@@ -152,7 +154,7 @@ describe('DistriClient distri_request injection', () => {
             dynamic_tools: [
               {
                 name: 'distri_request',
-                factory_type: 'http',
+                type: 'http',
                 config: { base_url: 'http://custom:9999', headers: {} },
               },
             ],
