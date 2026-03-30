@@ -14,11 +14,13 @@ import type {
   StepStatus,
   StepResult,
 } from '@distri/core'
-import { countSteps, workflowProgress } from '@distri/core'
+import { countSteps, workflowProgress, applyEntryPoint, evaluateSkipCondition, resumeStep, isWaitingForInput, getWaitingStep } from '@distri/core'
 
 export interface UseWorkflowOptions {
   /** Initial workflow definition */
   workflow: WorkflowDefinition
+  /** Optional entry point ID to start from (skips earlier steps) */
+  entryPointId?: string
   /** Called when a step needs to be executed. Returns the step result. */
   onExecuteStep: (stepId: string, step: WorkflowDefinition['steps'][0], context: Record<string, unknown>) => Promise<StepResult>
   /** Called when workflow state changes (for persistence) */
@@ -30,6 +32,10 @@ export interface UseWorkflowReturn {
   workflow: WorkflowDefinition
   /** Whether any step is currently running */
   isRunning: boolean
+  /** Whether workflow is paused waiting for human input */
+  isPaused: boolean
+  /** The step currently waiting for input, if any */
+  waitingStep: WorkflowDefinition['steps'][0] | null
   /** Progress percentage (0-100) */
   progress: number
   /** Step counts by status */
@@ -38,16 +44,25 @@ export interface UseWorkflowReturn {
   runNextStep: () => Promise<void>
   /** Run all remaining steps */
   runAll: () => Promise<void>
+  /** Resume a paused workflow by providing input for the waiting step */
+  resume: (stepId: string, input: unknown) => Promise<void>
   /** Update workflow state directly (e.g., from SSE events) */
   updateWorkflow: (workflow: WorkflowDefinition) => void
 }
 
-export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }: UseWorkflowOptions): UseWorkflowReturn {
-  const [workflow, setWorkflow] = useState<WorkflowDefinition>(initial)
+export function useWorkflow({ workflow: initial, entryPointId, onExecuteStep, onStateChange }: UseWorkflowOptions): UseWorkflowReturn {
+  const [workflow, setWorkflow] = useState<WorkflowDefinition>(() => {
+    if (entryPointId) {
+      return applyEntryPoint(initial, entryPointId)
+    }
+    return initial
+  })
   const [isRunning, setIsRunning] = useState(false)
 
   const progress = useMemo(() => workflowProgress(workflow), [workflow])
   const counts = useMemo(() => countSteps(workflow), [workflow])
+  const isPaused = useMemo(() => isWaitingForInput(workflow), [workflow])
+  const waitingStep = useMemo(() => getWaitingStep(workflow) ?? null, [workflow])
 
   const updateAndNotify = useCallback((w: WorkflowDefinition) => {
     setWorkflow(w)
@@ -59,8 +74,13 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
       const step = workflow.steps[i]
       if (step.status !== 'pending') continue
 
+      // Evaluate skip_if before considering this step
+      if (step.skip_if && evaluateSkipCondition(step.skip_if, workflow.context ?? {})) {
+        continue // Will be handled by runNextStep/runAll
+      }
+
       const depsMet = (step.depends_on ?? []).every(depId =>
-        workflow.steps.some(s => s.id === depId && s.status === 'done')
+        workflow.steps.some(s => s.id === depId && (s.status === 'done' || s.status === 'skipped'))
       )
       if (depsMet) return i
     }
@@ -68,12 +88,27 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
   }, [workflow])
 
   const runNextStep = useCallback(async () => {
+    // First, skip any pending steps that match their skip_if condition
+    let current = workflow
+    let didSkip = false
+    for (let i = 0; i < current.steps.length; i++) {
+      const s = current.steps[i]
+      if (s.status === 'pending' && s.skip_if && evaluateSkipCondition(s.skip_if, current.context ?? {})) {
+        if (!didSkip) {
+          current = { ...current, steps: [...current.steps] }
+          didSkip = true
+        }
+        current.steps[i] = { ...s, status: 'skipped' as StepStatus, completed_at: new Date().toISOString() }
+      }
+    }
+    if (didSkip) updateAndNotify(current)
+
     const idx = findNextRunnable()
     if (idx === null) return
 
-    const step = workflow.steps[idx]
-    const updated = { ...workflow }
-    updated.steps = [...workflow.steps]
+    const step = current.steps[idx]
+    const updated = { ...current }
+    updated.steps = [...current.steps]
     updated.steps[idx] = { ...step, status: 'running' as StepStatus, started_at: new Date().toISOString() }
     updated.status = 'running'
     updateAndNotify(updated)
@@ -123,12 +158,26 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
 
     try {
       while (true) {
+        // Skip steps that match skip_if
+        let didSkip = false
+        for (let i = 0; i < current.steps.length; i++) {
+          const s = current.steps[i]
+          if (s.status === 'pending' && s.skip_if && evaluateSkipCondition(s.skip_if, current.context ?? {})) {
+            if (!didSkip) {
+              current = { ...current, steps: [...current.steps] }
+              didSkip = true
+            }
+            current.steps[i] = { ...s, status: 'skipped' as StepStatus, completed_at: new Date().toISOString() }
+          }
+        }
+        if (didSkip) updateAndNotify(current)
+
         const idx = (() => {
           for (let i = 0; i < current.steps.length; i++) {
             const step = current.steps[i]
             if (step.status !== 'pending') continue
             const depsMet = (step.depends_on ?? []).every(depId =>
-              current.steps.some(s => s.id === depId && s.status === 'done')
+              current.steps.some(s => s.id === depId && (s.status === 'done' || s.status === 'skipped'))
             )
             if (depsMet) return i
           }
@@ -174,9 +223,100 @@ export function useWorkflow({ workflow: initial, onExecuteStep, onStateChange }:
     }
   }, [workflow, onExecuteStep, updateAndNotify])
 
+  const resume = useCallback(async (stepId: string, input: unknown) => {
+    // Resume the waiting step and continue running
+    const resumed = resumeStep(workflow, stepId, input)
+    updateAndNotify(resumed)
+
+    // Now run remaining steps from the resumed state
+    let current = resumed
+    setIsRunning(true)
+
+    try {
+      while (true) {
+        // Skip steps that match skip_if
+        let didSkip = false
+        for (let i = 0; i < current.steps.length; i++) {
+          const s = current.steps[i]
+          if (s.status === 'pending' && s.skip_if && evaluateSkipCondition(s.skip_if, current.context ?? {})) {
+            if (!didSkip) {
+              current = { ...current, steps: [...current.steps] }
+              didSkip = true
+            }
+            current.steps[i] = { ...s, status: 'skipped' as StepStatus, completed_at: new Date().toISOString() }
+          }
+        }
+        if (didSkip) updateAndNotify(current)
+
+        // Find next runnable (same logic as runAll)
+        const idx = (() => {
+          for (let i = 0; i < current.steps.length; i++) {
+            const step = current.steps[i]
+            if (step.status !== 'pending') continue
+            const depsMet = (step.depends_on ?? []).every(depId =>
+              current.steps.some(s => s.id === depId && (s.status === 'done' || s.status === 'skipped'))
+            )
+            if (depsMet) return i
+          }
+          return null
+        })()
+
+        if (idx === null) break
+
+        const step = current.steps[idx]
+
+        // Check for another WaitForInput — pause again
+        if (step.kind.type === 'wait_for_input') {
+          current = { ...current, steps: [...current.steps] }
+          current.steps[idx] = {
+            ...step,
+            status: 'waiting_for_input' as StepStatus,
+            started_at: new Date().toISOString(),
+          }
+          current.status = 'paused'
+          updateAndNotify(current)
+          break
+        }
+
+        current = { ...current, steps: [...current.steps] }
+        current.steps[idx] = { ...step, status: 'running' as StepStatus, started_at: new Date().toISOString() }
+        current.status = 'running'
+        updateAndNotify(current)
+
+        const result = await onExecuteStep(step.id, step, current.context ?? {})
+
+        current = { ...current, steps: [...current.steps] }
+        current.steps[idx] = {
+          ...current.steps[idx],
+          status: result.status,
+          result: result.result,
+          error: result.error,
+          completed_at: new Date().toISOString(),
+        }
+
+        if (result.context_updates) {
+          current.context = { ...current.context, ...result.context_updates }
+        }
+
+        if (result.status === 'failed') {
+          current.status = 'failed'
+          updateAndNotify(current)
+          break
+        }
+
+        const allDone = current.steps.every(s => s.status === 'done' || s.status === 'skipped')
+        if (allDone) current.status = 'completed'
+        current.updated_at = new Date().toISOString()
+        updateAndNotify(current)
+      }
+    } finally {
+      setIsRunning(false)
+    }
+  }, [workflow, onExecuteStep, updateAndNotify])
+
   const updateWorkflow = useCallback((w: WorkflowDefinition) => {
     setWorkflow(w)
   }, [])
 
-  return { workflow, isRunning, progress, counts, runNextStep, runAll, updateWorkflow }
+  return { workflow, isRunning, isPaused, waitingStep, progress, counts, runNextStep, runAll, resume, updateWorkflow }
 }

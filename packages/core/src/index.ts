@@ -23,3 +23,11 @@ export { uuidv4 } from './distri-client';
 // Workflow types and runner
 export * from './workflow';
 export * from './workflow-runner';
+
+// Variable resolution and HTTP request handler
+export * from './resolve';
+export { SecretCache } from './secret-cache';
+export { executeHttpRequest as executeHttpRequestWithSecrets } from './http-request-handler';
+
+// HTTP request types and auto-detect handler
+export * from './http-request';

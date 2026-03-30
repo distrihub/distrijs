@@ -18,9 +18,10 @@ async function collectEvents(
   runner: WorkflowRunner,
   def: WorkflowDefinition,
   input: Record<string, unknown> = {},
+  entryPointId?: string,
 ): Promise<WorkflowEvent[]> {
   const events: WorkflowEvent[] = []
-  for await (const event of runner.run(def, input)) {
+  for await (const event of runner.run(def, input, entryPointId)) {
     events.push(event)
   }
   return events
@@ -409,5 +410,315 @@ describe('WorkflowRunner', () => {
     await collectEvents(runner, def, { key: 'value' })
     expect((receivedInput as any).input).toEqual({ key: 'value' })
     expect((receivedInput as any).env).toEqual({ api_base: 'http://localhost' })
+  })
+})
+
+// ── Multi-Entry Point Tests ───────────────────────────────────────────────
+
+describe('Multi-Entry Points', () => {
+  function gradingWorkflow(): WorkflowDefinition {
+    return {
+      id: 'grading-pipeline',
+      workflow_type: 'grading',
+      steps: [
+        { id: 'detect', label: 'Detect documents', kind: { type: 'api_call', method: 'POST', url: '/detect' } },
+        { id: 'create_content', label: 'Create content', kind: { type: 'api_call', method: 'POST', url: '/content' }, depends_on: ['detect'] },
+        { id: 'configure_eval', label: 'Configure eval', kind: { type: 'api_call', method: 'POST', url: '/eval' }, depends_on: ['create_content'] },
+        { id: 'review', label: 'Review', kind: { type: 'wait_for_input', message: 'Review the eval config' }, depends_on: ['configure_eval'] },
+        { id: 'grade', label: 'Grade', kind: { type: 'api_call', method: 'POST', url: '/grade' }, depends_on: ['review'] },
+        { id: 'report', label: 'Report', kind: { type: 'api_call', method: 'POST', url: '/report' }, depends_on: ['grade'] },
+      ],
+      entry_points: [
+        {
+          id: 'grade_only',
+          label: 'Grade Only',
+          description: 'Skip to grading with preset data',
+          starts_at: 'grade',
+          preset_results: {
+            detect: { documents: ['doc1', 'doc2'] },
+            create_content: { content_id: 'c1' },
+            configure_eval: { rubric_id: 'r1', criteria: ['accuracy', 'clarity'] },
+            review: { approved: true },
+          },
+          required_inputs: ['activity_id'],
+        },
+        {
+          id: 'review_and_grade',
+          label: 'Review & Grade',
+          starts_at: 'review',
+          preset_results: {
+            detect: { documents: ['doc1'] },
+            create_content: { content_id: 'c1' },
+            configure_eval: { rubric_id: 'r1' },
+          },
+        },
+      ],
+    }
+  }
+
+  it('full run pauses at wait_for_input checkpoint', async () => {
+    const def = gradingWorkflow()
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async (step) => {
+        return { status: 'done', result: { [`${step.id}_done`]: true } }
+      },
+    })
+
+    const events = await collectEvents(runner, def)
+    const waitEvent = events.find(e => e.event === 'step_waiting') as any
+    expect(waitEvent).toBeDefined()
+    expect(waitEvent.step_id).toBe('review')
+
+    // When paused, a workflow_paused event is emitted (not workflow_completed)
+    const pausedEvent = events.find(e => e.event === 'workflow_paused') as any
+    expect(pausedEvent).toBeDefined()
+    expect(pausedEvent.step_id).toBe('review')
+  })
+
+  it('grade_only entry point skips to grade step', async () => {
+    const def = gradingWorkflow()
+    const executedSteps: string[] = []
+
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async (step) => {
+        executedSteps.push(step.id)
+        return { status: 'done', result: { [`${step.id}_done`]: true } }
+      },
+    })
+
+    const events = await collectEvents(runner, def, { activity_id: 'act-123' }, 'grade_only')
+
+    // Only grade and report should execute (detect, create_content, configure_eval, review are skipped)
+    expect(executedSteps).toEqual(['grade', 'report'])
+
+    const completed = events.find(e => e.event === 'workflow_completed') as any
+    expect(completed.status).toBe('completed')
+    expect(completed.steps_done).toBe(2)
+  })
+
+  it('review_and_grade entry point pauses at review checkpoint', async () => {
+    const def = gradingWorkflow()
+
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async (step) => {
+        return { status: 'done', result: {} }
+      },
+    })
+
+    const events = await collectEvents(runner, def, {}, 'review_and_grade')
+
+    // Should pause at review (wait_for_input)
+    const waitEvent = events.find(e => e.event === 'step_waiting') as any
+    expect(waitEvent).toBeDefined()
+    expect(waitEvent.step_id).toBe('review')
+
+    // Skipped steps should not have step_started events
+    const startedIds = events
+      .filter(e => e.event === 'step_started')
+      .map(e => (e as any).step_id)
+    expect(startedIds).not.toContain('detect')
+    expect(startedIds).not.toContain('create_content')
+    expect(startedIds).not.toContain('configure_eval')
+  })
+
+  it('entry point preset results flow into downstream steps via input mapping', async () => {
+    const captured: Record<string, unknown> = {}
+
+    const def: WorkflowDefinition = {
+      id: 'data-flow-entry',
+      workflow_type: 'test',
+      steps: [
+        { id: 'detect', label: 'Detect', kind: { type: 'api_call', method: 'POST', url: '/detect' } },
+        { id: 'eval', label: 'Eval', kind: { type: 'api_call', method: 'POST', url: '/eval' }, depends_on: ['detect'] },
+        {
+          id: 'grade',
+          label: 'Grade',
+          kind: { type: 'tool_call', tool_name: 'grade_tool' },
+          depends_on: ['eval'],
+          input: { rubric: '{steps.eval.rubric_id}', activity: '{input.activity_id}' },
+        },
+      ],
+      entry_points: [{
+        id: 'grade_only',
+        label: 'Grade Only',
+        starts_at: 'grade',
+        preset_results: {
+          detect: { docs: ['d1'] },
+          eval: { rubric_id: 'rubric-abc' },
+        },
+        required_inputs: ['activity_id'],
+      }],
+    }
+
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async (step, resolvedInput) => {
+        captured[step.id] = resolvedInput
+        return { status: 'done', result: { score: 95 } }
+      },
+    })
+
+    await collectEvents(runner, def, { activity_id: 'act-456' }, 'grade_only')
+
+    expect(captured.grade).toEqual({ rubric: 'rubric-abc', activity: 'act-456' })
+  })
+
+  it('nonexistent entry point throws error', async () => {
+    const def = gradingWorkflow()
+    const runner = new WorkflowRunner(mockClient())
+
+    await expect(async () => {
+      for await (const _ of runner.run(def, {}, 'nonexistent')) { /* drain */ }
+    }).rejects.toThrow(/Entry point 'nonexistent' not found/)
+  })
+
+  it('entry point with parallel fan-out from merge', async () => {
+    const executedSteps: string[] = []
+
+    const def: WorkflowDefinition = {
+      id: 'parallel-entry',
+      workflow_type: 'test',
+      steps: [
+        { id: 'detect', label: 'Detect', kind: { type: 'checkpoint', message: '' } },
+        { id: 'analyze_a', label: 'A', kind: { type: 'checkpoint', message: '' }, depends_on: ['detect'], execution: 'parallel' },
+        { id: 'analyze_b', label: 'B', kind: { type: 'checkpoint', message: '' }, depends_on: ['detect'], execution: 'parallel' },
+        { id: 'merge', label: 'Merge', kind: { type: 'checkpoint', message: '' }, depends_on: ['analyze_a', 'analyze_b'] },
+        { id: 'report', label: 'Report', kind: { type: 'checkpoint', message: '' }, depends_on: ['merge'] },
+      ],
+      entry_points: [{
+        id: 'from_merge',
+        label: 'From Merge',
+        starts_at: 'merge',
+        preset_results: {
+          detect: { items: ['i1'] },
+          analyze_a: { result: 'a' },
+          analyze_b: { result: 'b' },
+        },
+      }],
+    }
+
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async (step) => {
+        executedSteps.push(step.id)
+        return { status: 'done', result: {} }
+      },
+    })
+
+    const events = await collectEvents(runner, def, {}, 'from_merge')
+    expect(executedSteps).toEqual(['merge', 'report'])
+
+    const completed = events.find(e => e.event === 'workflow_completed') as any
+    expect(completed.status).toBe('completed')
+  })
+
+  it('multiple entry points produce independent valid workflows', async () => {
+    const { applyEntryPoint } = await import('../workflow')
+    const def = gradingWorkflow()
+
+    const ep1 = applyEntryPoint(def, 'grade_only')
+    const ep2 = applyEntryPoint(def, 'review_and_grade')
+
+    // grade_only: detect, create_content, configure_eval, review skipped; grade, report pending
+    const skipped1 = ep1.steps.filter(s => s.status === 'skipped')
+    const pending1 = ep1.steps.filter(s => !s.status || s.status === 'pending')
+    expect(skipped1.length).toBe(4)
+    expect(pending1.length).toBe(2)
+
+    // review_and_grade: detect, create_content, configure_eval skipped; review, grade, report pending
+    const skipped2 = ep2.steps.filter(s => s.status === 'skipped')
+    const pending2 = ep2.steps.filter(s => !s.status || s.status === 'pending')
+    expect(skipped2.length).toBe(3)
+    expect(pending2.length).toBe(3)
+  })
+})
+
+// ── Checkpoint + WaitForInput Scenarios ───────────────────────────────────
+
+describe('Checkpoint & WaitForInput', () => {
+  it('checkpoint step executes normally (not a pause)', async () => {
+    const def: WorkflowDefinition = {
+      id: 'checkpoint-test',
+      workflow_type: 'test',
+      steps: [
+        { id: 'fetch', label: 'Fetch', kind: { type: 'api_call', method: 'GET', url: '/data' } },
+        { id: 'verify', label: 'Verify', kind: { type: 'checkpoint', message: 'Check data' }, depends_on: ['fetch'] },
+        { id: 'save', label: 'Save', kind: { type: 'api_call', method: 'POST', url: '/save' }, depends_on: ['verify'] },
+      ],
+    }
+
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async () => ({ status: 'done', result: { ok: true } }),
+    })
+
+    const events = await collectEvents(runner, def)
+    const completed = events.find(e => e.event === 'workflow_completed') as any
+    expect(completed.status).toBe('completed')
+    expect(completed.steps_done).toBe(3)
+  })
+
+  it('multiple wait_for_input steps pause sequentially', async () => {
+    const def: WorkflowDefinition = {
+      id: 'multi-wait-test',
+      workflow_type: 'test',
+      steps: [
+        { id: 'step1', label: 'Step 1', kind: { type: 'checkpoint', message: 'one' } },
+        { id: 'review1', label: 'First Review', kind: { type: 'wait_for_input', message: 'Review data' }, depends_on: ['step1'] },
+        { id: 'step2', label: 'Process', kind: { type: 'checkpoint', message: 'two' }, depends_on: ['review1'] },
+        { id: 'review2', label: 'Final Review', kind: { type: 'wait_for_input', message: 'Final approval' }, depends_on: ['step2'] },
+        { id: 'step3', label: 'Submit', kind: { type: 'checkpoint', message: 'three' }, depends_on: ['review2'] },
+      ],
+    }
+
+    const runner = new WorkflowRunner(mockClient())
+    const events = await collectEvents(runner, def)
+
+    // Should pause at first wait_for_input
+    const waitEvent = events.find(e => e.event === 'step_waiting') as any
+    expect(waitEvent).toBeDefined()
+    expect(waitEvent.step_id).toBe('review1')
+
+    // When paused, a workflow_paused event is emitted (not workflow_completed)
+    const pausedEvent = events.find(e => e.event === 'workflow_paused') as any
+    expect(pausedEvent).toBeDefined()
+    expect(pausedEvent.step_id).toBe('review1')
+
+    // step2, review2, step3 should not have started
+    const startedIds = events
+      .filter(e => e.event === 'step_started')
+      .map(e => (e as any).step_id)
+    expect(startedIds).not.toContain('step2')
+    expect(startedIds).not.toContain('review2')
+    expect(startedIds).not.toContain('step3')
+  })
+
+  it('skip_if interacts correctly with entry points', async () => {
+    const executedSteps: string[] = []
+
+    const def: WorkflowDefinition = {
+      id: 'skip-entry-combo',
+      workflow_type: 'test',
+      steps: [
+        { id: 'detect', label: 'Detect', kind: { type: 'checkpoint', message: '' }, skip_if: '{input.activity_id}' },
+        { id: 'eval', label: 'Eval', kind: { type: 'checkpoint', message: '' }, depends_on: ['detect'] },
+        { id: 'grade', label: 'Grade', kind: { type: 'checkpoint', message: '' }, depends_on: ['eval'] },
+      ],
+      entry_points: [{
+        id: 'from_eval',
+        label: 'From Eval',
+        starts_at: 'eval',
+        preset_results: {},
+      }],
+    }
+
+    const runner = new WorkflowRunner(mockClient(), {
+      executeStep: async (step) => {
+        executedSteps.push(step.id)
+        return { status: 'done', result: {} }
+      },
+    })
+
+    await collectEvents(runner, def, { activity_id: 'act-789' }, 'from_eval')
+
+    // detect is skipped by entry point, eval and grade execute
+    expect(executedSteps).toEqual(['eval', 'grade'])
   })
 })
