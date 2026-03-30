@@ -718,11 +718,60 @@ export class DistriClient {
   }
 
   /**
+   * Inject `distri_request` dynamic tool into params metadata so the agent
+   * can call the platform API. Mirrors the Rust SDK's client_stream.rs injection.
+   */
+  private injectPlatformOverrides(params: MessageSendParams): MessageSendParams {
+    const metadata = (params.metadata ?? {}) as Record<string, unknown>;
+    const existing = (metadata.definition_overrides ?? {}) as Record<string, unknown>;
+    const dynamicTools = (Array.isArray(existing.dynamic_tools) ? existing.dynamic_tools : []) as Array<Record<string, unknown>>;
+
+    // Skip if distri_request already present (e.g., injected by caller)
+    if (dynamicTools.some((t) => t.name === 'distri_request')) {
+      return params;
+    }
+
+    const headers: Record<string, string> = {};
+    // Forward auth headers so the agent can call the platform API
+    if (this.config.headers['Authorization']) {
+      headers['Authorization'] = this.config.headers['Authorization'];
+    }
+    if (this.config.headers['x-api-key']) {
+      headers['x-api-key'] = this.config.headers['x-api-key'];
+    }
+    if (this.config.workspaceId) {
+      headers['x-workspace-id'] = this.config.workspaceId;
+    }
+
+    dynamicTools.push({
+      name: 'distri_request',
+      factory_type: 'http',
+      config: {
+        base_url: this.config.baseUrl,
+        headers,
+      },
+      description: 'Call the Distri platform REST API. Input: {path, method, headers?, body?}',
+    });
+
+    return {
+      ...params,
+      metadata: {
+        ...metadata,
+        definition_overrides: {
+          ...existing,
+          dynamic_tools: dynamicTools,
+        },
+      },
+    };
+  }
+
+  /**
    * Send a message to an agent
    */
   async sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task> {
     try {
       const client = this.getA2AClient(agentId);
+      params = this.injectPlatformOverrides(params);
 
       const response: SendMessageResponse = await client.sendMessage(params);
 
@@ -750,6 +799,7 @@ export class DistriClient {
     console.log('sendMessageStream', agentId, params);
     try {
       const client = this.getA2AClient(agentId);
+      params = this.injectPlatformOverrides(params);
       yield* await client.sendMessageStream(params);
     } catch (error) {
       console.error(error);
