@@ -11,7 +11,7 @@ import { LoadingAnimation, type LoadingAnimationConfig } from './renderers/Loadi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
-import { useTts } from '../hooks/useTts';
+import { useTts, TtsConfig } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap } from '@/types';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
 import { useAgent } from '../useAgent';
@@ -93,11 +93,7 @@ export interface ChatProps {
   // Voice support
   voiceEnabled?: boolean;
   useSpeechRecognition?: boolean;
-  ttsConfig?: {
-    model: 'openai' | 'gemini';
-    voice?: string;
-    speed?: number;
-  };
+  ttsConfig?: TtsConfig;
   initialInput?: string;
   allowBrowserPreview?: boolean;
   // Optional max width for chat content (defaults to flexible, respects container width)
@@ -214,7 +210,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Voice functionality hooks - need DistriClient for API calls
   const speechToText = useSpeechToText();
-  const tts = useTts();
+  const tts = useTts(ttsConfig);
 
   // Streaming voice state
   const [isStreamingVoice, setIsStreamingVoice] = useState(false);
@@ -551,8 +547,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
       // Start streaming TTS for AI responses
       tts.startStreamingTts({
-        voice: ttsConfig?.voice || 'alloy',
-        speed: ttsConfig?.speed || 1.0,
+        voice: ttsConfig?.defaultVoice || 'alloy',
+        speed: ttsConfig?.defaultSpeed || 1.0,
         onAudioChunk: (audioData: Uint8Array) => {
           setAudioChunks(prev => [...prev, audioData]);
         },
@@ -627,14 +623,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
     const lastMessage = messages[messages.length - 1];
     if (lastMessage && 'role' in lastMessage && lastMessage.role === 'assistant' && 'content' in lastMessage && typeof lastMessage.content === 'string') {
-      // Synthesize and play the AI's response
-      tts.synthesize({
-        text: lastMessage.content,
-        model: ttsConfig.model || 'openai',
-        voice: ttsConfig.voice,
-        speed: ttsConfig.speed,
-      })
-        .then(audioBlob => tts.playAudio(audioBlob))
+      // Synthesize and play the AI's response using the unified speak method
+      tts.speak(lastMessage.content)
         .catch(error => console.error('TTS playback failed:', error));
     }
   }, [messages, voiceEnabled, ttsConfig, tts, isStreamingVoice]);
