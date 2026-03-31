@@ -320,6 +320,12 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const currentThought = useChatStateStore(state => state.currentThought);
   const currentState = useChatStateStore(state => state);
   const todos = useChatStateStore(state => state.todos);
+  const verbose = useChatStateStore(state => state.verbose);
+  const setVerbose = useChatStateStore(state => state.setVerbose);
+
+  const handleToggleVerbose = useCallback(() => {
+    setVerbose(!verbose);
+  }, [verbose, setVerbose]);
   useEffect(() => {
     if (onChatStateChange) {
       onChatStateChange(currentState);
@@ -727,6 +733,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             toggleToolExpansion(messageId);
           }}
           debug={debug}
+          verbose={verbose}
           threadId={threadId}
           enableFeedback={enableFeedback}
         />
@@ -816,6 +823,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         isStreamingVoice={isStreamingVoice}
         useSpeechRecognition={useSpeechRecognition}
         onSpeechTranscript={handleSpeechTranscript}
+        verbose={verbose}
+        onToggleVerbose={debug ? handleToggleVerbose : undefined}
         className={className}
         variant={variant}
         theme={theme}
@@ -837,6 +846,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     attachedImages,
     removeImage,
     addImages,
+    verbose,
+    handleToggleVerbose,
+    debug,
     voiceEnabled,
     speechToText,
     handleVoiceRecord,

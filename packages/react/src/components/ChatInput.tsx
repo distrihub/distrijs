@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Send, Square, X, Mic, MicOff, Radio, Globe, Plus } from 'lucide-react';
+import { Send, Square, X, Mic, MicOff, Radio, Globe, Plus, Braces } from 'lucide-react';
 
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
@@ -36,6 +36,8 @@ export interface ChatInputProps {
   isStreamingVoice?: boolean;
   useSpeechRecognition?: boolean;
   onSpeechTranscript?: (text: string) => void;
+  verbose?: boolean;
+  onToggleVerbose?: () => void;
   variant?: 'default' | 'hero';
   theme?: 'light' | 'dark' | 'auto';
 }
@@ -61,6 +63,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isStreamingVoice = false,
   useSpeechRecognition = false,
   onSpeechTranscript,
+  verbose = false,
+  onToggleVerbose,
   variant = 'default',
   theme = 'auto',
 }) => {
@@ -405,6 +409,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     language="en-US"
                     interimResults={true}
                   />
+                )}
+
+                {onToggleVerbose && (
+                  <button
+                    type="button"
+                    onClick={onToggleVerbose}
+                    className={cn(toolbarButton, verbose && toolbarButtonActive)}
+                    disabled={disabled}
+                    title={verbose ? 'Hide tool details' : 'Show tool details'}
+                  >
+                    <Braces className="h-4 w-4" />
+                  </button>
                 )}
               </div>
 
