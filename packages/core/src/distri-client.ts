@@ -30,6 +30,10 @@ import {
   VoteMessageRequest,
   DynamicMetadata,
   ProviderModelsStatus,
+  TtsSpeechRequest,
+  TtsSpeechResponse,
+  TtsModelInfo,
+  TtsProviderDefinition,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -721,6 +725,102 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch available models', 'FETCH_ERROR', error);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Text-to-Speech API
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Generate speech from text via the TTS endpoint.
+   *
+   * Returns an ArrayBuffer of audio bytes along with metadata.
+   * When model/provider/voice are omitted, the server resolves them from
+   * workspace defaults (configured in Agent Settings > Text-to-Speech).
+   *
+   * @example
+   * ```typescript
+   * const client = new DistriClient({ baseUrl: 'https://api.distri.dev' });
+   *
+   * // Use workspace defaults
+   * const result = await client.ttsSpeech({ input: 'Hello world' });
+   * const blob = new Blob([result.audio], { type: result.contentType });
+   *
+   * // Explicit model and voice
+   * const result = await client.ttsSpeech({
+   *   input: 'Hello world',
+   *   model: 'tts-1-hd',
+   *   voice: 'nova',
+   *   provider: 'openai',
+   * });
+   * ```
+   */
+  async ttsSpeech(request: TtsSpeechRequest): Promise<TtsSpeechResponse> {
+    const response = await this.fetch(`/audio/speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      throw new ApiError(
+        `TTS speech failed: ${errorBody || response.statusText}`,
+        response.status,
+      );
+    }
+
+    const audio = await response.arrayBuffer();
+    return {
+      audio,
+      contentType: response.headers.get('content-type') || 'audio/mpeg',
+      provider: response.headers.get('x-tts-provider') || undefined,
+      model: response.headers.get('x-tts-model') || undefined,
+      voice: response.headers.get('x-tts-voice') || undefined,
+    };
+  }
+
+  /**
+   * List available TTS models and voices.
+   *
+   * Returns model info grouped by provider, including available voices
+   * and supported audio formats.
+   */
+  async fetchTtsModels(): Promise<TtsModelInfo[]> {
+    try {
+      const response = await this.fetch(`/audio/models`, {
+        headers: { ...this.config.headers },
+      });
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch TTS models: ${response.statusText}`, response.status);
+      }
+      const data: { models: TtsModelInfo[] } = await response.json();
+      return data.models;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to fetch TTS models', 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * List TTS provider definitions (required keys, models, configuration status).
+   */
+  async fetchTtsProviders(): Promise<TtsProviderDefinition[]> {
+    try {
+      const response = await this.fetch(`/audio/providers`, {
+        headers: { ...this.config.headers },
+      });
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch TTS providers: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to fetch TTS providers', 'FETCH_ERROR', error);
     }
   }
 

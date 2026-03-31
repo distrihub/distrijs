@@ -1024,6 +1024,97 @@ export interface ProviderModelsStatus {
   models: ModelInfo[];
 }
 
+// ========== Text-to-Speech Types ==========
+
+/**
+ * Request to generate speech from text.
+ *
+ * Only `input` is required. When `model`, `provider`, or `voice` are omitted
+ * the server resolves them from the workspace's default TTS settings
+ * (configured in Agent Settings > Text-to-Speech).
+ */
+export interface TtsSpeechRequest {
+  /** The text to synthesize (max 4096 characters). */
+  input: string;
+  /** TTS model ID (e.g. "tts-1", "tts-1-hd", "gpt-4o-mini-tts"). Omit to use workspace default. */
+  model?: string;
+  /** Voice ID (e.g. "alloy", "nova", "en-US-JennyNeural"). Omit to use workspace default. */
+  voice?: string;
+  /** Provider name (e.g. "openai", "azure_openai", "azure", "elevenlabs"). Omit to use workspace default. */
+  provider?: string;
+  /** Audio output format (e.g. "mp3", "wav", "opus"). Defaults to "mp3". */
+  response_format?: string;
+  /** Speech speed multiplier (0.25 to 4.0). Provider-dependent. */
+  speed?: number;
+  /** Additional instructions for the TTS model (e.g. emotion, style). */
+  instructions?: string;
+  /** Azure OpenAI deployment name (defaults to model name). */
+  azure_deployment?: string;
+  /** Azure Speech region override. */
+  azure_region?: string;
+  /** ElevenLabs voice ID override. */
+  voice_id?: string;
+  /** ElevenLabs model ID override. */
+  elevenlabs_model_id?: string;
+}
+
+/**
+ * Response from TTS speech generation.
+ */
+export interface TtsSpeechResponse {
+  /** Raw audio bytes as an ArrayBuffer. */
+  audio: ArrayBuffer;
+  /** MIME content type (e.g. "audio/mpeg", "audio/wav"). */
+  contentType: string;
+  /** Provider that was used (from X-TTS-Provider header). */
+  provider?: string;
+  /** Model that was used (from X-TTS-Model header). */
+  model?: string;
+  /** Voice that was used (from X-TTS-Voice header). */
+  voice?: string;
+}
+
+/**
+ * Information about a single TTS model.
+ */
+export interface TtsModelInfo {
+  id: string;
+  provider: string;
+  name: string;
+  voices: TtsVoiceInfo[];
+  formats: string[];
+}
+
+/**
+ * Information about a TTS voice.
+ */
+export interface TtsVoiceInfo {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+/**
+ * TTS provider definition with required configuration keys.
+ */
+export interface TtsProviderDefinition {
+  id: string;
+  label: string;
+  keys: TtsSecretKeyDefinition[];
+  models: TtsModelInfo[];
+}
+
+/**
+ * A secret key required by a TTS provider.
+ */
+export interface TtsSecretKeyDefinition {
+  key: string;
+  label: string;
+  placeholder: string;
+  required: boolean;
+  sensitive: boolean;
+}
+
 // Usage analytics types for enhanced history API
 export interface UsageHistoryEntry {
   date: string
