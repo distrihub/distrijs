@@ -102,6 +102,16 @@ interface ResolvedConfig
  * // Cloud with default URL (https://api.distri.dev)
  * const client = DistriClient.create();
  */
+/** Dynamic tool factory registered on the client.
+ * Note: `type` matches the wire format (Rust uses `#[serde(rename = "type")]`).
+ */
+export interface DynamicToolFactory {
+  name: string;
+  type: string;
+  config: Record<string, unknown>;
+  description?: string;
+}
+
 export class DistriClient {
   private config: ResolvedConfig;
   private accessToken?: string;
@@ -110,6 +120,7 @@ export class DistriClient {
   private onTokenRefresh?: () => Promise<string | null>;
   private refreshPromise?: Promise<void>;
   private agentClients = new Map<string, { url: string; client: A2AClient }>();
+  private registeredTools: DynamicToolFactory[] = [];
 
   constructor(config: DistriClientConfig) {
     const headers: Record<string, string> = { ...config.headers };
@@ -137,6 +148,52 @@ export class DistriClient {
       clientId: config.clientId,
       workspaceId: config.workspaceId
     };
+
+    // Auto-register distri_request so agents can call the platform API
+    this.registerHttpTool('distri_request', {
+      base_url: this.config.baseUrl,
+      headers: this.buildAuthHeaders(),
+    });
+  }
+
+  /** Build auth headers for tool factories from client config. */
+  private buildAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.config.headers['Authorization']) {
+      headers['Authorization'] = this.config.headers['Authorization'];
+    }
+    if (this.config.headers['x-api-key']) {
+      headers['x-api-key'] = this.config.headers['x-api-key'];
+    }
+    if (this.config.workspaceId) {
+      headers['x-workspace-id'] = this.config.workspaceId;
+    }
+    return headers;
+  }
+
+  /**
+   * Register a dynamic tool factory. It will be included in every outgoing
+   * message's `definition_overrides.dynamic_tools`, deduplicated by name.
+   */
+  registerDynamicTool(factory: DynamicToolFactory): void {
+    const idx = this.registeredTools.findIndex((t) => t.name === factory.name);
+    if (idx >= 0) {
+      this.registeredTools[idx] = factory;
+    } else {
+      this.registeredTools.push(factory);
+    }
+  }
+
+  /**
+   * Convenience: register an HTTP dynamic tool factory.
+   */
+  registerHttpTool(name: string, config: { base_url: string; headers: Record<string, string> }): void {
+    this.registerDynamicTool({
+      name,
+      type: 'http',
+      config,
+      description: `Call the ${name} REST API. Input: {path, method, headers?, body?}`,
+    });
   }
 
   /**
@@ -718,11 +775,43 @@ export class DistriClient {
   }
 
   /**
+   * Merge registered dynamic tools into message params metadata,
+   * deduplicating by name. Caller-provided tools take precedence.
+   */
+  private mergeRegisteredTools(params: MessageSendParams): MessageSendParams {
+    if (this.registeredTools.length === 0) return params;
+
+    const metadata = (params.metadata ?? {}) as Record<string, unknown>;
+    const existing = (metadata.definition_overrides ?? {}) as Record<string, unknown>;
+    const dynamicTools: DynamicToolFactory[] = Array.isArray(existing.dynamic_tools)
+      ? [...existing.dynamic_tools] as DynamicToolFactory[]
+      : [];
+
+    for (const tool of this.registeredTools) {
+      if (!dynamicTools.some((t) => t.name === tool.name)) {
+        dynamicTools.push(tool);
+      }
+    }
+
+    return {
+      ...params,
+      metadata: {
+        ...metadata,
+        definition_overrides: {
+          ...existing,
+          dynamic_tools: dynamicTools,
+        },
+      },
+    };
+  }
+
+  /**
    * Send a message to an agent
    */
   async sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task> {
     try {
       const client = this.getA2AClient(agentId);
+      params = this.mergeRegisteredTools(params);
 
       const response: SendMessageResponse = await client.sendMessage(params);
 
@@ -750,6 +839,7 @@ export class DistriClient {
     console.log('sendMessageStream', agentId, params);
     try {
       const client = this.getA2AClient(agentId);
+      params = this.mergeRegisteredTools(params);
       yield* await client.sendMessageStream(params);
     } catch (error) {
       console.error(error);

@@ -14,6 +14,8 @@ export interface MessageRendererProps {
   toolRenderers?: ToolRendererMap;
   /** Enable debug mode to show developer messages */
   debug?: boolean;
+  /** Show all tool calls (detailed mode) vs collapsed summary (normal mode) */
+  verbose?: boolean;
   /** Thread ID for feedback functionality */
   threadId?: string;
   /** Enable message feedback (voting) UI */
@@ -41,6 +43,7 @@ export function MessageRenderer({
   index,
   toolRenderers,
   debug = false,
+  verbose = false,
   threadId,
   enableFeedback = false,
 }: MessageRendererProps): React.ReactNode {
@@ -171,6 +174,7 @@ export function MessageRenderer({
               toolCallStates={toolCallsState}
               toolRenderers={toolRenderers}
               debug={debug}
+              verbose={verbose}
             />
           </RendererWrapper>
         );
