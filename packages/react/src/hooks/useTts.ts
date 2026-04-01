@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { TtsSpeechRequest, TtsSpeechResponse, TtsModelInfo, TtsProviderDefinition } from '@distri/core';
+import { TtsSpeechRequest, TtsSpeechResponse } from '@distri/core';
 import { useDistri } from '../DistriProvider';
 
 export type TtsMode = 'distri' | 'browser';
@@ -17,22 +17,10 @@ export interface TtsConfig {
   defaultModel?: string;
 }
 
-export interface StreamingTtsOptions {
-  onAudioChunk?: (audioData: Uint8Array) => void;
-  onTextChunk?: (text: string, isFinal: boolean) => void;
-  onError?: (error: Error) => void;
-  onStart?: () => void;
-  onEnd?: () => void;
-  voice?: string;
-  speed?: number;
-}
-
 export const useTts = (config: TtsConfig = {}) => {
   const { client } = useDistri();
   const mode = config.mode ?? 'distri';
   const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // ── Distri server-side TTS ─────────────────────────────────────────────
@@ -158,45 +146,12 @@ export const useTts = (config: TtsConfig = {}) => {
     });
   }, []);
 
-  /**
-   * Play accumulated audio chunks using Web Audio API.
-   */
-  const streamingPlayAudio = useCallback((audioChunks: Uint8Array[]): Promise<void> => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-    }
-    const audioContext = audioContextRef.current;
-
-    return new Promise<void>((resolve, reject) => {
-      (async () => {
-        try {
-          const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-          const combinedArray = new Uint8Array(totalLength);
-          let offset = 0;
-          for (const chunk of audioChunks) {
-            combinedArray.set(chunk, offset);
-            offset += chunk.length;
-          }
-
-          const audioBuffer = await audioContext.decodeAudioData(combinedArray.buffer);
-          const source = audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(audioContext.destination);
-          source.onended = () => resolve();
-          source.start();
-        } catch (error) {
-          reject(new Error(`Audio playback failed: ${error}`));
-        }
-      })();
-    });
-  }, []);
-
   // ── Model/provider queries ─────────────────────────────────────────────
 
   /**
    * Fetch available TTS models from the Distri API.
    */
-  const fetchModels = useCallback(async (): Promise<TtsModelInfo[]> => {
+  const fetchModels = useCallback(async (): Promise<any[]> => {
     if (!client) throw new Error('DistriClient not initialized');
     return client.fetchTtsModels();
   }, [client]);
@@ -204,7 +159,7 @@ export const useTts = (config: TtsConfig = {}) => {
   /**
    * Fetch TTS provider definitions from the Distri API.
    */
-  const fetchProviders = useCallback(async (): Promise<TtsProviderDefinition[]> => {
+  const fetchProviders = useCallback(async (): Promise<any[]> => {
     if (!client) throw new Error('DistriClient not initialized');
     return client.fetchTtsProviders();
   }, [client]);
@@ -217,74 +172,9 @@ export const useTts = (config: TtsConfig = {}) => {
     return window.speechSynthesis.getVoices();
   }, []);
 
-  // ── Streaming TTS (WebSocket) ──────────────────────────────────────────
+  // ── Stop ────────────────────────────────────────────────────────────────
 
-  const startStreamingTts = useCallback((options: StreamingTtsOptions = {}) => {
-    if (!client) throw new Error('DistriClient not initialized');
-    if (isSynthesizing) throw new Error('Streaming TTS already in progress');
-
-    const baseUrl = (client as any).config?.baseUrl || '';
-    const wsUrl = baseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/voice/stream';
-
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    setIsSynthesizing(true);
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'start_session' }));
-      if (options.voice || options.speed) {
-        ws.send(JSON.stringify({ type: 'config', voice: options.voice, speed: options.speed }));
-      }
-      options.onStart?.();
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
-          case 'audio_chunk':
-            if (data.data) options.onAudioChunk?.(new Uint8Array(data.data));
-            break;
-          case 'text_chunk':
-            options.onTextChunk?.(data.text || '', data.is_final || false);
-            break;
-          case 'error':
-            options.onError?.(new Error(data.message || 'WebSocket error'));
-            break;
-        }
-      } catch {
-        options.onError?.(new Error('Failed to parse WebSocket message'));
-      }
-    };
-
-    ws.onerror = () => options.onError?.(new Error('WebSocket connection error'));
-
-    ws.onclose = () => {
-      setIsSynthesizing(false);
-      options.onEnd?.();
-    };
-
-    return {
-      sendText: (text: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'text_chunk', text }));
-        }
-      },
-      stop: () => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'end_session' }));
-        }
-        ws.close();
-      },
-    };
-  }, [client, isSynthesizing]);
-
-  const stopStreamingTts = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    // Also cancel browser speech if active
+  const stop = useCallback(() => {
     if (utteranceRef.current) {
       window.speechSynthesis.cancel();
       utteranceRef.current = null;
@@ -319,12 +209,8 @@ export const useTts = (config: TtsConfig = {}) => {
     speak,
     /** Play audio from a TtsSpeechResponse or Blob. */
     playAudio,
-    /** Play streaming audio chunks via Web Audio API. */
-    streamingPlayAudio,
-    /** Start WebSocket-based streaming TTS (distri mode only). */
-    startStreamingTts,
-    /** Stop any active TTS (streaming, browser, or server). */
-    stopStreamingTts,
+    /** Stop any active TTS (browser or server). */
+    stop,
     /** Fetch available TTS models (distri mode only). */
     fetchModels,
     /** Fetch TTS provider definitions (distri mode only). */

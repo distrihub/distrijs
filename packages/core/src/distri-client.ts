@@ -13,7 +13,6 @@ import {
   A2AProtocolError,
   A2AStreamEventData,
   SpeechToTextConfig,
-  StreamingTranscriptionOptions,
   ToolResult,
   LLMResponse,
   LlmExecuteOptions,
@@ -30,10 +29,9 @@ import {
   VoteMessageRequest,
   DynamicMetadata,
   ProviderModelsStatus,
+  ModelWithProvider,
   TtsSpeechRequest,
   TtsSpeechResponse,
-  TtsModelInfo,
-  TtsProviderDefinition,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -424,101 +422,6 @@ export class DistriClient {
   }
 
   /**
-   * Start streaming speech-to-text transcription via WebSocket
-   */
-  async streamingTranscription(options: StreamingTranscriptionOptions = {}) {
-    const baseUrl = this.config.baseUrl;
-    // Convert HTTP/HTTPS URLs to WebSocket URLs
-    const wsUrl = baseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/voice/stream';
-
-    return new Promise<{
-      sendAudio: (audioData: ArrayBuffer) => void;
-      sendText: (text: string) => void;
-      stop: () => void;
-      close: () => void;
-    }>((resolve, reject) => {
-      const ws = new WebSocket(wsUrl);
-      let isResolved = false;
-
-      ws.onopen = () => {
-        // Start session
-        ws.send(JSON.stringify({ type: 'start_session' }));
-        options.onStart?.();
-
-        if (!isResolved) {
-          isResolved = true;
-          resolve({
-            sendAudio: (audioData: ArrayBuffer) => {
-              if (ws.readyState === WebSocket.OPEN) {
-                ws.send(audioData);
-              }
-            },
-            sendText: (text: string) => {
-              if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'text_chunk', text }));
-              }
-            },
-            stop: () => {
-              if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'end_session' }));
-              }
-            },
-            close: () => {
-              ws.close();
-            }
-          });
-        }
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          switch (data.type) {
-            case 'text_chunk':
-              options.onTranscript?.(data.text || '', data.is_final || false);
-              break;
-            case 'session_started':
-              this.debug('Speech-to-text session started');
-              break;
-            case 'session_ended':
-              this.debug('Speech-to-text session ended');
-              options.onEnd?.();
-              break;
-            case 'error': {
-              const error = new Error(data.message || 'WebSocket error');
-              this.debug('Speech-to-text error:', error);
-              options.onError?.(error);
-              break;
-            }
-            default:
-              this.debug('Unknown message type:', data.type);
-          }
-        } catch (error) {
-          const parseError = new Error('Failed to parse WebSocket message');
-          this.debug('Parse error:', parseError);
-          options.onError?.(parseError);
-        }
-      };
-
-      ws.onerror = (event) => {
-        const error = new Error('WebSocket connection error');
-        this.debug('WebSocket error:', event);
-        options.onError?.(error);
-
-        if (!isResolved) {
-          isResolved = true;
-          reject(error);
-        }
-      };
-
-      ws.onclose = (event) => {
-        this.debug('WebSocket closed:', event.code, event.reason);
-        options.onEnd?.();
-      };
-    });
-  }
-  /**
    * Transcribe audio blob to text using speech-to-text API
    */
   async transcribe(audioBlob: Blob, config: SpeechToTextConfig = {}): Promise<string> {
@@ -531,6 +434,7 @@ export class DistriClient {
       const requestBody = {
         audio: base64String,
         model: config.model || 'whisper-1',
+        ...(config.provider && { provider: config.provider }),
         ...(config.language && { language: config.language }),
         ...(config.temperature !== undefined && { temperature: config.temperature }),
       };
@@ -711,12 +615,13 @@ export class DistriClient {
    * Each provider includes `configured: boolean` indicating whether the
    * provider's required API key(s) are set on the server.
    */
-  async fetchAvailableModels(): Promise<ProviderModelsStatus[]> {
+  /**
+   * Fetch all models with provider info. Returns flat ModelWithProvider[].
+   */
+  async fetchModels(): Promise<ModelWithProvider[]> {
     try {
       const response = await this.fetch(`/models`, {
-        headers: {
-          ...this.config.headers,
-        }
+        headers: { ...this.config.headers },
       });
       if (!response.ok) {
         throw new ApiError(`Failed to fetch models: ${response.statusText}`, response.status);
@@ -724,8 +629,28 @@ export class DistriClient {
       return await response.json();
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new DistriError('Failed to fetch available models', 'FETCH_ERROR', error);
+      throw new DistriError('Failed to fetch models', 'FETCH_ERROR', error);
     }
+  }
+
+  /**
+   * @deprecated Use fetchModels() and group client-side if needed.
+   */
+  async fetchAvailableModels(): Promise<ProviderModelsStatus[]> {
+    const flat = await this.fetchModels();
+    const grouped = new Map<string, ProviderModelsStatus>();
+    for (const m of flat) {
+      if (!grouped.has(m.provider_id)) {
+        grouped.set(m.provider_id, {
+          provider_id: m.provider_id,
+          provider_label: m.provider_label,
+          configured: m.configured,
+          models: [],
+        });
+      }
+      grouped.get(m.provider_id)!.models.push({ id: m.id, name: m.name });
+    }
+    return Array.from(grouped.values());
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -790,7 +715,7 @@ export class DistriClient {
    * Returns model info grouped by provider, including available voices
    * and supported audio formats.
    */
-  async fetchTtsModels(): Promise<TtsModelInfo[]> {
+  async fetchTtsModels(): Promise<any[]> {
     try {
       const response = await this.fetch(`/audio/models`, {
         headers: { ...this.config.headers },
@@ -798,7 +723,7 @@ export class DistriClient {
       if (!response.ok) {
         throw new ApiError(`Failed to fetch TTS models: ${response.statusText}`, response.status);
       }
-      const data: { models: TtsModelInfo[] } = await response.json();
+      const data: { models: any[] } = await response.json();
       return data.models;
     } catch (error) {
       if (error instanceof ApiError) throw error;
@@ -809,7 +734,7 @@ export class DistriClient {
   /**
    * List TTS provider definitions (required keys, models, configuration status).
    */
-  async fetchTtsProviders(): Promise<TtsProviderDefinition[]> {
+  async fetchTtsProviders(): Promise<any[]> {
     try {
       const response = await this.fetch(`/audio/providers`, {
         headers: { ...this.config.headers },
