@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Send, Square, X, Mic, MicOff, Radio, Globe, Plus, Braces } from 'lucide-react';
+import { Send, Square, X, Mic, Globe, Plus, Braces, Headphones } from 'lucide-react';
 
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
@@ -32,10 +32,10 @@ export interface ChatInputProps {
   onAddImages?: (files: FileList | File[]) => void;
   voiceEnabled?: boolean;
   onVoiceRecord?: (audioBlob: Blob) => void;
-  onStartStreamingVoice?: () => void;
-  isStreamingVoice?: boolean;
   useSpeechRecognition?: boolean;
   onSpeechTranscript?: (text: string) => void;
+  handsfree?: boolean;
+  onToggleHandsfree?: () => void;
   verbose?: boolean;
   onToggleVerbose?: () => void;
   variant?: 'default' | 'hero';
@@ -59,10 +59,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onAddImages,
   voiceEnabled = false,
   onVoiceRecord,
-  onStartStreamingVoice,
-  isStreamingVoice = false,
   useSpeechRecognition = false,
   onSpeechTranscript,
+  handsfree = false,
+  onToggleHandsfree,
   verbose = false,
   onToggleVerbose,
   variant = 'default',
@@ -72,6 +72,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const imageAttachments = useMemo(() => attachedImages ?? [], [attachedImages]);
   const onChangeRef = useRef(onChange);
   const handleSendRef = useRef<() => void>(() => {});
@@ -159,6 +161,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const startRecording = useCallback(async () => {
     try {
+      setRecordedBlob(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       const chunks: BlobPart[] = [];
@@ -171,10 +174,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        if (onVoiceRecord) {
-          onVoiceRecord(audioBlob);
-        }
         stream.getTracks().forEach(track => track.stop());
+
+        if (handsfree && onVoiceRecord) {
+          // In handsfree mode, send immediately
+          onVoiceRecord(audioBlob);
+        } else {
+          // Normal mode: hold the blob for user review
+          setRecordedBlob(audioBlob);
+        }
       };
 
       mediaRecorderRef.current = mediaRecorder;
@@ -190,7 +198,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     } catch (error) {
       console.error('Error starting recording:', error);
     }
-  }, [onVoiceRecord]);
+  }, [onVoiceRecord, handsfree]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -198,18 +206,35 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         clearInterval((mediaRecorderRef.current as any)._timer);
       }
       mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
       setIsRecording(false);
-      setRecordingTime(0);
     }
   }, [isRecording]);
 
-  const handleVoiceToggle = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
+  const discardRecording = useCallback(() => {
+    setRecordedBlob(null);
+    setRecordingTime(0);
+  }, []);
+
+  const sendRecording = useCallback(() => {
+    if (recordedBlob && onVoiceRecord) {
+      setIsTranscribing(true);
+      onVoiceRecord(recordedBlob);
+      setRecordedBlob(null);
+      setRecordingTime(0);
+      // isTranscribing will be reset when the parent finishes transcription
+      // and either fills input or sends — we use a timeout as fallback
+      setTimeout(() => setIsTranscribing(false), 15000);
     }
-  }, [isRecording, startRecording, stopRecording]);
+  }, [recordedBlob, onVoiceRecord]);
+
+  // Reset transcribing state when input changes (parent filled it after transcription)
+  useEffect(() => {
+    if (isTranscribing && value) {
+      setIsTranscribing(false);
+    }
+  }, [value, isTranscribing]);
+
 
   const handleBrowserToggle = useCallback(() => {
     if (onToggleBrowser) {
@@ -347,6 +372,62 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               />
             </div>
 
+            {/* Recording bar — shown when recording or when a recorded clip is ready */}
+            {(isRecording || recordedBlob || isTranscribing) && (
+              <div className={cn(
+                'flex items-center gap-2 px-3 py-2 mx-3 mb-2 rounded-lg',
+                isDarkMode ? 'bg-white/5' : 'bg-black/5'
+              )}>
+                {isRecording && (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-mono text-muted-foreground flex-1">
+                      Recording… {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 transition"
+                      title="Stop recording"
+                    >
+                      <Square className="h-3 w-3 fill-current" />
+                    </button>
+                  </>
+                )}
+                {!isRecording && recordedBlob && !isTranscribing && (
+                  <>
+                    <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground flex-1">
+                      Voice clip ({recordingTime}s) — review and send
+                    </span>
+                    <button
+                      type="button"
+                      onClick={discardRecording}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                      title="Discard recording"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sendRecording}
+                      className="flex h-7 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition"
+                      title="Transcribe and send"
+                    >
+                      <Send className="h-3 w-3" />
+                      Send
+                    </button>
+                  </>
+                )}
+                {isTranscribing && (
+                  <>
+                    <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+                    <span className="text-xs text-muted-foreground flex-1">Transcribing…</span>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Toolbar */}
             <div className={cn(
               'flex items-center justify-between px-3 pb-3',
@@ -376,27 +457,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   </button>
                 )}
 
-                {voiceEnabled && !useSpeechRecognition && (
+                {voiceEnabled && !useSpeechRecognition && !isRecording && !recordedBlob && !isTranscribing && (
                   <button
                     type="button"
-                    onClick={handleVoiceToggle}
-                    className={cn(toolbarButton, isRecording && 'border-red-400/60 bg-red-400/15 text-red-400')}
-                    title={isRecording ? `Recording… ${recordingTime}s` : 'Record voice message'}
+                    onClick={startRecording}
+                    className={toolbarButton}
+                    title="Record voice message"
                     disabled={isStreaming || disabled}
                   >
-                    {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    <Mic className="h-4 w-4" />
                   </button>
                 )}
 
-                {onStartStreamingVoice && !useSpeechRecognition && (
+                {voiceEnabled && onToggleHandsfree && (
                   <button
                     type="button"
-                    onClick={onStartStreamingVoice}
-                    className={cn(toolbarButton, isStreamingVoice && toolbarButtonActive)}
-                    disabled={isStreaming || disabled || isRecording}
-                    title="Start streaming voice conversation"
+                    onClick={onToggleHandsfree}
+                    className={cn(toolbarButton, handsfree && toolbarButtonActive)}
+                    title={handsfree ? 'Handsfree mode on (auto-send & auto-play)' : 'Enable handsfree mode'}
+                    disabled={disabled}
                   >
-                    <Radio className="h-4 w-4" />
+                    <Headphones className="h-4 w-4" />
                   </button>
                 )}
 

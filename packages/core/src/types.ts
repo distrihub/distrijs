@@ -749,16 +749,11 @@ export interface ChatProps {
 }
 
 export interface SpeechToTextConfig {
-  model?: 'whisper-1';
+  /** STT provider: 'openai' (default) or 'azure_openai'. */
+  provider?: 'openai' | 'azure_openai';
+  model?: string;
   language?: string;
   temperature?: number;
-}
-
-export interface StreamingTranscriptionOptions {
-  onTranscript?: (text: string, isFinal: boolean) => void;
-  onError?: (error: Error) => void;
-  onStart?: () => void;
-  onEnd?: () => void;
 }
 
 /**
@@ -1006,22 +1001,73 @@ export interface MessageVoteSummary {
 
 // ========== Models API Types ==========
 
+export type ModelCapability = 'completion' | 'tts' | 'stt';
+
+export type ModelPricing =
+  | { type: 'completion'; input: number; output: number; cached_input?: number }
+  | { type: 'tts'; per_1m_chars: number }
+  | { type: 'stt'; per_minute: number };
+
 /**
- * Information about a single model
+ * A model with its capability, pricing, and metadata.
  */
-export interface ModelInfo {
+export interface Model {
   id: string;
   name: string;
+  capability: ModelCapability;
+  context_window?: number;
+  pricing?: ModelPricing;
+  voices?: TtsVoiceInfo[];
+  formats?: string[];
 }
 
 /**
- * Models grouped by provider with configuration status
+ * A model with denormalized provider info — returned by GET /v1/models.
+ */
+export interface ModelWithProvider extends Model {
+  provider_id: string;
+  provider_label: string;
+  configured: boolean;
+}
+
+/**
+ * Provider key definition.
+ */
+export interface ProviderKeyDefinition {
+  key: string;
+  label: string;
+  placeholder: string;
+  required: boolean;
+  sensitive: boolean;
+}
+
+/**
+ * A provider definition with its keys and models.
+ */
+export interface ModelProviderDefinition {
+  id: string;
+  label: string;
+  keys: ProviderKeyDefinition[];
+  models: Model[];
+  is_custom: boolean;
+}
+
+/**
+ * Provider type info — returned by GET /v1/provider-types.
+ */
+export interface ProviderTypeInfo {
+  id: string;
+  label: string;
+}
+
+/**
+ * @deprecated Use ModelWithProvider grouped manually if needed.
  */
 export interface ProviderModelsStatus {
   provider_id: string;
   provider_label: string;
   configured: boolean;
-  models: ModelInfo[];
+  models: { id: string; name: string }[];
 }
 
 // ========== Text-to-Speech Types ==========
@@ -1075,44 +1121,12 @@ export interface TtsSpeechResponse {
 }
 
 /**
- * Information about a single TTS model.
- */
-export interface TtsModelInfo {
-  id: string;
-  provider: string;
-  name: string;
-  voices: TtsVoiceInfo[];
-  formats: string[];
-}
-
-/**
  * Information about a TTS voice.
  */
 export interface TtsVoiceInfo {
   id: string;
   name: string;
   description?: string;
-}
-
-/**
- * TTS provider definition with required configuration keys.
- */
-export interface TtsProviderDefinition {
-  id: string;
-  label: string;
-  keys: TtsSecretKeyDefinition[];
-  models: TtsModelInfo[];
-}
-
-/**
- * A secret key required by a TTS provider.
- */
-export interface TtsSecretKeyDefinition {
-  key: string;
-  label: string;
-  placeholder: string;
-  required: boolean;
-  sensitive: boolean;
 }
 
 // Usage analytics types for enhanced history API

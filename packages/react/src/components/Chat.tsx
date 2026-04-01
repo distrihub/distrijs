@@ -32,11 +32,6 @@ export interface ChatInstance {
   triggerTool: (toolName: string, input: any) => Promise<void>;
   isStreaming: boolean;
   isLoading: boolean;
-  // Streaming voice capabilities
-  startStreamingVoice?: () => void;
-  stopStreamingVoice?: () => void;
-  isStreamingVoice?: boolean;
-  streamingTranscript?: string;
 }
 
 export interface ChatEmptyStateController {
@@ -94,6 +89,8 @@ export interface ChatProps {
   voiceEnabled?: boolean;
   useSpeechRecognition?: boolean;
   ttsConfig?: TtsConfig;
+  /** Handsfree mode: auto-send after transcription and auto-play TTS responses. */
+  handsfree?: boolean;
   initialInput?: string;
   allowBrowserPreview?: boolean;
   // Optional max width for chat content (defaults to flexible, respects container width)
@@ -187,6 +184,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   voiceEnabled = false,
   useSpeechRecognition = false,
   ttsConfig,
+  handsfree = false,
   initialInput = '',
   allowBrowserPreview = true,
   maxWidth,
@@ -211,11 +209,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // Voice functionality hooks - need DistriClient for API calls
   const speechToText = useSpeechToText();
   const tts = useTts(ttsConfig);
-
-  // Streaming voice state
-  const [isStreamingVoice, setIsStreamingVoice] = useState(false);
-  const [streamingTranscript, setStreamingTranscript] = useState('');
-  const [audioChunks, setAudioChunks] = useState<Uint8Array[]>([]);
+  const [isHandsfree, setIsHandsfree] = useState(handsfree);
+  const toggleHandsfree = useCallback(() => setIsHandsfree(prev => !prev), []);
   const [browserEnabled, setBrowserEnabled] = useState(false);
   const browserViewerUrl = useChatStateStore(state => state.browserViewerUrl);
   const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
@@ -487,7 +482,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     }
   }, []);
 
-  // Enhanced voice recording with streaming support
+  // Voice recording: transcribe via backend, then fill textarea (or auto-send in handsfree mode)
   const handleVoiceRecord = useCallback(async (audioBlob: Blob) => {
     try {
       if (!voiceEnabled || !speechToText) {
@@ -495,15 +490,15 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         return;
       }
 
-      // Transcribe the audio to text via backend
       const transcription = await speechToText.transcribe(audioBlob, { model: 'whisper-1' });
 
       if (transcription.trim()) {
-        // Set the transcribed text as input
-        setInput(transcription);
-
-        // Optionally auto-send the message
-        await handleSendMessage(transcription);
+        if (isHandsfree) {
+          await handleSendMessage(transcription);
+        } else {
+          // Fill the textarea so the user can review/edit before sending
+          setInput(transcription);
+        }
       }
     } catch (error) {
       console.error('Voice transcription failed:', error);
@@ -511,83 +506,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         onError(error as Error);
       }
     }
-  }, [voiceEnabled, speechToText, handleSendMessage, onError]);
-
-  // Start streaming voice conversation
-  const startStreamingVoice = useCallback(async () => {
-    if (!voiceEnabled || isStreamingVoice || !speechToText) {
-      console.error('Cannot start streaming voice - missing requirements');
-      return;
-    }
-
-    setIsStreamingVoice(true);
-    setStreamingTranscript('');
-    setAudioChunks([]);
-
-    try {
-      // Start streaming transcription
-      await speechToText.startStreamingTranscription({
-        onTranscript: (text: string, isFinal: boolean) => {
-          setStreamingTranscript(text);
-          if (isFinal && text.trim()) {
-            // Send the final transcription and get AI response
-            handleSendMessage(text);
-            setStreamingTranscript('');
-          }
-        },
-        onError: (error: Error) => {
-          console.error('Streaming transcription error:', error);
-          if (onError) onError(error);
-          setIsStreamingVoice(false);
-        },
-        onEnd: () => {
-          setIsStreamingVoice(false);
-        }
-      });
-
-      // Start streaming TTS for AI responses
-      tts.startStreamingTts({
-        voice: ttsConfig?.defaultVoice || 'alloy',
-        speed: ttsConfig?.defaultSpeed || 1.0,
-        onAudioChunk: (audioData: Uint8Array) => {
-          setAudioChunks(prev => [...prev, audioData]);
-        },
-        onTextChunk: (text: string, _isFinal: boolean) => {
-          // Show the AI's text response as it's being generated
-          console.log('AI speaking:', text);
-        },
-        onError: (error: Error) => {
-          console.error('Streaming TTS error:', error);
-          if (onError) onError(error);
-        },
-        onEnd: () => {
-          // Play accumulated audio chunks
-          if (audioChunks.length > 0) {
-            tts.streamingPlayAudio(audioChunks).catch(console.error);
-          }
-          setAudioChunks([]);
-        }
-      });
-
-    } catch (error) {
-      console.error('Failed to start streaming voice:', error);
-      if (onError) onError(error as Error);
-      setIsStreamingVoice(false);
-    }
-  }, [voiceEnabled, isStreamingVoice, speechToText, tts, ttsConfig, handleSendMessage, onError, audioChunks]);
-
-  // Stop streaming voice conversation
-  const stopStreamingVoice = useCallback(() => {
-    if (!isStreamingVoice) return;
-
-    if (speechToText) {
-      speechToText.stopStreamingTranscription();
-    }
-    tts.stopStreamingTts();
-    setIsStreamingVoice(false);
-    setStreamingTranscript('');
-    setAudioChunks([]);
-  }, [isStreamingVoice, speechToText, tts]);
+  }, [voiceEnabled, speechToText, isHandsfree, handleSendMessage, onError]);
 
   // Handle speech transcript from VoiceInput component
   const handleSpeechTranscript = useCallback(async (transcript: string) => {
@@ -617,17 +536,35 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     sendPendingMessage();
   }, [isStreaming, pendingMessage, sendMessage]);
 
-  // Auto-play TTS for AI messages when voiceEnabled and ttsConfig are provided
+  // Auto-play TTS for new assistant messages in handsfree mode.
+  // Only plays after streaming completes, and tracks already-spoken message IDs.
+  const spokenMessageIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    if (!voiceEnabled || !ttsConfig || isStreamingVoice) return;
+    if (!isHandsfree || !voiceEnabled || !ttsConfig || isStreaming) return;
 
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage && 'role' in lastMessage && lastMessage.role === 'assistant' && 'content' in lastMessage && typeof lastMessage.content === 'string') {
-      // Synthesize and play the AI's response using the unified speak method
-      tts.speak(lastMessage.content)
-        .catch(error => console.error('TTS playback failed:', error));
+    if (
+      lastMessage &&
+      'role' in lastMessage &&
+      lastMessage.role === 'assistant' &&
+      'id' in lastMessage &&
+      !spokenMessageIds.current.has(lastMessage.id)
+    ) {
+      // Extract text from message parts
+      const text = 'parts' in lastMessage
+        ? (lastMessage.parts as DistriPart[])
+            .filter((p): p is { part_type: 'text'; data: string } => p.part_type === 'text')
+            .map(p => p.data)
+            .join(' ')
+        : '';
+
+      if (text.trim()) {
+        spokenMessageIds.current.add(lastMessage.id);
+        tts.speak(text).catch(error => console.error('TTS playback failed:', error));
+      }
     }
-  }, [messages, voiceEnabled, ttsConfig, tts, isStreamingVoice]);
+  }, [messages, isHandsfree, voiceEnabled, ttsConfig, tts, isStreaming]);
 
   // Create ChatInstance API with useMemo to prevent recreation
   const chatInstance = useMemo<ChatInstance>(() => ({
@@ -636,12 +573,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     triggerTool: handleTriggerTool,
     isStreaming,
     isLoading,
-    // Streaming voice capabilities - only available with speechToText
-    startStreamingVoice: voiceEnabled && speechToText ? startStreamingVoice : undefined,
-    stopStreamingVoice: voiceEnabled && speechToText ? stopStreamingVoice : undefined,
-    isStreamingVoice: voiceEnabled && speechToText ? isStreamingVoice : undefined,
-    streamingTranscript: voiceEnabled && speechToText ? streamingTranscript : undefined,
-  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, voiceEnabled, speechToText, startStreamingVoice, stopStreamingVoice, isStreamingVoice, streamingTranscript]);
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading]);
 
   // Expose ChatInstance via ref
   useImperativeHandle(ref, () => chatInstance, [chatInstance]);
@@ -796,23 +728,21 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         browserHasSession={Boolean(browserSessionId)}
         onToggleBrowser={supportsBrowserStreaming ? handleToggleBrowser : undefined}
         placeholder={
-          isStreamingVoice
-            ? 'Voice mode active…'
-            : isStreaming
-              ? 'Message will be queued…'
-              : basePlaceholder
+          isStreaming
+            ? 'Message will be queued…'
+            : basePlaceholder
         }
-        disabled={isLoading || hasPendingToolCalls || isStreamingVoice}
+        disabled={isLoading || hasPendingToolCalls}
         isStreaming={isStreaming}
         attachedImages={attachedImages}
         onRemoveImage={removeImage}
         onAddImages={addImages}
         voiceEnabled={voiceEnabled && !!speechToText}
         onVoiceRecord={handleVoiceRecord}
-        onStartStreamingVoice={voiceEnabled && speechToText ? startStreamingVoice : undefined}
-        isStreamingVoice={isStreamingVoice}
         useSpeechRecognition={useSpeechRecognition}
         onSpeechTranscript={handleSpeechTranscript}
+        handsfree={isHandsfree}
+        onToggleHandsfree={voiceEnabled ? toggleHandsfree : undefined}
         verbose={verbose}
         onToggleVerbose={debug ? handleToggleVerbose : undefined}
         className={className}
@@ -829,7 +759,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     browserSessionId,
     supportsBrowserStreaming,
     handleToggleBrowser,
-    isStreamingVoice,
     isStreaming,
     isLoading,
     hasPendingToolCalls,
@@ -842,9 +771,10 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     voiceEnabled,
     speechToText,
     handleVoiceRecord,
-    startStreamingVoice,
     useSpeechRecognition,
     handleSpeechTranscript,
+    isHandsfree,
+    toggleHandsfree,
     showEmptyState,
     emptyState,
     theme,
@@ -885,7 +815,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const shouldRenderFooterComposer = !showEmptyState || Boolean(renderEmptyState);
   const footerHasContent = shouldRenderFooterComposer
     || (models && models.length > 0)
-    || (voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript));
+    || (voiceEnabled && !!speechToText);
   const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserViewerUrl);
 
 
@@ -1082,30 +1012,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
-
-            {voiceEnabled && speechToText && (isStreamingVoice || streamingTranscript) && (
-              <div className="p-3 bg-muted/50 border border-muted rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {isStreamingVoice ? 'Listening…' : 'Processing…'}
-                  </span>
-                  {isStreamingVoice && (
-                    <button
-                      onClick={stopStreamingVoice}
-                      className="ml-auto text-xs px-2 py-1 bg-destructive text-destructive-foreground rounded"
-                    >
-                      Stop
-                    </button>
-                  )}
-                </div>
-                {streamingTranscript && (
-                  <p className="mt-2 text-sm text-foreground font-mono break-words">
-                    “{streamingTranscript}”
-                  </p>
-                )}
               </div>
             )}
 

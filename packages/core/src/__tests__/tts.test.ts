@@ -1,10 +1,7 @@
 import {
   TtsSpeechRequest,
   TtsSpeechResponse,
-  TtsModelInfo,
   TtsVoiceInfo,
-  TtsProviderDefinition,
-  TtsSecretKeyDefinition,
 } from '../types';
 
 describe('TTS Types', () => {
@@ -107,56 +104,6 @@ describe('TTS Types', () => {
     });
   });
 
-  describe('TtsModelInfo', () => {
-    it('should represent a model with voices and formats', () => {
-      const model: TtsModelInfo = {
-        id: 'tts-1',
-        provider: 'openai',
-        name: 'TTS-1',
-        voices: [
-          { id: 'alloy', name: 'Alloy', description: 'Neutral and balanced' },
-          { id: 'nova', name: 'Nova' },
-        ],
-        formats: ['mp3', 'wav', 'opus'],
-      };
-      expect(model.id).toBe('tts-1');
-      expect(model.voices).toHaveLength(2);
-      expect(model.voices[0].description).toBe('Neutral and balanced');
-      expect(model.voices[1].description).toBeUndefined();
-      expect(model.formats).toContain('mp3');
-    });
-  });
-
-  describe('TtsProviderDefinition', () => {
-    it('should represent a provider with keys and models', () => {
-      const provider: TtsProviderDefinition = {
-        id: 'openai',
-        label: 'OpenAI',
-        keys: [
-          {
-            key: 'OPENAI_API_KEY',
-            label: 'API key',
-            placeholder: 'sk-...',
-            required: true,
-            sensitive: true,
-          },
-        ],
-        models: [
-          {
-            id: 'tts-1',
-            provider: 'openai',
-            name: 'TTS-1',
-            voices: [{ id: 'alloy', name: 'Alloy' }],
-            formats: ['mp3'],
-          },
-        ],
-      };
-      expect(provider.id).toBe('openai');
-      expect(provider.keys).toHaveLength(1);
-      expect(provider.keys[0].sensitive).toBe(true);
-      expect(provider.models).toHaveLength(1);
-    });
-  });
 });
 
 describe('TTS Request building patterns', () => {
