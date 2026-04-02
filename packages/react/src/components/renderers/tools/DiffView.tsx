@@ -39,6 +39,8 @@ export const DiffView: React.FC<DiffViewProps> = ({ diff }) => {
           </div>
         </div>
       )}
+      {/* Diff line colors (green/red/blue) are intentional semantic diff standards;
+          no shadcn token covers this use case — the spec explicitly prescribes these colors. */}
       <div className="overflow-auto max-h-[300px]">
         <pre className="text-[11px] leading-5 p-2 m-0">
           {lines.map((line, i) => {
