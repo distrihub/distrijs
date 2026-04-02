@@ -319,6 +319,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const verbose = useChatStateStore(state => state.verbose);
   const setVerbose = useChatStateStore(state => state.setVerbose);
   const audioEnabled = useChatStateStore(s => s.audioEnabled ?? false);
+  const rendering = useChatStateStore(s => s.rendering);
   const setSessionSettings = useChatStateStore(s => s.setSessionSettings);
 
   const handleToggleVerbose = useCallback(() => {
@@ -687,6 +688,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           }}
           debug={debug}
           verbose={verbose}
+          rendering={rendering}
           threadId={threadId}
           enableFeedback={enableFeedback}
         />

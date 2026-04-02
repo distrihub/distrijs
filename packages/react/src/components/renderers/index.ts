@@ -1,4 +1,5 @@
 export * from './AssistantMessageRenderer';
+export { ToolExecutionRenderer, formatStatusText } from './ToolExecutionRenderer';
 export * from './ImageRenderer';
 export * from './LoadingAnimation';
 export * from './MessageFeedback';
