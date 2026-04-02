@@ -27,3 +27,50 @@ export type ToolRendererProps = {
 export type ToolRendererMap = Record<string, (props: ToolRendererProps) => React.ReactNode>;
 
 export type ChatCustomRenderers = never;
+
+// --- Tool renderer types ---
+
+export type RenderingMode = 'minimal' | 'rich';
+
+export interface ToolSummary {
+  verb: string;         // "GET", "Read", "Search", "Run", …
+  subject?: string;     // filename, path, query — derived from input
+  detail?: string;      // result hint — derived from result
+}
+
+export type SummaryFn = (
+  input: Record<string, unknown>,
+  result?: import('@distri/core').ToolResult
+) => ToolSummary;
+
+export interface RendererConfig {
+  rendering?: RenderingMode;
+  toolSummaryOverrides?: Record<string, SummaryFn>;
+}
+
+// --- Session settings ---
+
+export interface ChatSessionSettings {
+  verbose: boolean;
+  rendering: RenderingMode;   // always mirrors verbose unless overridden by prop
+  audioEnabled: boolean;
+}
+
+// --- Slash commands ---
+
+export type ChatCommandId = 'verbose' | 'audio' | 'reset';
+
+export interface ChatCommand {
+  id: ChatCommandId;
+  label: string;
+  description: string;
+  icon: string;
+  type: 'toggle' | 'action';
+  currentValue?: boolean;
+}
+
+export interface ChatCommandEvent {
+  command: ChatCommandId;
+  value?: boolean;          // new value for toggles
+  timestamp: number;
+}
