@@ -7,6 +7,9 @@ import { Send, Square, X, Mic, Globe, Plus, Braces, Headphones } from 'lucide-re
 import { DistriPart } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
 import { cn } from '../lib/utils';
+import { SlashCommandExtension } from '../extensions/SlashCommandExtension';
+import { CommandPalette } from './CommandPalette';
+import { ChatCommand, ChatCommandEvent } from '@/types';
 
 export interface AttachedImage {
   id: string;
@@ -40,6 +43,9 @@ export interface ChatInputProps {
   onToggleVerbose?: () => void;
   variant?: 'default' | 'hero';
   theme?: 'light' | 'dark' | 'auto';
+  allowCommands?: boolean;
+  commands?: ChatCommand[];
+  onCommand?: (event: ChatCommandEvent) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -67,10 +73,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onToggleVerbose,
   variant = 'default',
   theme = 'auto',
+  allowCommands = false,
+  commands,
+  onCommand,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [commandFilter, setCommandFilter] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -94,12 +105,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
       }),
+      SlashCommandExtension.configure({}),
     ],
     content: value,
     editable: !disabled,
     onUpdate: ({ editor }) => {
       const text = editor.getText();
       onChangeRef.current(text);
+      if (text.startsWith('/') && allowCommands) {
+        setCommandFilter(text);
+        setPaletteOpen(true);
+      } else if (paletteOpen) {
+        setPaletteOpen(false);
+        setCommandFilter('');
+      }
     },
     editorProps: {
       attributes: {
@@ -353,23 +372,39 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           >
             {/* Editor area */}
             <div className={cn('px-4 pt-4 pb-2 flex flex-col', editorHeight)}>
-              <EditorContent
-                editor={editor}
-                className={cn(
-                  'distri-editor w-full flex-1 flex flex-col [&>div]:flex-1',
-                  isDarkMode ? 'text-white/90' : 'text-gray-900',
-                  '[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
-                  '[&_.is-editor-empty:first-child::before]:float-left',
-                  '[&_.is-editor-empty:first-child::before]:h-0',
-                  '[&_.is-editor-empty:first-child::before]:pointer-events-none',
-                  isDarkMode
-                    ? '[&_.is-editor-empty:first-child::before]:text-white/40'
-                    : '[&_.is-editor-empty:first-child::before]:text-gray-400',
-                  '[&_.ProseMirror]:outline-none',
-                  '[&_.ProseMirror]:h-full',
-                  isHero ? 'text-base' : 'text-sm'
+              <div className="relative flex-1">
+                {paletteOpen && allowCommands && commands && commands.length > 0 && (
+                  <CommandPalette
+                    commands={commands}
+                    filter={commandFilter}
+                    onSelect={(event) => {
+                      onCommand?.(event);
+                      editor?.commands.setContent('');
+                      onChangeRef.current('');
+                      setPaletteOpen(false);
+                      setCommandFilter('');
+                    }}
+                    onClose={() => { setPaletteOpen(false); setCommandFilter(''); }}
+                  />
                 )}
-              />
+                <EditorContent
+                  editor={editor}
+                  className={cn(
+                    'distri-editor w-full flex-1 flex flex-col [&>div]:flex-1',
+                    isDarkMode ? 'text-white/90' : 'text-gray-900',
+                    '[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+                    '[&_.is-editor-empty:first-child::before]:float-left',
+                    '[&_.is-editor-empty:first-child::before]:h-0',
+                    '[&_.is-editor-empty:first-child::before]:pointer-events-none',
+                    isDarkMode
+                      ? '[&_.is-editor-empty:first-child::before]:text-white/40'
+                      : '[&_.is-editor-empty:first-child::before]:text-gray-400',
+                    '[&_.ProseMirror]:outline-none',
+                    '[&_.ProseMirror]:h-full',
+                    isHero ? 'text-base' : 'text-sm'
+                  )}
+                />
+              </div>
             </div>
 
             {/* Recording bar — shown when recording or when a recorded clip is ready */}

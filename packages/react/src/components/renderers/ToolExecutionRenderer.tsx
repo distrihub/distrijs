@@ -3,7 +3,12 @@ import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Wrench } from '
 import { ToolCallState } from '@/stores/chatStateStore';
 import { LoadingShimmer } from './ThinkingRenderer';
 import { ToolCall, DistriPart, ToolResult } from '@distri/core';
-import { ToolRendererMap } from '@/types';
+import { ToolRendererMap, RenderingMode } from '@/types';
+import { useRendererContext } from './RendererContext';
+import { getToolSummary } from './tools/getToolSummary';
+import { MinimalToolRow } from './tools/MinimalToolRow';
+import { RichToolCard } from './tools/RichToolCard';
+import { InteractiveToolCard } from './tools/InteractiveToolCard';
 
 interface ToolExecutionRendererProps {
   event: any; // Can be ToolCallsEvent or ToolResultsEvent
@@ -11,6 +16,8 @@ interface ToolExecutionRendererProps {
   toolRenderers?: ToolRendererMap;
   debug?: boolean;
   verbose?: boolean;
+  rendering?: RenderingMode;  // falls back to RendererContext if not provided
+  onToolComplete?: (result: ToolResult) => void;  // for interactive tool completions
 }
 
 interface ToolCallData {
@@ -187,55 +194,6 @@ const DiffBlock: React.FC<{ diff: string }> = ({ diff }) => {
   );
 };
 
-/** Format tool call like CLI: `tool_name("key_param")` */
-const formatToolCall = (toolName: string, input: any): string => {
-  const str = (key: string) => input?.[key] || '?';
-  const truncate = (s: string, max: number) => s.length > max ? `${s.slice(0, max)}…` : s;
-
-  switch (toolName) {
-    case 'load_skill':
-      return `load_skill("${str('skill_name')}")`;
-    case 'run_skill_script': {
-      const step = input?.step_index;
-      return step != null
-        ? `run_skill_script("${str('skill_name')}", step=${step})`
-        : `run_skill_script("${str('skill_name')}")`;
-    }
-    case 'create_skill':
-    case 'delete_skill':
-      return `${toolName}("${input?.name || input?.skill_name || '?'}")`;
-    case 'search':
-      return `search("${truncate(str('query'), 60)}")`;
-    case 'tool_search':
-      return `tool_search("${truncate(str('query'), 60)}")`;
-    case 'execute_shell':
-      return `execute_shell("${truncate(str('command'), 60)}")`;
-    case 'start_shell':
-    case 'stop_shell':
-      return `${toolName}()`;
-    case 'browsr_scrape':
-    case 'browsr_crawl':
-      return `${toolName}("${truncate(str('url'), 60)}")`;
-    case 'transfer_to_agent':
-      return `transfer_to_agent("${str('agent_name')}")`;
-    case 'api_request': {
-      const method = input?.method || 'GET';
-      const path = input?.path;
-      const url = input?.url;
-      if (url) return `api_request(${method} ${truncate(url, 50)})`;
-      if (path) return `api_request(${method} ${path})`;
-      return `api_request(${method})`;
-    }
-    case 'final':
-    case 'reflect':
-      return `${toolName}()`;
-    default: {
-      const compact = JSON.stringify(input || {});
-      return `${toolName}(${truncate(compact, 80)})`;
-    }
-  }
-};
-
 /** Generate human-readable status text for a tool call */
 export const formatStatusText = (toolName: string, input: any): string => {
   const str = (key: string) => input?.[key] || '';
@@ -303,7 +261,8 @@ const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCall, state, renderResu
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
 
-  const formatted = formatToolCall(toolCall.tool_name, toolCall.input);
+  const compact = JSON.stringify(toolCall.input || {});
+  const formatted = `${toolCall.tool_name}(${compact.length > 80 ? `${compact.slice(0, 80)}…` : compact})`;
   const executionTime = state?.endTime && state?.startTime
     ? state.endTime - state.startTime
     : undefined;
@@ -505,7 +464,11 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
   toolRenderers,
   debug = false,
   verbose = false,
+  rendering: renderingProp,
+  onToolComplete,
 }) => {
+  const { rendering: renderingCtx, toolSummaryOverrides } = useRendererContext();
+  const rendering = renderingProp ?? renderingCtx;
   const toolCalls = event.data?.tool_calls || [];
   if (toolCalls.length === 0) {
     return null;
@@ -545,31 +508,59 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
   return (
     <>
       {filteredToolCalls.map((toolCall: ToolCallData) => {
-          const state = toolCallStates.get(toolCall.tool_call_id);
-          const renderer = toolRenderers?.[toolCall.tool_name];
-          if (renderer) {
-            // Cast event tool call into ToolCall shape best-effort
-            const toolCallPayload: ToolCall = {
-              tool_call_id: toolCall.tool_call_id,
-              tool_name: toolCall.tool_name,
-              input: toolCall.input,
-            };
-            return (
-              <div key={toolCall.tool_call_id}>
-                {renderer({ toolCall: toolCallPayload, state })}
-              </div>
-            );
-          }
+        const state = toolCallStates.get(toolCall.tool_call_id);
+        if (!state) return null;
+
+        // Custom renderer takes priority
+        const renderer = toolRenderers?.[toolCall.tool_name];
+        if (renderer) {
+          const toolCallPayload: ToolCall = {
+            tool_call_id: toolCall.tool_call_id,
+            tool_name: toolCall.tool_name,
+            input: toolCall.input,
+          };
           return (
-            <ToolCallCard
+            <div key={toolCall.tool_call_id}>
+              {renderer({ toolCall: toolCallPayload, state })}
+            </div>
+          );
+        }
+
+        // Interactive tools (ask_follow_up, confirm, input, approval_*)
+        const toolNameLower = toolCall.tool_name.toLowerCase();
+        const isInteractive = toolNameLower === 'ask_follow_up' || toolNameLower === 'confirm' ||
+          toolNameLower === 'input' || toolNameLower.startsWith('approval_');
+
+        if (isInteractive) {
+          const toolCallPayload: ToolCall = {
+            tool_call_id: toolCall.tool_call_id,
+            tool_name: toolCall.tool_name,
+            input: toolCall.input,
+          };
+          return (
+            <InteractiveToolCard
               key={toolCall.tool_call_id}
-              toolCall={toolCall}
+              toolCall={toolCallPayload}
               state={state}
-              renderResultData={renderResultData}
-              debug={debug}
+              rendering={rendering}
+              onComplete={onToolComplete ?? (() => {})}
             />
           );
-        })}
+        }
+
+        // Mode-aware tool display
+        const summary = getToolSummary(
+          toolCall.tool_name,
+          (toolCall.input as Record<string, unknown>) ?? {},
+          state.result,
+          toolSummaryOverrides
+        );
+
+        if (rendering === 'rich') {
+          return <RichToolCard key={toolCall.tool_call_id} summary={summary} state={state} />;
+        }
+        return <MinimalToolRow key={toolCall.tool_call_id} summary={summary} state={state} />;
+      })}
     </>
   );
 };

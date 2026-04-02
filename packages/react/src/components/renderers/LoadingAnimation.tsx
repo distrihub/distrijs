@@ -22,6 +22,8 @@ export interface LoadingAnimationConfig {
   label?: string;
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
+  /** Words to cycle through during loading. Pass [] for dots only. */
+  cycleWords?: string[];
 }
 
 export interface LoadingAnimationProps {
