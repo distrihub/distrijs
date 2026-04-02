@@ -86,4 +86,10 @@ describe('getToolSummary', () => {
     expect(s.verb).toBe('Custom');
     expect(s.subject).toBe('override');
   });
+
+  it('interactive: verb is the tool name (special rendering handled by InteractiveToolCard)', () => {
+    const s = getToolSummary('ask_follow_up', { question: 'What is your name?' });
+    expect(s.verb).toBe('ask_follow_up');
+    expect(s.subject).toBeUndefined();
+  });
 });
