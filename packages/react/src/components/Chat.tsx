@@ -4,15 +4,14 @@ import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { MessageReadProvider } from './renderers/MessageReadContext';
-import { ThinkingRenderer } from './renderers/ThinkingRenderer';
-import { TodosDisplay } from './renderers/TodosDisplay';
-import { TypingIndicator } from './renderers/TypingIndicator';
-import { LoadingAnimation, type LoadingAnimationConfig } from './renderers/LoadingAnimation';
+import { LoadingStrip } from './renderers/LoadingStrip';
+import { TodosCompact } from './renderers/TodosCompact';
+import { type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
-import { DistriAnyTool, ToolRendererMap } from '@/types';
+import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent } from '@/types';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
 import { useAgent } from '../useAgent';
 import { useChatMessages } from '../hooks/useChatMessages';
@@ -111,6 +110,12 @@ export interface ChatProps {
    * Shows thumbs up/down buttons for rating responses.
    */
   enableFeedback?: boolean;
+  /** Enable slash-command palette in the input */
+  allowCommands?: boolean;
+  /** Initial session settings applied on mount */
+  sessionSettings?: Partial<ChatSessionSettings>;
+  /** Callback fired when a slash command is selected */
+  onCommand?: (event: ChatCommandEvent) => void;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -180,7 +185,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   emptyState: emptyStateProp,
   starterCommands,
   loadingAnimation,
-  renderLoadingAnimation,
   voiceEnabled = false,
   useSpeechRecognition = false,
   ttsConfig,
@@ -192,6 +196,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   toolRenderers,
   debug = false,
   enableFeedback = false,
+  allowCommands = false,
+  sessionSettings,
+  onCommand,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -307,16 +314,23 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // Get reactive state from store
   const toolCalls = useChatStateStore(state => state.toolCalls);
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls());
-  const streamingIndicator = useChatStateStore(state => state.streamingIndicator);
-  const currentThought = useChatStateStore(state => state.currentThought);
   const currentState = useChatStateStore(state => state);
   const todos = useChatStateStore(state => state.todos);
   const verbose = useChatStateStore(state => state.verbose);
   const setVerbose = useChatStateStore(state => state.setVerbose);
+  const audioEnabled = useChatStateStore(s => s.audioEnabled ?? false);
+  const rendering = useChatStateStore(s => s.rendering);
+  const setSessionSettings = useChatStateStore(s => s.setSessionSettings);
 
   const handleToggleVerbose = useCallback(() => {
     setVerbose(!verbose);
   }, [verbose, setVerbose]);
+
+  // Apply sessionSettings on mount
+  useEffect(() => {
+    if (sessionSettings) setSessionSettings(sessionSettings);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (onChatStateChange) {
       onChatStateChange(currentState);
@@ -460,6 +474,24 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     // Reset all streaming states in the store
     useChatStateStore.getState().resetStreamingStates();
   }, [stopStreaming]);
+
+  // Built-in slash commands
+  const builtInCommands: ChatCommand[] = useMemo(() => [
+    { id: 'verbose', label: 'Verbose', description: 'Toggle rich tool rendering & detailed output', icon: '📊', type: 'toggle', currentValue: verbose },
+    { id: 'audio', label: 'Audio', description: 'Toggle voice input & speech output', icon: '🎙️', type: 'toggle', currentValue: audioEnabled },
+    { id: 'reset', label: 'Reset', description: 'Clear conversation & start a new thread', icon: '🔄', type: 'action' },
+  ], [verbose, audioEnabled]);
+
+  const handleCommand = useCallback((event: ChatCommandEvent) => {
+    if (event.command === 'verbose') {
+      setSessionSettings({ verbose: event.value ?? !verbose });
+    } else if (event.command === 'audio') {
+      setSessionSettings({ audioEnabled: event.value ?? !audioEnabled });
+    } else if (event.command === 'reset') {
+      handleStopStreaming();
+    }
+    onCommand?.(event);
+  }, [verbose, audioEnabled, setSessionSettings, onCommand, handleStopStreaming]);
 
   const handleTriggerTool = useCallback(async (toolName: string, input: any) => {
     // Create a tool call with a unique ID
@@ -656,6 +688,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           }}
           debug={debug}
           verbose={verbose}
+          rendering={rendering}
           threadId={threadId}
           enableFeedback={enableFeedback}
         />
@@ -745,6 +778,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         onToggleHandsfree={voiceEnabled ? toggleHandsfree : undefined}
         verbose={verbose}
         onToggleVerbose={debug ? handleToggleVerbose : undefined}
+        allowCommands={allowCommands}
+        commands={builtInCommands}
+        onCommand={handleCommand}
         className={className}
         variant={variant}
         theme={theme}
@@ -778,6 +814,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     showEmptyState,
     emptyState,
     theme,
+    allowCommands,
+    builtInCommands,
+    handleCommand,
   ]);
 
   const emptyStateComposer = useMemo(() => {
@@ -818,44 +857,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     || (voiceEnabled && !!speechToText);
   const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserViewerUrl);
 
-
-  // Render thinking indicator separately at the end
-  const renderThinkingIndicator = () => {
-    if (streamingIndicator === 'typing') {
-      // Use custom render function if provided
-      if (renderLoadingAnimation) {
-        return (
-          <RendererWrapper key={`typing-indicator`} className="distri-typing-indicator">
-            {renderLoadingAnimation()}
-          </RendererWrapper>
-        );
-      }
-      // Use LoadingAnimation with custom config if provided
-      if (loadingAnimation) {
-        return (
-          <RendererWrapper key={`typing-indicator`} className="distri-typing-indicator">
-            <LoadingAnimation config={loadingAnimation} />
-          </RendererWrapper>
-        );
-      }
-      // Default typing indicator
-      return (
-        <RendererWrapper key={`typing-indicator`} className="distri-typing-indicator">
-          <TypingIndicator />
-        </RendererWrapper>
-      );
-    } else if (streamingIndicator) {
-      return (
-        <RendererWrapper key={`thinking-${streamingIndicator}`} className="distri-thinking-indicator">
-          <ThinkingRenderer
-            indicator={streamingIndicator}
-            thoughtText={currentThought}
-          />
-        </RendererWrapper>
-      );
-    }
-    return null;
-  };
 
   // Render pending message
   const renderPendingMessage = () => {
@@ -942,11 +943,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           {/* Thread token usage */}
           <ThreadTokensBanner thread={threadDetails} />
 
-          {/* Todos display */}
-          {todos && todos.length > 0 && (
-            <TodosDisplay todos={todos} className="mb-4" />
-          )}
-
           <div
             className="flex flex-col gap-4 lg:flex-row lg:items-start"
             style={maxWidth ? { maxWidth: '100%' } : undefined}
@@ -958,9 +954,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 {renderMessages()}
 
                 {renderExternalToolCalls()}
-                {/* Render thinking indicator at the end */}
-                {renderThinkingIndicator()}
-                {/* Render pending message after thinking indicator */}
+                {/* Render pending message */}
                 {renderPendingMessage()}
 
                 <div ref={messagesEndRef} />
@@ -993,9 +987,21 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   pb-[env(safe-area-inset-bottom)]
 ">
           <div
-            className="mx-auto w-full px-4 py-3 sm:py-4 space-y-3"
+            className="mx-auto w-full px-4 py-3 sm:py-4 space-y-2"
             style={{ maxWidth: maxWidth || '768px' }}
           >
+
+            {/* Pre-input zone: todos + loading strip */}
+            {(todos?.length > 0 || isStreaming) && (
+              <div className="space-y-1.5">
+                {todos && todos.length > 0 && (
+                  <TodosCompact todos={todos} />
+                )}
+                {isStreaming && (
+                  <LoadingStrip words={loadingAnimation?.cycleWords} />
+                )}
+              </div>
+            )}
 
             {models && models.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">

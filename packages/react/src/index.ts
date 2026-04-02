@@ -50,6 +50,16 @@ export * from './components/ui';
 
 // Renderer exports (for customization)
 export * from './components/renderers';
+export { LoadingStrip } from './components/renderers/LoadingStrip';
+export { TodosCompact } from './components/renderers/TodosCompact';
+export { DiffView, looksLikeDiff } from './components/renderers/tools/DiffView';
+export { getToolSummary } from './components/renderers/tools/getToolSummary';
+export { MinimalToolRow } from './components/renderers/tools/MinimalToolRow';
+export { RichToolCard } from './components/renderers/tools/RichToolCard';
+export { InteractiveToolCard } from './components/renderers/tools/InteractiveToolCard';
+export { RendererContext, useRendererContext } from './components/renderers/RendererContext';
+export { CommandPalette } from './components/CommandPalette';
+export { CommandPill } from './components/CommandPill';
 
 // Styles are NOT imported here - consumers must explicitly import them:
 //   import '@distri/react/globals.css';  // Required utilities
