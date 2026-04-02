@@ -110,6 +110,12 @@ export interface ChatProps {
    * Shows thumbs up/down buttons for rating responses.
    */
   enableFeedback?: boolean;
+  /** Enable slash-command palette in the input */
+  allowCommands?: boolean;
+  /** Initial session settings applied on mount */
+  sessionSettings?: Partial<ChatSessionSettings>;
+  /** Callback fired when a slash command is selected */
+  onCommand?: (event: ChatCommandEvent) => void;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -190,6 +196,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   toolRenderers,
   debug = false,
   enableFeedback = false,
+  allowCommands = false,
+  sessionSettings,
+  onCommand,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -309,10 +318,18 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const todos = useChatStateStore(state => state.todos);
   const verbose = useChatStateStore(state => state.verbose);
   const setVerbose = useChatStateStore(state => state.setVerbose);
+  const audioEnabled = useChatStateStore(s => s.audioEnabled ?? false);
+  const setSessionSettings = useChatStateStore(s => s.setSessionSettings);
 
   const handleToggleVerbose = useCallback(() => {
     setVerbose(!verbose);
   }, [verbose, setVerbose]);
+
+  // Apply sessionSettings on mount
+  useEffect(() => {
+    if (sessionSettings) setSessionSettings(sessionSettings);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (onChatStateChange) {
       onChatStateChange(currentState);
@@ -456,6 +473,24 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     // Reset all streaming states in the store
     useChatStateStore.getState().resetStreamingStates();
   }, [stopStreaming]);
+
+  // Built-in slash commands
+  const builtInCommands: ChatCommand[] = useMemo(() => [
+    { id: 'verbose', label: 'Verbose', description: 'Toggle rich tool rendering & detailed output', icon: '📊', type: 'toggle', currentValue: verbose },
+    { id: 'audio', label: 'Audio', description: 'Toggle voice input & speech output', icon: '🎙️', type: 'toggle', currentValue: audioEnabled },
+    { id: 'reset', label: 'Reset', description: 'Clear conversation & start a new thread', icon: '🔄', type: 'action' },
+  ], [verbose, audioEnabled]);
+
+  const handleCommand = useCallback((event: ChatCommandEvent) => {
+    if (event.command === 'verbose') {
+      setSessionSettings({ verbose: event.value ?? !verbose });
+    } else if (event.command === 'audio') {
+      setSessionSettings({ audioEnabled: event.value ?? !audioEnabled });
+    } else if (event.command === 'reset') {
+      handleStopStreaming();
+    }
+    onCommand?.(event);
+  }, [verbose, audioEnabled, setSessionSettings, onCommand, handleStopStreaming]);
 
   const handleTriggerTool = useCallback(async (toolName: string, input: any) => {
     // Create a tool call with a unique ID
@@ -741,6 +776,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         onToggleHandsfree={voiceEnabled ? toggleHandsfree : undefined}
         verbose={verbose}
         onToggleVerbose={debug ? handleToggleVerbose : undefined}
+        allowCommands={allowCommands}
+        commands={builtInCommands}
+        onCommand={handleCommand}
         className={className}
         variant={variant}
         theme={theme}
@@ -774,6 +812,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     showEmptyState,
     emptyState,
     theme,
+    allowCommands,
+    builtInCommands,
+    handleCommand,
   ]);
 
   const emptyStateComposer = useMemo(() => {
