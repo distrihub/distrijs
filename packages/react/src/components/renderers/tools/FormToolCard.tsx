@@ -49,7 +49,11 @@ export const FormToolCard: React.FC<FormToolCardProps> = ({ toolCall, state, onC
 
   const isAnswered = state.status === 'completed';
 
+  const requiredFields = fields.filter(f => f.required);
+  const canSubmit = requiredFields.every(f => values[f.name]?.trim());
+
   const handleSubmit = () => {
+    if (!canSubmit) return;
     onComplete({
       tool_call_id: toolCall.tool_call_id,
       tool_name: toolCall.tool_name,
@@ -136,7 +140,7 @@ export const FormToolCard: React.FC<FormToolCardProps> = ({ toolCall, state, onC
       </div>
       <div className="flex justify-end gap-2 px-3 py-2 bg-muted/20 border-t border-border">
         <Button variant="ghost" size="sm" onClick={handleSkip} className="text-xs h-7">Skip</Button>
-        <Button size="sm" onClick={handleSubmit} className="text-xs h-7">Submit</Button>
+        <Button size="sm" onClick={handleSubmit} disabled={!canSubmit} className="text-xs h-7">Submit</Button>
       </div>
     </div>
   );

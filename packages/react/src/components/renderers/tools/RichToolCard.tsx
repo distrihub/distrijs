@@ -4,6 +4,7 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { ToolSummary } from '@/types';
 import { ToolCardBody } from './ToolCardBody';
+import { looksLikeDiff } from './DiffView';
 
 interface RichToolCardProps {
   summary: ToolSummary;
@@ -45,6 +46,13 @@ export const RichToolCard: React.FC<RichToolCardProps> = ({ summary, state }) =>
   const headerBg = isError ? 'bg-destructive/5' : 'bg-card';
   const icon = TOOL_ICONS[summary.verb] ?? '🔧';
 
+  // Suppress detail badge when result contains a diff — the DiffView header shows its own stats
+  const hasDiff = (state.result?.parts ?? []).some((p: any) =>
+    (p.part_type === 'text' || p.part_type === 'data') &&
+    typeof p.data === 'string' &&
+    looksLikeDiff(p.data)
+  );
+
   return (
     <div className={`rounded-md border ${borderCls} overflow-hidden text-sm`}>
       <div
@@ -60,7 +68,7 @@ export const RichToolCard: React.FC<RichToolCardProps> = ({ summary, state }) =>
             </code>
           )}
         </span>
-        {summary.detail && (
+        {summary.detail && !hasDiff && (
           <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full flex-shrink-0">
             {summary.detail}
           </span>
