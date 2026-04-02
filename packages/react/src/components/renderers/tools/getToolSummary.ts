@@ -33,18 +33,21 @@ export function getToolSummary(
   }
 
   // File: read
-  if (name === 'read_file' || name === 'read' || name.startsWith('read_')) {
+  // 'read' covers the capitalized 'Read' tool name (lowercased above)
+  if (name === 'read_file' || name === 'read') {
     const path = (input.path as string) ?? (input.file_path as string);
     return { verb: 'Read', subject: path ? basename(path) : undefined, detail: undefined };
   }
 
   // File: write/create
+  // 'write' covers the capitalized 'Write' tool name (lowercased above)
   if (name === 'write_file' || name === 'write' || name === 'create_file') {
     const path = (input.path as string) ?? (input.file_path as string);
     return { verb: 'Write', subject: path ? basename(path) : undefined, detail: undefined };
   }
 
   // File: edit/patch
+  // 'edit' covers the capitalized 'Edit' tool name (lowercased above)
   if (name === 'edit_file' || name === 'edit' || name === 'patch_file') {
     const path = (input.path as string) ?? (input.file_path as string);
     return { verb: 'Edit', subject: path ? basename(path) : undefined, detail: undefined };

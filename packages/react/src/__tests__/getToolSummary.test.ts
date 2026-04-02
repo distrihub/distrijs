@@ -68,6 +68,18 @@ describe('getToolSummary', () => {
     expect(s.subject).toBe('coder');
   });
 
+  it('delete_file: verb is Delete', () => {
+    const s = getToolSummary('delete_file', { path: 'old/file.rs' });
+    expect(s.verb).toBe('Delete');
+    expect(s.subject).toBe('file.rs');
+  });
+
+  it('glob: verb is Find', () => {
+    const s = getToolSummary('glob', { pattern: '**/*.tsx' });
+    expect(s.verb).toBe('Find');
+    expect(s.subject).toBe('**/*.tsx');
+  });
+
   it('custom override takes priority', () => {
     const override = () => ({ verb: 'Custom', subject: 'override', detail: undefined });
     const s = getToolSummary('my_tool', { x: 'y' }, undefined, { my_tool: override });
