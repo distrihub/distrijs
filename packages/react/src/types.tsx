@@ -40,7 +40,7 @@ export interface ToolSummary {
 
 export type SummaryFn = (
   input: Record<string, unknown>,
-  result?: import('@distri/core').ToolResult
+  result?: ToolResult
 ) => ToolSummary;
 
 export interface RendererConfig {
@@ -64,6 +64,7 @@ export interface ChatCommand {
   id: ChatCommandId;
   label: string;
   description: string;
+  /** Emoji or display character for the command, e.g. '📊' */
   icon: string;
   type: 'toggle' | 'action';
   currentValue?: boolean;
