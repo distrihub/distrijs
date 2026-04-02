@@ -21,7 +21,7 @@ import {
   TodoItem,
   TodosUpdatedEvent,
 } from '@distri/core';
-import { DistriAnyTool, DistriUiTool, ToolCallStatus } from '../types';
+import { DistriAnyTool, DistriUiTool, ToolCallStatus, RenderingMode, ChatSessionSettings } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
 import { DefaultToolActions } from '../components/renderers/tools/DefaultToolActions';
 import React from 'react';
@@ -89,6 +89,8 @@ export interface ChatState {
 
   // Verbosity mode for tool display
   verbose: boolean;
+  audioEnabled: boolean;
+  rendering: RenderingMode;
 
   // Task/Plan/Step state
   tasks: Map<string, TaskState>;
@@ -131,6 +133,7 @@ export interface ChatStateStore extends ChatState {
   setError: (error: Error | null) => void;
   setDebug: (debug: boolean) => void;
   setVerbose: (verbose: boolean) => void;
+  setSessionSettings: (settings: Partial<ChatSessionSettings>) => void;
 
   // Streaming indicator actions
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => void;
@@ -188,6 +191,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   error: null,
   debug: false,
   verbose: false,
+  audioEnabled: false,
+  rendering: 'minimal' as RenderingMode,
   tasks: new Map(),
   plans: new Map(),
   steps: new Map(),
@@ -223,6 +228,22 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   setVerbose: (verbose: boolean) => {
     set({ verbose });
   },
+
+  setSessionSettings: (settings) =>
+    set((state) => {
+      const updates: Partial<typeof state> = {};
+      if (settings.verbose !== undefined) {
+        updates.verbose = settings.verbose;
+        updates.rendering = settings.verbose ? 'rich' : 'minimal';
+      }
+      if (settings.rendering !== undefined) {
+        updates.rendering = settings.rendering;
+      }
+      if (settings.audioEnabled !== undefined) {
+        updates.audioEnabled = settings.audioEnabled;
+      }
+      return updates;
+    }),
 
   setStreamingIndicator: (indicator: StreamingIndicator | undefined) => {
     set({ streamingIndicator: indicator });
