@@ -23,6 +23,7 @@ export interface MessageRendererProps {
   enableFeedback?: boolean;
   rendering?: RenderingMode;
   toolSummaryOverrides?: Record<string, SummaryFn>;
+  onShowTrace?: (threadId: string) => void;
 }
 
 // Wrapper component to ensure full width with max constraint for readability
@@ -51,13 +52,15 @@ export function MessageRenderer({
   enableFeedback = false,
   rendering,
   toolSummaryOverrides,
+  onShowTrace,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
 
   const rendererContextValue = useMemo(() => ({
     rendering: rendering ?? 'minimal',
     toolSummaryOverrides: toolSummaryOverrides ?? {},
-  }), [rendering, toolSummaryOverrides]);
+    onShowTrace,
+  }), [rendering, toolSummaryOverrides, onShowTrace]);
 
   const innerContent = (() => {
     // Don't render messages with empty content

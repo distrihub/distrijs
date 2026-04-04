@@ -5,6 +5,7 @@ import { AssistantMessageRenderer } from './AssistantMessageRenderer';
 import { UserMessageRenderer } from './UserMessageRenderer';
 import { LoadingShimmer } from './ThinkingRenderer';
 import { MessageFeedback } from './MessageFeedback';
+import { useRendererContext } from './RendererContext';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export interface StepBasedRendererProps {
@@ -86,9 +87,10 @@ const StepIndicator: React.FC<{ step: StepState }> = ({ step }) => {
 export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
   message,
   threadId,
-  enableFeedback = false,
+  enableFeedback = true,
 }) => {
   const steps = useChatStateStore(state => state.steps);
+  const { onShowTrace } = useRendererContext();
 
   if (!isDistriMessage(message)) {
     return null;
@@ -105,8 +107,8 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
 
   // For assistant messages, show step-based rendering
   if (distriMessage.role === 'assistant') {
-    // Only show feedback when message is complete (not streaming)
-    const showFeedback = enableFeedback && threadId && distriMessage.id && step?.status !== 'running';
+    const isComplete = step?.status !== 'running';
+    const showControls = threadId && distriMessage.id && isComplete && (enableFeedback || !!onShowTrace);
 
     return (
       <div className="flex items-start gap-4">
@@ -128,13 +130,15 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
             <AssistantMessageRenderer message={distriMessage} />
           </div>
 
-          {/* Message feedback (voting) */}
-          {showFeedback && (
+          {/* Message controls: feedback + traces, each independently gated */}
+          {showControls && (
             <div className="mt-3 pt-2 border-t border-border/30">
               <MessageFeedback
-                threadId={threadId}
+                threadId={threadId!}
                 messageId={distriMessage.id}
                 compact
+                enableFeedback={enableFeedback}
+                onShowTrace={onShowTrace}
               />
             </div>
           )}
