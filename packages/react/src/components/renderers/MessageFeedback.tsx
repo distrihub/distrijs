@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ThumbsUp, ThumbsDown, Loader2, MessageSquare } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Loader2, MessageSquare, Activity } from 'lucide-react';
 import { useMessageVote } from '../../hooks/useMessageFeedback';
 import { cn } from '@/lib/utils';
 
@@ -10,8 +10,12 @@ export interface MessageFeedbackProps {
   compact?: boolean;
   /** CSS class name */
   className?: string;
+  /** Show thumbs up/down feedback controls (default: true) */
+  enableFeedback?: boolean;
   /** Called when a vote is submitted */
   onVote?: (voteType: 'upvote' | 'downvote', comment?: string) => void;
+  /** Omit to hide the traces button */
+  onShowTrace?: (threadId: string) => void;
 }
 
 /**
@@ -23,7 +27,9 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
   messageId,
   compact = true,
   className,
+  enableFeedback = true,
   onVote,
+  onShowTrace,
 }) => {
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [comment, setComment] = useState('');
@@ -98,8 +104,24 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <div className="flex items-center gap-1">
+        {/* Traces button */}
+        {onShowTrace && (
+          <button
+            onClick={() => onShowTrace(threadId)}
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors',
+              'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+              'text-muted-foreground hover:text-foreground'
+            )}
+            title="View traces"
+            aria-label="View traces"
+          >
+            <Activity className="h-3 w-3" />
+          </button>
+        )}
+
         {/* Upvote button */}
-        <button
+        {enableFeedback && <button
           onClick={handleUpvote}
           disabled={loading}
           className={cn(
@@ -122,10 +144,10 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
           {!compact && summary && summary.upvotes > 0 && (
             <span>{summary.upvotes}</span>
           )}
-        </button>
+        </button>}
 
         {/* Downvote button */}
-        <button
+        {enableFeedback && <button
           onClick={handleDownvoteClick}
           disabled={loading}
           className={cn(
@@ -148,7 +170,7 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
           {!compact && summary && summary.downvotes > 0 && (
             <span>{summary.downvotes}</span>
           )}
-        </button>
+        </button>}
       </div>
 
       {/* Comment input for downvote */}
