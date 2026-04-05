@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Wrench } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Wrench, Activity } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { LoadingShimmer } from './ThinkingRenderer';
 import { ToolCall, DistriPart, ToolResult } from '@distri/core';
@@ -384,6 +384,7 @@ const ToolSummary: React.FC<{
   renderResultData: (toolCallState?: ToolCallState) => React.ReactNode;
 }> = ({ toolCalls, toolCallStates, toolRenderers, debug, renderResultData }) => {
   const [expanded, setExpanded] = useState(false);
+  const { onShowTrace, threadId } = useRendererContext();
 
   const completedCount = toolCalls.filter(tc => {
     const state = toolCallStates.get(tc.tool_call_id);
@@ -402,15 +403,21 @@ const ToolSummary: React.FC<{
 
   if (!expanded) {
     return (
-      <div
-        className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors py-0.5"
-        onClick={() => setExpanded(true)}
-      >
-        <Wrench className="h-3 w-3 text-green-600 shrink-0" />
-        <span>
-          Used {completedCount} tool{completedCount !== 1 ? 's' : ''}{timeStr}
-        </span>
-        <ChevronRight className="h-3 w-3" />
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors py-0.5">
+        <div className="flex items-center gap-1.5 flex-1" onClick={() => setExpanded(true)}>
+          <Wrench className="h-3 w-3 text-green-600 shrink-0" />
+          <span>Used {completedCount} tool{completedCount !== 1 ? 's' : ''}{timeStr}</span>
+          <ChevronRight className="h-3 w-3" />
+        </div>
+        {onShowTrace && threadId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onShowTrace(threadId); }}
+            className="ml-auto p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            title="View traces"
+          >
+            <Activity className="h-3 w-3" />
+          </button>
+        )}
       </div>
     );
   }

@@ -116,6 +116,8 @@ export interface ChatProps {
   sessionSettings?: Partial<ChatSessionSettings>;
   /** Callback fired when a slash command is selected */
   onCommand?: (event: ChatCommandEvent) => void;
+  /** Callback to show trace details for a thread */
+  onShowTrace?: (threadId: string) => void;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -199,6 +201,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   allowCommands = false,
   sessionSettings,
   onCommand,
+  onShowTrace,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -691,6 +694,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           rendering={rendering}
           threadId={threadId}
           enableFeedback={enableFeedback}
+          onShowTrace={onShowTrace}
         />
       );
 
