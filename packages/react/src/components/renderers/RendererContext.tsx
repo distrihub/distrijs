@@ -5,12 +5,14 @@ interface RendererContextValue {
   rendering: RenderingMode;
   toolSummaryOverrides: Record<string, SummaryFn>;
   onShowTrace?: (threadId: string) => void;
+  threadId?: string;
 }
 
 const defaultValue: RendererContextValue = {
   rendering: 'minimal',
   toolSummaryOverrides: {},
   onShowTrace: undefined,
+  threadId: undefined,
 };
 
 export const RendererContext = createContext<RendererContextValue>(defaultValue);

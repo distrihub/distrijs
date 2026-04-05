@@ -60,7 +60,8 @@ export function MessageRenderer({
     rendering: rendering ?? 'minimal',
     toolSummaryOverrides: toolSummaryOverrides ?? {},
     onShowTrace,
-  }), [rendering, toolSummaryOverrides, onShowTrace]);
+    threadId,
+  }), [rendering, toolSummaryOverrides, onShowTrace, threadId]);
 
   const innerContent = (() => {
     // Don't render messages with empty content

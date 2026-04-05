@@ -116,7 +116,7 @@ export const MessageFeedback: React.FC<MessageFeedbackProps> = ({
             title="View traces"
             aria-label="View traces"
           >
-            <Activity className="h-3.5 w-3.5" />
+            <Activity className="h-3 w-3" />
           </button>
         )}
 

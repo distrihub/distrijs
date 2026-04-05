@@ -111,7 +111,7 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
     const showControls = threadId && distriMessage.id && isComplete && (enableFeedback || !!onShowTrace);
 
     return (
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 group">
         <div className="w-full">
           {/* Agent badge - shown when agent_id or agent_name is present */}
           {(distriMessage.agent_id || distriMessage.agent_name) && (
@@ -132,7 +132,7 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
 
           {/* Message controls: feedback + traces, each independently gated */}
           {showControls && (
-            <div className="mt-3 pt-2 border-t border-border/30">
+            <div className="mt-3 pt-2 border-t border-border/30 opacity-0 group-hover:opacity-100 transition-opacity">
               <MessageFeedback
                 threadId={threadId!}
                 messageId={distriMessage.id}
