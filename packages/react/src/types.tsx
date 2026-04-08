@@ -48,6 +48,37 @@ export interface RendererConfig {
   toolSummaryOverrides?: Record<string, SummaryFn>;
 }
 
+// --- Developer mode ---
+
+export interface DeveloperTraceConfig {
+  /** Host app callback used by the built-in traces controls to open a trace surface. */
+  open: (threadId: string) => void;
+}
+
+export interface DeveloperDiagnoseConfig {
+  /** Agent to receive diagnose requests. Defaults to `distri`. */
+  agentId?: string;
+  /** Optional fixed diagnose thread id or thread id builder. */
+  threadId?: string | ((threadId: string) => string);
+  /** Builds the diagnose prompt. Defaults to a prompt that targets the current thread. */
+  promptBuilder?: (threadId: string) => string;
+  /** Optional label shown on locally injected diagnose user messages. */
+  label?: string;
+}
+
+export interface DeveloperMode {
+  /** Enable built-in traces controls and route them through the configured trace opener. */
+  traces?: boolean | DeveloperTraceConfig;
+  /** @deprecated Use `traces={{ open }}` instead. */
+  onShowTrace?: (threadId: string) => void;
+  /** Show verbose toggle button in developer toolbar */
+  verbosity?: boolean;
+  /** Show tools panel listing all agent tools */
+  tools?: boolean;
+  /** Enable diagnose mode, which sends a parallel diagnose request on a separate thread. */
+  diagnose?: boolean | DeveloperDiagnoseConfig;
+}
+
 // --- Session settings ---
 
 export interface ChatSessionSettings {
