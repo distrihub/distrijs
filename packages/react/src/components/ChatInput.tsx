@@ -41,6 +41,8 @@ export interface ChatInputProps {
   onToggleHandsfree?: () => void;
   verbose?: boolean;
   onToggleVerbose?: () => void;
+  developerModeControl?: React.ReactNode;
+  developerModeStatus?: React.ReactNode;
   variant?: 'default' | 'hero';
   theme?: 'light' | 'dark' | 'auto';
   allowCommands?: boolean;
@@ -71,6 +73,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onToggleHandsfree,
   verbose = false,
   onToggleVerbose,
+  developerModeControl,
+  developerModeStatus,
   variant = 'default',
   theme = 'auto',
   allowCommands = false,
@@ -405,6 +409,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   )}
                 />
               </div>
+              {developerModeStatus ? (
+                <div className="mt-2">
+                  {developerModeStatus}
+                </div>
+              ) : null}
             </div>
 
             {/* Recording bar — shown when recording or when a recorded clip is ready */}
@@ -527,7 +536,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   />
                 )}
 
-                {onToggleVerbose && (
+                {developerModeControl ?? (onToggleVerbose && (
                   <button
                     type="button"
                     onClick={onToggleVerbose}
@@ -537,7 +546,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   >
                     <Braces className="h-4 w-4" />
                   </button>
-                )}
+                ))}
               </div>
 
               {/* Send button */}

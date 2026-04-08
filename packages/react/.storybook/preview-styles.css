@@ -1,0 +1,72 @@
+/* Combined Storybook preview styles — tailwind directives + theme in one file */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme variables (inlined from theme.css to share the same @tailwind base pass) */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 188 100% 28%;
+    --primary-foreground: 0 0% 100%;
+    --highlight: 188 70% 45%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 188 55% 92%;
+    --accent-foreground: 188 80% 20%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 188 100% 28%;
+    --radius: 0.5rem;
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 188 100% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 188 100% 32%;
+    --thread-content-max-width: 768px;
+  }
+
+  .dark {
+    --background: 220 16% 8%;
+    --foreground: 210 33% 95%;
+    --card: 220 17% 12%;
+    --card-foreground: 210 33% 95%;
+    --popover: 220 17% 12%;
+    --popover-foreground: 210 33% 95%;
+    --primary: 188 100% 28%;
+    --primary-foreground: 0 0% 100%;
+    --highlight: 188 70% 45%;
+    --secondary: 220 18% 16%;
+    --secondary-foreground: 210 33% 95%;
+    --muted: 220 18% 16%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 188 30% 22%;
+    --accent-foreground: 188 70% 85%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 18% 20%;
+    --input: 220 18% 20%;
+    --ring: 188 70% 45%;
+    --sidebar: 216 18% 6%;
+    --sidebar-foreground: 210 33% 95%;
+    --sidebar-primary: 188 70% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 18% 14%;
+    --sidebar-accent-foreground: 210 33% 95%;
+    --sidebar-border: 220 18% 18%;
+    --sidebar-ring: 188 70% 45%;
+    --thread-content-max-width: 768px;
+  }
+}

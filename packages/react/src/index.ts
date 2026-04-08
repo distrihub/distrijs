@@ -60,6 +60,7 @@ export { InteractiveToolCard } from './components/renderers/tools/InteractiveToo
 export { RendererContext, useRendererContext } from './components/renderers/RendererContext';
 export { CommandPalette } from './components/CommandPalette';
 export { CommandPill } from './components/CommandPill';
+export { DeveloperModeComponent } from './components/developer/DeveloperModeComponent';
 
 // Styles are NOT imported here - consumers must explicitly import them:
 //   import '@distri/react/globals.css';  // Required utilities
