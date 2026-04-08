@@ -4,19 +4,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Play } from 'lucide-react';
 import { useChatStateStore } from '@/stores/chatStateStore';
-import { SimulateModal } from './SimulateModal';
 import { DistriAnyTool } from '@/types';
+import { ChatSimulation } from './ChatSimulation';
+import { AgentDefinition } from '@distri/core';
 
 interface ToolsPanelProps {
   open: boolean;
   onClose: () => void;
-  triggerTool: (toolName: string, input: any) => Promise<void>;
+  triggerTool?: (toolName: string, input: any) => Promise<void>;
+  threadId?: string;
+  agentDefinition?: AgentDefinition | null;
 }
 
-export function ToolsPanel({ open, onClose, triggerTool }: ToolsPanelProps) {
-  const externalTools: DistriAnyTool[] = useChatStateStore(state => state.externalTools ?? []);
+export function ToolsPanel({ open, onClose, threadId = 'developer-tools', agentDefinition }: ToolsPanelProps) {
+  const externalTools = useChatStateStore(state => state.externalTools);
+  const safeExternalTools: DistriAnyTool[] = externalTools ?? [];
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
-  const [simulateTool, setSimulateTool] = useState<DistriAnyTool | null>(null);
 
   const toggleExpand = (name: string) => {
     setExpandedTools(prev => {
@@ -34,19 +37,18 @@ export function ToolsPanel({ open, onClose, triggerTool }: ToolsPanelProps) {
           <SheetHeader>
             <SheetTitle>Tools</SheetTitle>
             <SheetDescription>
-              {externalTools.length} external tool{externalTools.length !== 1 ? 's' : ''} available
+              {safeExternalTools.length} external tool{safeExternalTools.length !== 1 ? 's' : ''} available
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-4 space-y-2">
-            {externalTools.length === 0 && (
+            {safeExternalTools.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
                 No external tools registered.
               </p>
             )}
-            {externalTools.map((tool) => {
+            {safeExternalTools.map((tool) => {
               const isExpanded = expandedTools.has(tool.name);
-              const schema = tool.parameters;
               return (
                 <div key={tool.name} className="border border-border rounded-lg overflow-hidden">
                   <div
@@ -62,21 +64,23 @@ export function ToolsPanel({ open, onClose, triggerTool }: ToolsPanelProps) {
                       size="sm"
                       variant="outline"
                       className="h-6 text-xs ml-2 shrink-0"
-                      onClick={(e) => { e.stopPropagation(); setSimulateTool(tool as DistriAnyTool); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpand(tool.name);
+                      }}
                     >
                       <Play className="h-3 w-3 mr-1" /> Simulate
                     </Button>
                   </div>
                   {isExpanded && (
                     <div className="px-3 pb-3 border-t border-border bg-muted/20">
-                      {tool.description && (
-                        <p className="text-xs text-muted-foreground mt-2 mb-3">{tool.description}</p>
-                      )}
-                      {schema && (
-                        <pre className="text-[10px] bg-background border border-border rounded p-2 overflow-auto max-h-48 text-muted-foreground">
-                          {JSON.stringify(schema, null, 2)}
-                        </pre>
-                      )}
+                      <div className="pt-3">
+                        <ChatSimulation
+                          tool={tool}
+                          threadId={threadId}
+                          agentDefinition={agentDefinition}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -85,19 +89,6 @@ export function ToolsPanel({ open, onClose, triggerTool }: ToolsPanelProps) {
           </div>
         </SheetContent>
       </Sheet>
-
-      {simulateTool && (
-        <SimulateModal
-          tool={simulateTool}
-          open={true}
-          onClose={() => setSimulateTool(null)}
-          onSimulate={async (input) => {
-            await triggerTool(simulateTool.name, input);
-            setSimulateTool(null);
-            onClose();
-          }}
-        />
-      )}
     </>
   );
 }

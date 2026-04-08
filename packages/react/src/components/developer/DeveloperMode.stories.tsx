@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useEffect, useState } from 'react';
 import { DeveloperModeComponent } from './DeveloperModeComponent';
-import { SimulateModal } from './SimulateModal';
 import { DeveloperMode, DistriAnyTool } from '@/types';
 import { useChatStateStore } from '@/stores/chatStateStore';
 
@@ -89,14 +88,9 @@ function ToolbarWrapper({ developerMode }: { developerMode: DeveloperMode }) {
         threadId="thread-demo-123"
         verbose={verbose}
         onToggleVerbose={() => setVerbose(v => !v)}
+        diagnoseEnabled={false}
+        onToggleDiagnose={() => undefined}
         onOpenTrace={(threadId) => alert(`Navigate to trace for: ${threadId}`)}
-        onDiagnose={async () => {
-          alert('Diagnose sends a parallel request on a dedicated diagnose thread.');
-        }}
-        triggerTool={async (name, input) => {
-          console.log('[Simulate]', name, input);
-          alert(`Tool simulated: ${name}\nInput: ${JSON.stringify(input, null, 2)}`);
-        }}
       />
     </div>
   );
@@ -131,35 +125,4 @@ export const ToolsAndVerbosity: ToolbarStory = {
       developerMode={{ verbosity: true, tools: true }}
     />
   ),
-};
-
-// ---------------------------------------------------------------------------
-// SimulateModal story (standalone)
-// ---------------------------------------------------------------------------
-
-export const SimulateModalStory: StoryObj = {
-  name: 'SimulateModal',
-  render: () => {
-    const [open, setOpen] = useState(true);
-    return (
-      <div>
-        <button
-          className="px-3 py-1.5 text-sm border border-border rounded-md bg-background hover:bg-muted"
-          onClick={() => setOpen(true)}
-        >
-          Open Simulate Modal
-        </button>
-        <SimulateModal
-          tool={mockExternalTools[0] as DistriAnyTool}
-          open={open}
-          onClose={() => setOpen(false)}
-          onSimulate={async (input) => {
-            console.log('[Simulate result]', input);
-            alert(`Simulated with input:\n${JSON.stringify(input, null, 2)}`);
-            setOpen(false);
-          }}
-        />
-      </div>
-    );
-  },
 };

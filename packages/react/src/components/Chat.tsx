@@ -144,7 +144,7 @@ function appendDiagnoseScope(content: string | DistriPart[], threadId: string): 
     '',
     `[Diagnose mode scope]`,
     `Target threadId: ${threadId}`,
-    'Use the diagnose skill and inspect recent traces, system prompts, recent user prompts, and tool activity for this thread.',
+    'Use the `distri-developer-debug` skill and inspect recent traces, system prompts, recent user prompts, and tool activity for this thread.',
   ].join('\n');
 
   if (typeof content === 'string') {
