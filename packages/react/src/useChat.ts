@@ -172,6 +172,9 @@ export function useChat({
     abortControllerRef.current = new AbortController();
 
     try {
+      // Ensure token is fresh before opening the stream
+      await agent.client.ensureAccessToken();
+
       const parts: DistriPart[] = typeof content === 'string'
         ? [{ part_type: 'text', data: content }]
         : content;
@@ -248,6 +251,9 @@ export function useChat({
     abortControllerRef.current = new AbortController();
 
     try {
+      // Ensure token is fresh before opening the stream
+      await agent.client.ensureAccessToken();
+
       const parts: DistriPart[] = typeof content === 'string'
         ? [{ part_type: 'text', data: content }]
         : content;

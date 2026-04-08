@@ -1,5 +1,15 @@
 import { createContext, useContext, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 
+/** Decode a JWT's exp claim and check if it expires within `skewMs` from now. */
+function isJwtExpiring(token: string, skewMs = 60_000): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now() + skewMs;
+  } catch {
+    return true; // can't decode → treat as expired
+  }
+}
+
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'error';
 
 interface DistriAuthContextValue {
@@ -57,12 +67,12 @@ export function DistriAuthProvider({
   const requestAuth = useCallback(() => {
     if (debug) console.log('[DistriAuth] requestAuth triggered, current status:', status);
 
-    // If we are already authenticated, return immediate promise
-    if (status === 'authenticated' && token) {
+    // If we have a token that is still valid, return it immediately
+    if (status === 'authenticated' && token && !isJwtExpiring(token)) {
       return Promise.resolve(token);
     }
 
-    // Set loading state if we are idle or previously errored
+    // Token is missing or expiring — trigger the iframe provisioner flow
     if (status !== 'loading') {
       setStatus('loading');
     }
@@ -71,7 +81,7 @@ export function DistriAuthProvider({
     return new Promise<string | null>((resolve) => {
       resolversRef.current.push(resolve);
     });
-  }, [debug, status, token]);
+  }, [debug, status, token, setStatus, setError]);
 
   const config = useMemo(() => ({
     clientId,

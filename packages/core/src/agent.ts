@@ -81,7 +81,7 @@ export class ExternalToolValidationError extends DistriError {
  * Enhanced Agent class with simple tool system following AG-UI pattern
  */
 export class Agent {
-  private client: DistriClient;
+  readonly client: DistriClient;
   private agentDefinition: AgentConfigWithTools;
   private hookHandlers: Map<string, HookHandler> = new Map();
   private defaultHookHandler: HookHandler | null = null;
