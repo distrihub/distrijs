@@ -1309,18 +1309,18 @@ export class DistriClient {
   }
 
   /**
-   * Ensure access token is valid, refreshing if necessary
+   * Ensure access token is valid, refreshing if necessary.
+   * Call this before starting operations (e.g. sending messages) to
+   * proactively refresh an expiring token instead of failing mid-request.
    */
-  private async ensureAccessToken(): Promise<void> {
-    if (!this.refreshToken && !this.onTokenRefresh) {
-      return;
-    }
-
+  async ensureAccessToken(): Promise<void> {
     if (!this.accessToken || this.isTokenExpiring(this.accessToken)) {
-      try {
+      if (this.refreshToken || this.onTokenRefresh) {
         await this.refreshTokens();
-      } catch (error) {
-        this.debug('Token refresh failed:', error);
+      } else if (!this.accessToken) {
+        throw new ApiError('No access token available', 401);
+      } else {
+        throw new ApiError('Access token expired and no refresh mechanism available', 401);
       }
     }
   }
