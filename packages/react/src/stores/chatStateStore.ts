@@ -310,7 +310,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             parts: [{ part_type: 'text', data: '' }],
             created_at: new Date().getTime(),
             step_id: stepId,
-            is_final: isFinal
+            is_final: isFinal,
+            metadata: (event.data as { metadata?: Record<string, unknown> }).metadata,
           };
 
           // Create new messages array with the new message

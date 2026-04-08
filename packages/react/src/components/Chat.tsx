@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
-import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent } from '@/types';
+import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode } from '@/types';
+import { DeveloperModeComponent } from './developer/DeveloperModeComponent';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
 import { useAgent } from '../useAgent';
 import { useChatMessages } from '../hooks/useChatMessages';
@@ -101,11 +102,6 @@ export interface ChatProps {
   // History loading
   enableHistory?: boolean;
   /**
-   * Enable debug mode to show developer messages in the chat.
-   * Developer messages are hidden by default.
-   */
-  debug?: boolean;
-  /**
    * Enable message feedback (voting) UI on assistant messages.
    * Shows thumbs up/down buttons for rating responses.
    */
@@ -116,8 +112,8 @@ export interface ChatProps {
   sessionSettings?: Partial<ChatSessionSettings>;
   /** Callback fired when a slash command is selected */
   onCommand?: (event: ChatCommandEvent) => void;
-  /** Callback to show trace details for a thread */
-  onShowTrace?: (threadId: string) => void;
+  /** Developer mode options: traces, verbosity, tools panel, and parallel diagnose mode */
+  developerMode?: DeveloperMode;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -141,6 +137,31 @@ function formatTokenCount(tokens: number): string {
   if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
   if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
   return String(tokens);
+}
+
+function appendDiagnoseScope(content: string | DistriPart[], threadId: string): DistriPart[] {
+  const scope = [
+    '',
+    `[Diagnose mode scope]`,
+    `Target threadId: ${threadId}`,
+    'Use the diagnose skill and inspect recent traces, system prompts, recent user prompts, and tool activity for this thread.',
+  ].join('\n');
+
+  if (typeof content === 'string') {
+    return [{ part_type: 'text', data: `${content}${scope}` }];
+  }
+
+  const parts: DistriPart[] = [...content];
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    const part = parts[i];
+    if (part.part_type === 'text') {
+      parts[i] = { part_type: 'text', data: `${part.data}${scope}` };
+      return parts;
+    }
+  }
+
+  parts.push({ part_type: 'text', data: scope.trim() });
+  return parts;
 }
 
 const ThreadTokensBanner: React.FC<{ thread: DistriThread | null }> = ({ thread }) => {
@@ -196,17 +217,33 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   maxWidth,
   className = '',
   toolRenderers,
-  debug = false,
   enableFeedback = false,
   allowCommands = false,
   sessionSettings,
   onCommand,
-  onShowTrace,
+  developerMode,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const diagnoseThreadIdsRef = useRef<Map<string, string>>(new Map());
+  const diagnoseAgentRef = useRef<Agent | null>(null);
+  const [diagnoseModeEnabled, setDiagnoseModeEnabled] = useState(false);
+
+  const traceOpener = useMemo(() => {
+    if (!developerMode) return undefined;
+    if (typeof developerMode.traces === 'object' && developerMode.traces?.open) {
+      return developerMode.traces.open;
+    }
+    return developerMode.onShowTrace;
+  }, [developerMode]);
+
+  const tracesEnabled = useMemo(() => Boolean(developerMode?.traces), [developerMode]);
+  const diagnoseConfig = useMemo(() => {
+    if (!developerMode?.diagnose) return undefined;
+    return typeof developerMode.diagnose === 'object' ? developerMode.diagnose : {};
+  }, [developerMode]);
 
   // Pending message state single message with accumulated parts
   const [pendingMessage, setPendingMessage] = useState<DistriPart[] | null>(null);
@@ -343,6 +380,40 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // Get distri client for browser session creation
   const { client: distriClient } = useDistri();
 
+  const getDiagnoseThreadId = useCallback((sourceThreadId: string) => {
+    const configuredThreadId = diagnoseConfig?.threadId;
+
+    if (typeof configuredThreadId === 'function') {
+      return configuredThreadId(sourceThreadId);
+    }
+
+    if (typeof configuredThreadId === 'string' && configuredThreadId.trim()) {
+      return configuredThreadId;
+    }
+
+    const existing = diagnoseThreadIdsRef.current.get(sourceThreadId);
+    if (existing) return existing;
+
+    const next = crypto.randomUUID();
+    diagnoseThreadIdsRef.current.set(sourceThreadId, next);
+    return next;
+  }, [diagnoseConfig]);
+
+  const resolveDiagnoseAgent = useCallback(async () => {
+    if (!distriClient) {
+      throw new Error('Distri client is not ready');
+    }
+
+    const diagnoseAgentId = diagnoseConfig?.agentId || 'distri';
+    if (diagnoseAgentRef.current?.id === diagnoseAgentId) {
+      return diagnoseAgentRef.current;
+    }
+
+    const nextAgent = await Agent.create(diagnoseAgentId, distriClient);
+    diagnoseAgentRef.current = nextAgent;
+    return nextAgent;
+  }, [diagnoseConfig, distriClient]);
+
   // Thread token usage tracking
   const [threadDetails, setThreadDetails] = useState<DistriThread | null>(null);
   const wasStreamingRef = useRef(false);
@@ -466,9 +537,122 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       const newParts = contentToParts(content);
       setPendingMessage(prev => prev ? [...prev, ...newParts] : newParts);
     } else {
+      if (diagnoseModeEnabled && diagnoseConfig && threadId) {
+        const diagnoseThreadId = getDiagnoseThreadId(threadId);
+        const diagnoseLabel = diagnoseConfig.label ?? 'Diagnose';
+        const diagnoseAgent = await resolveDiagnoseAgent();
+
+        if (!diagnoseAgent) {
+          throw new Error('Diagnose agent is not available');
+        }
+
+        const store = useChatStateStore.getState();
+        const previousContext = {
+          currentRunId: store.currentRunId,
+          currentTaskId: store.currentTaskId,
+          currentPlanId: store.currentPlanId,
+          currentAgentId: store.currentAgentId,
+        };
+
+        store.setError(null);
+        store.setLoading(true);
+        store.setStreaming(true);
+        store.setStreamingIndicator('typing');
+
+        try {
+          let diagnoseMessage = DistriClient.initDistriMessage('user', appendDiagnoseScope(content, threadId));
+          diagnoseMessage = {
+            ...diagnoseMessage,
+            metadata: {
+              ...(diagnoseMessage.metadata ?? {}),
+              developer_mode: {
+                kind: 'diagnose',
+                label: diagnoseLabel,
+                source_thread_id: threadId,
+                target_thread_id: diagnoseThreadId,
+                agent_id: diagnoseAgent.id,
+                mode_enabled: true,
+              },
+            },
+          };
+
+          store.processMessage(diagnoseMessage, false);
+
+          if (beforeSendMessage) {
+            diagnoseMessage = await beforeSendMessage(diagnoseMessage);
+          }
+
+          const a2aMessage = convertDistriMessageToA2A(diagnoseMessage, {
+            thread_id: diagnoseThreadId,
+            run_id: previousContext.currentRunId,
+            task_id: previousContext.currentTaskId,
+          });
+
+          const metadata = (await mergedMetadataProvider()) ?? {};
+          const stream = await diagnoseAgent.invokeStream({
+            message: a2aMessage,
+            metadata: {
+              ...metadata,
+              task_id: previousContext.currentTaskId,
+            },
+          });
+
+          for await (const event of stream) {
+            if ((event as { type?: string }).type === 'text_message_start') {
+              const textStart = event as unknown as {
+                type: 'text_message_start';
+                data: Record<string, unknown>;
+              };
+              store.processMessage(({
+                ...textStart,
+                data: {
+                  ...textStart.data,
+                  metadata: {
+                    developer_mode: {
+                      kind: 'diagnose',
+                      label: diagnoseLabel,
+                      source_thread_id: threadId,
+                      target_thread_id: diagnoseThreadId,
+                      agent_id: diagnoseAgent.id,
+                      mode_enabled: true,
+                    },
+                  },
+                },
+              } as unknown) as DistriChatMessage, true);
+              continue;
+            }
+
+            store.processMessage(event, true);
+          }
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error('Failed to send diagnose message');
+          store.setError(error);
+          onError?.(error);
+          store.failAllPendingToolCalls(error.message);
+        } finally {
+          store.setStreamingIndicator(undefined);
+          store.setLoading(false);
+          store.setStreaming(false);
+          useChatStateStore.setState(previousContext);
+        }
+        return;
+      }
+
       await sendMessage(content);
     }
-  }, [sendMessage, isStreaming, contentToParts]);
+  }, [
+    beforeSendMessage,
+    contentToParts,
+    diagnoseConfig,
+    diagnoseModeEnabled,
+    getDiagnoseThreadId,
+    isStreaming,
+    mergedMetadataProvider,
+    onError,
+    resolveDiagnoseAgent,
+    sendMessage,
+    threadId,
+  ]);
 
   const handleStopStreaming = useCallback(() => {
     console.log('handleStopStreaming called, about to call stopStreaming()');
@@ -561,7 +745,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
         // Send the accumulated message parts
         try {
-          await sendMessage(messageToSend);
+          await handleSendMessage(messageToSend);
         } catch (error) {
           console.error('Failed to send pending message:', error);
         }
@@ -569,7 +753,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     };
 
     sendPendingMessage();
-  }, [isStreaming, pendingMessage, sendMessage]);
+  }, [handleSendMessage, isStreaming, pendingMessage]);
 
   // Auto-play TTS for new assistant messages in handsfree mode.
   // Only plays after streaming completes, and tracks already-spoken message IDs.
@@ -689,12 +873,12 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             const messageId = message.id || `message-${index}`;
             toggleToolExpansion(messageId);
           }}
-          debug={debug}
+          debug={tracesEnabled}
           verbose={verbose}
           rendering={rendering}
           threadId={threadId}
           enableFeedback={enableFeedback}
-          onShowTrace={onShowTrace}
+          onShowTrace={traceOpener}
         />
       );
 
@@ -781,7 +965,23 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         handsfree={isHandsfree}
         onToggleHandsfree={voiceEnabled ? toggleHandsfree : undefined}
         verbose={verbose}
-        onToggleVerbose={debug ? handleToggleVerbose : undefined}
+        onToggleVerbose={undefined}
+        developerModeControl={developerMode ? (
+          <DeveloperModeComponent
+            developerMode={developerMode}
+            threadId={threadId}
+            verbose={verbose}
+            onToggleVerbose={handleToggleVerbose}
+            diagnoseEnabled={diagnoseModeEnabled}
+            onToggleDiagnose={() => setDiagnoseModeEnabled((prev) => !prev)}
+            onOpenTrace={traceOpener}
+            agentDefinition={agentDefinition}
+            disabled={isStreaming || isLoading}
+            triggerClassName="h-10 w-10 rounded-full"
+            triggerIconClassName="h-4 w-4"
+          />
+        ) : undefined}
+        developerModeStatus={undefined}
         allowCommands={allowCommands}
         commands={builtInCommands}
         onCommand={handleCommand}
@@ -807,7 +1007,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     addImages,
     verbose,
     handleToggleVerbose,
-    debug,
+    developerMode,
     voiceEnabled,
     speechToText,
     handleVoiceRecord,
@@ -857,6 +1057,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   const shouldRenderFooterComposer = !showEmptyState || Boolean(renderEmptyState);
   const footerHasContent = shouldRenderFooterComposer
+    || Boolean(developerMode)
     || (models && models.length > 0)
     || (voiceEnabled && !!speechToText);
   const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserViewerUrl);
