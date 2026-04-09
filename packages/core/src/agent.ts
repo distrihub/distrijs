@@ -241,8 +241,18 @@ export class Agent {
         is_final: tool.is_final
       })) || []
     };
-    // Forward dynamic_sections / dynamic_values if they were placed in metadata
-    // (callers can set them on the params.metadata object directly)
+
+    // Auto-inject distri.Environment so templates can detect the SDK source
+    const existingDv = (metadata.dynamic_values ?? {}) as Record<string, unknown>;
+    const existingDistri = (existingDv.distri ?? {}) as Record<string, unknown>;
+    metadata.dynamic_values = {
+      ...existingDv,
+      distri: {
+        Environment: 'distrijs',
+        ...existingDistri,
+      },
+    };
+
     return {
       ...params,
       metadata
