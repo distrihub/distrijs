@@ -39,6 +39,8 @@ export * from './stores/chatStateStore';
 
 // Utility exports
 export * from './utils/toolWrapper';
+export { createHttpToolRenderer } from './utils/createHttpToolRenderer';
+export type { HttpToolRendererOptions, PathConfig } from './utils/createHttpToolRenderer';
 
 // Workflow
 export * from './useWorkflow';
@@ -57,6 +59,8 @@ export { getToolSummary } from './components/renderers/tools/getToolSummary';
 export { MinimalToolRow } from './components/renderers/tools/MinimalToolRow';
 export { RichToolCard } from './components/renderers/tools/RichToolCard';
 export { InteractiveToolCard } from './components/renderers/tools/InteractiveToolCard';
+export { HttpToolCard } from './components/renderers/tools/HttpToolCard';
+export type { HttpToolCardProps } from './components/renderers/tools/HttpToolCard';
 export { RendererContext, useRendererContext } from './components/renderers/RendererContext';
 export { CommandPalette } from './components/CommandPalette';
 export { CommandPill } from './components/CommandPill';
