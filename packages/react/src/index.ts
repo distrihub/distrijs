@@ -42,6 +42,27 @@ export * from './utils/toolWrapper';
 export { createHttpToolRenderer } from './utils/createHttpToolRenderer';
 export type { HttpToolRendererOptions, PathConfig } from './utils/createHttpToolRenderer';
 
+// Browser tools exports
+export { createBrowserTools, IndexedDbFilesystem } from './browser-tools';
+export {
+  READ_TOOL_DEF,
+  WRITE_TOOL_DEF,
+  EDIT_TOOL_DEF,
+  GREP_TOOL_DEF,
+  GLOB_TOOL_DEF,
+  EXEC_JS_TOOL_DEF,
+} from './browser-tools';
+export type {
+  BrowserToolsOptions,
+  FilesystemChangeEvent,
+  FilesystemChangeType,
+  FileRecord,
+  FileInfo,
+  DirectoryTreeNode,
+  SearchMatch,
+  EntryType,
+} from './browser-tools';
+
 // Workflow
 export * from './useWorkflow';
 export * from './useWorkflowRunner';
