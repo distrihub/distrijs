@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Wrench, Activity } from 'lucide-react';
+import { ChevronDown, ChevronRight, Wrench, Activity } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
-import { LoadingShimmer } from './ThinkingRenderer';
 import { ToolCall, DistriPart, ToolResult } from '@distri/core';
 import { ToolRendererMap, RenderingMode } from '@/types';
 import { useRendererContext } from './RendererContext';
@@ -26,12 +25,6 @@ interface ToolCallData {
   input: any;
 }
 
-interface ToolCallCardProps {
-  toolCall: ToolCallData;
-  state?: ToolCallState;
-  renderResultData: (toolCallState?: ToolCallState) => React.ReactNode;
-  debug?: boolean;
-}
 
 /**
  * Helper to render a single DistriPart properly
@@ -228,150 +221,6 @@ export const formatStatusText = (toolName: string, input: any): string => {
   }
 };
 
-/** Summarize tool result into a short one-liner */
-const summarizeResult = (state: ToolCallState): string | null => {
-  if (!state.result?.parts?.length) return null;
-  for (const part of state.result.parts) {
-    const p = part as DistriPart;
-    if (p.part_type === 'text' && typeof p.data === 'string') {
-      const text = p.data.trim();
-      return text.length > 120 ? `${text.slice(0, 120)}…` : text;
-    }
-    if (p.part_type === 'data' && typeof p.data === 'object' && p.data !== null) {
-      const obj = p.data as Record<string, unknown>;
-      if (obj.error) return `Error: ${obj.error}`;
-      if (obj.data && typeof obj.data === 'object') {
-        const inner = obj.data as Record<string, unknown>;
-        // Show count for arrays
-        if (Array.isArray(inner)) return `${inner.length} items`;
-        // Show a key field if available
-        const label = inner.name || inner.id || inner.title || inner.status;
-        if (label) return String(label);
-      }
-      if (obj.status && obj.data !== undefined) {
-        const compact = JSON.stringify(obj.data);
-        return compact.length > 100 ? `${compact.slice(0, 100)}…` : compact;
-      }
-    }
-  }
-  return null;
-};
-
-const ToolCallCard: React.FC<ToolCallCardProps> = ({ toolCall, state, renderResultData, debug = false }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'input' | 'output'>('output');
-
-  const compact = JSON.stringify(toolCall.input || {});
-  const formatted = `${toolCall.tool_name}(${compact.length > 80 ? `${compact.slice(0, 80)}…` : compact})`;
-  const executionTime = state?.endTime && state?.startTime
-    ? state.endTime - state.startTime
-    : undefined;
-
-  const renderDebugTabs = () => (
-    <div className="mt-1.5 ml-5">
-      <div className="mb-1.5 flex items-center gap-1.5">
-        {(['output', 'input'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${activeTab === tab ? 'bg-muted-foreground/20 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            {tab === 'output' ? 'Output' : 'Input'}
-          </button>
-        ))}
-      </div>
-      {activeTab === 'input' ? (
-        <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap overflow-auto break-words bg-muted/50 rounded p-2 max-h-[200px]">
-          {JSON.stringify(toolCall.input, null, 2)}
-        </pre>
-      ) : (
-        <div className="text-[11px] text-muted-foreground overflow-auto bg-muted/50 rounded p-2 max-h-[200px]">
-          {renderResultData(state)}
-        </div>
-      )}
-    </div>
-  );
-
-  // Running/pending: shimmer with formatted tool call
-  if (state?.status === 'pending' || state?.status === 'running') {
-    return (
-      <div className="mb-1">
-        <LoadingShimmer text={formatted} className="text-xs" showIcon={true} />
-      </div>
-    );
-  }
-
-  // Completed
-  if (state?.status === 'completed') {
-    const time = executionTime || 0;
-    const summary = summarizeResult(state);
-
-    return (
-      <div className="mb-1 group">
-        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <span
-              className={debug ? 'cursor-pointer hover:text-foreground transition-colors' : ''}
-              onClick={debug ? () => setIsExpanded(!isExpanded) : undefined}
-            >
-              {formatted}
-              {time > 100 && (
-                <span className="ml-1 text-muted-foreground/60">
-                  {(time / 1000).toFixed(1)}s
-                </span>
-              )}
-              {debug && (
-                isExpanded
-                  ? <ChevronDown className="inline h-3 w-3 ml-0.5" />
-                  : <ChevronRight className="inline h-3 w-3 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              )}
-            </span>
-            {summary && !isExpanded && (
-              <div className="text-muted-foreground/60 truncate">{`⎿ ${summary}`}</div>
-            )}
-          </div>
-        </div>
-        {debug && isExpanded && renderDebugTabs()}
-      </div>
-    );
-  }
-
-  // Errors: always visible
-  if (state?.status === 'error') {
-    return (
-      <div className="mb-1">
-        <div className="flex items-start gap-1.5 text-xs">
-          <XCircle className="h-3 w-3 text-destructive mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <span
-              className={`text-destructive ${debug ? 'cursor-pointer hover:text-destructive/80' : ''}`}
-              onClick={debug ? () => setIsExpanded(!isExpanded) : undefined}
-            >
-              {formatted} failed
-            </span>
-            {state.error && (
-              <div className="text-muted-foreground/60 text-[11px] truncate">{`⎿ ${state.error}`}</div>
-            )}
-          </div>
-        </div>
-        {debug && isExpanded && renderDebugTabs()}
-      </div>
-    );
-  }
-
-  if (state) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-        <Clock className="h-3 w-3" />
-        <span>{formatted} ({state.status})</span>
-      </div>
-    );
-  }
-
-  return null;
-};
-
 /**
  * Collapsed tool summary — shown in Normal mode when all tools are completed.
  * "Used N tools (Xs)" with click to expand.
@@ -382,9 +231,56 @@ const ToolSummary: React.FC<{
   toolRenderers?: ToolRendererMap;
   debug?: boolean;
   renderResultData: (toolCallState?: ToolCallState) => React.ReactNode;
-}> = ({ toolCalls, toolCallStates, toolRenderers, debug, renderResultData }) => {
+}> = ({ toolCalls, toolCallStates, toolRenderers }) => {
   const [expanded, setExpanded] = useState(false);
-  const { onShowTrace, threadId } = useRendererContext();
+  const { onShowTrace, threadId, toolSummaryOverrides } = useRendererContext();
+
+  const filteredCalls = toolCalls.filter((tc: ToolCallData) => tc.tool_name !== 'final');
+
+  // Render each tool using its best available presentation:
+  // 1. Custom renderer (e.g. HttpToolCard) — self-contained card
+  // 2. MinimalToolRow with getToolSummary — clean one-liner for known tools
+  const renderToolItem = (toolCall: ToolCallData) => {
+    const state = toolCallStates.get(toolCall.tool_call_id);
+    const renderer = toolRenderers?.[toolCall.tool_name];
+    if (renderer) {
+      const toolCallPayload: ToolCall = {
+        tool_call_id: toolCall.tool_call_id,
+        tool_name: toolCall.tool_name,
+        input: toolCall.input,
+      };
+      return (
+        <div key={toolCall.tool_call_id}>
+          {renderer({ toolCall: toolCallPayload, state })}
+        </div>
+      );
+    }
+    // Use MinimalToolRow with formatted summary instead of raw ToolCallCard
+    if (state) {
+      const summary = getToolSummary(
+        toolCall.tool_name,
+        (toolCall.input as Record<string, unknown>) ?? {},
+        state.result,
+        toolSummaryOverrides
+      );
+      return <MinimalToolRow key={toolCall.tool_call_id} summary={summary} state={state} />;
+    }
+    return null;
+  };
+
+  // When every tool in this group has a custom renderer (e.g. HttpToolCard),
+  // render the formatted cards directly — they already provide their own
+  // expand/collapse, timing, and detail display. No outer wrapper needed.
+  const allHaveRenderers = filteredCalls.length > 0
+    && filteredCalls.every((tc) => !!toolRenderers?.[tc.tool_name]);
+
+  if (allHaveRenderers) {
+    return (
+      <div className="space-y-1.5">
+        {filteredCalls.map(renderToolItem)}
+      </div>
+    );
+  }
 
   const completedCount = toolCalls.filter(tc => {
     const state = toolCallStates.get(tc.tool_call_id);
@@ -434,33 +330,7 @@ const ToolSummary: React.FC<{
         </span>
         <ChevronDown className="h-3 w-3" />
       </div>
-      {toolCalls
-        .filter((tc: ToolCallData) => tc.tool_name !== 'final')
-        .map((toolCall: ToolCallData) => {
-          const state = toolCallStates.get(toolCall.tool_call_id);
-          const renderer = toolRenderers?.[toolCall.tool_name];
-          if (renderer) {
-            const toolCallPayload: ToolCall = {
-              tool_call_id: toolCall.tool_call_id,
-              tool_name: toolCall.tool_name,
-              input: toolCall.input,
-            };
-            return (
-              <div key={toolCall.tool_call_id}>
-                {renderer({ toolCall: toolCallPayload, state })}
-              </div>
-            );
-          }
-          return (
-            <ToolCallCard
-              key={toolCall.tool_call_id}
-              toolCall={toolCall}
-              state={state}
-              renderResultData={renderResultData}
-              debug={debug}
-            />
-          );
-        })}
+      {filteredCalls.map(renderToolItem)}
     </div>
   );
 };

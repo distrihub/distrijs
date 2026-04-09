@@ -12,6 +12,7 @@ import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStor
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode } from '@/types';
+import { createHttpToolRenderer } from '../utils/createHttpToolRenderer';
 import { DeveloperModeComponent } from './developer/DeveloperModeComponent';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
 import { useAgent } from '../useAgent';
@@ -230,6 +231,16 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const diagnoseThreadIdsRef = useRef<Map<string, string>>(new Map());
   const diagnoseAgentRef = useRef<Agent | null>(null);
   const [diagnoseModeEnabled, setDiagnoseModeEnabled] = useState(false);
+
+  // Auto-register HTTP tool renderers for distri_request / api_request
+  // so every consumer gets formatted HTTP cards by default.
+  // User-provided toolRenderers take precedence.
+  const mergedToolRenderers = useMemo(() => {
+    const defaults = createHttpToolRenderer({
+      toolNames: ['distri_request', 'api_request'],
+    });
+    return { ...defaults, ...toolRenderers };
+  }, [toolRenderers]);
 
   const traceOpener = useMemo(() => {
     if (!developerMode) return undefined;
@@ -867,7 +878,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           key={`message-${index}`}
           message={message}
           index={index}
-          toolRenderers={toolRenderers}
+          toolRenderers={mergedToolRenderers}
           isExpanded={expandedTools.has(message.id || `message-${index}`)}
           onToggle={() => {
             const messageId = message.id || `message-${index}`;

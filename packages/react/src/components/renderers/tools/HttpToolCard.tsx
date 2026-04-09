@@ -70,6 +70,8 @@ function extractResponseData(state?: ToolCallState): { status?: number; body?: u
     if (p.part_type === 'data' && typeof p.data === 'object' && p.data !== null) {
       const d = p.data as Record<string, unknown>;
       if ('status' in d) return { status: d.status as number, body: d.body };
+      // Fallback: data part that is the response body itself (no wrapper)
+      return { body: d };
     }
     // Text parts — try JSON parse for status extraction
     if (p.part_type === 'text' && typeof p.data === 'string') {
@@ -78,6 +80,7 @@ function extractResponseData(state?: ToolCallState): { status?: number; body?: u
         if (typeof parsed === 'object' && parsed !== null && 'status' in parsed) {
           return { status: parsed.status as number, body: parsed.body ?? parsed };
         }
+        return { body: parsed };
       } catch {
         // plain text response
         return { body: p.data };
