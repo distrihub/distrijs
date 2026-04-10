@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Wrench, Activity } from 'lucide-react';
+import React from 'react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { ToolCall, DistriPart, ToolResult } from '@distri/core';
 import { ToolRendererMap, RenderingMode } from '@/types';
@@ -98,7 +97,7 @@ const renderPart = (part: DistriPart, index: number): React.ReactNode => {
 /**
  * Render all parts from a ToolResult, with diff detection
  */
-const renderToolResultParts = (result: ToolResult): React.ReactNode => {
+export const renderToolResultParts = (result: ToolResult): React.ReactNode => {
   if (!result.parts || result.parts.length === 0) {
     return 'No result available';
   }
@@ -221,126 +220,11 @@ export const formatStatusText = (toolName: string, input: any): string => {
   }
 };
 
-/**
- * Collapsed tool summary — shown in Normal mode when all tools are completed.
- * "Used N tools (Xs)" with click to expand.
- */
-const ToolSummary: React.FC<{
-  toolCalls: ToolCallData[];
-  toolCallStates: Map<string, ToolCallState>;
-  toolRenderers?: ToolRendererMap;
-  debug?: boolean;
-  renderResultData: (toolCallState?: ToolCallState) => React.ReactNode;
-}> = ({ toolCalls, toolCallStates, toolRenderers }) => {
-  const [expanded, setExpanded] = useState(false);
-  const { onShowTrace, threadId, toolSummaryOverrides } = useRendererContext();
-
-  const filteredCalls = toolCalls.filter((tc: ToolCallData) => tc.tool_name !== 'final');
-
-  // Render each tool using its best available presentation:
-  // 1. Custom renderer (e.g. HttpToolCard) — self-contained card
-  // 2. MinimalToolRow with getToolSummary — clean one-liner for known tools
-  const renderToolItem = (toolCall: ToolCallData) => {
-    const state = toolCallStates.get(toolCall.tool_call_id);
-    const renderer = toolRenderers?.[toolCall.tool_name];
-    if (renderer) {
-      const toolCallPayload: ToolCall = {
-        tool_call_id: toolCall.tool_call_id,
-        tool_name: toolCall.tool_name,
-        input: toolCall.input,
-      };
-      return (
-        <div key={toolCall.tool_call_id}>
-          {renderer({ toolCall: toolCallPayload, state })}
-        </div>
-      );
-    }
-    // Use MinimalToolRow with formatted summary instead of raw ToolCallCard
-    if (state) {
-      const summary = getToolSummary(
-        toolCall.tool_name,
-        (toolCall.input as Record<string, unknown>) ?? {},
-        state.result,
-        toolSummaryOverrides
-      );
-      return <MinimalToolRow key={toolCall.tool_call_id} summary={summary} state={state} />;
-    }
-    return null;
-  };
-
-  // When every tool in this group has a custom renderer (e.g. HttpToolCard),
-  // render the formatted cards directly — they already provide their own
-  // expand/collapse, timing, and detail display. No outer wrapper needed.
-  const allHaveRenderers = filteredCalls.length > 0
-    && filteredCalls.every((tc) => !!toolRenderers?.[tc.tool_name]);
-
-  if (allHaveRenderers) {
-    return (
-      <div className="space-y-1.5">
-        {filteredCalls.map(renderToolItem)}
-      </div>
-    );
-  }
-
-  const completedCount = toolCalls.filter(tc => {
-    const state = toolCallStates.get(tc.tool_call_id);
-    return state?.status === 'completed';
-  }).length;
-
-  const totalTime = toolCalls.reduce((acc, tc) => {
-    const state = toolCallStates.get(tc.tool_call_id);
-    if (state?.startTime && state?.endTime) {
-      return acc + (state.endTime - state.startTime);
-    }
-    return acc;
-  }, 0);
-
-  const timeStr = totalTime > 0 ? ` · ${(totalTime / 1000).toFixed(1)}s` : '';
-
-  if (!expanded) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors py-0.5">
-        <div className="flex items-center gap-1.5 flex-1" onClick={() => setExpanded(true)}>
-          <Wrench className="h-3 w-3 text-green-600 shrink-0" />
-          <span>Used {completedCount} tool{completedCount !== 1 ? 's' : ''}{timeStr}</span>
-          <ChevronRight className="h-3 w-3" />
-        </div>
-        {onShowTrace && threadId && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onShowTrace(threadId); }}
-            className="ml-auto p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-            title="View traces"
-          >
-            <Activity className="h-3 w-3" />
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div
-        className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors py-0.5 mb-1"
-        onClick={() => setExpanded(false)}
-      >
-        <Wrench className="h-3 w-3 text-green-600 shrink-0" />
-        <span>
-          Used {completedCount} tool{completedCount !== 1 ? 's' : ''}{timeStr}
-        </span>
-        <ChevronDown className="h-3 w-3" />
-      </div>
-      {filteredCalls.map(renderToolItem)}
-    </div>
-  );
-};
-
 export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
   event,
   toolCallStates,
   toolRenderers,
   debug = false,
-  verbose = false,
   rendering: renderingProp,
   onToolComplete,
 }) => {
@@ -353,35 +237,7 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
 
   const filteredToolCalls = toolCalls.filter((tc: ToolCallData) => tc.tool_name !== 'final');
 
-  const renderResultData = (toolCallState?: ToolCallState): React.ReactNode => {
-    if (!toolCallState?.result) {
-      return 'No result available';
-    }
-
-    // Use the new parts-aware renderer
-    return renderToolResultParts(toolCallState.result);
-  };
-
-  // Check if any tool is still running/pending
-  const hasActiveTools = filteredToolCalls.some((tc: ToolCallData) => {
-    const state = toolCallStates.get(tc.tool_call_id);
-    return !state || state.status === 'pending' || state.status === 'running';
-  });
-
-  // Normal mode (not verbose): collapse completed tools into summary
-  if (!verbose && !hasActiveTools && filteredToolCalls.length > 0) {
-    return (
-      <ToolSummary
-        toolCalls={filteredToolCalls}
-        toolCallStates={toolCallStates}
-        toolRenderers={toolRenderers}
-        debug={debug}
-        renderResultData={renderResultData}
-      />
-    );
-  }
-
-  // Verbose mode or active tools: show all tool calls
+  // Render all tools directly — no "Used N tools" collapsible wrapper
   return (
     <>
       {filteredToolCalls.map((toolCall: ToolCallData) => {
@@ -436,7 +292,7 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
         if (rendering === 'rich') {
           return <RichToolCard key={toolCall.tool_call_id} summary={summary} state={state} />;
         }
-        return <MinimalToolRow key={toolCall.tool_call_id} summary={summary} state={state} />;
+        return <MinimalToolRow key={toolCall.tool_call_id} summary={summary} state={state} debug={debug} />;
       })}
     </>
   );
