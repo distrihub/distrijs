@@ -242,21 +242,8 @@ export class Agent {
       })) || []
     };
 
-    // Set runtime_mode based on whether browser tools are registered
-    if (tools?.some(t => t.name === 'ExecJs')) {
-      metadata.runtime_mode = 'browser';
-    }
-
-    // Auto-inject distri.Environment so templates can detect the SDK source
-    const existingDv = (metadata.dynamic_values ?? {}) as Record<string, unknown>;
-    const existingDistri = (existingDv.distri ?? {}) as Record<string, unknown>;
-    metadata.dynamic_values = {
-      ...existingDv,
-      distri: {
-        Environment: 'distrijs',
-        ...existingDistri,
-      },
-    };
+    // DistriJS always runs in browser mode
+    metadata.runtime_mode = 'browser';
 
     return {
       ...params,
