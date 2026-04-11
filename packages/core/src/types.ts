@@ -36,7 +36,7 @@ export interface DefinitionOverrides {
 export interface ExternalToolDefinition {
   name: string;
   description: string;
-  parameters: Record<string, unknown>;
+  parameters: object; // JSON Schema
   is_final?: boolean;
   prompt?: string;
 }

@@ -239,7 +239,7 @@ export class Agent {
       external_tools: tools?.map(tool => ({
         name: tool.name,
         description: tool.description,
-        parameters: tool.parameters as Record<string, unknown>,
+        parameters: tool.parameters,
         is_final: tool.is_final,
       })) ?? [],
     };
