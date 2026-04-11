@@ -671,6 +671,21 @@ export interface AgentDefinition {
 
   /** Agent usage statistics */
   stats?: AgentStats;
+
+  /** Whether the current user owns this agent (cloud only) */
+  is_owner?: boolean;
+
+  /** Whether this is a system agent (cloud only) */
+  is_system?: boolean;
+
+  /** Whether this agent belongs to the current workspace (cloud only) */
+  is_workspace?: boolean;
+
+  /** Whether this agent is published/public (cloud only) */
+  published?: boolean;
+
+  /** When this agent was published (cloud only) */
+  published_at?: string | null;
 }
 
 /**
