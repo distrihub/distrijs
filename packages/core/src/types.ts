@@ -9,6 +9,78 @@ import { Agent } from './agent';
 export type MessageRole = 'system' | 'assistant' | 'user' | 'tool' | 'developer';
 
 /**
+ * Runtime environment in which the agent executes.
+ * Matches Rust's `RuntimeMode` enum in distri-types.
+ */
+export type RuntimeMode = 'cli' | 'cloud' | 'browser';
+
+/**
+ * Definition overrides supplied by the client.
+ * Matches Rust's `DefinitionOverrides` in distri-types.
+ */
+export interface DefinitionOverrides {
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  max_iterations?: number;
+  instructions?: string;
+  use_browser?: boolean;
+  remote?: boolean;
+  dynamic_tools?: Array<Record<string, unknown>>;
+}
+
+/**
+ * External tool definition sent to the server.
+ * Matches Rust's `ExternalTool` in distri-types.
+ */
+export interface ExternalToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  is_final?: boolean;
+  prompt?: string;
+}
+
+/**
+ * Dynamic prompt section injected into the template per-call.
+ * Matches Rust's `PromptSection` in distri-types.
+ */
+export interface PromptSection {
+  key: string;
+  content: string;
+}
+
+/**
+ * Metadata sent by clients alongside A2A messages.
+ * This is the canonical schema — matches Rust's `ExecutorContextMetadata` in distri-types.
+ * All clients (CLI, browser SDK, etc.) serialize this shape.
+ */
+export interface ExecutorContextMetadata {
+  /** Additional context for tools to use, passed as meta in tool calls */
+  tool_metadata?: Record<string, unknown>;
+  /** Generic metadata */
+  metadata?: unknown;
+  /** Additional attributes for thread/task */
+  additional_attributes?: { thread?: unknown; task?: unknown };
+  /** External tools that delegate execution to the client */
+  external_tools?: ExternalToolDefinition[];
+  /** Definition overrides supplied by the client */
+  definition_overrides?: DefinitionOverrides;
+  /** Dynamic prompt sections to inject into the template per-call */
+  dynamic_sections?: PromptSection[];
+  /** Dynamic key-value pairs available in templates per-call */
+  dynamic_values?: Record<string, unknown>;
+  /** Browser session ID for browser tool integration */
+  browser_session_id?: string;
+  /** Environment variables passed from the client for execution */
+  env_vars?: Record<string, string>;
+  /** When true, unsafe tools are simulated via LLM instead of executed */
+  dry_run?: boolean;
+  /** Runtime environment. Determines which system agent variants to use. */
+  runtime_mode?: RuntimeMode;
+}
+
+/**
  * Message metadata structure that matches the backend.
  * The 'parts' field maps part indices to PartMetadata for save filtering.
  */
@@ -20,7 +92,7 @@ export interface DistriMessageMetadata {
   /** Browser session ID */
   browser_session_id?: string;
   /** Model/definition overrides */
-  definition_overrides?: { model?: string };
+  definition_overrides?: DefinitionOverrides;
   /** Additional arbitrary metadata */
   [key: string]: unknown;
 }
