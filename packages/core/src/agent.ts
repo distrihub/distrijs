@@ -7,6 +7,7 @@ import {
   HookHandler,
   AgentConfigWithTools,
   DynamicMetadata,
+  ExecutorContextMetadata,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk/client';
 import { decodeA2AStreamEvent } from './encoder';
@@ -231,23 +232,21 @@ export class Agent {
    */
   private enhanceParamsWithTools(params: MessageSendParams, tools?: DistriBaseTool[]): MessageSendParams {
     this.assertExternalTools(tools);
-    const existingMeta = params.metadata ?? {};
-    const metadata: Record<string, unknown> = {
+    const existingMeta = (params.metadata ?? {}) as Partial<ExecutorContextMetadata>;
+    const metadata: ExecutorContextMetadata = {
       ...existingMeta,
+      runtime_mode: 'browser',
       external_tools: tools?.map(tool => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters,
-        is_final: tool.is_final
-      })) || []
+        is_final: tool.is_final,
+      })) ?? [],
     };
-
-    // DistriJS always runs in browser mode
-    metadata.runtime_mode = 'browser';
 
     return {
       ...params,
-      metadata
+      metadata: metadata as Record<string, unknown>,
     };
   }
 
