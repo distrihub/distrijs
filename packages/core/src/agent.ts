@@ -187,6 +187,36 @@ export class Agent {
   }
 
   /**
+   * Resubscribe to an existing task's event stream and yield decoded
+   * events. Use this when reopening a thread whose task is still
+   * running in the background on the server — reported via
+   * `Thread.active_task_id` from `client.getThread`.
+   *
+   * Unlike `invokeStream`, this does not send a new message; it just
+   * reattaches to an in-flight task.
+   */
+  public async resubscribeStream(taskId: string): Promise<AsyncGenerator<DistriChatMessage>> {
+    const a2aStream = this.client.resubscribeTask(this.agentDefinition.name, taskId);
+    return (async function* () {
+      try {
+        for await (const event of a2aStream) {
+          const converted = decodeA2AStreamEvent(event);
+          if (converted) {
+            yield converted;
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const runError: RunErrorEvent = {
+          type: 'run_error',
+          data: { message, code: 'RESUBSCRIBE_ERROR' },
+        };
+        yield runError;
+      }
+    })();
+  }
+
+  /**
    * Validate that required external tools are registered before invoking.
    */
   public validateExternalTools(tools: DistriBaseTool[] = []): ExternalToolValidationResult {

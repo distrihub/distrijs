@@ -865,6 +865,29 @@ export class DistriClient {
   }
 
   /**
+   * Resubscribe to an existing task's event stream. Used when
+   * reopening a thread whose task is still running in the background
+   * on the server (see `Thread.active_task_id`). Yields only events
+   * emitted from the subscribe point forward — historical events must
+   * be loaded separately via thread messages.
+   *
+   * The server handles the terminal-state race: if the task finishes
+   * between the client's `getThread` and this subscribe, the server
+   * synthesizes a final TaskStatusUpdate so the stream still yields
+   * the end state.
+   */
+  async * resubscribeTask(agentId: string, taskId: string): AsyncGenerator<A2AStreamEventData> {
+    try {
+      const client = this.getA2AClient(agentId);
+      yield* await client.resubscribeTask({ id: taskId });
+    } catch (error) {
+      console.error(error);
+      const errorMessage = this.extractErrorMessage(error);
+      throw new DistriError(errorMessage, 'RESUBSCRIBE_TASK_ERROR', error);
+    }
+  }
+
+  /**
    * Extract a user-friendly error message from potentially nested errors
    */
   private extractErrorMessage(error: unknown): string {

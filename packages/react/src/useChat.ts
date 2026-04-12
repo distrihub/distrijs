@@ -156,6 +156,28 @@ export function useChat({
       processMessage(event, true);
     }, [processMessage]);
 
+  /**
+   * Consume an async stream of chat events, honoring the abort
+   * signal and forwarding events through `handleStreamEvent`.
+   * Shared between `sendMessage`, `sendMessageStream`, and the
+   * thread-reattach effect so all three paths get identical
+   * event-handling, abort, and cleanup behavior. Returns the number
+   * of events processed — callers use this to detect the
+   * terminal-race fallback case.
+   */
+  const consumeStream = useCallback(
+    async (stream: AsyncGenerator<DistriChatMessage>) => {
+      let count = 0;
+      for await (const event of stream) {
+        if (abortControllerRef.current?.signal.aborted) break;
+        handleStreamEvent(event);
+        count++;
+      }
+      return count;
+    },
+    [handleStreamEvent],
+  );
+
   const sendMessage = useCallback(async (content: string | DistriPart[]) => {
     if (!agent) return;
 
@@ -201,12 +223,7 @@ export function useChat({
         },
       }, externalTools);
 
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
-        handleStreamEvent(event);
-      }
+      await consumeStream(stream);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Stream was cancelled, don't show error
@@ -233,7 +250,7 @@ export function useChat({
       setStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [agent, beforeSendMessage, createInvokeContext, currentTaskId, externalTools, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
+  }, [agent, beforeSendMessage, consumeStream, createInvokeContext, currentTaskId, externalTools, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
   const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
     if (!agent) return;
@@ -276,12 +293,7 @@ export function useChat({
         }
       });
 
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
-        handleStreamEvent(event);
-      }
+      await consumeStream(stream);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Stream was cancelled, don't show error
@@ -308,12 +320,29 @@ export function useChat({
       setStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
+  }, [agent, consumeStream, createInvokeContext, currentTaskId, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
 
   const stopStreaming = useCallback(() => {
+    // Abort the local stream first so the UI stops immediately even
+    // if the network cancel is slow.
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+    }
+    // Explicit stop = user wants the task stopped. Fire the backend
+    // `tasks/cancel` so the background execution actually halts
+    // instead of continuing to run on the server. Closing the tab or
+    // losing network does NOT hit this path — those cases rely on the
+    // backend's background-task model keeping execution alive for
+    // later resubscribe.
+    if (agent && currentTaskId) {
+      agent.client
+        .cancelTask(agent.name, currentTaskId)
+        .catch((err: unknown) => {
+          // Idempotent cancel: server returns success for
+          // already-terminal tasks. Log anything else.
+          console.warn('cancelTask failed:', err);
+        });
     }
     // Fail all pending tool calls so they don't complete after cancel
     // and trigger the agent to restart via completeTool retry
@@ -321,7 +350,77 @@ export function useChat({
     setStreamingIndicator(undefined);
     setStreaming(false);
     setLoading(false);
-  }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
+  }, [agent, currentTaskId, failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
+
+  // Reattach to a background task when reopening a thread. If the
+  // server reports `thread.active_task_id`, call `resubscribeStream`
+  // and feed events through the shared consumeStream helper so the
+  // UI picks up exactly where the previous client left off. If
+  // resubscribe yields no events (the task finished between getThread
+  // and subscribe), fall back to `getTask` to render the final state.
+  useEffect(() => {
+    if (!agent || !threadId) return;
+    const abort = new AbortController();
+
+    (async () => {
+      try {
+        const thread = await agent.client.getThread(threadId);
+        if (abort.signal.aborted) return;
+        const activeTaskId = thread?.active_task_id;
+        if (!activeTaskId) return;
+
+        // Stake ownership of the stream state so `stopStreaming` and
+        // the existing abort logic behave identically for resumed
+        // tasks.
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        setStreaming(true);
+        setLoading(true);
+        setStreamingIndicator('typing');
+
+        const stream = await agent.resubscribeStream(activeTaskId);
+        const eventCount = await consumeStream(stream);
+
+        if (eventCount === 0) {
+          // Terminal race: task finished between getThread and
+          // resubscribe. Fetch final task state and synthesize a
+          // run_finished-style update through processMessage so the
+          // UI reflects the outcome.
+          try {
+            const task = await agent.client.getTask(agent.name, activeTaskId);
+            handleStreamEvent({
+              type: 'run_finished',
+              data: { task_id: activeTaskId, status: task?.status },
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
+          } catch (err) {
+            console.warn('getTask fallback failed:', err);
+          }
+        }
+      } catch (err) {
+        if (!abort.signal.aborted) {
+          console.warn('Resubscribe on thread open failed:', err);
+        }
+      } finally {
+        if (!abort.signal.aborted) {
+          setStreamingIndicator(undefined);
+          setStreaming(false);
+          setLoading(false);
+          abortControllerRef.current = null;
+        }
+      }
+    })();
+
+    return () => {
+      abort.abort();
+    };
+    // threadId + agent identity drive reattach; consumeStream and
+    // handleStreamEvent are stable across renders once their inputs
+    // settle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent, threadId]);
 
   return {
     isStreaming,
