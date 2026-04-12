@@ -621,9 +621,6 @@ export interface AgentConfigWithTools extends AgentDefinition {
 export interface AgentDefinition {
   /** The name of the agent. */
   name: string;
-
-  id: string;
-
   /** Optional package identifier (workspace/plugin) that registered the agent */
   package_name?: string | null;
 

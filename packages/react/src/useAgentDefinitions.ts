@@ -43,7 +43,7 @@ export function useAgentDefinitions(): UseAgentsResult {
       const agent = await client.getAgent(agentId);
 
       // Update the agent in our local state if it exists
-      setAgents(prev => prev.map(a => a.id === agentId ? agent : a));
+      setAgents(prev => prev.map(a => a.name === agent.name ? agent : a));
 
       return agent;
     } catch (err) {
