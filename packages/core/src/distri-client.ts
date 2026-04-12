@@ -541,12 +541,6 @@ export class DistriClient {
       }
 
       const agents: AgentDefinition[] = await response.json();
-      // Temporary fix for agents without an id
-      agents.forEach(agent => {
-        if (!agent.id) {
-          agent.id = agent.name;
-        }
-      });
 
       return agents;
     } catch (error) {
@@ -556,7 +550,7 @@ export class DistriClient {
   }
 
   /**
-   * Get specific agent by ID
+   * Get specific agent by name
    */
   async getAgent(agentId: string): Promise<AgentConfigWithTools> {
     try {
@@ -573,10 +567,8 @@ export class DistriClient {
       }
 
       const agent: AgentDefinition = await response.json();
-      // If the agent doesn't have an id, set it to the agentId
-      if (!agent.id) {
-        agent.id = agentId;
-      }
+      // Canonical identifier is always the agent name
+      agent.id = agent.name;
       return agent;
     } catch (error) {
       if (error instanceof ApiError) throw error;
@@ -585,11 +577,11 @@ export class DistriClient {
   }
 
   /**
-   * Delete an agent by ID
+   * Delete an agent by name
    */
   async deleteAgent(agentId: string): Promise<void> {
     try {
-      const response = await this.fetch(`/agents/${encodeURIComponent(agentId)}`, {
+      const response = await this.fetch(`/agents/${agentId}`, {
         method: 'DELETE',
         headers: {
           ...this.config.headers,
