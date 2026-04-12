@@ -138,16 +138,16 @@ export function useChat({
   }, []); // Empty dependencies to avoid re-creating cleanup function
 
   // Reset state when agent changes
-  const agentIdRef = useRef<string | undefined>(undefined);
+  const agentNameRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (agent?.id !== agentIdRef.current) {
+    if (agent?.name !== agentNameRef.current) {
       // Agent changed, reset all state
       clearAllStates();
       setError(null);
-      agentIdRef.current = agent?.id;
+      agentNameRef.current = agent?.name;
     }
-  }, [agent?.id, clearAllStates, setError]);
+  }, [agent?.name, clearAllStates, setError]);
 
 
   const handleStreamEvent = useCallback(

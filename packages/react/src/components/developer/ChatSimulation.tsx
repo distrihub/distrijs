@@ -97,7 +97,6 @@ function buildAgentContextSnapshot(agentDefinition?: AgentDefinition | null): Re
   if (!agentDefinition) return null;
 
   return {
-    id: agentDefinition.id,
     name: agentDefinition.name,
     description: agentDefinition.description,
     instructions: 'instructions' in agentDefinition ? agentDefinition.instructions : undefined,
@@ -180,7 +179,7 @@ async function generatePayloadWithAgent(
       tool_name: tool.name,
       source_thread_id: threadId,
       simulation_thread_id: simulationThreadId,
-      agent_id: agentDefinition?.id ?? agent.id,
+      agent_id: agentDefinition?.name ?? agent.name,
       current_agent_definition: effectiveAgentDefinition,
       model_settings: agentDefinition?.model_settings,
       developer_mode: {
@@ -188,7 +187,7 @@ async function generatePayloadWithAgent(
         tool_name: tool.name,
         source_thread_id: threadId,
         target_thread_id: simulationThreadId,
-        agent_id: agentDefinition?.id ?? agent.id,
+        agent_id: agentDefinition?.name ?? agent.name,
       },
     },
   }, [simulateOutputTool]);

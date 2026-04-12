@@ -91,13 +91,6 @@ export class Agent {
     this.agentDefinition = agentDefinition;
     this.client = client;
   }
-  /**
-   * Get agent information
-   */
-  get id(): string {
-    return this.agentDefinition.id;
-  }
-
   get name(): string {
     return this.agentDefinition.name;
   }
@@ -137,7 +130,7 @@ export class Agent {
     }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
-    return await this.client.sendMessage(this.agentDefinition.id, enhancedParams) as Message;
+    return await this.client.sendMessage(this.agentDefinition.name, enhancedParams) as Message;
   }
 
   /**
@@ -149,7 +142,7 @@ export class Agent {
     }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
-    const a2aStream = this.client.sendMessageStream(this.agentDefinition.id, enhancedParams);
+    const a2aStream = this.client.sendMessageStream(this.agentDefinition.name, enhancedParams);
 
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -253,7 +246,7 @@ export class Agent {
   private assertExternalTools(tools?: DistriBaseTool[]) {
     const result = this.validateExternalTools(tools ?? []);
     if (!result.isValid) {
-      throw new ExternalToolValidationError(this.agentDefinition.name || this.agentDefinition.id, result);
+      throw new ExternalToolValidationError(this.agentDefinition.name || this.agentDefinition.name, result);
     }
   }
 
@@ -312,7 +305,6 @@ export class Agent {
     const agentDefinition = typeof agentIdOrDef === 'string' ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
     const tools = agentDefinition?.resolved_tools || [];
     console.log('🤖 Agent definition loaded:', {
-      id: agentDefinition.id,
       name: agentDefinition.name,
       tools: tools.map(t => ({
         name: t.name,
@@ -327,7 +319,7 @@ export class Agent {
    * Complete an external tool call by sending the result back to the server
    */
   async completeTool(result: ToolResult): Promise<void> {
-    await this.client.completeTool(this.agentDefinition.id, result);
+    await this.client.completeTool(this.agentDefinition.name, result);
   }
 
   /**
