@@ -276,7 +276,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const browserAgentIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const agentId = agentDefinition?.id;
+    const agentId = agentDefinition?.name;
 
     if (!agentDefinition || !supportsBrowserStreaming) {
       setBrowserEnabled(false);
@@ -416,7 +416,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     }
 
     const diagnoseAgentId = diagnoseConfig?.agentId || 'distri';
-    if (diagnoseAgentRef.current?.id === diagnoseAgentId) {
+    if (diagnoseAgentRef.current?.name === diagnoseAgentId) {
       return diagnoseAgentRef.current;
     }
 
@@ -581,7 +581,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 label: diagnoseLabel,
                 source_thread_id: threadId,
                 target_thread_id: diagnoseThreadId,
-                agent_id: diagnoseAgent.id,
+                agent_id: diagnoseAgent.name,
                 mode_enabled: true,
               },
             },
@@ -624,7 +624,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                       label: diagnoseLabel,
                       source_thread_id: threadId,
                       target_thread_id: diagnoseThreadId,
-                      agent_id: diagnoseAgent.id,
+                      agent_id: diagnoseAgent.name,
                       mode_enabled: true,
                     },
                   },

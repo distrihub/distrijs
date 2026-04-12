@@ -619,10 +619,8 @@ export interface AgentConfigWithTools extends AgentDefinition {
  * Distri-specific Agent type that wraps A2A AgentCard
  */
 export interface AgentDefinition {
-  /** The name of the agent. */
+  /** The name of the agent — canonical identifier. */
   name: string;
-  /** Optional package identifier (workspace/plugin) that registered the agent */
-  package_name?: string | null;
 
   /** A brief description of the agent's purpose. */
   description?: string;
@@ -677,6 +675,9 @@ export interface AgentDefinition {
 
   /** Whether this agent belongs to the current workspace (cloud only) */
   is_workspace?: boolean;
+
+  /** Workspace slug the agent belongs to (cloud only, for cross-workspace display) */
+  workspace_slug?: string | null;
 
   /** Whether this agent is published/public (cloud only) */
   published?: boolean;

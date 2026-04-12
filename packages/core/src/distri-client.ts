@@ -567,8 +567,6 @@ export class DistriClient {
       }
 
       const agent: AgentDefinition = await response.json();
-      // Canonical identifier is always the agent name
-      agent.id = agent.name;
       return agent;
     } catch (error) {
       if (error instanceof ApiError) throw error;

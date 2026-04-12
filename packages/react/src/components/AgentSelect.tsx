@@ -9,7 +9,6 @@ import {
 } from './ui/select';
 
 interface Agent {
-  id: string;
   name: string;
   description?: string;
 }
@@ -17,7 +16,7 @@ interface Agent {
 interface AgentSelectProps {
   agents: Agent[];
   selectedAgentId?: string;
-  onAgentSelect: (agentId: string) => void;
+  onAgentSelect: (agentName: string) => void;
   className?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -31,7 +30,7 @@ export const AgentSelect: React.FC<AgentSelectProps> = ({
   placeholder = 'Select an agent...',
   disabled = false,
 }) => {
-  const selectedAgent = agents.find(agent => agent.id === selectedAgentId);
+  const selectedAgent = agents.find(agent => agent.name === selectedAgentId);
 
   return (
     <Select value={selectedAgentId} onValueChange={onAgentSelect} disabled={disabled}>
@@ -45,7 +44,7 @@ export const AgentSelect: React.FC<AgentSelectProps> = ({
       </SelectTrigger>
       <SelectContent>
         {agents.map((agent) => (
-          <SelectItem key={agent.id} value={agent.id}>
+          <SelectItem key={agent.name} value={agent.name}>
             <div className="flex items-center space-x-2">
               <Bot className="h-4 w-4" />
               <div className="flex flex-col">
