@@ -473,6 +473,17 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       }
       break;
     }
+    case 'artifact': {
+      // Convert ArtifactPart to A2A DataPart
+      result = {
+        kind: 'data',
+        data: {
+          part_type: 'artifact',
+          data: distriPart.data
+        }
+      };
+      break;
+    }
   }
   return result;
 }
