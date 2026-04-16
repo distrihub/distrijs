@@ -212,6 +212,22 @@ export interface TodosUpdatedEvent {
   };
 }
 
+export interface MediaGeneratedEvent {
+  type: 'media_generated';
+  data: {
+    /** Base64-encoded media data */
+    data: string;
+    /** MIME type (e.g. "image/png", "image/jpeg") */
+    mime_type: string;
+    /** Original filename (e.g. "sales_chart.png") */
+    filename?: string;
+    /** File size in bytes */
+    size?: number;
+    /** Artifact path where the media is persisted */
+    artifact_path?: string;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -235,4 +251,5 @@ export type DistriEvent =
   | BrowserScreenshotEvent
   | BrowserSessionStartedEvent
   | InlineHookRequestedEvent
-  | TodosUpdatedEvent;
+  | TodosUpdatedEvent
+  | MediaGeneratedEvent;

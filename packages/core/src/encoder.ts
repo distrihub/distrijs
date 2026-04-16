@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus, MediaGeneratedEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -242,6 +242,20 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         },
       };
       return browserSessionStarted;
+    }
+
+    case 'media_generated': {
+      const mediaGenerated: MediaGeneratedEvent = {
+        type: 'media_generated',
+        data: {
+          data: metadata.data || '',
+          mime_type: metadata.mime_type || 'image/png',
+          filename: metadata.filename,
+          size: metadata.size,
+          artifact_path: metadata.artifact_path,
+        },
+      };
+      return mediaGenerated;
     }
 
     case 'todos_updated': {

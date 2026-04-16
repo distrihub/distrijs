@@ -224,6 +224,37 @@ export function MessageRenderer({
             </RendererWrapper>
           );
 
+        case 'browser_screenshot':
+          return (
+            <RendererWrapper key={`screenshot-${index}`} className="distri-screenshot">
+              <div className="my-2">
+                <img
+                  src={event.data?.image?.startsWith('data:') ? event.data.image : `data:image/png;base64,${event.data?.image}`}
+                  alt={event.data?.filename || 'Browser screenshot'}
+                  className="max-w-full rounded border"
+                  style={{ maxHeight: '400px', objectFit: 'contain' }}
+                />
+              </div>
+            </RendererWrapper>
+          );
+
+        case 'media_generated':
+          return (
+            <RendererWrapper key={`media-${index}`} className="distri-media-generated">
+              <div className="my-2">
+                <img
+                  src={`data:${event.data?.mime_type || 'image/png'};base64,${event.data?.data}`}
+                  alt={event.data?.filename || 'Generated media'}
+                  className="max-w-full rounded border"
+                  style={{ maxHeight: '400px', objectFit: 'contain' }}
+                />
+                {event.data?.filename && (
+                  <div className="text-xs text-muted-foreground mt-1">{event.data.filename}</div>
+                )}
+              </div>
+            </RendererWrapper>
+          );
+
         default:
           return null;
       }
