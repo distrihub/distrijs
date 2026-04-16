@@ -153,17 +153,6 @@ export interface ToolResultsEvent {
   };
 }
 
-export interface BrowserScreenshotEvent {
-  type: 'browser_screenshot';
-  data: {
-    image: string;
-    format?: string;
-    filename?: string;
-    size?: number;
-    timestamp_ms?: number;
-  };
-}
-
 export interface BrowserSessionStartedEvent {
   type: 'browser_session_started';
   data: {
@@ -212,19 +201,15 @@ export interface TodosUpdatedEvent {
   };
 }
 
-export interface MediaGeneratedEvent {
-  type: 'media_generated';
+export interface LiveViewEvent {
+  type: 'live_view';
   data: {
-    /** Base64-encoded media data */
-    data: string;
-    /** MIME type (e.g. "image/png", "image/jpeg") */
-    mime_type: string;
-    /** Original filename (e.g. "sales_chart.png") */
-    filename?: string;
-    /** File size in bytes */
-    size?: number;
-    /** Artifact path where the media is persisted */
-    artifact_path?: string;
+    view_id: string;
+    url: string;
+    title?: string;
+    display_mode?: 'inline' | 'fullscreen' | 'pip';
+    width?: number;
+    height?: number;
   };
 }
 
@@ -248,8 +233,7 @@ export type DistriEvent =
   | FeedbackReceivedEvent
   | ToolCallsEvent
   | ToolResultsEvent
-  | BrowserScreenshotEvent
   | BrowserSessionStartedEvent
   | InlineHookRequestedEvent
   | TodosUpdatedEvent
-  | MediaGeneratedEvent;
+  | LiveViewEvent;

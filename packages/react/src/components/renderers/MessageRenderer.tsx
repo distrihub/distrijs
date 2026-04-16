@@ -224,36 +224,35 @@ export function MessageRenderer({
             </RendererWrapper>
           );
 
-        case 'browser_screenshot':
+        case 'live_view': {
+          const width = event.data?.width || 600;
+          const height = event.data?.height || 400;
+          const title = event.data?.title || 'Live view';
+          const url = event.data?.url || '';
           return (
-            <RendererWrapper key={`screenshot-${index}`} className="distri-screenshot">
-              <div className="my-2">
-                <img
-                  src={event.data?.image?.startsWith('data:') ? event.data.image : `data:image/png;base64,${event.data?.image}`}
-                  alt={event.data?.filename || 'Browser screenshot'}
-                  className="max-w-full rounded border"
-                  style={{ maxHeight: '400px', objectFit: 'contain' }}
+            <RendererWrapper key={`live-view-${index}`} className="distri-live-view">
+              <div className="my-2 rounded border border-border overflow-hidden">
+                <div className="px-3 py-1.5 bg-muted/50 border-b text-xs text-muted-foreground flex items-center justify-between">
+                  <span className="font-medium truncate">{title}</span>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline ml-2"
+                  >
+                    Open
+                  </a>
+                </div>
+                <iframe
+                  src={url}
+                  title={title}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  style={{ width: '100%', height: `${height}px`, maxWidth: `${width}px`, border: 0 }}
                 />
               </div>
             </RendererWrapper>
           );
-
-        case 'media_generated':
-          return (
-            <RendererWrapper key={`media-${index}`} className="distri-media-generated">
-              <div className="my-2">
-                <img
-                  src={`data:${event.data?.mime_type || 'image/png'};base64,${event.data?.data}`}
-                  alt={event.data?.filename || 'Generated media'}
-                  className="max-w-full rounded border"
-                  style={{ maxHeight: '400px', objectFit: 'contain' }}
-                />
-                {event.data?.filename && (
-                  <div className="text-xs text-muted-foreground mt-1">{event.data.filename}</div>
-                )}
-              </div>
-            </RendererWrapper>
-          );
+        }
 
         default:
           return null;
