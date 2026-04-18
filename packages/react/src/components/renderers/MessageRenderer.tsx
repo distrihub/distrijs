@@ -224,6 +224,36 @@ export function MessageRenderer({
             </RendererWrapper>
           );
 
+        case 'live_view': {
+          const width = event.data?.width || 600;
+          const height = event.data?.height || 400;
+          const title = event.data?.title || 'Live view';
+          const url = event.data?.url || '';
+          return (
+            <RendererWrapper key={`live-view-${index}`} className="distri-live-view">
+              <div className="my-2 rounded border border-border overflow-hidden">
+                <div className="px-3 py-1.5 bg-muted/50 border-b text-xs text-muted-foreground flex items-center justify-between">
+                  <span className="font-medium truncate">{title}</span>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline ml-2"
+                  >
+                    Open
+                  </a>
+                </div>
+                <iframe
+                  src={url}
+                  title={title}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  style={{ width: '100%', height: `${height}px`, maxWidth: `${width}px`, border: 0 }}
+                />
+              </div>
+            </RendererWrapper>
+          );
+        }
+
         default:
           return null;
       }
