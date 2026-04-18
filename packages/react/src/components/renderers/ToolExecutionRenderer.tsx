@@ -85,6 +85,44 @@ const renderPart = (part: DistriPart, index: number): React.ReactNode => {
         </pre>
       );
     }
+    case 'artifact': {
+      const meta = part.data as {
+        file_id?: string;
+        relative_path?: string;
+        content_type?: string;
+        original_filename?: string;
+        size?: number;
+      };
+      const relPath = meta.relative_path || '';
+      const url = relPath ? `/api/v1/artifacts/${relPath}` : '';
+      const mime = meta.content_type || 'application/octet-stream';
+      const name = meta.original_filename || meta.file_id || 'artifact';
+
+      if (mime.startsWith('image/') && url) {
+        return (
+          <div key={index} className="my-2">
+            <img
+              src={url}
+              alt={name}
+              className="max-w-full max-h-[400px] rounded border border-border object-contain"
+            />
+            <div className="text-xs text-muted-foreground mt-1">{name}</div>
+          </div>
+        );
+      }
+
+      return (
+        <div key={index} className="my-2 flex items-center gap-2 p-2 rounded border border-border">
+          <span className="text-sm">📎 {name}</span>
+          <span className="text-xs text-muted-foreground">({mime})</span>
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs underline ml-auto">
+              Download
+            </a>
+          )}
+        </div>
+      );
+    }
     default:
       return (
         <pre key={index} className="whitespace-pre-wrap break-words">

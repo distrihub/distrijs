@@ -153,17 +153,6 @@ export interface ToolResultsEvent {
   };
 }
 
-export interface BrowserScreenshotEvent {
-  type: 'browser_screenshot';
-  data: {
-    image: string;
-    format?: string;
-    filename?: string;
-    size?: number;
-    timestamp_ms?: number;
-  };
-}
-
 export interface BrowserSessionStartedEvent {
   type: 'browser_session_started';
   data: {
@@ -212,6 +201,18 @@ export interface TodosUpdatedEvent {
   };
 }
 
+export interface LiveViewEvent {
+  type: 'live_view';
+  data: {
+    view_id: string;
+    url: string;
+    title?: string;
+    display_mode?: 'inline' | 'fullscreen' | 'pip';
+    width?: number;
+    height?: number;
+  };
+}
+
 // Union of all event types
 export type DistriEvent =
   | RunStartedEvent
@@ -232,7 +233,7 @@ export type DistriEvent =
   | FeedbackReceivedEvent
   | ToolCallsEvent
   | ToolResultsEvent
-  | BrowserScreenshotEvent
   | BrowserSessionStartedEvent
   | InlineHookRequestedEvent
-  | TodosUpdatedEvent;
+  | TodosUpdatedEvent
+  | LiveViewEvent;

@@ -58,8 +58,10 @@ interface ArtifactSearchParams {
 }
 
 interface SaveArtifactParams {
-  filename: string;
-  content: string;
+  path?: string;
+  content?: string;
+  filename?: string;
+  caption?: string;
 }
 
 export const createFilesystemTools = (
@@ -371,20 +373,58 @@ export const createFilesystemTools = (
     },
     {
       name: 'save_artifact',
-      description: 'Save content as an artifact',
+      description: 'Save an artifact to share with the user. Provide EITHER `path` (reads a file from the local workspace) OR `content` (a string to save directly). The artifact is persisted and rendered by each channel according to its MIME type.',
       type: 'function',
       parameters: {
         type: 'object',
         properties: {
-          filename: { type: 'string', description: 'Destination artifact filename' },
-          content: { type: 'string', description: 'Artifact content' },
+          path: {
+            type: 'string',
+            description: 'Absolute path to the file to save. Mutually exclusive with `content`.',
+          },
+          content: {
+            type: 'string',
+            description: 'Inline string content to save. Mutually exclusive with `path`. Requires `filename` to be set.',
+          },
+          filename: {
+            type: 'string',
+            description: 'Filename (with extension) to save the artifact as. Optional when `path` is given (defaults to basename of path). Required when `content` is given.',
+          },
+          caption: {
+            type: 'string',
+            description: 'Optional description shown alongside the artifact.',
+          },
         },
-        required: ['filename', 'content'],
+        required: [],
       },
       handler: async (input: SaveArtifactParams) => {
-        await filesystem.saveArtifact(input.filename, input.content);
-        emitChange({ type: 'artifact_write', path: input.filename });
-        return { success: true, filename: input.filename };
+        if (input.path && input.content !== undefined) {
+          throw new Error("Provide either 'path' or 'content', not both");
+        }
+        if (!input.path && input.content === undefined) {
+          throw new Error("Must provide either 'path' or 'content'");
+        }
+
+        let filename = input.filename;
+        let content: string;
+
+        if (input.path) {
+          // Read from local filesystem
+          if (!filename) {
+            filename = input.path.split('/').pop() || 'artifact.bin';
+          }
+          const fileResult = await filesystem.readFile(input.path);
+          content = fileResult.content;
+        } else {
+          if (!filename) {
+            throw new Error("'filename' is required when using 'content' mode");
+          }
+          content = input.content!;
+        }
+
+        await filesystem.saveArtifact(filename, content);
+        emitChange({ type: 'artifact_write', path: filename });
+        return { success: true, filename };
       },
     },
   ];

@@ -1,6 +1,6 @@
 import { Message, Part } from '@a2a-js/sdk/client';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
-import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus } from './events';
+import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus, LiveViewEvent } from './events';
 import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
@@ -196,20 +196,6 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       return toolResultsResult;
     }
 
-    case 'browser_screenshot': {
-      const browserScreenshotResult = {
-        type: 'browser_screenshot' as const,
-        data: {
-          image: metadata.image || '',
-          format: metadata.format,
-          filename: metadata.filename,
-          size: metadata.size,
-          timestamp_ms: metadata.timestamp_ms,
-        }
-      };
-      return browserScreenshotResult;
-    }
-
     case 'inline_hook_requested': {
       const hookRequested: InlineHookRequestedEvent = {
         type: 'inline_hook_requested',
@@ -242,6 +228,21 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
         },
       };
       return browserSessionStarted;
+    }
+
+    case 'live_view': {
+      const liveView: LiveViewEvent = {
+        type: 'live_view',
+        data: {
+          view_id: metadata.view_id || '',
+          url: metadata.url || '',
+          title: metadata.title,
+          display_mode: metadata.display_mode,
+          width: metadata.width,
+          height: metadata.height,
+        },
+      };
+      return liveView;
     }
 
     case 'todos_updated': {
@@ -470,6 +471,17 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
         const dataObj: { [k: string]: unknown } = dataValue as { [k: string]: unknown };
         result = { kind: 'data', data: dataObj };
       }
+      break;
+    }
+    case 'artifact': {
+      // Convert ArtifactPart to A2A DataPart
+      result = {
+        kind: 'data',
+        data: {
+          part_type: 'artifact',
+          data: distriPart.data
+        }
+      };
       break;
     }
   }
