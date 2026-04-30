@@ -354,6 +354,7 @@ export type TextPart = { part_type: 'text'; data: string }
 export type ToolCallPart = { part_type: 'tool_call'; data: ToolCall }
 export type ToolResultRefPart = { part_type: 'tool_result'; data: ToolResult }
 export type ImagePart = { part_type: 'image'; data: FileType }
+export type FilePart = { part_type: 'file'; data: FileType }
 export type DataPart = { part_type: 'data'; data: object }
 export type ArtifactPart = { part_type: 'artifact'; data: {
   file_id?: string;
@@ -362,7 +363,14 @@ export type ArtifactPart = { part_type: 'artifact'; data: {
   original_filename?: string;
   size?: number;
 } }
-export type DistriPart = TextPart | ToolCallPart | ToolResultRefPart | ImagePart | DataPart | ArtifactPart;
+export type DistriPart =
+  | TextPart
+  | ToolCallPart
+  | ToolResultRefPart
+  | ImagePart
+  | FilePart
+  | DataPart
+  | ArtifactPart;
 
 
 
