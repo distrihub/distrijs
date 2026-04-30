@@ -94,7 +94,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
     }
 
     return (
-      <div className={`prose prose-sm max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+      <div className={`prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         <ReactMarkdown
           rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeOptions]]}
           remarkPlugins={[remarkGfm]}

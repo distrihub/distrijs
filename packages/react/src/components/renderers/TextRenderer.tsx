@@ -36,7 +36,7 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
   const { text } = content;
   // Render as markdown with syntax highlighting
   return (
-    <div className={`prose prose-sm max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+    <div className={`prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
       <ReactMarkdown
         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeOptions]]}
         remarkPlugins={[remarkGfm]}
@@ -68,11 +68,21 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
                 </SyntaxHighlighter>
               </div>
             ) : (
-              <code className="px-1 py-0.5 rounded text-sm font-mono">
+              <code className="px-1 py-0.5 rounded bg-muted/60 text-foreground text-sm font-mono">
                 {children}
               </code>
             );
           },
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-primary underline underline-offset-2 hover:text-primary/80 break-words"
+            >
+              {children}
+            </a>
+          ),
           p: ({ children }) => (
             <p className="mb-2 last:mb-0">{children}</p>
           ),
@@ -83,7 +93,7 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
             <ol className="list-decimal list-inside mb-2">{children}</ol>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600">
+            <blockquote className="border-l-4 border-primary/40 pl-4 italic text-muted-foreground">
               {children}
             </blockquote>
           ),
