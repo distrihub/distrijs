@@ -15,7 +15,7 @@
         "../../packages/fs/src"
       ],
       "@distri/home": [
-        "../../../distri-home/src"
+        "../../packages/home/src"
       ]
     },
     "target": "ES2020",

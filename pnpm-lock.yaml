@@ -44,85 +44,6 @@ importers:
         specifier: ^4.1.1
         version: 4.1.1(@types/node@20.19.2)(jsdom@29.0.1)(vite@8.0.7(@types/node@20.19.2)(jiti@2.5.0)(yaml@2.8.0))
 
-  ../distri-home:
-    dependencies:
-      '@distri/core':
-        specifier: workspace:*
-        version: link:../distrijs/packages/core
-      '@distri/react':
-        specifier: workspace:*
-        version: link:../distrijs/packages/react
-      '@monaco-editor/react':
-        specifier: ^4.6.0
-        version: 4.7.0(monaco-editor@0.54.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@radix-ui/react-select':
-        specifier: ^2.2.6
-        version: 2.2.6(@types/react-dom@19.2.2(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      class-variance-authority:
-        specifier: ^0.7.1
-        version: 0.7.1
-      clsx:
-        specifier: ^2.0.0
-        version: 2.1.1
-      codemirror:
-        specifier: ^5.65.16
-        version: 5.65.21
-      lucide-react:
-        specifier: ^0.460.0
-        version: 0.460.0(react@19.1.1)
-      react:
-        specifier: '>=18.0.0'
-        version: 19.1.1
-      react-dom:
-        specifier: '>=18.0.0'
-        version: 19.1.1(react@19.1.1)
-      tailwind-merge:
-        specifier: ^2.0.0
-        version: 2.6.0
-    devDependencies:
-      '@types/codemirror':
-        specifier: ^5.60.15
-        version: 5.60.17
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.2
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.7
-      '@types/react-dom':
-        specifier: ^19.0.0
-        version: 19.2.2(@types/react@19.2.7)
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^6.21.0
-        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
-      '@typescript-eslint/parser':
-        specifier: ^6.21.0
-        version: 6.21.0(eslint@8.57.1)(typescript@5.9.3)
-      autoprefixer:
-        specifier: ^10.4.16
-        version: 10.4.21(postcss@8.5.8)
-      eslint:
-        specifier: ^8.57.0
-        version: 8.57.1
-      eslint-plugin-react:
-        specifier: ^7.33.2
-        version: 7.37.5(eslint@8.57.1)
-      eslint-plugin-react-hooks:
-        specifier: ^4.6.0
-        version: 4.6.2(eslint@8.57.1)
-      postcss:
-        specifier: ^8.4.35
-        version: 8.5.8
-      tailwindcss:
-        specifier: ^3.4.0
-        version: 3.4.17
-      tsup:
-        specifier: ^8.0.0
-        version: 8.5.0(jiti@2.5.0)(postcss@8.5.8)(typescript@5.9.3)(yaml@2.8.0)
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
-
   apps/ui:
     dependencies:
       '@distri/core':
@@ -133,7 +54,7 @@ importers:
         version: link:../../packages/fs
       '@distri/home':
         specifier: workspace:*
-        version: link:../../../distri-home
+        version: link:../../packages/home
       '@distri/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -343,6 +264,85 @@ importers:
       tsup:
         specifier: ^8.0.0
         version: 8.5.0(jiti@2.5.0)(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.0)
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+  packages/home:
+    dependencies:
+      '@distri/core':
+        specifier: workspace:*
+        version: link:../core
+      '@distri/react':
+        specifier: workspace:*
+        version: link:../react
+      '@monaco-editor/react':
+        specifier: ^4.6.0
+        version: 4.7.0(monaco-editor@0.54.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@radix-ui/react-select':
+        specifier: ^2.2.6
+        version: 2.2.6(@types/react-dom@19.2.2(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.0.0
+        version: 2.1.1
+      codemirror:
+        specifier: ^5.65.16
+        version: 5.65.21
+      lucide-react:
+        specifier: ^0.460.0
+        version: 0.460.0(react@19.1.1)
+      react:
+        specifier: '>=18.0.0'
+        version: 19.1.1
+      react-dom:
+        specifier: '>=18.0.0'
+        version: 19.1.1(react@19.1.1)
+      tailwind-merge:
+        specifier: ^2.0.0
+        version: 2.6.0
+    devDependencies:
+      '@types/codemirror':
+        specifier: ^5.60.15
+        version: 5.60.17
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.2
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.2(@types/react@19.2.7)
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.21.0
+        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^6.21.0
+        version: 6.21.0(eslint@8.57.1)(typescript@5.9.3)
+      autoprefixer:
+        specifier: ^10.4.16
+        version: 10.4.21(postcss@8.5.8)
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.1
+      eslint-plugin-react:
+        specifier: ^7.33.2
+        version: 7.37.5(eslint@8.57.1)
+      eslint-plugin-react-hooks:
+        specifier: ^4.6.0
+        version: 4.6.2(eslint@8.57.1)
+      postcss:
+        specifier: ^8.4.35
+        version: 8.5.8
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.17
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.0(jiti@2.5.0)(postcss@8.5.8)(typescript@5.9.3)(yaml@2.8.0)
       typescript:
         specifier: ^5.0.0
         version: 5.9.3

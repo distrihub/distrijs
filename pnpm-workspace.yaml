@@ -1,6 +1,5 @@
 packages:
   - 'packages/*'
   - 'apps/*'
-  - '../distri-home'
   - 'samples/components'
 
