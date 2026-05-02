@@ -99,3 +99,10 @@ export { NewAgentPage } from './pages/NewAgentPage';
 export { ChatPage } from './pages/ChatPage';
 export { ThreadDetailPage } from './pages/ThreadDetailPage';
 export { CopilotPage } from './pages/CopilotPage';
+
+// Tier-3 pages (Task 12)
+export { TracesPage } from './pages/TracesPage';
+export { UsagePage } from './pages/UsagePage';
+export { ConnectionsPage } from './pages/ConnectionsPage';
+export { NewConnectionPage } from './pages/NewConnectionPage';
+export { OAuthCallbackPage } from './pages/OAuthCallbackPage';
