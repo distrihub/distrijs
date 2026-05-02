@@ -349,6 +349,9 @@ importers:
 
   packages/home:
     dependencies:
+      '@distri/components':
+        specifier: workspace:*
+        version: link:../../samples/components
       '@distri/core':
         specifier: workspace:*
         version: link:../core
@@ -425,6 +428,9 @@ importers:
       postcss:
         specifier: ^8.4.35
         version: 8.5.8
+      react-router-dom:
+        specifier: ^7.8.2
+        version: 7.14.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.17

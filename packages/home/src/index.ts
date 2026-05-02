@@ -86,3 +86,9 @@ export { TemplateBrowser } from './blocks/TemplateBrowser';
 export type { TemplateBrowserSlots, TemplateBrowserProps } from './blocks/TemplateBrowser';
 export { SettingsSection } from './blocks/SettingsSection';
 export type { SettingsSectionProps } from './blocks/SettingsSection';
+
+// Tier-2 blocks — layout shell (Task 10)
+export { DashboardLayout } from './blocks/DashboardLayout';
+export type { DashboardLayoutProps } from './blocks/DashboardLayout';
+export { DistriSidebar } from './blocks/DistriSidebar';
+export type { DistriSidebarProps } from './blocks/DistriSidebar';
