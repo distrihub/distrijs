@@ -772,6 +772,13 @@ export interface DistriThread {
   input_tokens?: number;
   output_tokens?: number;
   total_tokens?: number;
+  /**
+   * ID of a task currently running in this thread, if any. Populated
+   * by the server on single-thread GET from non-terminal tasks. When
+   * present, the client should call `agent.resubscribeStream(taskId)`
+   * to reattach to the in-flight task's event stream.
+   */
+  active_task_id?: string;
 }
 
 export interface Thread {
@@ -789,6 +796,13 @@ export interface Thread {
   input_tokens?: number;
   output_tokens?: number;
   total_tokens?: number;
+  /**
+   * ID of a task currently running in this thread, if any. Populated
+   * by the server on single-thread GET from non-terminal tasks in the
+   * task store. Clients use this to decide whether to call
+   * `resubscribeTask` when reopening a conversation.
+   */
+  active_task_id?: string;
 }
 
 /**
