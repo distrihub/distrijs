@@ -16,6 +16,9 @@
       ],
       "@distri/home": [
         "../../packages/home/src"
+      ],
+      "@distri/components": [
+        "../../packages/components/src"
       ]
     },
     "target": "ES2020",
