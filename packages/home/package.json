@@ -55,6 +55,7 @@
     "vitest": "^4.1.1"
   },
   "peerDependencies": {
+    "@distri/components": "workspace:*",
     "@distri/core": "workspace:*",
     "@distri/react": "workspace:*",
     "@radix-ui/react-select": "^2.2.6",

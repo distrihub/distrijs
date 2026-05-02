@@ -7,7 +7,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['react', 'react-dom', '@distri/core', '@distri/react'],
+  external: ['react', 'react-dom', '@distri/core', '@distri/react', '@distri/components'],
   esbuildOptions(options) {
     options.banner = {
       js: '"use client";',

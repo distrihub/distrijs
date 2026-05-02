@@ -23,6 +23,9 @@
     "declarationMap": true,
     "baseUrl": ".",
     "paths": {
+      "@distri/components": [
+        "../components/src/index.ts"
+      ],
       "@distri/core": [
         "../core/src/index.ts"
       ],

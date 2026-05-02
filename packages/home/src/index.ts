@@ -56,3 +56,15 @@ export type { SecretsViewProps } from './components/SecretsView';
 export type { SessionsViewProps } from './components/SessionsView';
 export type { CodePanelProps, CodeLanguage } from './components/CodePanel';
 export type { WorkflowEntryPointSelectorProps } from './components/WorkflowEntryPointSelector';
+
+// Tier-2 blocks
+export { AgentList } from './blocks/AgentList';
+export type { AgentListSlots, AgentListProps } from './blocks/AgentList';
+export { AgentEditor } from './blocks/AgentEditor';
+export type { AgentEditorProps } from './blocks/AgentEditor';
+export { ThreadList } from './blocks/ThreadList';
+export type { ThreadListSlots, ThreadListProps } from './blocks/ThreadList';
+export { ThreadView } from './blocks/ThreadView';
+export type { ThreadViewProps } from './blocks/ThreadView';
+export { SessionList } from './blocks/SessionList';
+export type { SessionListProps } from './blocks/SessionList';
