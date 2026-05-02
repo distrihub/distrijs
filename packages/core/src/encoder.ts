@@ -336,15 +336,27 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
   switch (a2aPart.kind) {
     case 'text':
       return { part_type: 'text', data: a2aPart.text };
-    case 'file':
+    case 'file': {
+      const mime = a2aPart.file.mimeType ?? 'application/octet-stream';
+      const partType: 'image' | 'file' = mime.startsWith('image/') ? 'image' : 'file';
       if ('uri' in a2aPart.file) {
-        const fileUrl: FileUrl = { type: 'url', mime_type: a2aPart.file.mimeType || 'application/octet-stream', url: a2aPart.file.uri || '' };
-        return { part_type: 'image', data: fileUrl };
+        const fileUrl: FileUrl = {
+          type: 'url',
+          mime_type: mime,
+          url: a2aPart.file.uri,
+          name: a2aPart.file.name,
+        };
+        return { part_type: partType, data: fileUrl } as DistriPart;
+      } else {
+        const fileBytes: FileBytes = {
+          type: 'bytes',
+          mime_type: mime,
+          bytes: a2aPart.file.bytes ?? '',
+          name: a2aPart.file.name,
+        };
+        return { part_type: partType, data: fileBytes } as DistriPart;
       }
-      else {
-        const fileBytes: FileBytes = { type: 'bytes', mime_type: a2aPart.file.mimeType || 'application/octet-stream', bytes: a2aPart.file.bytes || '' };
-        return { part_type: 'image', data: fileBytes };
-      }
+    }
     case 'data':
       switch (a2aPart.data.part_type) {
         case 'tool_call':
@@ -406,6 +418,7 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       result = { kind: 'text', text: distriPart.data };
       break;
     case 'image':
+    case 'file':
       if ('url' in distriPart.data) {
         const fileUri: FileWithUri = { mimeType: distriPart.data.mime_type, uri: distriPart.data.url };
         result = { kind: 'file', file: fileUri };
