@@ -171,6 +171,46 @@ importers:
         specifier: ^4.5.14
         version: 4.5.14(@types/node@20.19.2)(lightningcss@1.32.0)
 
+  packages/components:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^0.460.0
+        version: 0.460.0(react@19.1.1)
+      react:
+        specifier: '>=18.0.0'
+        version: 19.1.1
+      react-dom:
+        specifier: '>=18.0.0'
+        version: 19.1.1(react@19.1.1)
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.2(@types/react@19.2.7)
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.17
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.17)
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.0(jiti@2.5.0)(postcss@8.5.8)(typescript@5.9.3)(yaml@2.8.0)
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
   packages/core:
     devDependencies:
       '@types/node':
