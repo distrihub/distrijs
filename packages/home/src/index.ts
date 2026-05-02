@@ -97,6 +97,7 @@ export type { DistriSidebarProps } from './blocks/DistriSidebar';
 export { AgentsPage } from './pages/AgentsPage';
 export { NewAgentPage } from './pages/NewAgentPage';
 export { ChatPage } from './pages/ChatPage';
+export { ThreadsPage } from './pages/ThreadsPage';
 export { ThreadDetailPage } from './pages/ThreadDetailPage';
 export { CopilotPage } from './pages/CopilotPage';
 
@@ -112,3 +113,7 @@ export { SettingsPage } from './pages/SettingsPage';
 export type { SettingsPageProps } from './pages/SettingsPage';
 export { SetupPage } from './pages/SetupPage';
 export { CliLoginPage } from './pages/CliLoginPage';
+
+// Route factory (Task 14)
+export { homeRoutes } from './routes/homeRoutes';
+export type { HomeRoutePath, HomeRoutesOverrides, HomeRoutesOptions } from './routes/homeRoutes';
