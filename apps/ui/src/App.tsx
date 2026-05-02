@@ -17,7 +17,7 @@ import { AccountProvider } from './components/AccountProvider';
 import FilesPage from './routes/home/FilesPage';
 import AgentsPage from './routes/home/AgentsPage';
 import NewAgentPage from './routes/home/NewAgentPage';
-import { Toaster } from './components/ui/sonner';
+import { Toaster } from '@distri/components';
 import ChatPage from './routes/home/ChatPage';
 
 // Wrapper components to pass props from router to @distri/home components

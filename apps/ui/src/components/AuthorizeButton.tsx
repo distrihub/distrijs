@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@distri/components'
 import { BACKEND_URL } from '@/constants'
 
 export default function AuthorizeButton() {

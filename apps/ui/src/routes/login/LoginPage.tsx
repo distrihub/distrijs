@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button, Input } from '@distri/components'
 import { useSession } from '@/components/SessionProvider'
 import { DISTRI_CLOUD_URL } from '@/constants'
 import { LogIn, Mail } from 'lucide-react'

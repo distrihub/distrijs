@@ -14,6 +14,7 @@
     "build:extension": "vite build --config vite.extension.config.ts"
   },
   "dependencies": {
+    "@distri/components": "workspace:*",
     "@distri/react": "workspace:*",
     "@distri/core": "workspace:*",
     "@distri/fs": "workspace:*",

@@ -13,7 +13,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@distri/components'
 
 const MODEL_STORAGE_KEY = 'distri-selected-model'
 

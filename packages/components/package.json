@@ -12,11 +12,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./tailwind.preset": "./tailwind.preset.js"
+    "./tailwind.preset": "./tailwind.preset.cjs"
   },
   "files": [
     "dist",
-    "tailwind.preset.js"
+    "tailwind.preset.cjs"
   ],
   "scripts": {
     "build": "tsup",

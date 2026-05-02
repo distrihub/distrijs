@@ -3,16 +3,19 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Editor from '@monaco-editor/react'
 import { Chat, useAgent, useTheme } from '@distri/react'
 import { FileText, Loader2, MessageCircle, X, Globe, Wrench, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { BACKEND_URL } from '@/constants'
-import { useInitialization } from '@/components/TokenProvider'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from '@distri/components'
+import { BACKEND_URL } from '@/constants'
+import { useInitialization } from '@/components/TokenProvider'
 import {
   Sidebar,
   SidebarContent,

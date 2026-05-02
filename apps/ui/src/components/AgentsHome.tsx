@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardContent,
+  Button,
+  Skeleton,
+  Badge,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@distri/components'
 import { ArrowRight, Bot, Workflow } from 'lucide-react'
 import { useAgentDefinitions, ChatInput, useAgent, Chat } from '@distri/react'
 import { AgentDefinition, DistriPart } from '@distri/core'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { v4 as uuidv4 } from 'uuid'
 
 type PackageFilterState =
