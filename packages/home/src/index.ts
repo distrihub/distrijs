@@ -106,3 +106,9 @@ export { UsagePage } from './pages/UsagePage';
 export { ConnectionsPage } from './pages/ConnectionsPage';
 export { NewConnectionPage } from './pages/NewConnectionPage';
 export { OAuthCallbackPage } from './pages/OAuthCallbackPage';
+
+// Tier-3 pages (Task 13)
+export { SettingsPage } from './pages/SettingsPage';
+export type { SettingsPageProps } from './pages/SettingsPage';
+export { SetupPage } from './pages/SetupPage';
+export { CliLoginPage } from './pages/CliLoginPage';
