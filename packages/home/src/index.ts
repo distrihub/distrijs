@@ -92,3 +92,10 @@ export { DashboardLayout } from './blocks/DashboardLayout';
 export type { DashboardLayoutProps } from './blocks/DashboardLayout';
 export { DistriSidebar } from './blocks/DistriSidebar';
 export type { DistriSidebarProps } from './blocks/DistriSidebar';
+
+// Tier-3 pages (Task 11)
+export { AgentsPage } from './pages/AgentsPage';
+export { NewAgentPage } from './pages/NewAgentPage';
+export { ChatPage } from './pages/ChatPage';
+export { ThreadDetailPage } from './pages/ThreadDetailPage';
+export { CopilotPage } from './pages/CopilotPage';
