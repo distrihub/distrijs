@@ -51,7 +51,7 @@ export { WorkflowEntryPointSelector } from './components/WorkflowEntryPointSelec
 export type { HomeProps } from './components/Home';
 export type { AgentDetailsProps } from './components/AgentDetails';
 export type { ThreadsViewProps } from './components/ThreadsView';
-export type { SettingsViewProps, SettingsSection } from './components/SettingsView';
+export type { SettingsViewProps, SettingsSection as SettingsSectionConfig } from './components/SettingsView';
 export type { SecretsViewProps } from './components/SecretsView';
 export type { SessionsViewProps } from './components/SessionsView';
 export type { CodePanelProps, CodeLanguage } from './components/CodePanel';
@@ -68,3 +68,21 @@ export { ThreadView } from './blocks/ThreadView';
 export type { ThreadViewProps } from './blocks/ThreadView';
 export { SessionList } from './blocks/SessionList';
 export type { SessionListProps } from './blocks/SessionList';
+
+// Tier-2 blocks — traces/usage/connections/skills/settings (Task 9)
+export { TraceTimeline } from './blocks/TraceTimeline';
+export type { TraceTimelineSlots, TraceTimelineProps, TraceSpan, TraceSpanAttribute, TraceSummary } from './blocks/TraceTimeline';
+export { TraceDetail } from './blocks/TraceDetail';
+export type { TraceDetailProps } from './blocks/TraceDetail';
+export { UsageWidget } from './blocks/UsageWidget';
+export type { UsageWidgetSlots, UsageWidgetProps, UsageData } from './blocks/UsageWidget';
+export { ConnectionList } from './blocks/ConnectionList';
+export type { ConnectionListSlots, ConnectionListProps, Connection, AuthScope, AuthType } from './blocks/ConnectionList';
+export { ConnectionEditor } from './blocks/ConnectionEditor';
+export type { ConnectionEditorProps, ConnectionEditorMode, OAuthProviderInfo } from './blocks/ConnectionEditor';
+export { SkillBrowser } from './blocks/SkillBrowser';
+export type { SkillBrowserSlots, SkillBrowserProps, SkillScope } from './blocks/SkillBrowser';
+export { TemplateBrowser } from './blocks/TemplateBrowser';
+export type { TemplateBrowserSlots, TemplateBrowserProps } from './blocks/TemplateBrowser';
+export { SettingsSection } from './blocks/SettingsSection';
+export type { SettingsSectionProps } from './blocks/SettingsSection';
