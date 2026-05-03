@@ -8,6 +8,7 @@ export { TracesPage } from './TracesPage';
 export { UsagePage } from './UsagePage';
 export { ConnectionsPage } from './ConnectionsPage';
 export { NewConnectionPage } from './NewConnectionPage';
+export { EditConnectionPage } from './EditConnectionPage';
 export { OAuthCallbackPage } from './OAuthCallbackPage';
 export { SettingsPage } from './SettingsPage';
 export type { SettingsPageProps } from './SettingsPage';

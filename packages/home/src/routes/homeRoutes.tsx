@@ -11,6 +11,7 @@ import {
   UsagePage,
   ConnectionsPage,
   NewConnectionPage,
+  EditConnectionPage,
   OAuthCallbackPage,
   SettingsPage,
   SetupPage,
@@ -30,6 +31,7 @@ export type HomeRoutePath =
   | '/usage'
   | '/connections'
   | '/connections/new'
+  | '/connections/:connectionId/edit'
   | '/oauth/callback'
   | '/settings'
   | '/setup'
@@ -50,6 +52,7 @@ const DEFAULTS: Record<HomeRoutePath, ReactElement> = {
   '/usage': <UsagePage />,
   '/connections': <ConnectionsPage />,
   '/connections/new': <NewConnectionPage />,
+  '/connections/:connectionId/edit': <EditConnectionPage />,
   '/oauth/callback': <OAuthCallbackPage />,
   '/settings': <SettingsPage />,
   '/setup': <SetupPage />,
