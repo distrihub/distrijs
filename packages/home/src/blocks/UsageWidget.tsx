@@ -121,11 +121,20 @@ export function UsageWidget({ slots, onNavigateToUsage, className }: UsageWidget
     setLoading(true);
     setError(null);
     try {
-      // TODO: add DistriHomeClient.getUsage() — for now call raw endpoint
-      const data = await (homeClient as any).client?.fetch('/usage').then((r: Response) =>
-        r.json(),
-      );
-      setUsage(data ?? null);
+      const stats = await homeClient.getUsage();
+      // Map UsageStatsResponse → UsageData (what this widget expects)
+      setUsage({
+        current: {
+          day_tokens: stats.totals.input_tokens + stats.totals.output_tokens,
+          month_tokens: undefined,
+          tier: undefined,
+        },
+        token_limits: {
+          daily_tokens: null,
+          weekly_tokens: null,
+          monthly_tokens: null,
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {

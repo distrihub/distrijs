@@ -136,11 +136,16 @@ export function ConnectionList({ slots, onAdd, onEdit, onDelete, className }: Co
     setLoading(true);
     setError(null);
     try {
-      // TODO: add DistriHomeClient.listConnections() — for now call raw endpoint
-      const data = await (homeClient as any).client
-        ?.fetch('/connections')
-        .then((r: Response) => r.json());
-      setConnections(data ?? []);
+      const data = await homeClient.listConnections();
+      setConnections(
+        data.map((r) => ({
+          id: r.id,
+          name: r.name,
+          auth_scope: r.auth_scope as AuthScope,
+          auth_type: r.auth_type as AuthType,
+          created_at: r.created_at,
+        })),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load connections');
     } finally {
@@ -153,9 +158,10 @@ export function ConnectionList({ slots, onAdd, onEdit, onDelete, className }: Co
   }, [load]);
 
   const handleDelete = async (id: string) => {
+    if (!homeClient) return;
     if (!window.confirm('Delete this connection?')) return;
     try {
-      await (homeClient as any)?.client?.fetch(`/connections/${id}`, { method: 'DELETE' });
+      await homeClient.deleteConnection(id);
       setConnections((prev) => prev.filter((c) => c.id !== id));
       onDelete?.(id);
     } catch (err) {

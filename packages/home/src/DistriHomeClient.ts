@@ -855,6 +855,229 @@ export class DistriHomeClient {
     });
     if (!response.ok) throw new Error(`Failed: ${response.statusText}`);
   }
+
+  // ---- Profile ----
+
+  /**
+   * Get the current user's profile.
+   * Returns null when the server doesn't support this endpoint (OSS single-tenant).
+   * Corresponds to GET /v1/profile → Profile
+   */
+  async getProfile(): Promise<Profile | null> {
+    const response = await this.client.fetch('/profile');
+    if (response.status === 404 || response.status === 501) return null;
+    if (!response.ok) throw new Error(`Failed to fetch profile: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
+   * Update the current user's profile.
+   * Corresponds to PUT/PATCH /v1/profile → Profile
+   */
+  async updateProfile(updates: ProfileUpdate): Promise<Profile> {
+    const response = await this.client.fetch('/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) throw new Error(`Failed to update profile: ${response.statusText}`);
+    return await response.json();
+  }
+
+  // ---- Traces ----
+
+  /**
+   * List recent traces.
+   * Corresponds to GET /v1/traces (TracesResponse { traces: TraceRecord[] })
+   * TraceRecord is camelCase-serialised on the wire (serde rename_all = "camelCase").
+   */
+  async getTraces(query?: TracesQuery): Promise<TracesResponse> {
+    const params = new URLSearchParams();
+    if (query?.thread_id) params.set('thread_id', query.thread_id);
+    if (query?.trace_id) params.set('trace_id', query.trace_id);
+    if (query?.limit !== undefined) params.set('limit', query.limit.toString());
+    const qs = params.toString();
+    const url = qs ? `/traces?${qs}` : '/traces';
+    const response = await this.client.fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch traces: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+  // ---- Connections ----
+
+  /**
+   * List all connections in the workspace.
+   * Corresponds to GET /v1/connections → Connection[]
+   */
+  async listConnections(): Promise<ConnectionRecord[]> {
+    const response = await this.client.fetch('/connections');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch connections: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+  /**
+   * Get a single connection by ID.
+   * Corresponds to GET /v1/connections/:id → Connection
+   */
+  async getConnection(id: string): Promise<ConnectionRecord> {
+    const response = await this.client.fetch(`/connections/${encodeURIComponent(id)}`);
+    if (response.ok) return await response.json();
+    if (response.status === 404) throw new Error('Connection not found');
+    throw new Error(`Failed to fetch connection: ${response.statusText}`);
+  }
+
+  /**
+   * Delete a connection by ID.
+   * Corresponds to DELETE /v1/connections/:id
+   */
+  async deleteConnection(id: string): Promise<void> {
+    const response = await this.client.fetch(`/connections/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete connection: ${response.statusText}`);
+    }
+  }
+
+  // ---- Usage Stats ----
+
+  /**
+   * Get aggregated usage statistics.
+   * Corresponds to GET /v1/usage/stats → UsageStatsResponse
+   */
+  async getUsage(query?: UsageQuery): Promise<UsageStatsResponse> {
+    const params = new URLSearchParams();
+    if (query?.since) params.set('since', query.since);
+    if (query?.until) params.set('until', query.until);
+    if (query?.bucket) params.set('bucket', query.bucket);
+    if (query?.thread_id) params.set('thread_id', query.thread_id);
+    if (query?.agent_id) params.set('agent_id', query.agent_id);
+    const qs = params.toString();
+    const url = qs ? `/usage/stats?${qs}` : '/usage/stats';
+    const response = await this.client.fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch usage stats: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+}
+
+// ---- Profile types ----
+
+export interface Profile {
+  id: string;
+  email: string;
+  name?: string | null;
+  user_name: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProfileUpdate {
+  name?: string;
+  user_name?: string;
+}
+
+// ---- Traces types ----
+
+export interface TracesQuery {
+  thread_id?: string;
+  trace_id?: string;
+  limit?: number;
+}
+
+/** Wire shape from GET /v1/traces — TraceRecord is camelCase on the wire. */
+export interface TraceRecord {
+  traceId: string;
+  name: string;
+  startTimeNs: number;
+  endTimeNs: number;
+  spanCount: number;
+  threadId: string | null;
+  inputTokens: number;
+  totalCost: number;
+  stepCount: number;
+  models: string[];
+  inputPreview?: string | null;
+}
+
+export interface TracesResponse {
+  traces: TraceRecord[];
+}
+
+// ---- Connections types ----
+
+export type ConnectionAuthScope = 'workspace' | 'user' | 'public';
+
+export type ConnectionAuthType =
+  | { type: 'custom'; fields: Array<{ key: string; label: string | null; is_secret: boolean; required: boolean }> }
+  | { type: 'oauth'; provider: string; scopes: string[] }
+  | { type: 'distri_native' };
+
+/** Wire shape from GET /v1/connections */
+export interface ConnectionRecord {
+  id: string;
+  workspace_id: string;
+  skill_id: string;
+  name: string;
+  status: string;
+  config: Record<string, unknown>;
+  connected_by: string | null;
+  created_at: string;
+  updated_at: string;
+  auth_scope: ConnectionAuthScope;
+  auth_type: ConnectionAuthType;
+  is_system?: boolean;
+}
+
+// ---- Usage types ----
+
+export interface UsageQuery {
+  since?: string;
+  until?: string;
+  bucket?: 'day' | 'week' | 'month' | 'none';
+  thread_id?: string;
+  agent_id?: string;
+}
+
+export interface UsageTotals {
+  messages: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface UsageBucket {
+  ts: string | null;
+  messages: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface UsageAppliedFilters {
+  user_id?: string | null;
+  bot_id?: string | null;
+  channel_id?: string | null;
+  thread_id?: string | null;
+  agent_id?: string | null;
+  since: string;
+  until: string;
+  bucket: string;
+}
+
+export interface UsageStatsResponse {
+  totals: UsageTotals;
+  buckets: UsageBucket[];
+  filters_applied: UsageAppliedFilters;
 }
 
 // Types for secrets and prompt templates

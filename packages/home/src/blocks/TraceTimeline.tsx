@@ -190,13 +190,26 @@ export function TraceTimeline({ threadId, slots, onSelectSpan, className }: Trac
     setLoading(true);
     setError(null);
 
-    // TODO: DistriHomeClient.getTraces() — add this method to list traces
-    // For now call the raw endpoint via the underlying client fetch
-    (homeClient as any)
-      .client?.fetch(`/traces${threadId ? `?thread_id=${encodeURIComponent(threadId)}` : ''}`)
-      .then((res: Response) => res.json())
-      .then((data: { traces: TraceSummary[] }) => {
-        if (!cancelled) setTraces(data.traces ?? []);
+    homeClient
+      .getTraces(threadId ? { thread_id: threadId } : undefined)
+      .then((data) => {
+        if (!cancelled) {
+          // Map TraceRecord (camelCase wire) to TraceSummary (camelCase UI shape)
+          setTraces(
+            data.traces.map((r) => ({
+              traceId: r.traceId,
+              name: r.name,
+              startTimeNs: r.startTimeNs,
+              endTimeNs: r.endTimeNs,
+              spanCount: r.spanCount,
+              threadId: r.threadId,
+              inputTokens: r.inputTokens,
+              totalCost: r.totalCost,
+              stepCount: r.stepCount,
+              models: r.models,
+            })),
+          );
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load traces');
