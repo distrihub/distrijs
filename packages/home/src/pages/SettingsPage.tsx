@@ -3,6 +3,10 @@ import { SettingsSection } from '../blocks/SettingsSection';
 import { SkillBrowser } from '../blocks/SkillBrowser';
 import { TemplateBrowser } from '../blocks/TemplateBrowser';
 import { ConnectionList } from '../blocks/ConnectionList';
+import { SecretsManager } from '../blocks/SecretsManager';
+import { ProvidersManager } from '../blocks/ProvidersManager';
+import { ProfileEditor } from '../blocks/ProfileEditor';
+import { AppearancePicker } from '../blocks/AppearancePicker';
 import { useNavigate } from 'react-router-dom';
 import { useDistriHome } from '../provider/context';
 import type { Connection } from '../blocks/ConnectionList';
@@ -76,22 +80,18 @@ export function SettingsPage({ extraSections, hide }: SettingsPageProps = {}) {
         {!hide?.secrets && (
           <SettingsSection
             name="Secrets"
-            description="Workspace and user-scoped secret values used by skills and agents."
+            description="Workspace secret values used by skills and agents."
           >
-            <div className="text-sm text-muted-foreground">
-              TODO: implement Secrets block (follow-up task)
-            </div>
+            <SecretsManager />
           </SettingsSection>
         )}
 
         {!hide?.providers && (
           <SettingsSection
-            name="Providers &amp; Models"
+            name="Providers & Models"
             description="Configure AI model providers and custom endpoints."
           >
-            <div className="text-sm text-muted-foreground">
-              TODO: implement Providers block (follow-up task)
-            </div>
+            <ProvidersManager />
           </SettingsSection>
         )}
 
@@ -100,9 +100,7 @@ export function SettingsPage({ extraSections, hide }: SettingsPageProps = {}) {
             name="Profile"
             description="Your display name and personal preferences."
           >
-            <div className="text-sm text-muted-foreground">
-              TODO: implement Profile block (follow-up task)
-            </div>
+            <ProfileEditor />
           </SettingsSection>
         )}
 
@@ -111,9 +109,7 @@ export function SettingsPage({ extraSections, hide }: SettingsPageProps = {}) {
             name="Appearance"
             description="Theme and display options."
           >
-            <div className="text-sm text-muted-foreground">
-              TODO: implement Appearance block (follow-up task)
-            </div>
+            <AppearancePicker />
           </SettingsSection>
         )}
 

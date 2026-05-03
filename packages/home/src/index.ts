@@ -1,6 +1,6 @@
 // Client exports
 export { DistriHomeClient } from './DistriHomeClient';
-export type { HomeStats, HomeStatsThread, RecentlyUsedAgent, AgentUsageInfo, ApiKey, DetailedThreadListParams, DetailedThread, DetailedThreadsResponse, UserChannelSummary, UserListItem, UserListResponse, UserListParams, UserDetail, SendUserTestMessageRequest, ChannelDetail, ChannelConversation, Secret, PromptTemplate, AgentValidationResult, ValidationWarning, ValidationWarningSeverity, SkillRecord, NewSkill, UpdateSkill, ConfiguredField, CustomProviderConfig, CustomModelEntry, SecretKeyDefinition, UpsertProviderRequest, UpsertProviderResponse, ModelProviderDefinition, Model, ModelWithProvider, ModelCapability, ModelPricing, ProviderKeyDefinition, ProviderTypeInfo, TtsVoiceInfo } from './DistriHomeClient';
+export type { HomeStats, HomeStatsThread, RecentlyUsedAgent, AgentUsageInfo, ApiKey, DetailedThreadListParams, DetailedThread, DetailedThreadsResponse, UserChannelSummary, UserListItem, UserListResponse, UserListParams, UserDetail, SendUserTestMessageRequest, ChannelDetail, ChannelConversation, Secret, PromptTemplate, AgentValidationResult, ValidationWarning, ValidationWarningSeverity, SkillRecord, NewSkill, UpdateSkill, ConfiguredField, CustomProviderConfig, CustomModelEntry, SecretKeyDefinition, UpsertProviderRequest, UpsertProviderResponse, ModelProviderDefinition, Model, ModelWithProvider, ModelCapability, ModelPricing, ProviderKeyDefinition, ProviderTypeInfo, TtsVoiceInfo, TracesQuery, TraceRecord, TracesResponse, ConnectionRecord, ConnectionAuthScope, ConnectionAuthType, UsageQuery, UsageStatsResponse, UsageTotals, UsageBucket, UsageAppliedFilters, Profile, ProfileUpdate } from './DistriHomeClient';
 
 // Feature/slot/routes context provider (Tier-2 blocks read from this)
 export { DistriHomeProvider } from './provider/DistriHomeProvider';
@@ -86,6 +86,14 @@ export { TemplateBrowser } from './blocks/TemplateBrowser';
 export type { TemplateBrowserSlots, TemplateBrowserProps } from './blocks/TemplateBrowser';
 export { SettingsSection } from './blocks/SettingsSection';
 export type { SettingsSectionProps } from './blocks/SettingsSection';
+export { SecretsManager } from './blocks/SecretsManager';
+export type { SecretsManagerProps } from './blocks/SecretsManager';
+export { ProvidersManager } from './blocks/ProvidersManager';
+export type { ProvidersManagerProps } from './blocks/ProvidersManager';
+export { ProfileEditor } from './blocks/ProfileEditor';
+export type { ProfileEditorProps } from './blocks/ProfileEditor';
+export { AppearancePicker } from './blocks/AppearancePicker';
+export type { AppearancePickerProps } from './blocks/AppearancePicker';
 
 // Tier-2 blocks — layout shell (Task 10)
 export { DashboardLayout } from './blocks/DashboardLayout';
@@ -106,6 +114,7 @@ export { TracesPage } from './pages/TracesPage';
 export { UsagePage } from './pages/UsagePage';
 export { ConnectionsPage } from './pages/ConnectionsPage';
 export { NewConnectionPage } from './pages/NewConnectionPage';
+export { EditConnectionPage } from './pages/EditConnectionPage';
 export { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 
 // Tier-3 pages (Task 13)
