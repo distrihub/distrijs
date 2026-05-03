@@ -80,8 +80,8 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
   void onNewAgent;
 
   return (
-    <div className={`flex-1 overflow-y-auto bg-background ${className ?? ''}`}>
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+    <div className={`flex-1 min-w-0 overflow-y-auto bg-background ${className ?? ''}`}>
+      <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-10">
         {/* Refresh + New Agent header buttons removed — Refresh now lives
             in the global top nav (AppLayout); creating a new agent is
             handled through the global Distri chat panel. */}
@@ -98,16 +98,16 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
           </div>
         ) : null}
 
-        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-6 shadow-sm">
           <div className="absolute right-4 top-4 text-primary/10">
-            <Gauge className="h-20 w-20" />
+            <Gauge className="h-16 w-16 sm:h-20 sm:w-20" />
           </div>
           <div className="relative z-10">
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Gauge className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
+              <Gauge className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
               Overview
             </div>
-            <div className="mt-6 grid gap-6 grid-cols-2 md:grid-cols-5">
+            <div className="mt-4 sm:mt-6 grid gap-3 sm:gap-6 grid-cols-2 md:grid-cols-5">
               <OverviewStat
                 label="Messages"
                 value={messageCountValue}
@@ -135,7 +135,7 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Most active</div>
                 <div className="mt-2">
                   {statsError ? (
-                    <span className="text-xl font-semibold text-foreground">—</span>
+                    <span className="text-lg sm:text-xl font-semibold text-foreground">—</span>
                   ) : mostActiveAgent?.id ? (
                     <button
                       type="button"
@@ -146,12 +146,12 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                           : `agents/${encodeURIComponent(mostActiveAgent.id)}`;
                         navigate(path);
                       }}
-                      className="text-xl font-semibold text-primary transition hover:text-primary/80"
+                      className="text-lg sm:text-xl font-semibold text-primary transition hover:text-primary/80"
                     >
                       {mostActiveLabel}
                     </button>
                   ) : (
-                    <span className="text-xl font-semibold text-foreground">{mostActiveLabel}</span>
+                    <span className="text-lg sm:text-xl font-semibold text-foreground">{mostActiveLabel}</span>
                   )}
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">
@@ -183,12 +183,12 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
 
 
         {/* Latest Threads and Recently Used Agents - aligned with top row */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="mt-4 sm:mt-6 grid gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-3">
           {/* Latest Threads - spans 2 columns to align with Overview */}
-          <div className="rounded-2xl border border-border/70 bg-card shadow-sm lg:col-span-2">
-            <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
-              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <MessageSquare className="h-4 w-4 text-primary" />
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card shadow-sm lg:col-span-2">
+            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 sm:px-6 sm:py-4">
+              <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
+                <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                 Latest threads
               </div>
               <button
@@ -227,22 +227,22 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                           navigate('threads');
                         }
                       }}
-                      className="group flex w-full items-center gap-4 px-6 py-3.5 text-left transition hover:bg-muted/40"
+                      className="group flex w-full items-center gap-2 sm:gap-4 px-4 sm:px-6 py-3 sm:py-3.5 text-left transition hover:bg-muted/40"
                     >
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${avatarStyle.bg} ${avatarStyle.text}`}
+                        className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full ${avatarStyle.bg} ${avatarStyle.text}`}
                       >
-                        <MessageSquare className="h-3.5 w-3.5" />
+                        <MessageSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
                           {thread.title || 'Untitled thread'}
                         </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
                           {thread.agent_name || 'Unknown agent'} · {formatRelativeTime(thread.updated_at)}
                         </p>
                       </div>
-                      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                      <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
                     </button>
                   );
                 })
@@ -251,10 +251,10 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
           </div>
 
           {/* Recently Active Agents */}
-          <div className="flex flex-col rounded-2xl border border-border/70 bg-card shadow-sm">
-            <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
-              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Clock className="h-4 w-4 text-primary" />
+          <div className="flex min-w-0 flex-col rounded-2xl border border-border/70 bg-card shadow-sm">
+            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 sm:px-6 sm:py-4">
+              <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                 Recently Active Agents
               </div>
               <button
@@ -289,12 +289,12 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                           : `agents/${encodeURIComponent(agent.id)}`;
                         navigate(path);
                       }}
-                      className="group flex w-full items-center gap-3 px-6 py-3.5 text-left transition hover:bg-muted/40"
+                      className="group flex w-full items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-3.5 text-left transition hover:bg-muted/40"
                     >
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${avatarStyle.bg} ${avatarStyle.text}`}
+                        className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full ${avatarStyle.bg} ${avatarStyle.text}`}
                       >
-                        <Bot className="h-3.5 w-3.5" />
+                        <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
@@ -407,7 +407,7 @@ function OverviewStat({
   return (
     <div className={className}>
       <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-foreground">{value}</div>
+      <div className="mt-2 text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">{value}</div>
       {helper ? <div className="mt-2 text-xs text-muted-foreground">{helper}</div> : null}
     </div>
   );
@@ -449,7 +449,7 @@ function CustomMetricStat({
       <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         {metric.label}
       </div>
-      <div className="mt-2 text-3xl font-semibold text-foreground">{displayValue}</div>
+      <div className="mt-2 text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">{displayValue}</div>
       {helperText ? <div className="mt-2 text-xs text-muted-foreground">{helperText}</div> : null}
     </div>
   );

@@ -28,11 +28,11 @@ export function AppShell({ children }: AppShellProps) {
         </SidebarContent>
       </Sidebar>
 
-      <SidebarInset className="flex flex-col min-h-0 bg-background text-foreground">
+      <SidebarInset className="flex flex-col min-h-0 min-w-0 overflow-x-hidden bg-background text-foreground">
         <header className="h-11 shrink-0 flex items-center gap-2 border-b border-border/70 bg-background/95 px-3">
           <SidebarTrigger className="md:hidden shrink-0" />
         </header>
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 min-w-0 overflow-auto">
           {children}
         </main>
       </SidebarInset>
