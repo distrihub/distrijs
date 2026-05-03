@@ -18,7 +18,7 @@
         "../../packages/home/src"
       ],
       "@distri/components": [
-        "../../packages/components/src"
+        "../../packages/components/src/index.ts"
       ]
     },
     "target": "ES2020",

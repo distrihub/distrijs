@@ -13,8 +13,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
-        // Disambiguate: point to packages/components, not samples/components
-        '@distri/components': path.resolve(__dirname, '../../packages/components/src'),
       },
     },
     server: {
