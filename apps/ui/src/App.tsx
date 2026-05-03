@@ -4,9 +4,9 @@ import { DistriProvider, ThemeProvider, useDistri } from '@distri/react';
 import {
   DistriHomeProvider,
   DistriHomeClient,
-  DashboardLayout,
   homeRoutes,
 } from '@distri/home';
+import { AppShell } from '@/components/AppShell';
 import { TokenProvider, useInitialization } from '@/components/TokenProvider';
 import { SessionProvider, useSession } from '@/components/SessionProvider';
 import { AccountProvider } from '@/components/AccountProvider';
@@ -134,9 +134,9 @@ const HomeShell = () => {
         },
       }}
     >
-      <DashboardLayout>
+      <AppShell>
         <Outlet />
-      </DashboardLayout>
+      </AppShell>
     </DistriHomeProvider>
   );
 };
