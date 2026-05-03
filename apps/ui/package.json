@@ -11,7 +11,8 @@
     "lint": "eslint src --ext js,jsx,ts,tsx",
     "dev:extension": "vite build --watch --mode development --config vite.extension.config.ts",
     "dev:tauri": "vite --config vite.tauri.config.ts",
-    "build:extension": "vite build --config vite.extension.config.ts"
+    "build:extension": "vite build --config vite.extension.config.ts",
+    "pack-dist": "node scripts/pack-dist.mjs"
   },
   "dependencies": {
     "@distri/components": "workspace:*",
