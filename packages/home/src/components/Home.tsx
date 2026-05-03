@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAgentDefinitions } from '@distri/react';
-import { useDistriHomeNavigate, useDistriHomeConfig } from '../DistriHomeProvider';
+import { useDistriHomeNavigate, useDistriHome } from '../provider/context';
 import { useHomeStats } from '../hooks/useHomeStats';
 import { HomeStatsThread, RecentlyUsedAgent, CustomMetric } from '../DistriHomeClient';
 import {
@@ -33,7 +33,7 @@ export interface HomeProps {
 
 export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
   const navigate = useDistriHomeNavigate();
-  const config = useDistriHomeConfig();
+  const config = useDistriHome();
   const { stats, loading: statsLoading, error: statsError } = useHomeStats();
   const { agents } = useAgentDefinitions();
   const [showPushHelp, setShowPushHelp] = useState(false);

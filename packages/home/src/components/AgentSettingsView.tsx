@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, Copy, Layers, Loader2, Mic, Plus, Settings, Star, Trash2, Volume2, Wrench, X } from 'lucide-react';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { Secret, CustomModelEntry, CustomProviderConfig, ModelProviderDefinition, Model, ModelCapability, ModelPricing, ProviderKeyDefinition, TtsVoiceInfo } from '../DistriHomeClient';
 import { VoicePreviewDialog } from './VoicePreviewDialog';
 

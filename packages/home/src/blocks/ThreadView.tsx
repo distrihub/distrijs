@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Chat, useAgent } from '@distri/react';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import { useDistriHome } from '../provider/context';
 import { Loader2 } from 'lucide-react';
 

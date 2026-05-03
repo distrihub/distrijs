@@ -1,7 +1,7 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAgentsByUsage } from '@distri/react';
 import { type DetailedThread, type DetailedThreadListParams } from '../DistriHomeClient';
-import { useDistriHomeClient, useDistriHomeNavigate } from '../DistriHomeProvider';
+import { useDistriHomeClient, useDistriHomeNavigate } from '../provider/context';
 import {
   Activity,
   AlertTriangle,

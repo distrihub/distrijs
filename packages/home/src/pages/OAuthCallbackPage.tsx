@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 /**
  * OAuthCallbackPage — handles OAuth provider redirects.

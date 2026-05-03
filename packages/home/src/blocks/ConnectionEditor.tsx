@@ -2,7 +2,7 @@ import React, { useEffect, useState, type ReactNode } from 'react';
 import { Plus, Trash2, ArrowLeft, Users, Lock, AlertCircle } from 'lucide-react';
 import { Button, Input } from '@distri/components';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { AuthScope, AuthType, Connection } from './ConnectionList';
 
 // ---------------------------------------------------------------------------

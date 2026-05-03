@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { Activity } from 'lucide-react';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 // ---------------------------------------------------------------------------
 // Types

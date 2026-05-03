@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Settings } from 'lucide-react';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { ProviderSecretDefinition } from '../DistriHomeClient';
 
 // Types

@@ -2,31 +2,18 @@
 export { DistriHomeClient } from './DistriHomeClient';
 export type { HomeStats, HomeStatsThread, RecentlyUsedAgent, AgentUsageInfo, ApiKey, DetailedThreadListParams, DetailedThread, DetailedThreadsResponse, UserChannelSummary, UserListItem, UserListResponse, UserListParams, UserDetail, SendUserTestMessageRequest, ChannelDetail, ChannelConversation, Secret, PromptTemplate, AgentValidationResult, ValidationWarning, ValidationWarningSeverity, SkillRecord, NewSkill, UpdateSkill, ConfiguredField, CustomProviderConfig, CustomModelEntry, SecretKeyDefinition, UpsertProviderRequest, UpsertProviderResponse, ModelProviderDefinition, Model, ModelWithProvider, ModelCapability, ModelPricing, ProviderKeyDefinition, ProviderTypeInfo, TtsVoiceInfo, TracesQuery, TraceRecord, TracesResponse, ConnectionRecord, ConnectionAuthScope, ConnectionAuthType, UsageQuery, UsageStatsResponse, UsageTotals, UsageBucket, UsageAppliedFilters, Profile, ProfileUpdate } from './DistriHomeClient';
 
-// Feature/slot/routes context provider (Tier-2 blocks read from this)
+// Single context provider — the ONLY provider. Pass homeClient + navigate via config.
 export { DistriHomeProvider } from './provider/DistriHomeProvider';
-export { useDistriHome, DistriHomeContext } from './provider/context';
+export { useDistriHome, useDistriHomeClient, useDistriHomeNavigate, DistriHomeContext } from './provider/context';
 export type {
   DistriHomeConfig,
   HomeFeatures,
   HomeSlots,
   HomeRoutesConfig,
   HomeAction,
-} from './provider/types';
-
-// Infrastructure provider (client, navigate, homeClient) — used by legacy components
-export {
-  DistriHomeProvider as DistriHomeInfraProvider,
-  useDistriHome as useDistriHomeInfra,
-  useDistriHomeConfig,
-  useDistriHomeNavigate,
-  useDistriHomeClient,
-} from './DistriHomeProvider';
-export type {
-  DistriHomeConfig as DistriHomeInfraConfig,
-  DistriHomeProviderProps,
-  NavigateFunction,
+  HomeNavigationPaths,
   HomeWidget,
-} from './DistriHomeProvider';
+} from './provider/types';
 
 // Hook exports
 export { useHomeStats } from './hooks/useHomeStats';

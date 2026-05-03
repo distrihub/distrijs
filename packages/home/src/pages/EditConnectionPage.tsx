@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ConnectionEditor } from '../blocks/ConnectionEditor';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { Connection } from '../blocks/ConnectionList';
 
 /**

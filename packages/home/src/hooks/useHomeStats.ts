@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useDistriHome } from '../DistriHomeProvider';
+import { useDistriHome } from '../provider/context';
 import { HomeStats } from '../DistriHomeClient';
 
 export interface UseHomeStatsResult {
@@ -10,7 +10,7 @@ export interface UseHomeStatsResult {
 }
 
 export function useHomeStats(): UseHomeStatsResult {
-  const { homeClient, isLoading: clientLoading, workspaceId } = useDistriHome();
+  const { homeClient } = useDistriHome();
   const [stats, setStats] = useState<HomeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,13 +33,9 @@ export function useHomeStats(): UseHomeStatsResult {
     }
   }, [homeClient]);
 
-  // Refetch when workspace changes
   useEffect(() => {
-    if (clientLoading) {
-      return;
-    }
     void load();
-  }, [load, clientLoading, workspaceId]);
+  }, [load]);
 
-  return { stats, loading: loading || clientLoading, error, refetch: load };
+  return { stats, loading, error, refetch: load };
 }

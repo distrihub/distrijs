@@ -1,5 +1,5 @@
 import { type KeyboardEvent, useCallback, useEffect, useState } from 'react';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import { useDistriHome } from '../provider/context';
 import type { SessionSummary } from '../DistriHomeClient';
 import { ArrowLeft, ArrowRight, Clock, Database, Loader2, Search, X } from 'lucide-react';

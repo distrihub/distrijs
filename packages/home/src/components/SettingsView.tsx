@@ -1,5 +1,5 @@
 import { ComponentType } from 'react';
-import { useDistriHomeNavigate } from '../DistriHomeProvider';
+import { useDistriHomeNavigate } from '../provider/context';
 import { SecretsView } from './SecretsView';
 import { AgentSettingsView } from './AgentSettingsView';
 import { Settings as SettingsIcon, LockIcon, LucideIcon } from 'lucide-react';

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Button, Input, Skeleton } from '@distri/components';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Check, User } from 'lucide-react';
 import { Button, Input } from '@distri/components';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { Profile } from '../DistriHomeClient';
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Chat, useAgent, useTheme, useDistri } from '@distri/react';
-import { useDistriHomeNavigate, useDistriHome, useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeNavigate, useDistriHome, useDistriHomeClient } from '../provider/context';
 import { useAgentValidation } from '../hooks/useAgentValidation';
 import Editor from '@monaco-editor/react';
 import {
@@ -77,7 +77,7 @@ export function AgentDetails({
   className,
 }: AgentDetailsProps) {
   const navigate = useDistriHomeNavigate();
-  const { config } = useDistriHome();
+  const config = useDistriHome();
   const homeClient = useDistriHomeClient();
   const { client } = useDistri();
   const { agent, loading: agentLoading, error: agentError } = useAgent({ agentIdOrDef: agentId || '' });

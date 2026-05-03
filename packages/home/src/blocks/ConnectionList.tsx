@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { Plus, Trash2, Lock, Users, Plug } from 'lucide-react';
 import { Button, Skeleton } from '@distri/components';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 // ---------------------------------------------------------------------------
 // Types

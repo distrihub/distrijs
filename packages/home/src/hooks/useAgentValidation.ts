@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useDistriHome } from '../DistriHomeProvider';
+import { useDistriHome } from '../provider/context';
 import { AgentValidationResult, ValidationWarning } from '../DistriHomeClient';
 
 export interface UseAgentValidationOptions {
@@ -19,7 +19,7 @@ export function useAgentValidation({
   agentId,
   enabled = true,
 }: UseAgentValidationOptions): UseAgentValidationResult {
-  const { homeClient, isLoading: clientLoading } = useDistriHome();
+  const { homeClient } = useDistriHome();
   const [validation, setValidation] = useState<AgentValidationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,16 +45,13 @@ export function useAgentValidation({
   }, [homeClient, agentId, enabled]);
 
   useEffect(() => {
-    if (clientLoading) {
-      return;
-    }
     void load();
-  }, [load, clientLoading]);
+  }, [load]);
 
   return {
     validation,
     warnings: validation?.warnings ?? [],
-    loading: loading || clientLoading,
+    loading,
     error,
     refetch: load,
   };

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Copy, FileText, Filter, Lock, Plus, Save, Search, Trash2, X } from 'lucide-react';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 // Types
 export interface PromptTemplate {

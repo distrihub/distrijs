@@ -25,11 +25,15 @@ const mockListDetailedThreads = vi.fn().mockResolvedValue({
 
 const mockHomeClient = { listDetailedThreads: mockListDetailedThreads };
 
-// Mock the legacy infra provider hooks used by ThreadList
-vi.mock('../../DistriHomeProvider', () => ({
-  useDistriHomeClient: () => mockHomeClient,
-  useDistriHomeNavigate: () => vi.fn(),
-}));
+// Mock the provider context hooks used by ThreadList
+vi.mock('../../provider/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../provider/context')>();
+  return {
+    ...actual,
+    useDistriHomeClient: () => mockHomeClient,
+    useDistriHomeNavigate: () => vi.fn(),
+  };
+});
 
 vi.mock('@distri/react', () => ({
   useAgentsByUsage: () => ({

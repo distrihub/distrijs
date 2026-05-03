@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { Activity, ChevronLeft, Layers, ListChecks } from 'lucide-react';
 import { Button, Skeleton } from '@distri/components';
 import { useDistriHome } from '../provider/context';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 // ---------------------------------------------------------------------------
 // Types (mirrors @evilmartians/agent-prism-types shapes we need)

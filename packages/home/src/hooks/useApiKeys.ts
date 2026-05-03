@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useDistriHome } from '../DistriHomeProvider';
+import { useDistriHome } from '../provider/context';
 import { ApiKey } from '../DistriHomeClient';
 
 export interface UseApiKeysResult {
@@ -12,7 +12,7 @@ export interface UseApiKeysResult {
 }
 
 export function useApiKeys(): UseApiKeysResult {
-  const { homeClient, config } = useDistriHome();
+  const { homeClient } = useDistriHome();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

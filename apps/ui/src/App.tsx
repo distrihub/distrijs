@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { DistriProvider, ThemeProvider, useDistri } from '@distri/react';
 import {
-  DistriHomeInfraProvider,
   DistriHomeProvider,
+  DistriHomeClient,
   DashboardLayout,
   homeRoutes,
 } from '@distri/home';
@@ -113,7 +113,7 @@ const ProtectedLayout = () => {
   );
 };
 
-/** Reads DistriClient from DistriProvider, wires legacy infra + new home context, renders layout */
+/** Reads DistriClient from DistriProvider, wires unified home context, renders layout */
 const HomeShell = () => {
   const { client } = useDistri();
   const navigate = useNavigate();
@@ -122,22 +122,22 @@ const HomeShell = () => {
     return <LoadingScreen message="Initializing..." />;
   }
 
+  const homeClient = new DistriHomeClient(client);
+
   return (
-    <DistriHomeInfraProvider
-      client={client}
+    <DistriHomeProvider
       config={{
+        homeClient,
+        navigate,
         navigationPaths: {
           agentDetails: (id: string) => `/agents/${encodeURIComponent(id)}`,
         },
       }}
-      onNavigate={navigate}
     >
-      <DistriHomeProvider config={{}}>
-        <DashboardLayout>
-          <Outlet />
-        </DashboardLayout>
-      </DistriHomeProvider>
-    </DistriHomeInfraProvider>
+      <DashboardLayout>
+        <Outlet />
+      </DashboardLayout>
+    </DistriHomeProvider>
   );
 };
 

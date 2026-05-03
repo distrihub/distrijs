@@ -1,5 +1,5 @@
 import { useState, useEffect, KeyboardEvent } from 'react';
-import { useDistriHome } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import { SessionSummary } from '../DistriHomeClient';
 import { Loader2, ArrowLeft, ArrowRight, Search, Clock, X, Database } from 'lucide-react';
 
@@ -24,7 +24,7 @@ function timeAgo(dateStr: string) {
 }
 
 export function SessionsView({ className }: SessionsViewProps) {
-  const { homeClient: client } = useDistriHome();
+  const client = useDistriHomeClient();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

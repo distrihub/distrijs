@@ -18,8 +18,8 @@ vi.mock('@distri/components', () => ({
 }));
 
 // Mock the DistriHomeProvider's useDistriHomeClient to return null (no real client)
-vi.mock('../../DistriHomeProvider', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../DistriHomeProvider')>();
+vi.mock('../../provider/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../provider/context')>();
   return {
     ...actual,
     useDistriHomeClient: () => null,

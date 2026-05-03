@@ -50,22 +50,24 @@ vi.mock('@distri/components', () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Mock legacy infra provider (DistriHomeProvider.tsx — the HOC one)
+// Mock provider context hooks used by blocks/pages
 // ---------------------------------------------------------------------------
-vi.mock('../../DistriHomeProvider', () => ({
-  useDistriHomeClient: () => ({
-    listDetailedThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, page_size: 30 }),
-    listConnections: vi.fn().mockResolvedValue([]),
-    listSkills: vi.fn().mockResolvedValue([]),
-    listTemplates: vi.fn().mockResolvedValue([]),
-    getUsage: vi.fn().mockResolvedValue({ total_tokens: 0, total_cost: 0, by_agent: [] }),
-    client: { fetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }) },
-    distriClient: { workspaceId: 'test', fetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }) },
-  }),
-  useDistriHomeNavigate: () => vi.fn(),
-  DistriHomeProvider: ({ children }: any) => <>{children}</>,
-  useDistriHome: () => ({ routes: { prefix: '' } }),
-}));
+vi.mock('../../provider/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../provider/context')>();
+  return {
+    ...actual,
+    useDistriHomeClient: () => ({
+      listDetailedThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, page_size: 30 }),
+      listConnections: vi.fn().mockResolvedValue([]),
+      listSkills: vi.fn().mockResolvedValue([]),
+      listTemplates: vi.fn().mockResolvedValue([]),
+      getUsage: vi.fn().mockResolvedValue({ total_tokens: 0, total_cost: 0, by_agent: [] }),
+      client: { fetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }) },
+      distriClient: { workspaceId: 'test', fetch: vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }) },
+    }),
+    useDistriHomeNavigate: () => vi.fn(),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Helper

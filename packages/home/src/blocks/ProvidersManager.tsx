@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { Button, Input } from '@distri/components';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { ModelProviderDefinition, UpsertProviderRequest } from '../DistriHomeClient';
 
 // ---------------------------------------------------------------------------

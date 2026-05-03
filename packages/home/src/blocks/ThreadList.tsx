@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { useAgentsByUsage } from '@distri/react';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 import type { DetailedThread, DetailedThreadListParams } from '../DistriHomeClient';
 import { useDistriHome } from '../provider/context';
 import {

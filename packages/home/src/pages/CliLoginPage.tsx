@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loader2, Terminal, Check, AlertTriangle } from 'lucide-react';
 import { Button, Card } from '@distri/components';
-import { useDistriHomeClient } from '../DistriHomeProvider';
+import { useDistriHomeClient } from '../provider/context';
 
 type CliLoginState = 'loading' | 'ready' | 'authorizing' | 'success' | 'error';
 
