@@ -115,3 +115,4 @@ packages/react/storybook-static/*
 # Dist folders
 apps/ui/dist-extension/*
 apps/ui/dist-tauri/*
+apps/ui/release-out
