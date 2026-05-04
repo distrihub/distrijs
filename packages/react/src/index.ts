@@ -42,25 +42,15 @@ export * from './utils/toolWrapper';
 export { createHttpToolRenderer } from './utils/createHttpToolRenderer';
 export type { HttpToolRendererOptions, PathConfig } from './utils/createHttpToolRenderer';
 
-// Browser tools exports
-export { createBrowserTools, IndexedDbFilesystem } from './browser-tools';
-export {
-  READ_TOOL_DEF,
-  WRITE_TOOL_DEF,
-  EDIT_TOOL_DEF,
-  GREP_TOOL_DEF,
-  GLOB_TOOL_DEF,
-  EXEC_JS_TOOL_DEF,
-} from './browser-tools';
+// Browser tools exports — unified IndexedDB toolset (no more Read/Write file shims).
+export { IndexedDbStore, createDbTools } from './browser-tools';
 export type {
-  BrowserToolsOptions,
-  FilesystemChangeEvent,
-  FilesystemChangeType,
-  FileRecord,
-  FileInfo,
-  DirectoryTreeNode,
-  SearchMatch,
-  EntryType,
+  StoreRecord,
+  StoreChangeOp,
+  StoreChangeEvent,
+  CollectionDef,
+  CreateDbToolsOptions,
+  CreateDbToolsResult,
 } from './browser-tools';
 
 // Workflow
