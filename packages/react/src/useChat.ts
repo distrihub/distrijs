@@ -161,6 +161,23 @@ export function useChat({
     }
   }, [agent?.name, clearAllStates, setError]);
 
+  // Reset state when threadId changes (e.g. user clicks "new conversation").
+  // Skipped on first mount so we don't clobber initialMessages — that effect
+  // already calls clearAllStates() before processing.
+  const threadIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (threadIdRef.current !== undefined && threadIdRef.current !== threadId) {
+      clearAllStates();
+      setError(null);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    }
+    threadIdRef.current = threadId;
+  }, [threadId, clearAllStates, setError]);
+
 
   const handleStreamEvent = useCallback(
     (event: DistriChatMessage) => {
