@@ -45,6 +45,58 @@ function recordView<T>(r: StoreRecord<T>) {
   return { id: r.id, ...r.data, _meta: { createdAt: r.createdAt, updatedAt: r.updatedAt } }
 }
 
+/**
+ * Parse a `data:` URL into mime + base64 payload. Returns null if the string
+ * isn't a `data:...;base64,...` URL.
+ */
+function parseDataUrl(s: string): { mime: string; base64: string } | null {
+  const m = /^data:([^;,]+);base64,(.+)$/s.exec(s)
+  if (!m) return null
+  return { mime: m[1], base64: m[2] }
+}
+
+/**
+ * Split a record view so any string field that holds a `data:image/...` URL is
+ * emitted as a separate `image` part instead of riding along as a multi-KB
+ * base64 blob inside the JSON `data` part.
+ *
+ * Why: the worker LLM (gpt-5.4 / Claude / etc.) is multimodal and can OCR an
+ * image — but only if it arrives as a real `image` content part on the chat
+ * completion, not as a base64 string buried in a tool-result JSON. The LLM
+ * client at `distri-core/src/llm.rs:1290-1304` already handles `Part::Image`
+ * in tool results: it collects the image, sends it on a follow-up user
+ * message with `image_url`, and the JSON `data` part goes through as the
+ * tool result text. So all we need to do is split the record correctly here.
+ */
+function recordToParts(record: Record<string, unknown> | null) {
+  if (record == null) {
+    return [{ part_type: 'data' as const, data: { record: null } }]
+  }
+  const cleaned: Record<string, unknown> = {}
+  const images: Array<{ name: string; mime: string; base64: string }> = []
+  for (const [k, v] of Object.entries(record)) {
+    if (typeof v === 'string') {
+      const parsed = parseDataUrl(v)
+      if (parsed && parsed.mime.startsWith('image/')) {
+        images.push({ name: k, mime: parsed.mime, base64: parsed.base64 })
+        continue
+      }
+    }
+    cleaned[k] = v
+  }
+  const parts: Array<
+    | { part_type: 'data'; data: object }
+    | { part_type: 'image'; data: { type: 'bytes'; mime_type: string; bytes: string; name?: string } }
+  > = [{ part_type: 'data', data: { record: cleaned } }]
+  for (const img of images) {
+    parts.push({
+      part_type: 'image',
+      data: { type: 'bytes', mime_type: img.mime, bytes: img.base64, name: img.name },
+    })
+  }
+  return parts
+}
+
 function describeCollections(collections: CollectionDef[]): string {
   return collections
     .map((c) => {
@@ -112,7 +164,7 @@ export function createDbTools(options: CreateDbToolsOptions): CreateDbToolsResul
       handler: async (input: unknown) => {
         const { collection, id } = input as { collection: string; id: string }
         const record = await resolve(collection).get(id)
-        return [{ part_type: 'data' as const, data: { record: record ? recordView(record) : null } }]
+        return recordToParts(record ? recordView(record) : null)
       },
     },
     {
