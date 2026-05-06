@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import {
   AgentsPage,
   NewAgentPage,
@@ -13,16 +13,31 @@ import {
   NewConnectionPage,
   EditConnectionPage,
   OAuthCallbackPage,
-  SettingsPage,
   SetupPage,
   CliLoginPage,
+  HomePage,
+  WorkspaceAgentsPage,
+  WorkspaceSkillsPage,
+  WorkspaceTemplatesPage,
+  SessionsPage,
+  ChannelsPage,
+  UsersPage,
+  SettingsLayoutPage,
 } from '../pages';
 
 export type HomeRoutePath =
+  | '/'
+  | '/home'
   | '/agents'
   | '/agents/new'
+  | '/workspace/agents'
+  | '/workspace/skills'
+  | '/workspace/templates'
   | '/threads'
   | '/threads/:id'
+  | '/sessions'
+  | '/channels'
+  | '/users'
   | '/chat'
   | '/chat/:agentId'
   | '/copilot'
@@ -34,16 +49,29 @@ export type HomeRoutePath =
   | '/connections/:connectionId/edit'
   | '/oauth/callback'
   | '/settings'
+  | '/settings/secrets'
+  | '/settings/models'
+  | '/settings/models/providers'
+  | '/settings/api-keys'
+  | '/settings/usage'
   | '/setup'
   | '/cli-login';
 
 export type HomeRoutesOverrides = Partial<Record<HomeRoutePath, ReactElement>>;
 
 const DEFAULTS: Record<HomeRoutePath, ReactElement> = {
-  '/agents': <AgentsPage />,
+  '/': <Navigate to="/home" replace />,
+  '/home': <HomePage />,
+  '/agents': <Navigate to="/workspace/agents" replace />,
   '/agents/new': <NewAgentPage />,
+  '/workspace/agents': <WorkspaceAgentsPage />,
+  '/workspace/skills': <WorkspaceSkillsPage />,
+  '/workspace/templates': <WorkspaceTemplatesPage />,
   '/threads': <ThreadsPage />,
   '/threads/:id': <ThreadDetailPage />,
+  '/sessions': <SessionsPage />,
+  '/channels': <ChannelsPage />,
+  '/users': <UsersPage />,
   '/chat': <ChatPage />,
   '/chat/:agentId': <ChatPage />,
   '/copilot': <CopilotPage />,
@@ -54,7 +82,12 @@ const DEFAULTS: Record<HomeRoutePath, ReactElement> = {
   '/connections/new': <NewConnectionPage />,
   '/connections/:connectionId/edit': <EditConnectionPage />,
   '/oauth/callback': <OAuthCallbackPage />,
-  '/settings': <SettingsPage />,
+  '/settings': <Navigate to="/settings/models" replace />,
+  '/settings/secrets': <SettingsLayoutPage activeSection="secrets" />,
+  '/settings/models': <SettingsLayoutPage activeSection="models" />,
+  '/settings/models/providers': <SettingsLayoutPage activeSection="models" />,
+  '/settings/api-keys': <SettingsLayoutPage activeSection="apiKeys" />,
+  '/settings/usage': <SettingsLayoutPage activeSection="usage" />,
   '/setup': <SetupPage />,
   '/cli-login': <CliLoginPage />,
 };

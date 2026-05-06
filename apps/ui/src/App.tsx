@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { DistriProvider, ThemeProvider, useDistri } from '@distri/react';
 import {
@@ -23,12 +22,14 @@ import FilesPage from '@/routes/home/FilesPage';
 import { BACKEND_URL } from './constants';
 
 function App() {
-  useEffect(() => {
-    const currentTheme = localStorage.getItem('distri-theme');
-    if (!currentTheme || currentTheme === 'system') {
-      localStorage.setItem('distri-theme', 'dark');
-    }
-  }, []);
+  // OSS is always dark — match cloud. Apply synchronously before paint so
+  // there is no FOUC, and ignore any stale localStorage preference.
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('distri-theme', 'dark');
+    document.documentElement.classList.remove('light');
+    document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
+  }
 
   const basePath = import.meta.env.BASE_URL || '/ui/';
 
@@ -39,7 +40,7 @@ function App() {
           <SessionProvider>
             <Routes>
               {/* Root redirect */}
-              <Route path="/" element={<Navigate to="/agents" replace />} />
+              <Route path="/" element={<Navigate to="/home" replace />} />
 
               {/* Auth routes (app-specific) */}
               <Route path="auth" element={<AuthPage />} />
@@ -50,11 +51,13 @@ function App() {
               {/* Protected routes — DashboardLayout + homeRoutes() */}
               <Route element={<LayoutWithProviders />}>
                 {homeRoutes()}
-                {/* Workspace: app-specific file editor, not in @distri/home */}
-                <Route path="workspace" element={<FilesPage />} />
+                {/* Workspace files: app-specific file editor (not in @distri/home).
+                    Distinct from /workspace/agents|skills|templates which come
+                    from homeRoutes. */}
+                <Route path="files" element={<FilesPage />} />
               </Route>
 
-              <Route path="*" element={<Navigate to="/agents" replace />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
 
             <Toaster position="top-right" richColors closeButton />
@@ -88,21 +91,25 @@ const ProtectedLayout = () => {
     return <Navigate to="/login" state={{ from: redirectPath }} replace />;
   }
 
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+  // OSS has no JWT — the server is permissive. Bind accessToken to whatever
+  // the device session uses so DistriClient stops short-circuiting on
+  // "No access token available", and pass it as the bearer header.
+  const effectiveToken = token ?? sessionId ?? 'oss-anonymous';
+  const authHeaders = { Authorization: `Bearer ${effectiveToken}` };
 
   return (
     <DistriProvider
       config={{
         baseUrl: `${BACKEND_URL}/v1/`,
+        accessToken: effectiveToken,
         headers: authHeaders,
         interceptor: async (init?: RequestInit): Promise<RequestInit | undefined> => {
-          if (!token) return init;
           const initCopy = init || {};
           return {
             ...initCopy,
             headers: {
               ...initCopy.headers,
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${effectiveToken}`,
             },
           };
         },
@@ -123,6 +130,18 @@ const HomeShell = () => {
   }
 
   const homeClient = new DistriHomeClient(client);
+  const openCopilot = () => navigate('/copilot');
+
+  // Cmd/Ctrl-K opens the Distri copilot — same shortcut as cloud.
+  if (typeof window !== 'undefined' && !(window as { __distriCopilotKey?: boolean }).__distriCopilotKey) {
+    (window as { __distriCopilotKey?: boolean }).__distriCopilotKey = true;
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        navigate('/copilot');
+      }
+    });
+  }
 
   return (
     <DistriHomeProvider
@@ -134,7 +153,7 @@ const HomeShell = () => {
         },
       }}
     >
-      <AppShell>
+      <AppShell onOpenCopilot={openCopilot}>
         <Outlet />
       </AppShell>
     </DistriHomeProvider>

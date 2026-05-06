@@ -176,6 +176,7 @@ export function TraceTimeline({ threadId, slots, onSelectSpan, className }: Trac
   const [traces, setTraces] = useState<TraceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notConfigured, setNotConfigured] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
 
   const extraFilters = slots?.extraFilters ?? home.slots?.traceFilters;
@@ -189,27 +190,31 @@ export function TraceTimeline({ threadId, slots, onSelectSpan, className }: Trac
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setNotConfigured(false);
 
     homeClient
       .getTraces(threadId ? { thread_id: threadId } : undefined)
       .then((data) => {
-        if (!cancelled) {
-          // Map TraceRecord (camelCase wire) to TraceSummary (camelCase UI shape)
-          setTraces(
-            data.traces.map((r) => ({
-              traceId: r.traceId,
-              name: r.name,
-              startTimeNs: r.startTimeNs,
-              endTimeNs: r.endTimeNs,
-              spanCount: r.spanCount,
-              threadId: r.threadId,
-              inputTokens: r.inputTokens,
-              totalCost: r.totalCost,
-              stepCount: r.stepCount,
-              models: r.models,
-            })),
-          );
+        if (cancelled) return;
+        if (data.not_configured) {
+          setNotConfigured(true);
+          setTraces([]);
+          return;
         }
+        setTraces(
+          data.traces.map((r) => ({
+            traceId: r.traceId,
+            name: r.name,
+            startTimeNs: r.startTimeNs,
+            endTimeNs: r.endTimeNs,
+            spanCount: r.spanCount,
+            threadId: r.threadId,
+            inputTokens: r.inputTokens,
+            totalCost: r.totalCost,
+            stepCount: r.stepCount,
+            models: r.models,
+          })),
+        );
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load traces');
@@ -274,7 +279,18 @@ export function TraceTimeline({ threadId, slots, onSelectSpan, className }: Trac
           </div>
         )}
 
-        {!loading && !error && traces.length === 0 && (
+        {!loading && !error && notConfigured && (
+          <div className="flex flex-col items-center justify-center h-56 gap-3 px-6 text-center">
+            <Activity className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm font-medium">Tracing is not configured</p>
+            <p className="text-xs text-muted-foreground max-w-md">
+              This server has no span store wired up. Configure an OpenTelemetry
+              backend (e.g. ClickHouse, Tempo) to start collecting traces.
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && !notConfigured && traces.length === 0 && (
           <div className="flex flex-col items-center justify-center h-48 gap-3 px-6 text-center">
             <Activity className="h-8 w-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No traces found</p>

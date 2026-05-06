@@ -378,10 +378,15 @@ export class DistriHomeClient {
   }
 
   /**
-   * List API keys
+   * List API keys.
+   * Returns an empty array when the server doesn't expose this endpoint
+   * (OSS servers without API-key support), so consumers can render an
+   * empty state instead of an error.
    */
   async listApiKeys(): Promise<ApiKey[]> {
     const response = await this.client.fetch('/api-keys');
+
+    if (response.status === 404 || response.status === 501) return [];
 
     if (!response.ok) {
       throw new Error(`Failed to fetch API keys: ${response.statusText}`);
@@ -899,6 +904,12 @@ export class DistriHomeClient {
     const qs = params.toString();
     const url = qs ? `/traces?${qs}` : '/traces';
     const response = await this.client.fetch(url);
+    // OSS server returns 503 ("Span store not configured") or 404 when
+    // OpenTelemetry isn't wired up. Surface this as "tracing not configured"
+    // so the UI can render a useful empty state instead of an error.
+    if (response.status === 503 || response.status === 404 || response.status === 501) {
+      return { traces: [], not_configured: true } as TracesResponse;
+    }
     if (!response.ok) {
       throw new Error(`Failed to fetch traces: ${response.statusText}`);
     }
@@ -1007,6 +1018,8 @@ export interface TraceRecord {
 
 export interface TracesResponse {
   traces: TraceRecord[];
+  /** Set when the server doesn't have a span store configured (OSS without OTel). */
+  not_configured?: boolean;
 }
 
 // ---- Connections types ----

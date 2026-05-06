@@ -188,7 +188,10 @@ export function AgentList({ slots, onAction, className }: AgentListProps) {
   const workspaceAgents = useMemo(
     () =>
       visibleAgents
-        .filter((agent) => agent.is_workspace)
+        // OSS servers don't tag agents with is_workspace / is_system, so an
+        // agent with neither flag is shown in Workspace by default. Cloud
+        // tags every agent, so this branch is a no-op there.
+        .filter((agent) => agent.is_workspace || (!agent.is_workspace && !agent.is_system))
         .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
     [visibleAgents],
   );
