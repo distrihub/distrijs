@@ -41,7 +41,7 @@
     "build:all": "turbo build",
     "build:prepare": "npm run build:all && npm run build:copy",
     "build:copy": "node scripts/build-copy.js",
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=./apps/ui",
     "dev:maps": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/maps-demo",
     "dev:file": "turbo dev --filter=./packages/react --filter=./packages/core --filter=./samples/file-tools-demo",
     "dev:distri": "turbo dev --filter=./packages/core --filter=./packages/react  --filter=./packages/fs --filter=./apps/distri-ui",
