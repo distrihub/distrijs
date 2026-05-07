@@ -209,4 +209,68 @@ describe('chatStateStore — task-tree event routing', () => {
     send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
     expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
   });
+
+  it('root run_finished clears currentTaskId/RunId/PlanId so the next user message starts a fresh task', () => {
+    // Reproduces the "follow-up message resurrects old tool calls" bug: if
+    // currentTaskId persisted across runs, useChat would send the next
+    // user turn with the previous task_id, the server would resume that
+    // task's scratchpad (full of old `Action: …` lines), and re-drive any
+    // timed-out external tool calls.
+    send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT, runId: 'run-1' } } as any);
+    send({ type: 'plan_started', taskId: ROOT, data: {} } as any);
+    expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
+    expect(useChatStateStore.getState().currentRunId).toBe('run-1');
+    expect(useChatStateStore.getState().currentPlanId).toBeTruthy();
+
+    send({ type: 'run_finished', taskId: ROOT, data: { taskId: ROOT } } as any);
+
+    // After the ROOT run finishes, the next sendMessage must build an
+    // InvokeContext with task_id=undefined → server mints a new task.
+    expect(useChatStateStore.getState().currentTaskId).toBeUndefined();
+    expect(useChatStateStore.getState().currentRunId).toBeUndefined();
+    expect(useChatStateStore.getState().currentPlanId).toBeUndefined();
+    expect(useChatStateStore.getState().isStreaming).toBe(false);
+
+    // And the NEXT root run_started can claim a fresh currentTaskId
+    // (the !get().currentTaskId guard at chatStateStore.ts:528 only lets
+    // the slot be filled when it's empty, so the clear above is what
+    // makes a second run register at all).
+    const NEW_ROOT = 'task-root2-eeeeeeee';
+    send({ type: 'run_started', taskId: NEW_ROOT, data: { taskId: NEW_ROOT, runId: 'run-2' } } as any);
+    expect(useChatStateStore.getState().currentTaskId).toBe(NEW_ROOT);
+    expect(useChatStateStore.getState().currentRunId).toBe('run-2');
+  });
+
+  it('root run_finished flips leftover in_progress todos to done', () => {
+    // Agents do not always emit a closing write_todos before final, so
+    // the TodosCompact spinner would otherwise keep spinning above the
+    // chat input after the run ended. Lock the close-out behavior here.
+    send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT, runId: 'run-1' } } as any);
+    useChatStateStore.getState().setTodos([
+      { id: 't1', content: 'first', status: 'done' },
+      { id: 't2', content: 'second', status: 'in_progress' },
+      { id: 't3', content: 'third', status: 'open' },
+    ]);
+
+    send({ type: 'run_finished', taskId: ROOT, data: { taskId: ROOT } } as any);
+
+    const todos = useChatStateStore.getState().todos;
+    expect(todos.find(t => t.id === 't1')!.status).toBe('done');     // unchanged
+    expect(todos.find(t => t.id === 't2')!.status).toBe('done');     // flipped
+    expect(todos.find(t => t.id === 't3')!.status).toBe('open');     // unchanged — never started
+  });
+
+  it('sub-agent run_finished does NOT clear root currentTaskId', () => {
+    // The clear-on-finish must be scoped to the ROOT run only. If a
+    // sub-agent's run_finished cleared currentTaskId, mid-run forks
+    // would orphan the root task in the store and the next user
+    // message would still hit the in-flight root task with task_id=undefined.
+    send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT, runId: 'run-1' } } as any);
+    send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1, runId: 'fork-run' } } as any);
+
+    send({ type: 'run_finished', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
+
+    expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
+    expect(useChatStateStore.getState().isStreaming).toBe(true);
+  });
 });
