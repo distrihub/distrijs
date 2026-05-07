@@ -471,7 +471,11 @@ export function isArrayParts(result: any): boolean {
  * lands on the wire as `Message.metadata.parts`. No inline side-channel
  * fields on the parts themselves.
  *
- * Image parts default to `{ save: false }` if the caller didn't override.
+ * Image parts are persisted with `save: true` (the default) so the worker's
+ * NEXT planning turn can still see them. Server-side rolling-context
+ * compaction (`compact_for_history`) strips inline images from non-latest
+ * entries at display time — that's where the size control belongs, not at
+ * storage time.
  */
 export function createSuccessfulToolResult(
   toolCallId: string,
@@ -488,18 +492,11 @@ export function createSuccessfulToolResult(
     } satisfies ToolResultData
   }];
 
-  const merged: Record<number, PartMetadata> = { ...partsMetadata };
-  parts.forEach((part, index) => {
-    if (part.part_type === 'image' && merged[index] === undefined) {
-      merged[index] = { save: false };
-    }
-  });
-
   return {
     tool_call_id: toolCallId,
     tool_name: toolName,
     parts,
-    parts_metadata: Object.keys(merged).length > 0 ? merged : undefined
+    parts_metadata: partsMetadata && Object.keys(partsMetadata).length > 0 ? partsMetadata : undefined
   };
 }
 
