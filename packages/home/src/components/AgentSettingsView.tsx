@@ -117,14 +117,16 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
     setLoading(true);
     setError(null);
     try {
-      const [settings, secs, providerData] = await Promise.all([
+      const [settings, secs, providerData, defaultModelSettings] = await Promise.all([
         homeClient.getWorkspaceSettings(),
         homeClient.listSecrets(),
         homeClient.listProviders(),
+        homeClient.getDefaultModelSettings().catch(() => ({ default_model: null })),
       ]);
       setSecrets(secs);
       setProviders(providerData);
-      setDefaultModel(settings?.default_model || '');
+      // Completion default model is persisted in provider settings in OSS.
+      setDefaultModel(defaultModelSettings?.default_model || '');
       setDefaultTtsModel(settings?.default_tts_model || '');
       setDefaultSttModel(settings?.default_stt_model || '');
       setCustomModels(settings?.custom_models || []);
