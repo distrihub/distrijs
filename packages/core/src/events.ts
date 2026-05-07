@@ -213,27 +213,49 @@ export interface LiveViewEvent {
   };
 }
 
-// Union of all event types
+/**
+ * Routing envelope present on every decoded DistriEvent.
+ *
+ * Every consumer (chatStateStore reducer, useChat handlers, custom UIs) MUST
+ * route by `taskId` and `parentTaskId`, NOT by the wire subscription's task.
+ * This is what lets sub-agent events (forks dispatched via `run_skill`,
+ * `call_agent`) reach the FE attributed to the right task in the tree —
+ * a fork's `tool_calls` arrives with `taskId = forkTaskId` and
+ * `parentTaskId = parentTaskId`, even though the SSE connection is
+ * subscribed to the parent.
+ *
+ * `parentTaskId` is `undefined` for events from the root run.
+ */
+export interface DistriEventEnvelope {
+  taskId?: string;
+  parentTaskId?: string;
+}
+
+// Each concrete event interface gets the envelope merged in via
+// intersection so the discriminated `type` field still narrows correctly.
+type WithEnvelope<E> = E & DistriEventEnvelope;
+
+// Union of all event types — every variant carries `taskId` + `parentTaskId`.
 export type DistriEvent =
-  | RunStartedEvent
-  | RunFinishedEvent
-  | RunErrorEvent
-  | PlanStartedEvent
-  | PlanFinishedEvent
-  | PlanPrunedEvent
-  | TextMessageStartEvent
-  | TextMessageContentEvent
-  | TextMessageEndEvent
-  | ToolExecutionStartEvent
-  | ToolExecutionEndEvent
-  | ToolRejectedEvent
-  | StepStartedEvent
-  | StepCompletedEvent
-  | AgentHandoverEvent
-  | FeedbackReceivedEvent
-  | ToolCallsEvent
-  | ToolResultsEvent
-  | BrowserSessionStartedEvent
-  | InlineHookRequestedEvent
-  | TodosUpdatedEvent
-  | LiveViewEvent;
+  | WithEnvelope<RunStartedEvent>
+  | WithEnvelope<RunFinishedEvent>
+  | WithEnvelope<RunErrorEvent>
+  | WithEnvelope<PlanStartedEvent>
+  | WithEnvelope<PlanFinishedEvent>
+  | WithEnvelope<PlanPrunedEvent>
+  | WithEnvelope<TextMessageStartEvent>
+  | WithEnvelope<TextMessageContentEvent>
+  | WithEnvelope<TextMessageEndEvent>
+  | WithEnvelope<ToolExecutionStartEvent>
+  | WithEnvelope<ToolExecutionEndEvent>
+  | WithEnvelope<ToolRejectedEvent>
+  | WithEnvelope<StepStartedEvent>
+  | WithEnvelope<StepCompletedEvent>
+  | WithEnvelope<AgentHandoverEvent>
+  | WithEnvelope<FeedbackReceivedEvent>
+  | WithEnvelope<ToolCallsEvent>
+  | WithEnvelope<ToolResultsEvent>
+  | WithEnvelope<BrowserSessionStartedEvent>
+  | WithEnvelope<InlineHookRequestedEvent>
+  | WithEnvelope<TodosUpdatedEvent>
+  | WithEnvelope<LiveViewEvent>;
