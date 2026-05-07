@@ -16,9 +16,7 @@ import {
   SetupPage,
   CliLoginPage,
   HomePage,
-  WorkspaceAgentsPage,
-  WorkspaceSkillsPage,
-  WorkspaceTemplatesPage,
+  WorkspacePage,
   SessionsPage,
   ChannelsPage,
   UsersPage,
@@ -30,9 +28,8 @@ export type HomeRoutePath =
   | '/home'
   | '/agents'
   | '/agents/new'
-  | '/workspace/agents'
-  | '/workspace/skills'
-  | '/workspace/templates'
+  | '/workspace/:type'
+  | '/workspace/:type/:id'
   | '/threads'
   | '/threads/:id'
   | '/sessions'
@@ -64,9 +61,8 @@ const DEFAULTS: Record<HomeRoutePath, ReactElement> = {
   '/home': <HomePage />,
   '/agents': <Navigate to="/workspace/agents" replace />,
   '/agents/new': <NewAgentPage />,
-  '/workspace/agents': <WorkspaceAgentsPage />,
-  '/workspace/skills': <WorkspaceSkillsPage />,
-  '/workspace/templates': <WorkspaceTemplatesPage />,
+  '/workspace/:type': <WorkspacePage />,
+  '/workspace/:type/:id': <WorkspacePage />,
   '/threads': <ThreadsPage />,
   '/threads/:id': <ThreadDetailPage />,
   '/sessions': <SessionsPage />,

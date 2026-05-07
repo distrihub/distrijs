@@ -117,6 +117,8 @@ export { HomePage } from './pages/HomePage';
 export { WorkspaceAgentsPage } from './pages/WorkspaceAgentsPage';
 export { WorkspaceSkillsPage } from './pages/WorkspaceSkillsPage';
 export { WorkspaceTemplatesPage } from './pages/WorkspaceTemplatesPage';
+export { WorkspacePage } from './pages';
+export { PageHeaderProvider, PageHeaderSlot, PageHeaderTarget } from './components/PageHeader';
 export { SessionsPage } from './pages/SessionsPage';
 export { ChannelsPage } from './pages/ChannelsPage';
 export { UsersPage } from './pages/UsersPage';

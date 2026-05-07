@@ -2,10 +2,10 @@ import type { ComponentType, ReactElement } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart3, KeyRound, Layers, LockIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useDistriHome } from '../provider/context';
-import { SecretsManager } from '../blocks/SecretsManager';
 import { ApiKeysManager } from '../blocks/ApiKeysManager';
 import { AgentSettingsView } from '../components/AgentSettingsView';
 import { UsageWidget } from '../blocks/UsageWidget';
+import SecretsPage from './SecretsPage';
 
 export type SectionId = 'models' | 'secrets' | 'apiKeys' | 'usage';
 
@@ -44,7 +44,7 @@ function makeSections(navigate: (to: string) => void, prefix: string): SectionDe
       label: 'Secrets',
       href: '/settings/secrets',
       icon: LockIcon,
-      render: () => <SecretsManager />,
+      render: () => <SecretsPage />,
     },
     {
       id: 'apiKeys',
