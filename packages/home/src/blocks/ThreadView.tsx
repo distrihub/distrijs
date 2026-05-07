@@ -37,26 +37,45 @@ export function ThreadView({ threadId, agentId: agentIdProp, onAction: _onAction
       return;
     }
 
-    if (!homeClient || !threadId) {
-      setError('Missing thread ID or client.');
+    if (!threadId) {
+      setError('Missing thread ID.');
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-    homeClient
-      .listDetailedThreads({ limit: 100 })
-      .then((response) => {
-        const found = response.threads.find((t) => t.id === threadId);
-        if (found?.agent_id) {
-          setResolvedAgentId(found.agent_id);
-        } else {
-          setError('Thread not found.');
+    const load = async () => {
+      try {
+        if (homeClient) {
+          const response = await homeClient.listDetailedThreads({ limit: 100 });
+          const found = response.threads.find((t) => t.id === threadId);
+          if (found?.agent_id) {
+            setResolvedAgentId(found.agent_id);
+            return;
+          }
         }
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load thread.'))
-      .finally(() => setLoading(false));
+
+        // Last-resort fallback for deep-linked route loads where providers
+        // are not fully wired yet.
+        const res = await fetch(`/v1/threads/${encodeURIComponent(threadId)}`);
+        if (res.ok) {
+          const thread = await res.json();
+          if (thread?.agent_id) {
+            setResolvedAgentId(thread.agent_id);
+            return;
+          }
+        }
+
+        setError('Thread not found.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load thread.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, [homeClient, threadId, agentIdProp]);
 
   const { agent, loading: agentLoading } = useAgent({
@@ -86,6 +105,7 @@ export function ThreadView({ threadId, agentId: agentIdProp, onAction: _onAction
         key={threadId}
         agent={agent}
         threadId={threadId}
+        enableHistory
         theme="auto"
       />
     </div>

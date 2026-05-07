@@ -11,11 +11,12 @@ import { ThreadView } from '../blocks/ThreadView';
  * Consumer app is responsible for wrapping this in a layout shell.
  */
 export function ThreadDetailPage() {
-  const { threadId = '' } = useParams<{ threadId: string }>();
+  const { id = '', threadId = '' } = useParams<{ id?: string; threadId?: string }>();
+  const resolvedThreadId = threadId || id;
 
   return (
     <div className="flex h-full w-full flex-col bg-slate-950 text-slate-50">
-      <ThreadView threadId={threadId} className="flex-1" />
+      <ThreadView threadId={resolvedThreadId} className="flex-1" />
     </div>
   );
 }
