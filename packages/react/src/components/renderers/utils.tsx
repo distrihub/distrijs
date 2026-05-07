@@ -22,8 +22,15 @@ export function extractContent(message: DistriMessage | DistriEvent): ExtractedC
     // Handle DistriMessage
     const distriMessage = message as DistriMessage;
 
+    // Skip parts marked `developer: true` in metadata.parts — they reach the
+    // model but are intentionally hidden from the chat transcript (e.g. big
+    // image attachments the host already rendered in its own UI).
+    const partsMetadata = distriMessage.metadata?.parts ?? {};
+    const isDeveloperPart = (index: number) => partsMetadata[index]?.developer === true;
+    const visibleParts = distriMessage.parts.filter((_p, i) => !isDeveloperPart(i));
+
     // Extract all text parts and join them properly
-    const textParts = distriMessage.parts
+    const textParts = visibleParts
       ?.filter(p => p.part_type === 'text' && (p as { part_type: 'text'; data: string }).data)
       ?.map(p => (p as { part_type: 'text'; data: string }).data)
       ?.filter(text => text && text.trim()) || [];
@@ -31,12 +38,12 @@ export function extractContent(message: DistriMessage | DistriEvent): ExtractedC
     text = textParts.join(' ').trim();
 
     // Extract image parts
-    imageParts = distriMessage.parts
+    imageParts = visibleParts
       ?.filter(p => p.part_type === 'image') as ImagePart[] || [];
 
     // Fallback: render structured parts (tool calls/results/data) when no text exists
     if (!text) {
-      const structuredParts = distriMessage.parts?.filter(
+      const structuredParts = visibleParts?.filter(
         part => part.part_type !== 'text' && part.part_type !== 'image'
       ) || [];
 

@@ -64,18 +64,21 @@ export function MessageRenderer({
   }), [rendering, toolSummaryOverrides, onShowTrace, threadId]);
 
   const innerContent = (() => {
-    // Don't render messages with empty content
+    // Don't render messages whose only parts are developer-flagged (hidden) or empty.
     if (isDistriMessage(message)) {
       const distriMessage = message as DistriMessage;
-      const textContent = distriMessage.parts
+      const partsMetadata = distriMessage.metadata?.parts ?? {};
+      const visibleParts = distriMessage.parts.filter((_p, i) => partsMetadata[i]?.developer !== true);
+
+      const textContent = visibleParts
         .filter(part => part.part_type === 'text')
         .map(part => (part as { part_type: 'text'; data: string }).data)
         .join('')
         .trim();
 
-      const imageParts = distriMessage.parts.filter(part => part.part_type === 'image');
+      const imageParts = visibleParts.filter(part => part.part_type === 'image');
 
-      // Only filter out messages that have neither text nor images
+      // Only filter out messages that have neither visible text nor visible images
       if (!textContent && imageParts.length === 0) {
         return null;
       }

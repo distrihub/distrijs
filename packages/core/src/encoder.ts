@@ -32,6 +32,28 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
 }
 
 /**
+ * Stamp the routing envelope (`taskId`, `parentTaskId`) onto a decoded event.
+ *
+ * The server serializes a typed `AgentEventEnvelope` into `metadata`. Routing
+ * fields live there (`metadata.parent_task_id`, `metadata.agent_id`) — NOT
+ * on the A2A `TaskStatusUpdateEvent` itself, which we leave at the spec
+ * shape. `taskId` comes from the A2A wire envelope (it's a spec field).
+ *
+ * Without this stamp, a sub-agent's `tool_calls` would arrive with no task
+ * linkage, and the chat store would fall back to `currentTaskId` (= the
+ * parent), which is exactly the bug this routing fixes.
+ */
+function stampEnvelope<T extends DistriEvent>(event: T, statusUpdate: any): T {
+  const metadata = statusUpdate?.metadata;
+  const parentTaskId = metadata?.parent_task_id;
+  return {
+    ...event,
+    taskId: statusUpdate?.taskId,
+    parentTaskId: parentTaskId || undefined,
+  };
+}
+
+/**
  * Converts A2A status-update events to DistriEvent based on metadata type
  */
 export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent | null {
@@ -41,163 +63,126 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
 
   const metadata = statusUpdate.metadata;
 
+  const out = (e: DistriEvent) => stampEnvelope(e, statusUpdate);
+
   switch (metadata.type) {
     case 'run_started': {
-      const runStartedResult: RunStartedEvent = {
+      return out({
         type: 'run_started',
-        data: {
-          runId: statusUpdate.runId,
-          taskId: statusUpdate.taskId
-        }
-      };
-      return runStartedResult;
+        data: { runId: statusUpdate.runId, taskId: statusUpdate.taskId },
+      } as RunStartedEvent);
     }
 
     case 'run_error': {
-      const runErrorResult: RunErrorEvent = {
+      return out({
         type: 'run_error',
         data: {
           message: metadata.message || statusUpdate.status?.message || 'Unknown error',
-          code: metadata.code
-        }
-      };
-      return runErrorResult;
+          code: metadata.code,
+        },
+      } as RunErrorEvent);
     }
 
     case 'run_finished': {
-      const runFinishedResult: RunFinishedEvent = {
+      return out({
         type: 'run_finished',
-        data: {
-          runId: statusUpdate.runId,
-          taskId: statusUpdate.taskId
-        }
-      };
-      return runFinishedResult;
+        data: { runId: statusUpdate.runId, taskId: statusUpdate.taskId },
+      } as RunFinishedEvent);
     }
 
     case 'plan_started': {
-      const planStartedResult: PlanStartedEvent = {
-        type: 'plan_started',
-        data: {
-          initial_plan: metadata.initial_plan
-        }
-      };
-      return planStartedResult;
+      return out({ type: 'plan_started', data: { initial_plan: metadata.initial_plan } } as PlanStartedEvent);
     }
 
     case 'plan_finished': {
-      const planFinishedResult: PlanFinishedEvent = {
-        type: 'plan_finished',
-        data: {
-          total_steps: metadata.total_steps
-        }
-      };
-      return planFinishedResult;
+      return out({ type: 'plan_finished', data: { total_steps: metadata.total_steps } } as PlanFinishedEvent);
     }
 
     case 'step_started': {
-      const stepStartedResult: any = {
+      return out({
         type: 'step_started',
         data: {
           step_id: metadata.step_id,
           step_title: metadata.step_title || 'Processing',
-          step_index: metadata.step_index || 0
-        }
-      };
-      return stepStartedResult;
+          step_index: metadata.step_index || 0,
+        },
+      } as any);
     }
 
     case 'step_completed': {
-      const stepCompletedResult: any = {
+      return out({
         type: 'step_completed',
         data: {
           step_id: metadata.step_id,
           step_title: metadata.step_title || 'Processing',
-          step_index: metadata.step_index || 0
-        }
-      };
-      return stepCompletedResult;
+          step_index: metadata.step_index || 0,
+        },
+      } as any);
     }
 
     case 'tool_execution_start': {
-      const toolStartResult: ToolExecutionStartEvent = {
+      return out({
         type: 'tool_execution_start',
         data: {
           tool_call_id: metadata.tool_call_id,
           tool_call_name: metadata.tool_call_name || 'Tool',
-          parent_message_id: statusUpdate.taskId
-        }
-      };
-      return toolStartResult;
+          parent_message_id: statusUpdate.taskId,
+        },
+      } as ToolExecutionStartEvent);
     }
 
     case 'tool_execution_end': {
-      const toolEndResult: ToolExecutionEndEvent = {
+      return out({
         type: 'tool_execution_end',
-        data: {
-          tool_call_id: metadata.tool_call_id
-        }
-      };
-      return toolEndResult;
+        data: { tool_call_id: metadata.tool_call_id },
+      } as ToolExecutionEndEvent);
     }
 
     case 'text_message_start': {
-      const textStartResult: TextMessageStartEvent = {
+      return out({
         type: 'text_message_start',
         data: {
           message_id: metadata.message_id,
           step_id: metadata.step_id || '',
-          role: metadata.role === 'assistant' ? 'assistant' : 'user'
-        }
-      };
-      return textStartResult;
+          role: metadata.role === 'assistant' ? 'assistant' : 'user',
+        },
+      } as TextMessageStartEvent);
     }
 
     case 'text_message_content': {
-      const textContentResult: TextMessageContentEvent = {
+      return out({
         type: 'text_message_content',
         data: {
           message_id: metadata.message_id,
           step_id: metadata.step_id || '',
-          delta: metadata.delta || ''
-        }
-      };
-      return textContentResult;
+          delta: metadata.delta || '',
+        },
+      } as TextMessageContentEvent);
     }
 
     case 'text_message_end': {
-      const textEndResult: TextMessageEndEvent = {
+      return out({
         type: 'text_message_end',
-        data: {
-          message_id: metadata.message_id,
-          step_id: metadata.step_id || ''
-        }
-      };
-      return textEndResult;
+        data: { message_id: metadata.message_id, step_id: metadata.step_id || '' },
+      } as TextMessageEndEvent);
     }
 
     case 'tool_calls': {
-      const toolCallsResult: ToolCallsEvent = {
+      return out({
         type: 'tool_calls',
-        data: {
-          tool_calls: metadata.tool_calls || []
-        }
-      };
-      return toolCallsResult;
+        data: { tool_calls: metadata.tool_calls || [] },
+      } as ToolCallsEvent);
     }
 
     case 'tool_results': {
-      const toolResultsResult: ToolResultsEvent = {
+      return out({
         type: 'tool_results',
-        data: {
-          results: metadata.results || []
-        }
-      };
-      return toolResultsResult;
+        data: { results: metadata.results || [] },
+      } as ToolResultsEvent);
     }
 
     case 'inline_hook_requested': {
-      const hookRequested: InlineHookRequestedEvent = {
+      return out({
         type: 'inline_hook_requested',
         data: {
           hook_id: metadata.request?.hook_id || metadata.hook_id || '',
@@ -214,24 +199,22 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           plan: metadata.request?.plan || metadata.plan,
           result: metadata.request?.result || metadata.result,
         },
-      };
-      return hookRequested;
+      } as InlineHookRequestedEvent);
     }
 
     case 'browser_session_started': {
-      const browserSessionStarted: BrowserSessionStartedEvent = {
+      return out({
         type: 'browser_session_started',
         data: {
           session_id: metadata.session_id || '',
           viewer_url: metadata.viewer_url,
           stream_url: metadata.stream_url,
         },
-      };
-      return browserSessionStarted;
+      } as BrowserSessionStartedEvent);
     }
 
     case 'live_view': {
-      const liveView: LiveViewEvent = {
+      return out({
         type: 'live_view',
         data: {
           view_id: metadata.view_id || '',
@@ -241,14 +224,12 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           width: metadata.width,
           height: metadata.height,
         },
-      };
-      return liveView;
+      } as LiveViewEvent);
     }
 
     case 'todos_updated': {
-      // Parse the formatted_todos string into TodoItem array
       const todos = parseTodosFromFormatted(metadata.formatted_todos || '');
-      const todosUpdated: TodosUpdatedEvent = {
+      return out({
         type: 'todos_updated',
         data: {
           formatted_todos: metadata.formatted_todos || '',
@@ -256,21 +237,16 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           todo_count: metadata.todo_count || 0,
           todos,
         },
-      };
-      return todosUpdated;
+      } as TodosUpdatedEvent);
     }
 
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      const defaultResult: RunStartedEvent = {
+      return out({
         type: 'run_started',
-        data: {
-          runId: statusUpdate.runId,
-          taskId: statusUpdate.taskId
-        }
-      };
-      return defaultResult;
+        data: { runId: statusUpdate.runId, taskId: statusUpdate.taskId },
+      } as RunStartedEvent);
     }
   }
 }

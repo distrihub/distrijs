@@ -249,11 +249,70 @@ export const formatStatusText = (toolName: string, input: any): string => {
       const host = url.replace(/^https?:\/\//, '').split('/')[0];
       return `Browsing ${host}`;
     }
-    case 'load_skill': return `Loading skill: ${str('skill_name')}`;
+    case 'load_skill': return `Loading skill: ${str('skill_id') || str('skill_name')}`;
+    case 'run_skill': {
+      const skill = str('skill_id') || str('skill_name');
+      const mode = str('mode');
+      return mode ? `Running ${skill} (${mode})` : `Running ${skill}`;
+    }
     case 'transfer_to_agent': return `Handing off to ${str('agent_name')}`;
-    case 'read_file': return `Reading ${truncate(str('path') || str('file_path'), 50)}`;
-    case 'write_file': return `Writing ${truncate(str('path') || str('file_path'), 50)}`;
+    case 'call_agent': {
+      const agent = str('agent') || 'sub-agent';
+      const mode = str('mode');
+      return mode ? `Calling ${agent} (${mode})` : `Calling ${agent}`;
+    }
+    case 'read_file':
+    case 'Read':
+      return `Reading ${truncate(str('path') || str('file_path'), 50)}`;
+    case 'write_file':
+    case 'Write':
+      return `Writing ${truncate(str('path') || str('file_path'), 50)}`;
+    case 'Edit': {
+      const p = str('file_path') || str('path');
+      const old = str('old_string');
+      return `Editing ${truncate(p, 40)}${old ? ` — replace "${truncate(old, 30)}"` : ''}`;
+    }
+    case 'Glob': return `Globbing ${truncate(str('pattern'), 50)}`;
+    case 'Grep': return `Searching for ${truncate(str('pattern'), 50)}`;
+    case 'Bash': return `Running ${truncate(str('command'), 50)}`;
+
+    // Browser-tools / IndexedDB collection toolset.
+    // The agent passes `{collection, id?, query?, data?}` to these.
+    case 'db_get': {
+      const c = str('collection');
+      const id = str('id');
+      return id ? `Reading ${c}/${truncate(id, 12)}` : `Reading from ${c}`;
+    }
+    case 'db_put': {
+      const c = str('collection');
+      const id = str('id');
+      return id ? `Writing ${c}/${truncate(id, 12)}` : `Adding to ${c}`;
+    }
+    case 'db_list': return `Listing ${str('collection')}`;
+    case 'db_search': {
+      const c = str('collection');
+      const q = str('query');
+      return `Searching ${c}: ${truncate(q, 40)}`;
+    }
+    case 'db_delete': {
+      const c = str('collection');
+      const id = str('id');
+      return id ? `Deleting ${c}/${truncate(id, 12)}` : `Deleting from ${c}`;
+    }
+    case 'db_clear': return `Clearing ${str('collection')}`;
+
+    // Agent control / housekeeping
     case 'tool_search': return 'Searching tools...';
+    case 'write_todos': {
+      const todos = (input?.todos as Array<{ status?: string; content?: string }> | undefined) ?? [];
+      const total = todos.length;
+      const done = todos.filter(t => t?.status === 'completed').length;
+      return total > 0 ? `Updating todos (${done}/${total})` : 'Updating todos';
+    }
+    case 'final': return 'Returning final result';
+    case 'reflect': return 'Reflecting on progress';
+    case 'ask_follow_up': return `Asking: ${truncate(str('question'), 50)}`;
+
     default: return `${toolName.replace(/_/g, ' ')}...`;
   }
 };

@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions } from '@distri/core';
+import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata } from '@distri/core';
 import {
   DistriPart,
   InvokeContext,
   convertDistriMessageToA2A,
 } from '@distri/core';
+
+/**
+ * Optional knobs for sendMessage / sendMessageStream.
+ *
+ * `partsMetadata` mirrors the wire-format `Message.metadata.parts` map: keys
+ * are part indices into the `content` array, values are PartMetadata. Used to
+ * mark parts as `developer: true` (skipped by chat renderers) or `save: false`
+ * (filtered out at DB persist) — see `distri/docs/design/parts-metadata.md`.
+ */
+export interface SendMessageOptions {
+  partsMetadata?: Record<number, PartMetadata>;
+}
 import { useChatStateStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
 
@@ -24,8 +36,8 @@ export interface UseChatOptions {
 export interface UseChatReturn {
   messages: (DistriChatMessage)[];
   isStreaming: boolean;
-  sendMessage: (content: string | DistriPart[]) => Promise<void>;
-  sendMessageStream: (content: string | DistriPart[]) => Promise<void>;
+  sendMessage: (content: string | DistriPart[], options?: SendMessageOptions) => Promise<void>;
+  sendMessageStream: (content: string | DistriPart[], role?: 'user' | 'tool') => Promise<void>;
   isLoading: boolean;
   error: Error | null;
   hasPendingToolCalls: () => boolean;
@@ -149,6 +161,23 @@ export function useChat({
     }
   }, [agent?.name, clearAllStates, setError]);
 
+  // Reset state when threadId changes (e.g. user clicks "new conversation").
+  // Skipped on first mount so we don't clobber initialMessages — that effect
+  // already calls clearAllStates() before processing.
+  const threadIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (threadIdRef.current !== undefined && threadIdRef.current !== threadId) {
+      clearAllStates();
+      setError(null);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    }
+    threadIdRef.current = threadId;
+  }, [threadId, clearAllStates, setError]);
+
 
   const handleStreamEvent = useCallback(
     (event: DistriChatMessage) => {
@@ -156,7 +185,7 @@ export function useChat({
       processMessage(event, true);
     }, [processMessage]);
 
-  const sendMessage = useCallback(async (content: string | DistriPart[]) => {
+  const sendMessage = useCallback(async (content: string | DistriPart[], options?: SendMessageOptions) => {
     if (!agent) return;
 
     setLoading(true);
@@ -178,8 +207,12 @@ export function useChat({
       const parts: DistriPart[] = typeof content === 'string'
         ? [{ part_type: 'text', data: content }]
         : content;
+      const partsMetadata = options?.partsMetadata;
 
       let distriMessage = DistriClient.initDistriMessage('user', parts);
+      if (partsMetadata && Object.keys(partsMetadata).length > 0) {
+        distriMessage.metadata = { ...(distriMessage.metadata ?? {}), parts: partsMetadata };
+      }
 
       // Add user message immediately - not from stream, user initiated
       processMessage(distriMessage, false);
@@ -192,13 +225,19 @@ export function useChat({
       const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
 
       const contextMetadata = await getMetadataRef.current?.() || {};
+      // Forward parts_metadata to the request so the backend persists / filters
+      // by it (save: false) and downstream consumers see developer flags.
+      const requestMetadata: Record<string, unknown> = {
+        ...contextMetadata,
+        task_id: currentTaskId,
+      };
+      if (partsMetadata && Object.keys(partsMetadata).length > 0) {
+        requestMetadata.parts = { ...(contextMetadata.parts as object | undefined ?? {}), ...partsMetadata };
+      }
       // Start streaming
       const stream = await agent.invokeStream({
         message: a2aMessage,
-        metadata: {
-          ...contextMetadata,
-          task_id: currentTaskId
-        },
+        metadata: requestMetadata,
       }, externalTools);
 
       for await (const event of stream) {

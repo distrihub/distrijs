@@ -1,86 +1,78 @@
 /**
- * createBrowserTools — factory that returns DistriFnTool[] backed by IndexedDB.
+ * IndexedDB-backed CRUD tools for the agent.
  *
- * Tool names and schemas match distri-cli (Read, Write, Edit, Grep, Glob)
- * so the same agent prompt works in both browser and CLI environments.
- * ExecJs is browser-specific (replaces CLI's Bash tool).
+ * Each tool lives in its own file with a static `XXX_TOOL_DEF` (the tool's
+ * name, description, and JSON-Schema parameters) plus a `createXxxHandler`
+ * factory that binds the handler to a set of IndexedDbStore instances.
+ *
+ * Tool defs are intentionally static — the `collection` parameter does not
+ * carry a runtime enum, and descriptions don't enumerate available
+ * collections. Apps inject collection info into their system prompt (see
+ * `dbToolsPrompt`) or rely on the agent calling `db_collections` at runtime.
  */
 
 import type { DistriFnTool } from '@distri/core'
-import { IndexedDbFilesystem } from '../storage/indexeddb-filesystem'
-import type { BrowserToolsOptions, FilesystemChangeEvent } from '../types'
+import { IndexedDbStore, type StoreChangeEvent } from '../storage/indexeddb-store'
 
-import { READ_TOOL_DEF, createReadHandler } from './read'
-import { WRITE_TOOL_DEF, createWriteHandler } from './write'
-import { EDIT_TOOL_DEF, createEditHandler } from './edit'
-import { GREP_TOOL_DEF, createGrepHandler } from './grep'
-import { GLOB_TOOL_DEF, createGlobHandler } from './glob'
-import { EXEC_JS_TOOL_DEF, createExecJsHandler } from './exec'
+import type { CollectionDef } from './shared'
+import { createDbPutTool } from './db-put'
+import { createDbGetTool } from './db-get'
+import { createDbListTool } from './db-list'
+import { createDbSearchTool } from './db-search'
+import { createDbDeleteTool } from './db-delete'
+import { createDbClearTool } from './db-clear'
+import { createDbCollectionsTool } from './db-collections'
 
-export function createBrowserTools(
-  projectId: string,
-  options: BrowserToolsOptions = {},
-): DistriFnTool[] {
-  const fs = IndexedDbFilesystem.forProject(projectId)
-  const emit = (event: FilesystemChangeEvent) => options.onChange?.(event)
+export interface CreateDbToolsOptions {
+  collections: CollectionDef[]
+  /** Notified after every mutation; usually re-dispatched as a window event. */
+  onChange?: (event: StoreChangeEvent) => void
+}
 
-  const base = {
-    type: 'function' as const,
-    isExternal: true,
-    autoExecute: true,
+export interface CreateDbToolsResult {
+  tools: DistriFnTool[]
+  stores: Record<string, IndexedDbStore>
+}
+
+export function createDbTools(options: CreateDbToolsOptions): CreateDbToolsResult {
+  const stores: Record<string, IndexedDbStore> = {}
+  for (const def of options.collections) {
+    stores[def.name] = (def.store as IndexedDbStore | undefined) ?? IndexedDbStore.forName(def.name)
   }
+  const onChange = options.onChange
 
-  return [
-    {
-      ...base,
-      name: READ_TOOL_DEF.name,
-      description: READ_TOOL_DEF.description,
-      parameters: READ_TOOL_DEF.parameters as Record<string, unknown>,
-      handler: createReadHandler(fs),
-    },
-    {
-      ...base,
-      name: WRITE_TOOL_DEF.name,
-      description: WRITE_TOOL_DEF.description,
-      parameters: WRITE_TOOL_DEF.parameters as Record<string, unknown>,
-      handler: createWriteHandler(fs, emit),
-    },
-    {
-      ...base,
-      name: EDIT_TOOL_DEF.name,
-      description: EDIT_TOOL_DEF.description,
-      parameters: EDIT_TOOL_DEF.parameters as Record<string, unknown>,
-      handler: createEditHandler(fs, emit),
-    },
-    {
-      ...base,
-      name: GREP_TOOL_DEF.name,
-      description: GREP_TOOL_DEF.description,
-      parameters: GREP_TOOL_DEF.parameters as Record<string, unknown>,
-      handler: createGrepHandler(fs),
-    },
-    {
-      ...base,
-      name: GLOB_TOOL_DEF.name,
-      description: GLOB_TOOL_DEF.description,
-      parameters: GLOB_TOOL_DEF.parameters as Record<string, unknown>,
-      handler: createGlobHandler(fs),
-    },
-    {
-      ...base,
-      name: EXEC_JS_TOOL_DEF.name,
-      description: EXEC_JS_TOOL_DEF.description,
-      parameters: EXEC_JS_TOOL_DEF.parameters as Record<string, unknown>,
-      handler: createExecJsHandler(fs),
-    },
+  const tools: DistriFnTool[] = [
+    createDbCollectionsTool(options.collections),
+    createDbPutTool(stores, onChange),
+    createDbGetTool(stores),
+    createDbListTool(stores),
+    createDbSearchTool(stores),
+    createDbDeleteTool(stores, onChange),
+    createDbClearTool(stores, onChange),
   ]
+
+  return { tools, stores }
 }
 
-export {
-  READ_TOOL_DEF,
-  WRITE_TOOL_DEF,
-  EDIT_TOOL_DEF,
-  GREP_TOOL_DEF,
-  GLOB_TOOL_DEF,
-  EXEC_JS_TOOL_DEF,
+/**
+ * Render the available collections + schemas as a markdown block suitable for
+ * pasting into a system prompt. Use this when you'd rather burn the
+ * collection list into the prompt than rely on the agent calling
+ * `db_collections` at runtime.
+ */
+export function dbToolsPrompt(collections: CollectionDef[]): string {
+  const lines = collections.map((c) => {
+    const schema = c.schema ? `\n  data schema: ${JSON.stringify(c.schema)}` : ''
+    return `- \`${c.name}\` — ${c.description}${schema}`
+  })
+  return `Available collections:\n${lines.join('\n')}`
 }
+
+export type { CollectionDef } from './shared'
+export { DB_PUT_TOOL_DEF, createDbPutHandler, createDbPutTool } from './db-put'
+export { DB_GET_TOOL_DEF, createDbGetHandler, createDbGetTool } from './db-get'
+export { DB_LIST_TOOL_DEF, createDbListHandler, createDbListTool } from './db-list'
+export { DB_SEARCH_TOOL_DEF, createDbSearchHandler, createDbSearchTool } from './db-search'
+export { DB_DELETE_TOOL_DEF, createDbDeleteHandler, createDbDeleteTool } from './db-delete'
+export { DB_CLEAR_TOOL_DEF, createDbClearHandler, createDbClearTool } from './db-clear'
+export { DB_COLLECTIONS_TOOL_DEF, createDbCollectionsHandler, createDbCollectionsTool } from './db-collections'

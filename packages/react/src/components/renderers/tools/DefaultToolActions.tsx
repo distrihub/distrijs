@@ -113,9 +113,22 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     completeTool(toolResult);
   }, [completeTool, dontAskAgain, hasExecuted, isProcessing, saveApprovalPreference, toolCall.tool_call_id, toolName]);
 
+  // A tool call is "active" only if the store has it in `pending`. Once the
+  // store has marked it `running`/`completed`/`error`, the handler has either
+  // run or is in flight — re-firing on a component remount would re-execute
+  // side-effects against a tool the store already considers settled. Local
+  // `hasExecuted` / `hasTriggeredRef` reset on remount; the store's status
+  // does not, so it's the durable source of truth.
+  const storeStatus = toolCallState?.status;
+  const isAlreadySettled =
+    storeStatus === 'running' ||
+    storeStatus === 'completed' ||
+    storeStatus === 'error';
+
   // Check for auto-approval preference - but only for live stream tool calls
   useEffect(() => {
     if (!isLiveStream) return; // Don't auto-execute historical tool calls
+    if (isAlreadySettled) return; // Store already has a result — don't re-fire on remount
 
     const preferences = getApprovalPreferences();
     const autoApprove = preferences[toolName];
@@ -131,11 +144,12 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
     } else {
       handleCancel();
     }
-  }, [getApprovalPreferences, handleCancel, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
+  }, [getApprovalPreferences, handleCancel, handleExecute, hasExecuted, isAlreadySettled, isLiveStream, isProcessing, toolName]);
 
   // Auto-execute if enabled - but only for live stream tool calls and if no user preference exists
   useEffect(() => {
     if (!isLiveStream) return; // Don't auto-execute historical tool calls
+    if (isAlreadySettled) return; // Store already has a result — don't re-fire on remount
 
     const preferences = getApprovalPreferences();
     const hasPreference = preferences[toolName] !== undefined;
@@ -148,7 +162,7 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
 
     hasTriggeredRef.current = true;
     handleExecute();
-  }, [autoExecute, getApprovalPreferences, handleExecute, hasExecuted, isLiveStream, isProcessing, toolName]);
+  }, [autoExecute, getApprovalPreferences, handleExecute, hasExecuted, isAlreadySettled, isLiveStream, isProcessing, toolName]);
 
   // Show completed state
   if (hasExecuted && !isProcessing) {

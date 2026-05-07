@@ -42,25 +42,40 @@ export * from './utils/toolWrapper';
 export { createHttpToolRenderer } from './utils/createHttpToolRenderer';
 export type { HttpToolRendererOptions, PathConfig } from './utils/createHttpToolRenderer';
 
-// Browser tools exports
-export { createBrowserTools, IndexedDbFilesystem } from './browser-tools';
+// Browser tools exports — unified IndexedDB toolset (no more Read/Write file shims).
 export {
-  READ_TOOL_DEF,
-  WRITE_TOOL_DEF,
-  EDIT_TOOL_DEF,
-  GREP_TOOL_DEF,
-  GLOB_TOOL_DEF,
-  EXEC_JS_TOOL_DEF,
+  IndexedDbStore,
+  createDbTools,
+  dbToolsPrompt,
+  DB_PUT_TOOL_DEF,
+  DB_GET_TOOL_DEF,
+  DB_LIST_TOOL_DEF,
+  DB_SEARCH_TOOL_DEF,
+  DB_DELETE_TOOL_DEF,
+  DB_CLEAR_TOOL_DEF,
+  DB_COLLECTIONS_TOOL_DEF,
+  createDbPutHandler,
+  createDbGetHandler,
+  createDbListHandler,
+  createDbSearchHandler,
+  createDbDeleteHandler,
+  createDbClearHandler,
+  createDbCollectionsHandler,
+  createDbPutTool,
+  createDbGetTool,
+  createDbListTool,
+  createDbSearchTool,
+  createDbDeleteTool,
+  createDbClearTool,
+  createDbCollectionsTool,
 } from './browser-tools';
 export type {
-  BrowserToolsOptions,
-  FilesystemChangeEvent,
-  FilesystemChangeType,
-  FileRecord,
-  FileInfo,
-  DirectoryTreeNode,
-  SearchMatch,
-  EntryType,
+  StoreRecord,
+  StoreChangeOp,
+  StoreChangeEvent,
+  CollectionDef,
+  CreateDbToolsOptions,
+  CreateDbToolsResult,
 } from './browser-tools';
 
 // Workflow
