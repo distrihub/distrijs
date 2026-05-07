@@ -64,6 +64,8 @@ const NAV_SECTIONS: NavSection[] = [
 
 export interface DistriSidebarProps {
   className?: string;
+  /** Item ids to hide from the sidebar (e.g. cloud-only features in OSS). */
+  hide?: NavItem['id'][];
 }
 
 /**
@@ -74,26 +76,40 @@ export interface DistriSidebarProps {
  * injects workspace-specific chrome (WorkspaceSwitcher, user dropdown) via
  * sidebarPrepend/sidebarAppend slots.
  */
-export function DistriSidebar({ className }: DistriSidebarProps) {
+export function DistriSidebar({ className, hide }: DistriSidebarProps) {
   const home = useDistriHome();
   const prefix = home.routes?.prefix ?? '';
   const location = useLocation();
+  const hidden = new Set(hide ?? []);
 
   const isActive = (to: string) => {
     const full = `${prefix}${to}`;
     if (to === '/settings') {
+      // Settings is highlighted for /settings and /settings/* EXCEPT
+      // /settings/usage (which has its own sidebar item).
       return (
         location.pathname === full ||
         (location.pathname.startsWith(full + '/') &&
           !location.pathname.startsWith(`${prefix}/settings/usage`))
       );
     }
+    if (to === '/settings/usage') {
+      return location.pathname === full;
+    }
+    if (to === '/home') {
+      // Treat the bare root as Home so the indicator works on first load.
+      return location.pathname === full || location.pathname === `${prefix}/`;
+    }
     return location.pathname === full || location.pathname.startsWith(full + '/');
   };
 
+  const visibleSections = NAV_SECTIONS
+    .map((s) => ({ ...s, items: s.items.filter((i) => !hidden.has(i.id)) }))
+    .filter((s) => s.items.length > 0);
+
   return (
     <nav className={`flex-1 px-3 py-4 space-y-4 overflow-y-auto${className ? ` ${className}` : ''}`}>
-      {NAV_SECTIONS.map((section, si) => (
+      {visibleSections.map((section, si) => (
         <div key={si}>
           {section.label && (
             <p className="mb-1 px-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/60 font-medium">

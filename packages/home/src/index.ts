@@ -107,8 +107,27 @@ export { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 // Tier-3 pages (Task 13)
 export { SettingsPage } from './pages/SettingsPage';
 export type { SettingsPageProps } from './pages/SettingsPage';
+export { SettingsLayoutPage } from './pages/SettingsLayoutPage';
+export type { SettingsLayoutPageProps } from './pages/SettingsLayoutPage';
 export { SetupPage } from './pages/SetupPage';
 export { CliLoginPage } from './pages/CliLoginPage';
+
+// Cloud-IA pages (sidebar parity)
+export { HomePage } from './pages/HomePage';
+export { WorkspaceAgentsPage } from './pages/WorkspaceAgentsPage';
+export { WorkspaceSkillsPage } from './pages/WorkspaceSkillsPage';
+export { WorkspaceTemplatesPage } from './pages/WorkspaceTemplatesPage';
+export { WorkspacePage } from './pages';
+export { PageHeaderProvider, PageHeaderSlot, PageHeaderTarget } from './components/PageHeader';
+export { SessionsPage } from './pages/SessionsPage';
+export { ChannelsPage } from './pages/ChannelsPage';
+export { UsersPage } from './pages/UsersPage';
+
+// Misc blocks
+export { ApiKeysManager } from './blocks/ApiKeysManager';
+export type { ApiKeysManagerProps } from './blocks/ApiKeysManager';
+export { NotAvailableInOss } from './blocks/NotAvailableInOss';
+export type { NotAvailableInOssProps } from './blocks/NotAvailableInOss';
 
 // Route factory (Task 14)
 export { homeRoutes } from './routes/homeRoutes';

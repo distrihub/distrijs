@@ -378,10 +378,15 @@ export class DistriHomeClient {
   }
 
   /**
-   * List API keys
+   * List API keys.
+   * Returns an empty array when the server doesn't expose this endpoint
+   * (OSS servers without API-key support), so consumers can render an
+   * empty state instead of an error.
    */
   async listApiKeys(): Promise<ApiKey[]> {
     const response = await this.client.fetch('/api-keys');
+
+    if (response.status === 404 || response.status === 501) return [];
 
     if (!response.ok) {
       throw new Error(`Failed to fetch API keys: ${response.statusText}`);
@@ -469,6 +474,76 @@ export class DistriHomeClient {
     }
   }
 
+  // ---- Scoped secrets (cloud-shape adapter) ----
+  // Adapts cloud's id+access_type API onto OSS's key-based /secrets endpoints
+  // so cloud's SecretsPage can be ported verbatim. OSS has no user-scope
+  // concept, so every row is reported as workspace-scoped and the user
+  // section in the page renders empty.
+
+  async listScopedSecrets(): Promise<SecretRow[]> {
+    const response = await this.client.fetch('/secrets');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch secrets: ${response.statusText}`);
+    }
+    const rows: Secret[] = await response.json();
+    return rows.map((r) => ({
+      id: r.key,
+      key: r.key,
+      access_type: 'workspace',
+      user_id: '',
+      created_at: r.created_at ?? '',
+      updated_at: r.updated_at ?? '',
+    }));
+  }
+
+  async upsertScopedSecret(body: {
+    access_type: AccessType;
+    key: string;
+    value: string;
+  }): Promise<SecretRow> {
+    const response = await this.client.fetch('/secrets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: body.key, value: body.value }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to save secret: ${response.statusText}`);
+    }
+    const r: Secret = await response.json();
+    return {
+      id: r.key,
+      key: r.key,
+      access_type: 'workspace',
+      user_id: '',
+      created_at: r.created_at ?? '',
+      updated_at: r.updated_at ?? '',
+    };
+  }
+
+  async deleteScopedSecret(id: string): Promise<{ deleted: boolean }> {
+    const response = await this.client.fetch(`/secrets/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete secret: ${response.statusText}`);
+    }
+    return { deleted: true };
+  }
+
+  async revealSecretValue(id: string): Promise<{
+    id: string;
+    key: string;
+    value: string;
+    access_type: AccessType;
+  }> {
+    const response = await this.client.fetch(`/secrets/${encodeURIComponent(id)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to reveal secret: ${response.statusText}`);
+    }
+    const r: { id: string; key: string; value: string } = await response.json();
+    return { id: r.key, key: r.key, value: r.value, access_type: 'workspace' };
+  }
+
   /**
    * List provider secret definitions
    * Returns the list of supported providers and their required secret keys
@@ -542,6 +617,56 @@ export class DistriHomeClient {
     if (!response.ok) {
       throw new Error(`Failed to clone agent: ${response.statusText}`);
     }
+  }
+
+  /**
+   * List all agents.
+   */
+  async listAgents(): Promise<unknown[]> {
+    const response = await this.client.fetch('/agents');
+    if (!response.ok) {
+      throw new Error(`Failed to list agents: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+  /**
+   * Get an agent by name.
+   */
+  async getAgent(name: string): Promise<unknown> {
+    const response = await this.client.fetch(`/agents/${encodeURIComponent(name)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to get agent: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+  /**
+   * Delete an agent by name.
+   */
+  async deleteAgent(name: string): Promise<void> {
+    const response = await this.client.fetch(`/agents/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete agent: ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Register or update an agent definition from its raw markdown.
+   * The server's POST /agents endpoint is an upsert by name.
+   */
+  async registerAgentMarkdown(markdown: string): Promise<unknown> {
+    const response = await this.client.fetch('/agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/markdown' },
+      body: markdown,
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to register agent: ${response.statusText}`);
+    }
+    return await response.json();
   }
 
   // ---- Prompt Templates ----
@@ -635,7 +760,9 @@ export class DistriHomeClient {
     if (!response.ok) {
       throw new Error(`Failed to fetch skills: ${response.statusText}`);
     }
-    return await response.json();
+    const body = await response.json();
+    // Server returns {skills: SkillRecord[]} — unwrap so the return type is honest.
+    return Array.isArray(body) ? body : (body?.skills ?? []);
   }
 
   /**
@@ -899,6 +1026,12 @@ export class DistriHomeClient {
     const qs = params.toString();
     const url = qs ? `/traces?${qs}` : '/traces';
     const response = await this.client.fetch(url);
+    // OSS server returns 503 ("Span store not configured") or 404 when
+    // OpenTelemetry isn't wired up. Surface this as "tracing not configured"
+    // so the UI can render a useful empty state instead of an error.
+    if (response.status === 503 || response.status === 404 || response.status === 501) {
+      return { traces: [], not_configured: true } as TracesResponse;
+    }
     if (!response.ok) {
       throw new Error(`Failed to fetch traces: ${response.statusText}`);
     }
@@ -1007,6 +1140,8 @@ export interface TraceRecord {
 
 export interface TracesResponse {
   traces: TraceRecord[];
+  /** Set when the server doesn't have a span store configured (OSS without OTel). */
+  not_configured?: boolean;
 }
 
 // ---- Connections types ----
@@ -1087,6 +1222,18 @@ export interface Secret {
   masked_value: string;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Cloud-shape secrets row — surfaced by listScopedSecrets/upsertScopedSecret. */
+export type AccessType = 'workspace' | 'user';
+
+export interface SecretRow {
+  id: string;
+  key: string;
+  access_type: AccessType;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
