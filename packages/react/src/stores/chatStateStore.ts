@@ -32,8 +32,22 @@ const completingToolCallIds = new Set<string>();
 // State types
 export interface TaskState {
   id: string;          // This is the taskId from AgentEvent
-  runId?: string;      // This is the runId from AgentEvent  
+  runId?: string;      // This is the runId from AgentEvent
   planId?: string;     // Associated plan ID (generated locally)
+  /**
+   * Parent task in the dispatch tree. Set when this task was created via
+   * a sub-agent dispatch (run_skill / call_agent fork|in_process|offload).
+   * `undefined` for the root task. Populated from `event.parentTaskId` on
+   * the first event that mentions this task.
+   */
+  parentTaskId?: string;
+  /**
+   * Direct children in the dispatch tree, keyed by taskId. Maintained
+   * idempotently: each new child task pushes itself in the first time it
+   * appears. Used by selectors that need to walk the tree (collapsed
+   * sub-agent cards, scoped cleanup, etc.).
+   */
+  childTaskIds: string[];
   title: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   startTime?: number;
@@ -67,6 +81,14 @@ export interface StepState {
 
 export interface ToolCallState {
   tool_call_id: string;
+  /**
+   * Task that emitted this tool call. Set from `event.taskId` at insert
+   * time. Lets per-task cleanup (run_finished handler) scope itself to
+   * the right tool calls instead of wiping every pending entry — which
+   * is what was masking sub-agent stuck states (fork-2 db_get pending,
+   * fork-1 RunFinished arrives, browser store flips it to completed).
+   */
+  taskId?: string;
   tool_name: string;
   input: Record<string, unknown>;
   status: ToolCallStatus;
@@ -154,7 +176,7 @@ export interface ChatStateStore extends ChatState {
   resetStreamingStates: () => void;
 
   // Tool call management
-  initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean) => void;
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean, taskId?: string) => void;
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
   getToolCallById: (toolCallId: string) => ToolCallState | null;
   getPendingToolCalls: () => ToolCallState[];
@@ -171,6 +193,13 @@ export interface ChatStateStore extends ChatState {
   getCurrentPlan: () => PlanState | null;
   getCurrentTasks: () => TaskState[];
   getTaskById: (taskId: string) => TaskState | null;
+  /**
+   * Walk the dispatch tree rooted at `rootId` (depth-first, parent before
+   * children). Returns the root + all descendants in encounter order.
+   * Used by sub-agent renderers and any state-snapshot view.
+   */
+  getTaskTree: (rootId: string) => TaskState[];
+  getToolCallsByTaskId: (taskId: string) => ToolCallState[];
   getPlanById: (planId: string) => PlanState | null;
 
   // Updates
@@ -437,21 +466,53 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         console.log('🏪 EVENT:', message);
       }
 
+      // Maintain the parent ↔ child task tree on EVERY event that names a
+      // task. Each AgentEvent envelope carries `taskId` and `parentTaskId`
+      // (sub-agents include a parent; root tasks don't). The reducer is
+      // idempotent — replays and live deliveries both converge to the
+      // same shape.
+      const eventTaskId = event.taskId;
+      const eventParentTaskId = event.parentTaskId;
+      if (eventTaskId) {
+        const existingTask = get().tasks.get(eventTaskId);
+        if (!existingTask) {
+          get().updateTask(eventTaskId, {
+            id: eventTaskId,
+            parentTaskId: eventParentTaskId,
+            childTaskIds: [],
+            title: 'Agent Run',
+            status: 'running',
+            startTime: timestamp,
+          });
+        } else if (eventParentTaskId && !existingTask.parentTaskId) {
+          // Backfill linkage if first event seen lacked parent info.
+          get().updateTask(eventTaskId, { parentTaskId: eventParentTaskId });
+        }
+        if (eventParentTaskId) {
+          const parent = get().tasks.get(eventParentTaskId);
+          if (parent && !parent.childTaskIds.includes(eventTaskId)) {
+            get().updateTask(eventParentTaskId, {
+              childTaskIds: [...parent.childTaskIds, eventTaskId],
+            });
+          }
+        }
+      }
+
       switch (message.type) {
         case 'run_started':
           const runStartedEvent = event as RunStartedEvent;
           const runId = runStartedEvent.data.runId;
-          const taskId = runStartedEvent.data.taskId;
+          const taskId = runStartedEvent.data.taskId ?? eventTaskId;
 
           if (isDebugEnabled) {
-            console.log('🏪 run_started with IDs:', { runId, taskId });
+            console.log('🏪 run_started with IDs:', { runId, taskId, parent: eventParentTaskId });
           }
 
-          // Create or update task using the actual taskId from the event
           if (taskId) {
             get().updateTask(taskId, {
               id: taskId,
               runId: runId,
+              parentTaskId: eventParentTaskId ?? get().tasks.get(taskId)?.parentTaskId,
               title: 'Agent Run',
               status: 'running',
               startTime: timestamp,
@@ -459,9 +520,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
-          // **FIX**: Don't overwrite currentTaskId if it's already set (preserve main task ID)
-          // Only set currentTaskId if it hasn't been set yet (for backward compatibility)
-          const shouldUpdateTaskId = !get().currentTaskId;
+          // currentTaskId is the ROOT task only. Sub-agent run_starts (with
+          // parentTaskId set) MUST NOT overwrite it — otherwise the chat
+          // input "send" routes to a fork's task and the fork's
+          // run_finished closes streaming on the wrong task.
+          const isRootRunStart = !eventParentTaskId;
+          const shouldUpdateTaskId = isRootRunStart && !get().currentTaskId;
 
           set({
             currentRunId: runId,
@@ -474,7 +538,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
         case 'run_finished':
           const runFinishedEvent = event as RunFinishedEvent;
-          const finishedTaskId = runFinishedEvent.data.taskId;
+          const finishedTaskId = runFinishedEvent.data.taskId ?? eventTaskId;
+          const finishedIsRoot = !eventParentTaskId;
 
           // Update the specific task that finished
           if (finishedTaskId) {
@@ -484,24 +549,37 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             });
           }
 
-          // Clean up orphaned tool calls that never received a tool_execution_end event.
-          // Without this, hasPendingToolCalls() stays true and the chat input remains locked.
-          const currentToolCalls = get().toolCalls;
-          let toolCallsChanged = false;
-          currentToolCalls.forEach((tc) => {
-            if (tc.status === 'pending' || tc.status === 'running') {
-              tc.status = 'completed';
-              tc.endTime = Date.now();
-              toolCallsChanged = true;
+          // Scope cleanup to THIS task's pending/running tool calls. Without
+          // scoping, a sub-agent's run_finished would mark unrelated calls
+          // (sibling forks, root-task pending external tools) as completed
+          // — masking real waits and racing with the late ToolResult that
+          // eventually arrives.
+          if (finishedTaskId) {
+            const currentToolCalls = get().toolCalls;
+            let toolCallsChanged = false;
+            currentToolCalls.forEach((tc) => {
+              if (
+                tc.taskId === finishedTaskId &&
+                (tc.status === 'pending' || tc.status === 'running')
+              ) {
+                tc.status = 'completed';
+                tc.endTime = Date.now();
+                toolCallsChanged = true;
+              }
+            });
+            if (toolCallsChanged) {
+              set({ toolCalls: new Map(currentToolCalls) });
             }
-          });
-          if (toolCallsChanged) {
-            set({ toolCalls: new Map(currentToolCalls) });
           }
 
-          set({ isStreaming: false, isLoading: false });
-          get().setStreamingIndicator(undefined);
-          get().setCurrentThought(undefined);
+          // Only the ROOT run finishing means the wire stream is done and
+          // the chat input should unlock. Sub-agent finishes are
+          // intermediate — the parent is still running.
+          if (finishedIsRoot) {
+            set({ isStreaming: false, isLoading: false });
+            get().setStreamingIndicator(undefined);
+            get().setCurrentThought(undefined);
+          }
           break;
 
         case 'run_error':
@@ -582,6 +660,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           } else {
             get().toolCalls.set(toolExecutionStartEvent.data.tool_call_id, {
               tool_call_id: toolExecutionStartEvent.data.tool_call_id,
+              taskId: eventTaskId,
               tool_name: toolExecutionStartEvent.data.tool_call_name,
               input: toolExecutionStartEvent.data.input,
               status: 'running',
@@ -636,17 +715,21 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         case 'tool_calls':
           // Handle direct tool calls event
           if (message.data.tool_calls && Array.isArray(message.data.tool_calls)) {
+            // Every tool_call belongs to the task that emitted the
+            // event. Stamp `taskId` on the tool-call state at insert
+            // time so per-task scoped operations (run_finished cleanup,
+            // pending-call counts, sub-agent UIs) don't have to guess.
+            const callsTaskId = eventTaskId;
             message.data.tool_calls.forEach(async (toolCall: ToolCall) => {
               if (get().toolCalls.has(toolCall.tool_call_id)) {
                 console.log('🔁 Ignoring duplicate tool_call event', toolCall.tool_call_id);
                 return;
               }
-              // Initialize tool call in UI
               get().initToolCall({
                 tool_call_id: toolCall.tool_call_id,
                 tool_name: toolCall.tool_name,
                 input: toolCall.input,
-              }, timestamp, isFromStream);
+              }, timestamp, isFromStream, callsTaskId);
             });
           }
           break;
@@ -696,7 +779,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     }
   },
 
-  initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream: boolean = false) => {
+  initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream: boolean = false, taskId?: string) => {
     // Find tool in configured tools (both external and backend)
     const externalTools = get().externalTools || [];
     const externalTool = externalTools.find(t => t.name === toolCall.tool_name);
@@ -710,6 +793,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       const newState = { ...state };
       newState.toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
+        taskId,
         tool_name: toolCall.tool_name || 'Unknown Tool',
         input: toolCall.input || {},
         status: 'pending',
@@ -748,7 +832,8 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   },
 
   completeTool: async (toolCall: ToolCall, result: ToolResult) => {
-    console.log('completeTool', toolCall, result);
+    const ownerTaskId = get().toolCalls.get(toolCall.tool_call_id)?.taskId;
+    console.log('completeTool', toolCall.tool_call_id, { ownerTaskId, tool: toolCall.tool_name });
 
     if (completingToolCallIds.has(toolCall.tool_call_id)) {
       console.warn(`Skipping duplicate completeTool for ${toolCall.tool_call_id}`);
@@ -1069,6 +1154,31 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
     return state.tasks.get(taskId) || null;
   },
 
+  getTaskTree: (rootId: string) => {
+    const state = get();
+    const out: TaskState[] = [];
+    const seen = new Set<string>();
+    const walk = (id: string) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      const t = state.tasks.get(id);
+      if (!t) return;
+      out.push(t);
+      for (const childId of t.childTaskIds) walk(childId);
+    };
+    walk(rootId);
+    return out;
+  },
+
+  getToolCallsByTaskId: (taskId: string) => {
+    const state = get();
+    const out: ToolCallState[] = [];
+    state.toolCalls.forEach((tc) => {
+      if (tc.taskId === taskId) out.push(tc);
+    });
+    return out;
+  },
+
   getPlanById: (planId: string) => {
     const state = get();
     return state.plans.get(planId) || null;
@@ -1082,6 +1192,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
         id: taskId,
         title: updates.title ?? 'Task',
         status: updates.status ?? 'pending',
+        childTaskIds: [],
         toolCalls: [],
         results: [],
       };

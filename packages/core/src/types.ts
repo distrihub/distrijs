@@ -85,8 +85,10 @@ export interface ExecutorContextMetadata {
  * The 'parts' field maps part indices to PartMetadata for save filtering.
  */
 export interface DistriMessageMetadata {
-  /** Per-part metadata indexed by part position (0-based). Parts with save: false are filtered before DB save. */
-  parts?: Record<number, { save?: boolean }>;
+  /** Per-part metadata indexed by part position (0-based). Parts with save: false
+   *  are filtered before DB save; parts with developer: true are skipped by
+   *  chat renderers. */
+  parts?: Record<number, PartMetadata>;
   /** Session ID for browser sessions */
   session_id?: string;
   /** Browser session ID */
@@ -271,13 +273,18 @@ export interface PromptSection {
 
 /**
  * Metadata for individual message parts.
- * Used to control part behavior such as persistence.
+ * Used to control part behavior such as persistence and rendering.
  */
 export interface PartMetadata {
   /** If false, this part will be filtered out before saving to the database.
-   *  Useful for ephemeral/dynamic content that should only be sent in the current turn.
-   *  Defaults to true. */
+   *  Useful for ephemeral/dynamic content that should only be sent in the
+   *  current turn. Defaults to true. */
   save?: boolean;
+  /** If true, this part is developer context — the model still receives it,
+   *  but chat renderers skip it. Independent of `save`. Common pairing for
+   *  big inline payloads (attached images, dumped context blocks):
+   *  `{ developer: true, save: false }`. Defaults to false. */
+  developer?: boolean;
 }
 
 /**
@@ -457,30 +464,26 @@ export function isArrayParts(result: any): boolean {
   return Array.isArray(result) && result[0].part_type
 }
 /**
- * Part with optional inline metadata - used by tool handlers to mark parts as non-saveable
- */
-export type DistriPartWithMetadata = DistriPart & { __metadata?: PartMetadata };
-
-/**
- * Type-safe helper to create a successful ToolResult
- * Uses proper DistriPart structure - conversion to backend format happens in encoder
+ * Type-safe helper to create a successful ToolResult.
  *
- * Parts can include __metadata property to specify part-level metadata (e.g., save: false).
- * Image parts are automatically marked as save: false.
+ * Per-part metadata (e.g. `{ save: false, developer: true }`) is passed via
+ * the explicit `partsMetadata` map keyed by part index — same shape that
+ * lands on the wire as `Message.metadata.parts`. No inline side-channel
+ * fields on the parts themselves.
+ *
+ * Image parts are persisted with `save: true` (the default) so the worker's
+ * NEXT planning turn can still see them. Server-side rolling-context
+ * compaction (`compact_for_history`) strips inline images from non-latest
+ * entries at display time — that's where the size control belongs, not at
+ * storage time.
  */
 export function createSuccessfulToolResult(
   toolCallId: string,
   toolName: string,
-  result: string | number | boolean | null | object | DistriPartWithMetadata[],
-  explicitPartsMetadata?: Record<number, PartMetadata>
+  result: string | number | boolean | null | object | DistriPart[],
+  partsMetadata?: Record<number, PartMetadata>
 ): ToolResult {
-  console.log('[createSuccessfulToolResult] toolName:', toolName);
-  console.log('[createSuccessfulToolResult] isArrayParts:', isArrayParts(result));
-  console.log('[createSuccessfulToolResult] result type:', typeof result, Array.isArray(result) ? `array[${(result as any[]).length}]` : '');
-  if (isArrayParts(result)) {
-    console.log('[createSuccessfulToolResult] parts:', (result as any[]).map((p: any) => ({ part_type: p.part_type, hasMetadata: !!p.__metadata })));
-  }
-  const rawParts = isArrayParts(result) ? result as DistriPartWithMetadata[] : [{
+  const parts: DistriPart[] = isArrayParts(result) ? result as DistriPart[] : [{
     part_type: 'data' as const,
     data: {
       result,
@@ -489,29 +492,11 @@ export function createSuccessfulToolResult(
     } satisfies ToolResultData
   }];
 
-  // Build parts_metadata from explicit param, inline __metadata, and auto image detection
-  const parts_metadata: Record<number, PartMetadata> = { ...explicitPartsMetadata };
-
-  // Clean parts (remove __metadata) and collect metadata
-  const parts: DistriPart[] = rawParts.map((part, index) => {
-    // Extract inline metadata if present
-    if ('__metadata' in part && part.__metadata) {
-      parts_metadata[index] = { ...parts_metadata[index], ...part.__metadata };
-    }
-    // Auto-mark image parts as non-saveable
-    if (part.part_type === 'image' && !parts_metadata[index]) {
-      parts_metadata[index] = { save: false };
-    }
-    // Return clean part without __metadata
-    const { __metadata, ...cleanPart } = part as DistriPartWithMetadata;
-    return cleanPart as DistriPart;
-  });
-
   return {
     tool_call_id: toolCallId,
     tool_name: toolName,
     parts,
-    parts_metadata: Object.keys(parts_metadata).length > 0 ? parts_metadata : undefined
+    parts_metadata: partsMetadata && Object.keys(partsMetadata).length > 0 ? partsMetadata : undefined
   };
 }
 

@@ -28,7 +28,7 @@ export interface ModelOption {
 }
 
 export interface ChatInstance {
-  sendMessage: (content: string | DistriPart[]) => Promise<void>;
+  sendMessage: (content: string | DistriPart[], options?: import('../useChat').SendMessageOptions) => Promise<void>;
   stopStreaming: () => void;
   triggerTool: (toolName: string, input: any) => Promise<void>;
   isStreaming: boolean;
