@@ -576,7 +576,31 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           // the chat input should unlock. Sub-agent finishes are
           // intermediate — the parent is still running.
           if (finishedIsRoot) {
-            set({ isStreaming: false, isLoading: false });
+            // Flip any leftover `in_progress` todos to `done`. The run
+            // is over, so no work is in flight — but agents don't always
+            // emit a final write_todos closing the loop, so the
+            // TodosCompact spinner would otherwise keep spinning forever
+            // above the chat input.
+            const finalTodos = get().todos.map(todo =>
+              todo.status === 'in_progress' ? { ...todo, status: 'done' as const } : todo
+            );
+
+            // Clear the current run/task/plan IDs so the NEXT user message
+            // is sent without a stale `task_id`. With a stale id the server
+            // resumes the prior task — re-loading its scratchpad (full of
+            // old `Action: …` lines) and re-driving any timed-out external
+            // tool calls. distri-cli avoids this by always sending
+            // task_id=None per turn (see distri-cli/src/chat.rs); useChat
+            // now matches that contract by clearing here so the next
+            // sendMessage hits the server with no task_id.
+            set({
+              isStreaming: false,
+              isLoading: false,
+              currentTaskId: undefined,
+              currentRunId: undefined,
+              currentPlanId: undefined,
+              todos: finalTodos,
+            });
             get().setStreamingIndicator(undefined);
             get().setCurrentThought(undefined);
           }
