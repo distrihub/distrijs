@@ -242,7 +242,6 @@ export const formatStatusText = (toolName: string, input: any): string => {
       }
       return `${method} ${truncate(path, 40)}...`;
     }
-    case 'execute_shell': return `Running command: ${truncate(str('command'), 50)}`;
     case 'search': return `Searching: ${truncate(str('query'), 50)}`;
     case 'browsr_scrape': {
       const url = str('url');
@@ -261,10 +260,8 @@ export const formatStatusText = (toolName: string, input: any): string => {
       const mode = str('mode');
       return mode ? `Calling ${agent} (${mode})` : `Calling ${agent}`;
     }
-    case 'read_file':
     case 'Read':
       return `Reading ${truncate(str('path') || str('file_path'), 50)}`;
-    case 'write_file':
     case 'Write':
       return `Writing ${truncate(str('path') || str('file_path'), 50)}`;
     case 'Edit': {
