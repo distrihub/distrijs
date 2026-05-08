@@ -22,11 +22,18 @@ import { createDbSearchTool } from './db-search'
 import { createDbDeleteTool } from './db-delete'
 import { createDbClearTool } from './db-clear'
 import { createDbCollectionsTool } from './db-collections'
+import { createExecJsTool } from './exec'
 
 export interface CreateDbToolsOptions {
   collections: CollectionDef[]
   /** Notified after every mutation; usually re-dispatched as a window event. */
   onChange?: (event: StoreChangeEvent) => void
+  /**
+   * Include the unsafe `exec_js` tool that runs JavaScript in the browser
+   * with a `db` global wired to these collections. Off by default — only
+   * register on hosts that are happy with arbitrary JS execution.
+   */
+  enableExecJs?: boolean
 }
 
 export interface CreateDbToolsResult {
@@ -50,6 +57,10 @@ export function createDbTools(options: CreateDbToolsOptions): CreateDbToolsResul
     createDbDeleteTool(stores, onChange),
     createDbClearTool(stores, onChange),
   ]
+
+  if (options.enableExecJs) {
+    tools.push(createExecJsTool({ stores, collections: options.collections, onChange }))
+  }
 
   return { tools, stores }
 }
@@ -76,3 +87,5 @@ export { DB_SEARCH_TOOL_DEF, createDbSearchHandler, createDbSearchTool } from '.
 export { DB_DELETE_TOOL_DEF, createDbDeleteHandler, createDbDeleteTool } from './db-delete'
 export { DB_CLEAR_TOOL_DEF, createDbClearHandler, createDbClearTool } from './db-clear'
 export { DB_COLLECTIONS_TOOL_DEF, createDbCollectionsHandler, createDbCollectionsTool } from './db-collections'
+export { EXEC_JS_TOOL_DEF, createExecJsHandler, createExecJsTool } from './exec'
+export type { ExecJsParams, ExecDbApi, CreateExecJsHandlerOptions } from './exec'
