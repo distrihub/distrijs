@@ -353,9 +353,24 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
           );
         }
 
-        // Interactive tools (ask_follow_up, confirm, input, approval_*)
+        // If `executeTool` already attached a component (e.g. a
+        // registered DistriUiTool like `ask_follow_up`), defer to it
+        // — Chat.tsx's `renderExternalToolCalls` will render that
+        // copy. Without this, we'd ALSO render the interactive
+        // fallback below and the user would see two UIs for the same
+        // tool call (one inline "Type your answer" box plus the
+        // proper structured form).
+        if (state.component) {
+          return null;
+        }
+
+        // Interactive tools (confirm, input, approval_*) — these have
+        // no registered UI component, so the renderer falls back to
+        // the generic InteractiveToolCard. `ask_follow_up` is NOT in
+        // this list anymore: it always ships with its own
+        // AskFollowUpComponent, surfaced via `state.component` above.
         const toolNameLower = toolCall.tool_name.toLowerCase();
-        const isInteractive = toolNameLower === 'ask_follow_up' || toolNameLower === 'confirm' ||
+        const isInteractive = toolNameLower === 'confirm' ||
           toolNameLower === 'input' || toolNameLower.startsWith('approval_');
 
         if (isInteractive) {
