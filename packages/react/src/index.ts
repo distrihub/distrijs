@@ -54,6 +54,7 @@ export {
   DB_DELETE_TOOL_DEF,
   DB_CLEAR_TOOL_DEF,
   DB_COLLECTIONS_TOOL_DEF,
+  EXEC_JS_TOOL_DEF,
   createDbPutHandler,
   createDbGetHandler,
   createDbListHandler,
@@ -61,6 +62,7 @@ export {
   createDbDeleteHandler,
   createDbClearHandler,
   createDbCollectionsHandler,
+  createExecJsHandler,
   createDbPutTool,
   createDbGetTool,
   createDbListTool,
@@ -68,6 +70,7 @@ export {
   createDbDeleteTool,
   createDbClearTool,
   createDbCollectionsTool,
+  createExecJsTool,
 } from './browser-tools';
 export type {
   StoreRecord,
@@ -76,6 +79,9 @@ export type {
   CollectionDef,
   CreateDbToolsOptions,
   CreateDbToolsResult,
+  ExecJsParams,
+  ExecDbApi,
+  CreateExecJsHandlerOptions,
 } from './browser-tools';
 
 // Workflow
