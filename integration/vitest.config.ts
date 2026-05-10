@@ -6,7 +6,11 @@ export default defineConfig({
     alias: {
       '@distri/core': path.resolve(__dirname, '../packages/core/src'),
       '@distri/react': path.resolve(__dirname, '../packages/react/src'),
+      // The react package uses these path aliases internally; mirror them
+      // so cross-package source imports resolve.
+      '@': path.resolve(__dirname, '../packages/react/src'),
     },
+    dedupe: ['vitest', 'react', 'react-dom'],
   },
   test: {
     globals: true,

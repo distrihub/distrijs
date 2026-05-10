@@ -88,7 +88,7 @@ describe('chatStateStore — invoke_agent / fork capture', () => {
     send({ type: 'run_started', taskId: FORK, parentTaskId: ROOT, data: { taskId: FORK } } as any);
 
     const tree = useChatStateStore.getState().getTaskTree(ROOT);
-    expect(tree.map(t => t.taskId)).toContain(ROOT);
-    expect(tree.map(t => t.taskId)).toContain(FORK);
+    expect(tree.map(t => t.id)).toContain(ROOT);
+    expect(tree.map(t => t.id)).toContain(FORK);
   });
 });
