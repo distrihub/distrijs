@@ -31,7 +31,7 @@ export type HomeRoutePath =
   | '/workspace/:type'
   | '/workspace/:type/:id'
   | '/threads'
-  | '/threads/:id'
+  | '/threads/:threadId'
   | '/sessions'
   | '/channels'
   | '/users'
@@ -64,7 +64,7 @@ const DEFAULTS: Record<HomeRoutePath, ReactElement> = {
   '/workspace/:type': <WorkspacePage />,
   '/workspace/:type/:id': <WorkspacePage />,
   '/threads': <ThreadsPage />,
-  '/threads/:id': <ThreadDetailPage />,
+  '/threads/:threadId': <ThreadDetailPage />,
   '/sessions': <SessionsPage />,
   '/channels': <ChannelsPage />,
   '/users': <UsersPage />,
