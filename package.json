@@ -63,7 +63,7 @@
     "vitest": "^4.1.1"
   },
   "dependencies": {
-    "@a2a-js/sdk": "https://github.com/v3g42/a2a-js.git#51444c9",
+    "@a2a-js/sdk": "^0.3.13",
     "lucide-react": "^0.460.0"
   },
   "pnpm": {

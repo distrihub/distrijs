@@ -1,4 +1,5 @@
-import { A2AClient, Message, MessageSendParams, Task, SendMessageResponse, GetTaskResponse, Part } from '@a2a-js/sdk/client';
+import { A2AClient } from '@a2a-js/sdk/client';
+import { Message, MessageSendParams, Task, SendMessageResponse, GetTaskResponse, Part } from '@a2a-js/sdk';
 import {
   DistriMessage,
   DistriPart,
@@ -776,7 +777,10 @@ export class DistriClient {
 
     if (!existing || existing.url !== agentUrl) {
       const fetchFn = this.fetchAbsolute.bind(this);
-      const client = new A2AClient(agentUrl, fetchFn);
+      const client = new A2AClient(agentUrl, {
+        fetchImpl: fetchFn,
+        agentCardPath: '/.well-known/agent.json',
+      });
       this.agentClients.set(agentId, { url: agentUrl, client });
       this.debug(
         existing
