@@ -132,7 +132,7 @@ describe('InvocationResult discriminated union', () => {
   it('narrows on `kind`', () => {
     const scalar: InvocationResult = {
       kind: 'scalar',
-      result: { content: 'ok', task_id: 't1', status: 'Completed' },
+      result: { content: 'ok', task_id: 't1', status: 'completed' },
     };
     const taskIds: InvocationResult = { kind: 'task_ids', task_ids: ['a', 'b'] };
 

@@ -112,12 +112,12 @@ export interface AgentResult {
 }
 
 export type AgentTaskStatus =
-  | 'Pending'
-  | 'Running'
-  | 'InputRequired'
-  | 'Completed'
-  | 'Failed'
-  | 'Canceled';
+  | 'pending'
+  | 'running'
+  | 'input_required'
+  | 'completed'
+  | 'failed'
+  | 'canceled';
 
 /** Discriminated union — shape matches `Join`. */
 export type InvocationResult =

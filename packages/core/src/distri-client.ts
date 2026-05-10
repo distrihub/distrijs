@@ -1302,8 +1302,17 @@ export class DistriClient {
    * Ensure access token is valid, refreshing if necessary.
    * Call this before starting operations (e.g. sending messages) to
    * proactively refresh an expiring token instead of failing mid-request.
+   *
+   * Skipped entirely when the caller has supplied a static auth signal
+   * in `config.headers` — `x-api-key` or a non-Bearer `Authorization`
+   * (e.g. a long-lived JWT). Those auths are stamped on every request
+   * via `applyHeaders(this.config.headers)` in `fetchAbsolute`, so the
+   * managed-token path is unused.
    */
   async ensureAccessToken(): Promise<void> {
+    if (this.hasStaticAuthHeader()) {
+      return;
+    }
     if (!this.accessToken || this.isTokenExpiring(this.accessToken)) {
       if (this.refreshToken || this.onTokenRefresh) {
         await this.refreshTokens();
@@ -1313,6 +1322,13 @@ export class DistriClient {
         throw new ApiError('Access token expired and no refresh mechanism available', 401);
       }
     }
+  }
+
+  /** True iff the user provided a static auth header in `config.headers`. */
+  private hasStaticAuthHeader(): boolean {
+    const h = this.config.headers;
+    if (!h) return false;
+    return Boolean(h['x-api-key'] || h['X-Api-Key'] || h['Authorization'] || h['authorization']);
   }
 
   private async refreshTokens(): Promise<void> {
