@@ -12,7 +12,7 @@ export const StreamDebugger: React.FC<StreamDebuggerProps> = ({
   className = ''
 }) => {
   const { agent, loading: agentLoading } = useAgent({ agentIdOrDef });
-  const { messages, sendMessage, isLoading } = useChat({ agent: agent || undefined, threadId: 'debug-thread' });
+  const { messages, sendMessage, isLoading } = useChat({ agent: agent ?? null, threadId: 'debug-thread' });
   const [debugLogs, setDebugLogs] = useState<any[]>([]);
   const [testMessage, setTestMessage] = useState("Tell me about the founders of LangDB");
 

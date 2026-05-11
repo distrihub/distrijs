@@ -6,6 +6,7 @@ import { UserMessageRenderer } from './UserMessageRenderer';
 import { LoadingShimmer } from './ThinkingRenderer';
 import { MessageFeedback } from './MessageFeedback';
 import { useRendererContext } from './RendererContext';
+import { extractContent } from './utils';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export interface StepBasedRendererProps {
@@ -109,6 +110,27 @@ export const StepBasedRenderer: React.FC<StepBasedRendererProps> = ({
   if (distriMessage.role === 'assistant') {
     const isComplete = step?.status !== 'running';
     const showControls = threadId && distriMessage.id && isComplete && (enableFeedback || !!onShowTrace);
+
+    // Skip silent assistant messages — workers (sub-agents) often
+    // emit `text_message_start → text_message_end` with no content
+    // when they go straight to a tool call. Rendering the agent
+    // badge with an empty body produced a stray-space line in the
+    // CLI; in the web UI the row showed up as ~100px of blank
+    // space between consecutive tool calls (agent badge + empty
+    // body + step loader, all empty, but the wrapper still took
+    // vertical space).
+    //
+    // Drop the `isComplete` precondition: even while a step is
+    // still 'running', if the assistant message has no text and
+    // no image content, there's nothing to render for the user —
+    // tool calls and step indicators surface through their own
+    // events. Hiding the row is strictly better than showing an
+    // empty agent-name chip with a shimmer.
+    const content = extractContent(distriMessage);
+    const isEmpty = !content.text && content.imageParts.length === 0;
+    if (isEmpty) {
+      return null;
+    }
 
     return (
       <div className="flex items-start gap-4 group">
