@@ -367,6 +367,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls());
   const currentState = useChatStateStore(state => state);
   const todos = useChatStateStore(state => state.todos);
+  const lastTodoChanges = useChatStateStore(state => state.lastTodoChanges);
   const verbose = useChatStateStore(state => state.verbose);
   const setVerbose = useChatStateStore(state => state.setVerbose);
   const audioEnabled = useChatStateStore(s => s.audioEnabled ?? false);
@@ -1211,7 +1212,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             {(todos?.length > 0 || isStreaming) && (
               <div className="space-y-1.5">
                 {todos && todos.length > 0 && (
-                  <TodosCompact todos={todos} />
+                  <TodosCompact todos={todos} changes={lastTodoChanges} />
                 )}
                 {isStreaming && (
                   <LoadingStrip words={loadingAnimation?.cycleWords} />

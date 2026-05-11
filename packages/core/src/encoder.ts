@@ -1,7 +1,6 @@
-import { Message, Part } from '@a2a-js/sdk/client';
+import { Message, Part, FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus, LiveViewEvent } from './events';
-import { FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 
 /**
  * Converts an A2A Message to a DistriMessage

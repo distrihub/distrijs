@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Home } from '../Home';
 import { DistriHomeProvider } from '../../provider/DistriHomeProvider';
+import type { DistriHomeClient } from '../../DistriHomeClient';
 
 const LONG_TITLE =
   'Create a site "Nordic North Winter Sale 2026" — a promotional landing page with hero section';
@@ -39,7 +40,7 @@ const mockGetHomeStats = vi.fn().mockResolvedValue({
   custom_metrics: {},
 });
 
-const mockHomeClient = { getHomeStats: mockGetHomeStats };
+const mockHomeClient = { getHomeStats: mockGetHomeStats } as unknown as DistriHomeClient;
 
 vi.mock('@distri/react', () => ({
   useAgentDefinitions: () => ({ agents: [], loading: false, error: null }),

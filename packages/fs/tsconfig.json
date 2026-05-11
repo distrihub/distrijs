@@ -27,7 +27,7 @@
         "../core/src"
       ],
       "@distri/react": [
-        "../react/src"
+        "../react/dist/index.d.ts"
       ]
     }
   },

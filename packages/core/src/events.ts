@@ -190,6 +190,23 @@ export interface TodoItem {
   status: TodoStatus;
 }
 
+/**
+ * One mutation in a `write_todos` call. Mirrors `distri_types::todos::TodoChange`.
+ *
+ * Lets renderers show only the items that actually changed in the
+ * latest `write_todos` invocation instead of re-rendering the full
+ * list every time the LLM ticks something off.
+ */
+export type TodoChangeKind = 'added' | 'status_changed' | 'removed';
+
+export interface TodoChange {
+  kind: TodoChangeKind;
+  content: string;
+  status: TodoStatus;
+  /** Status the item had before this call. Set only for `status_changed`. */
+  prev_status?: TodoStatus;
+}
+
 export interface TodosUpdatedEvent {
   type: 'todos_updated';
   data: {
@@ -198,6 +215,15 @@ export interface TodosUpdatedEvent {
     todo_count: number;
     /** Parsed todo items for rendering */
     todos?: TodoItem[];
+    /**
+     * Per-call diff: which items got added, had their status
+     * changed, or were removed. Empty when the renderer can't
+     * compute it (first `write_todos` call has no prior list to
+     * diff against — every item is treated as `Added`). Renderers
+     * should prefer this list when surfacing "what just changed"
+     * UI; the full list is still in `todos`.
+     */
+    changes?: TodoChange[];
   };
 }
 

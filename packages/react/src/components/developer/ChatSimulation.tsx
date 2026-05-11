@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Agent, AgentDefinition, DistriClient, DistriPart, convertDistriMessageToA2A } from '@distri/core';
+import { Agent, AgentDefinition, DistriClient, DistriPart, convertDistriMessageToA2A, isDistriEvent } from '@distri/core';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useDistri } from '@/DistriProvider';
@@ -197,6 +197,9 @@ async function generatePayloadWithAgent(
   for await (const event of stream) {
     if (isCancelled?.()) {
       break;
+    }
+    if (!isDistriEvent(event)) {
+      continue;
     }
     if (event.type === 'run_error') {
       throw new Error(event.data.message);

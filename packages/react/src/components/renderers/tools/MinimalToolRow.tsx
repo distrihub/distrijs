@@ -11,6 +11,10 @@ interface MinimalToolRowProps {
   debug?: boolean;
 }
 
+function hasInputContent(input: unknown): boolean {
+  return !!input && typeof input === 'object' && Object.keys(input as object).length > 0;
+}
+
 function StatusIcon({ status }: { status: ToolCallState['status'] }) {
   if (status === 'completed') {
     return <span className="text-primary text-[11px] w-3.5 text-center flex-shrink-0">✓</span>;
@@ -106,7 +110,9 @@ export const MinimalToolRow: React.FC<MinimalToolRowProps> = ({ summary, state, 
   const [expanded, setExpanded] = useState(debug);
   const isError = state.status === 'error';
   const errorMsg = state.error;
-  const expandable = hasResultContent(state.result);
+  const inputExpandable = hasInputContent(state.input);
+  const resultExpandable = hasResultContent(state.result);
+  const expandable = inputExpandable || resultExpandable;
 
   // Diff shorthand from result
   let diffAdded: number | undefined;
@@ -160,9 +166,22 @@ export const MinimalToolRow: React.FC<MinimalToolRowProps> = ({ summary, state, 
       {isError && errorMsg && (
         <div className="pl-5 pb-1 text-[11px] text-destructive">{errorMsg}</div>
       )}
-      {expanded && state.result && (
-        <div className="pl-5 pb-1.5 overflow-auto max-h-[300px] bg-muted/50 rounded p-2 mt-0.5">
-          {renderResultContent(state.result)}
+      {expanded && (inputExpandable || resultExpandable) && (
+        <div className="pl-5 pb-1.5 mt-0.5 space-y-1">
+          {inputExpandable && (
+            <div className="overflow-auto max-h-[200px] bg-muted/50 rounded p-2">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Input</div>
+              <pre className="whitespace-pre-wrap break-words text-[11px] text-muted-foreground m-0">
+                {JSON.stringify(state.input, null, 2)}
+              </pre>
+            </div>
+          )}
+          {resultExpandable && state.result && (
+            <div className="overflow-auto max-h-[300px] bg-muted/50 rounded p-2">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Result</div>
+              {renderResultContent(state.result)}
+            </div>
+          )}
         </div>
       )}
     </div>

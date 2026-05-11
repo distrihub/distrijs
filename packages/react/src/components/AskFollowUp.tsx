@@ -134,10 +134,50 @@ function AskFollowUpComponent({
     });
     return defaults;
   });
+  // Per-question "user has interacted" flag, separate from value.
+  // Needed because boolean `false` is a real answer (Yes/No) and
+  // an empty string can be a real answer for `text`. The previous
+  // `!answers[id]` check conflated value-falsy with not-yet-answered
+  // and made it impossible to submit "No".
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
+  // "Other / type your own" escape hatch for select / multiselect:
+  // `otherOpen[id]` controls visibility of the free-form input;
+  // `otherText[id]` is what the user has typed there.
+  const [otherOpen, setOtherOpen] = useState<Record<string, boolean>>({});
+  const [otherText, setOtherText] = useState<Record<string, string>>({});
 
   const currentQuestion = hasQuestions ? questions[currentStep] : null;
   const isLastStep = currentStep === questions.length - 1;
   const isCompleted = toolCallState?.status === 'completed';
+
+  const isAnswered = useCallback(
+    (q: FollowUpQuestion): boolean => {
+      // A pre-populated `default` counts as answered — the user can
+      // accept the LLM's suggestion by pressing Next without
+      // interacting.
+      if (q.default !== undefined && !touched.has(q.id)) return true;
+      switch (q.type) {
+        case 'boolean':
+          // Touch is the signal — value of `false` is a real answer.
+          return touched.has(q.id);
+        case 'select':
+          // Need a touch AND a non-empty value: opening the "Other"
+          // input touches the question but leaves the string empty
+          // until the user types, and we don't want Next to enable
+          // while the typed answer is blank.
+          return (
+            touched.has(q.id) &&
+            ((answers[q.id] as string) ?? '').trim().length > 0
+          );
+        case 'multiselect':
+          return ((answers[q.id] as string[]) ?? []).length > 0;
+        case 'text':
+        default:
+          return ((answers[q.id] as string) ?? '').trim().length > 0;
+      }
+    },
+    [answers, touched],
+  );
 
   // Handle empty questions case - complete immediately
   useEffect(() => {
@@ -160,11 +200,17 @@ function AskFollowUpComponent({
       ...prev,
       [currentQuestion.id]: value,
     }));
+    setTouched((prev) => {
+      if (prev.has(currentQuestion.id)) return prev;
+      const next = new Set(prev);
+      next.add(currentQuestion.id);
+      return next;
+    });
   }, [currentQuestion]);
 
   const handleNext = useCallback(() => {
     if (!currentQuestion) return;
-    if (currentQuestion.required && !answers[currentQuestion.id]) {
+    if (currentQuestion.required && !isAnswered(currentQuestion)) {
       return; // Don't proceed if required and empty
     }
 
@@ -185,7 +231,7 @@ function AskFollowUpComponent({
     } else {
       setCurrentStep((prev) => prev + 1);
     }
-  }, [currentQuestion, answers, isLastStep, completeTool, toolCall]);
+  }, [currentQuestion, answers, isAnswered, isLastStep, completeTool, toolCall]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) {
@@ -235,7 +281,13 @@ function AskFollowUpComponent({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background shadow-sm">
+    // `onKeyDown` lives on the card root so Enter submits regardless
+    // of which question type has focus (boolean / select chips don't
+    // capture the global keystroke otherwise).
+    <div
+      className="border rounded-lg overflow-hidden bg-background shadow-sm"
+      onKeyDown={handleKeyDown}
+    >
       {/* Header */}
       {(input.title || input.description) && (
         <div className="px-4 py-3 border-b bg-muted/30">
@@ -277,71 +329,176 @@ function AskFollowUpComponent({
           {currentQuestion.required && <span className="text-destructive ml-1">*</span>}
         </label>
 
-        {/* Input based on type */}
+        {/* Input based on type. The text input no longer attaches its
+           own onKeyDown — the card-root handler at line 287 picks up
+           Enter and bubbling means a child handler would fire it twice. */}
         {currentQuestion.type === 'text' && (
           <input
             type="text"
             value={answers[currentQuestion.id] as string || ''}
             onChange={(e) => handleAnswer(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder={currentQuestion.placeholder || 'Type your answer...'}
             className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             autoFocus
           />
         )}
 
-        {currentQuestion.type === 'select' && currentQuestion.options && (
-          <div className="space-y-2">
-            {currentQuestion.options.map((option) => (
-              <button
-                key={option}
-                onClick={() => handleAnswer(option)}
-                className={cn(
-                  'w-full px-3 py-2 text-sm text-left border rounded-md transition-colors',
-                  answers[currentQuestion.id] === option
-                    ? 'border-primary bg-primary/10'
-                    : 'hover:bg-muted'
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {currentQuestion.type === 'multiselect' && currentQuestion.options && (
-          <div className="space-y-2">
-            {currentQuestion.options.map((option) => {
-              const selected = (answers[currentQuestion.id] as string[] || []).includes(option);
-              return (
+        {currentQuestion.type === 'select' && currentQuestion.options && (() => {
+          const qid = currentQuestion.id;
+          const isOtherOpen = !!otherOpen[qid];
+          // For `select`, the typed text *replaces* any chip pick — we
+          // can detect "Other is the active answer" by the chip-match
+          // failing while the typed text matches the current answer.
+          const currentAnswer = answers[qid];
+          return (
+            <div className="space-y-2">
+              {currentQuestion.options!.map((option) => (
                 <button
                   key={option}
                   onClick={() => {
-                    const current = answers[currentQuestion.id] as string[] || [];
-                    const newValue = selected
-                      ? current.filter((v) => v !== option)
-                      : [...current, option];
-                    handleAnswer(newValue);
+                    // Picking a real chip retires the Other escape
+                    // hatch — mutually exclusive for `select`.
+                    if (isOtherOpen) {
+                      setOtherOpen((p) => ({ ...p, [qid]: false }));
+                      setOtherText((p) => ({ ...p, [qid]: '' }));
+                    }
+                    handleAnswer(option);
                   }}
                   className={cn(
-                    'w-full px-3 py-2 text-sm text-left border rounded-md transition-colors flex items-center gap-2',
-                    selected
+                    'w-full px-3 py-2 text-sm text-left border rounded-md transition-colors',
+                    !isOtherOpen && currentAnswer === option
                       ? 'border-primary bg-primary/10'
                       : 'hover:bg-muted'
                   )}
                 >
-                  <div className={cn(
-                    'w-4 h-4 border rounded flex items-center justify-center',
-                    selected ? 'bg-primary border-primary' : 'border-muted-foreground'
-                  )}>
-                    {selected && <CheckIcon className="w-3 h-3 text-primary-foreground" />}
-                  </div>
                   {option}
                 </button>
-              );
-            })}
-          </div>
-        )}
+              ))}
+              {isOtherOpen ? (
+                <input
+                  type="text"
+                  value={otherText[qid] ?? ''}
+                  autoFocus
+                  onChange={(e) => {
+                    setOtherText((p) => ({ ...p, [qid]: e.target.value }));
+                    handleAnswer(e.target.value);
+                  }}
+                  placeholder="Type your answer…"
+                  className="w-full px-3 py-2 text-sm border border-primary rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    setOtherOpen((p) => ({ ...p, [qid]: true }));
+                    // Open with an empty draft and clear any
+                    // previously-clicked chip so the user starts fresh.
+                    setOtherText((p) => ({ ...p, [qid]: '' }));
+                    handleAnswer('');
+                    // `handleAnswer('')` marks the question touched
+                    // but the empty value won't satisfy `isAnswered`
+                    // — exactly what we want until the user types.
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 px-1"
+                >
+                  Or type your own answer
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {currentQuestion.type === 'multiselect' && currentQuestion.options && (() => {
+          const qid = currentQuestion.id;
+          const selectedArr = (answers[qid] as string[]) || [];
+          const isOtherOpen = !!otherOpen[qid];
+          const draft = otherText[qid] ?? '';
+          const addOther = () => {
+            const trimmed = draft.trim();
+            if (!trimmed || selectedArr.includes(trimmed)) {
+              setOtherText((p) => ({ ...p, [qid]: '' }));
+              return;
+            }
+            handleAnswer([...selectedArr, trimmed]);
+            setOtherText((p) => ({ ...p, [qid]: '' }));
+          };
+          return (
+            <div className="space-y-2">
+              {currentQuestion.options!.map((option) => {
+                const selected = selectedArr.includes(option);
+                return (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      const newValue = selected
+                        ? selectedArr.filter((v) => v !== option)
+                        : [...selectedArr, option];
+                      handleAnswer(newValue);
+                    }}
+                    className={cn(
+                      'w-full px-3 py-2 text-sm text-left border rounded-md transition-colors flex items-center gap-2',
+                      selected
+                        ? 'border-primary bg-primary/10'
+                        : 'hover:bg-muted'
+                    )}
+                  >
+                    <div className={cn(
+                      'w-4 h-4 border rounded flex items-center justify-center',
+                      selected ? 'bg-primary border-primary' : 'border-muted-foreground'
+                    )}>
+                      {selected && <CheckIcon className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    {option}
+                  </button>
+                );
+              })}
+              {/* "Other" — typed values are *appended* to the array;
+                 multiselect lets pre-baked picks coexist with custom
+                 ones, so we don't close the chip set when this opens. */}
+              {isOtherOpen ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={draft}
+                    autoFocus
+                    onChange={(e) => setOtherText((p) => ({ ...p, [qid]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        // Stop the root-card handler from also firing
+                        // `handleNext` — Enter inside the Other input
+                        // means "append this draft to the array", not
+                        // "submit the form".
+                        e.stopPropagation();
+                        addOther();
+                      }
+                    }}
+                    placeholder="Type your own…"
+                    className="flex-1 px-3 py-2 text-sm border border-primary rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <button
+                    onClick={addOther}
+                    disabled={!draft.trim()}
+                    className={cn(
+                      'px-3 py-1 text-sm rounded-md',
+                      draft.trim()
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed',
+                    )}
+                  >
+                    Add
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setOtherOpen((p) => ({ ...p, [qid]: true }))}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 px-1"
+                >
+                  Or type your own…
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {currentQuestion.type === 'boolean' && (
           <div className="flex gap-3">
@@ -385,18 +542,23 @@ function AskFollowUpComponent({
         >
           Back
         </button>
-        <button
-          onClick={handleNext}
-          disabled={currentQuestion.required && !answers[currentQuestion.id]}
-          className={cn(
-            'px-4 py-1.5 text-sm rounded-md transition-colors',
-            currentQuestion.required && !answers[currentQuestion.id]
-              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
-          )}
-        >
-          {isLastStep ? 'Submit' : 'Next'}
-        </button>
+        {(() => {
+          const blocked = currentQuestion.required && !isAnswered(currentQuestion);
+          return (
+            <button
+              onClick={handleNext}
+              disabled={blocked}
+              className={cn(
+                'px-4 py-1.5 text-sm rounded-md transition-colors',
+                blocked
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              )}
+            >
+              {isLastStep ? 'Submit' : 'Next'}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAgentDefinitions } from '@distri/react';
-import { useDistriHomeNavigate, useDistriHome } from '../provider/context';
+import { useDistriHome } from '../provider/context';
 import { useHomeStats } from '../hooks/useHomeStats';
 import { HomeStatsThread, RecentlyUsedAgent, CustomMetric } from '../DistriHomeClient';
 import {
@@ -11,7 +12,6 @@ import {
   Gauge,
   Loader2,
   MessageSquare,
-  Users,
   X,
 } from 'lucide-react';
 
@@ -32,7 +32,6 @@ export interface HomeProps {
 }
 
 export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
-  const navigate = useDistriHomeNavigate();
   const config = useDistriHome();
   const { stats, loading: statsLoading, error: statsError } = useHomeStats();
   const { agents } = useAgentDefinitions();
@@ -137,19 +136,16 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                   {statsError ? (
                     <span className="text-lg sm:text-xl font-semibold text-foreground">—</span>
                   ) : mostActiveAgent?.id ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const getPath = config.navigationPaths?.agentDetails;
-                        const path = getPath
-                          ? getPath(mostActiveAgent.id)
-                          : `agents/${encodeURIComponent(mostActiveAgent.id)}`;
-                        navigate(path);
-                      }}
+                    <Link
+                      to={
+                        config.navigationPaths?.agentDetails
+                          ? config.navigationPaths.agentDetails(mostActiveAgent.id)
+                          : `/workspace/agents/${encodeURIComponent(mostActiveAgent.id)}`
+                      }
                       className="text-lg sm:text-xl font-semibold text-primary transition hover:text-primary/80"
                     >
                       {mostActiveLabel}
-                    </button>
+                    </Link>
                   ) : (
                     <span className="text-lg sm:text-xl font-semibold text-foreground">{mostActiveLabel}</span>
                   )}
@@ -191,13 +187,12 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                 <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                 Latest threads
               </div>
-              <button
-                type="button"
-                onClick={() => navigate('threads')}
+              <Link
+                to="/threads"
                 className="rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
               >
                 View all
-              </button>
+              </Link>
             </div>
             <div className="divide-y divide-border/60">
               {statsLoading ? (
@@ -214,19 +209,17 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
               ) : (
                 latestThreads.slice(0, 4).map((thread: HomeStatsThread, index: number) => {
                   const avatarStyle = threadAvatarStyles[index % threadAvatarStyles.length];
+                  // Direct to the thread DETAIL page (`/threads/<id>`) —
+                  // NOT `/chat?id=…&threadId=…` (which is the "new chat
+                  // with agent" page and ignores the threadId, falling
+                  // back to a session-stored UUID).
+                  const to = thread.id
+                    ? `/threads/${encodeURIComponent(thread.id)}`
+                    : '/threads';
                   return (
-                    <button
+                    <Link
                       key={thread.id}
-                      type="button"
-                      onClick={() => {
-                        if (thread.agent_id && thread.id) {
-                          navigate(
-                            `chat?id=${encodeURIComponent(thread.agent_id)}&threadId=${encodeURIComponent(thread.id)}`
-                          );
-                        } else {
-                          navigate('threads');
-                        }
-                      }}
+                      to={to}
                       className="group flex w-full items-center gap-2 sm:gap-4 px-4 sm:px-6 py-3 sm:py-3.5 text-left transition hover:bg-muted/40"
                     >
                       <div
@@ -243,7 +236,7 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                         </p>
                       </div>
                       <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-                    </button>
+                    </Link>
                   );
                 })
               )}
@@ -257,13 +250,12 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                 <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                 Recently Active Agents
               </div>
-              <button
-                type="button"
-                onClick={() => navigate('agents')}
+              <Link
+                to="/workspace/agents"
                 className="rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
               >
                 View all
-              </button>
+              </Link>
             </div>
             <div className="flex-1 divide-y divide-border/60">
               {statsLoading ? (
@@ -278,17 +270,17 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
               ) : (
                 recentlyUsedAgents.slice(0, 4).map((agent, index) => {
                   const avatarStyle = agentAvatarStyles[index % agentAvatarStyles.length];
+                  // Resolve agent-detail path the same way as before.
+                  // The configurable `navigationPaths.agentDetails` lets
+                  // consumers override the URL shape (cloud uses
+                  // `/agents/<id>`; OSS uses `/workspace/agents/<id>`).
+                  const to = config.navigationPaths?.agentDetails
+                    ? config.navigationPaths.agentDetails(agent.id)
+                    : `/workspace/agents/${encodeURIComponent(agent.id)}`;
                   return (
-                    <button
+                    <Link
                       key={agent.id}
-                      type="button"
-                      onClick={() => {
-                        const getPath = config.navigationPaths?.agentDetails;
-                        const path = getPath
-                          ? getPath(agent.id)
-                          : `agents/${encodeURIComponent(agent.id)}`;
-                        navigate(path);
-                      }}
+                      to={to}
                       className="group flex w-full items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-3.5 text-left transition hover:bg-muted/40"
                     >
                       <div
@@ -304,7 +296,7 @@ export function Home({ onNewAgent, renderNewAgentHelp, className }: HomeProps) {
                           {formatRelativeTime(agent.last_used_at)}
                         </p>
                       </div>
-                    </button>
+                    </Link>
                   );
                 })
               )}

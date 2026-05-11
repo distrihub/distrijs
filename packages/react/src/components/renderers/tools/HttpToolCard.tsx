@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
 import { ToolCall } from '@distri/core';
 import { ToolCallState } from '@/stores/chatStateStore';
 
@@ -62,14 +62,29 @@ function formatBody(body: unknown, maxLen = 1200): string {
   return raw.length > maxLen ? raw.slice(0, maxLen) + '\n…' : raw;
 }
 
-function extractResponseData(state?: ToolCallState): { status?: number; body?: unknown } {
+interface ExtractedResponse {
+  status?: number;
+  /** Server-side success flag. Usually `status >= 200 && status < 300` but
+   *  the HTTP tool may report `false` for network-level failures with no
+   *  status (DNS, connection reset, etc.) — keep it as a separate signal. */
+  ok?: boolean;
+  body?: unknown;
+}
+
+function extractResponseData(state?: ToolCallState): ExtractedResponse {
   if (!state?.result?.parts) return {};
   for (const part of state.result.parts) {
     const p = part as any;
     // Data parts from HTTP handler carry { status, ok, body, headers }
     if (p.part_type === 'data' && typeof p.data === 'object' && p.data !== null) {
       const d = p.data as Record<string, unknown>;
-      if ('status' in d) return { status: d.status as number, body: d.body };
+      if ('status' in d) {
+        return {
+          status: d.status as number,
+          ok: typeof d.ok === 'boolean' ? (d.ok as boolean) : undefined,
+          body: d.body,
+        };
+      }
       // Fallback: data part that is the response body itself (no wrapper)
       return { body: d };
     }
@@ -78,7 +93,11 @@ function extractResponseData(state?: ToolCallState): { status?: number; body?: u
       try {
         const parsed = JSON.parse(p.data);
         if (typeof parsed === 'object' && parsed !== null && 'status' in parsed) {
-          return { status: parsed.status as number, body: parsed.body ?? parsed };
+          return {
+            status: parsed.status as number,
+            ok: typeof parsed.ok === 'boolean' ? parsed.ok : undefined,
+            body: parsed.body ?? parsed,
+          };
         }
         return { body: parsed };
       } catch {
@@ -88,6 +107,26 @@ function extractResponseData(state?: ToolCallState): { status?: number; body?: u
     }
   }
   return {};
+}
+
+/**
+ * Treat a response as successful iff the server reported `ok: true`
+ * OR the status code is 2xx. Empty body on a 2xx is a perfectly
+ * valid response (DELETE → 204 No Content, POST → 201 with no body).
+ */
+function isResponseOk(status?: number, ok?: boolean): boolean {
+  if (typeof ok === 'boolean') return ok;
+  if (typeof status === 'number') return status >= 200 && status < 300;
+  return false;
+}
+
+/** Is `body` effectively empty for display purposes? */
+function isEmptyBody(body: unknown): boolean {
+  if (body === undefined || body === null) return true;
+  if (typeof body === 'string') return body.trim().length === 0;
+  if (Array.isArray(body)) return body.length === 0;
+  if (typeof body === 'object') return Object.keys(body as object).length === 0;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +146,9 @@ export const HttpToolCard: React.FC<HttpToolCardProps> = ({ toolCall, state, pat
   const [requestExpanded, setRequestExpanded] = useState(false);
 
   const label = findLabel(urlPath, paths);
-  const { status: statusCode, body: responseBody } = extractResponseData(state);
+  const { status: statusCode, ok: serverOk, body: responseBody } = extractResponseData(state);
+  const succeeded = isResponseOk(statusCode, serverOk);
+  const bodyIsEmpty = isEmptyBody(responseBody);
 
   const timing = state?.endTime && state?.startTime
     ? `${((state.endTime - state.startTime) / 1000).toFixed(1)}s`
@@ -130,17 +171,24 @@ export const HttpToolCard: React.FC<HttpToolCardProps> = ({ toolCall, state, pat
           {method}
         </span>
 
-        {/* URL + label */}
-        <span className="flex-1 flex items-center gap-1.5 min-w-0">
-          <code className="text-[11px] text-muted-foreground truncate max-w-[220px] sm:max-w-[300px]">
-            {urlPath}
-          </code>
-          {label && (
-            <span className="text-[10px] text-muted-foreground/70 hidden sm:inline">
-              {label}
-            </span>
-          )}
-        </span>
+        {/* URL + label.
+           Narrow viewports (the thread side panel can be ~360 px wide)
+           used to character-wrap the label because:
+             1) the URL had a hard-coded `max-w-[220px]` that ate the
+                whole flex line,
+             2) the label span had no `truncate`, so the browser
+                wrapped it onto multiple lines mid-word.
+           Now: URL uses `flex-1 min-w-0 truncate` (no fixed max);
+           label is `truncate` with `min-w-0` so both shrink to a
+           single line with ellipsis. */}
+        <code className="flex-1 min-w-0 text-[11px] text-muted-foreground truncate">
+          {urlPath}
+        </code>
+        {label && (
+          <span className="hidden sm:inline min-w-0 max-w-[40%] text-[10px] text-muted-foreground/70 truncate whitespace-nowrap">
+            {label}
+          </span>
+        )}
 
         {/* Status code badge */}
         {statusCode != null && (
@@ -195,13 +243,42 @@ export const HttpToolCard: React.FC<HttpToolCardProps> = ({ toolCall, state, pat
             </div>
           )}
 
-          {/* Response body */}
+          {/* Response body.
+             Empty body on a 2xx (DELETE → 204, idempotent PUT, etc.)
+             is a *successful* response — show that explicitly with
+             a check + status code instead of an ambiguous "No
+             response body" line that reads like an error. */}
           {!isRunning && (
-            <div className="p-3">
-              <div className="text-[11px] font-medium text-muted-foreground mb-1">Response</div>
-              <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap max-h-[250px] overflow-auto bg-muted/50 rounded p-2">
-                {formatBody(responseBody) || <span className="italic">No response body</span>}
-              </pre>
+            <div className="p-3 space-y-1.5">
+              <div className="text-[11px] font-medium text-muted-foreground">Response</div>
+              {bodyIsEmpty ? (
+                <div
+                  className={`flex items-center gap-1.5 text-[11px] rounded p-2 ${
+                    succeeded
+                      ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                      : statusCode != null
+                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                        : 'bg-muted/50 text-muted-foreground'
+                  }`}
+                >
+                  {succeeded ? (
+                    <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                  ) : statusCode != null ? (
+                    <XCircle className="h-3 w-3 flex-shrink-0" />
+                  ) : null}
+                  <span>
+                    {succeeded
+                      ? `Success · ${statusCode ?? '2xx'} (no body)`
+                      : statusCode != null
+                        ? `Failed · ${statusCode} (no body)`
+                        : 'No response received'}
+                  </span>
+                </div>
+              ) : (
+                <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap max-h-[250px] overflow-auto bg-muted/50 rounded p-2">
+                  {formatBody(responseBody)}
+                </pre>
+              )}
             </div>
           )}
         </div>

@@ -30,6 +30,32 @@ export function recordView<T>(r: StoreRecord<T>) {
 }
 
 /**
+ * Lightweight record projection for list / search results. Strips any
+ * `data:` URL string fields and replaces them with a `<binary…>`
+ * placeholder so the response stays small.
+ *
+ * Why: `db_list({collection: "imports"})` over a batch of phone-photo
+ * rows would otherwise return tens of MB of base64 — every image
+ * inline — and blow past actix's default JSON body limit. The agent
+ * never needs raw bytes from a list call: when it wants a specific
+ * image it calls `db_get(id)`, which goes through `recordToParts` and
+ * splits the image into a real `image` content part.
+ */
+export function recordViewLight<T>(r: StoreRecord<T>) {
+  const out: Record<string, unknown> = { id: r.id }
+  for (const [k, v] of Object.entries(r.data as object)) {
+    if (typeof v === 'string' && v.startsWith('data:')) {
+      const kb = Math.round(v.length / 1024)
+      out[k] = `<binary ${kb}KB — call db_get for the actual bytes>`
+      continue
+    }
+    out[k] = v
+  }
+  out._meta = { createdAt: r.createdAt, updatedAt: r.updatedAt }
+  return out
+}
+
+/**
  * Parse a `data:` URL into mime + base64 payload. Returns null if the string
  * isn't a `data:...;base64,...` URL.
  */

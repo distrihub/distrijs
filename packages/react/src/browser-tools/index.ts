@@ -11,6 +11,7 @@ export {
   DB_DELETE_TOOL_DEF,
   DB_CLEAR_TOOL_DEF,
   DB_COLLECTIONS_TOOL_DEF,
+  EXEC_JS_TOOL_DEF,
   createDbPutHandler,
   createDbGetHandler,
   createDbListHandler,
@@ -18,6 +19,7 @@ export {
   createDbDeleteHandler,
   createDbClearHandler,
   createDbCollectionsHandler,
+  createExecJsHandler,
   createDbPutTool,
   createDbGetTool,
   createDbListTool,
@@ -25,5 +27,13 @@ export {
   createDbDeleteTool,
   createDbClearTool,
   createDbCollectionsTool,
+  createExecJsTool,
 } from './tools'
-export type { CollectionDef, CreateDbToolsOptions, CreateDbToolsResult } from './tools'
+export type {
+  CollectionDef,
+  CreateDbToolsOptions,
+  CreateDbToolsResult,
+  ExecJsParams,
+  ExecDbApi,
+  CreateExecJsHandlerOptions,
+} from './tools'

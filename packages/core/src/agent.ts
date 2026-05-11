@@ -9,7 +9,7 @@ import {
   DynamicMetadata,
   ExecutorContextMetadata,
 } from './types';
-import { Message, MessageSendParams } from '@a2a-js/sdk/client';
+import { Message, MessageSendParams } from '@a2a-js/sdk';
 import { decodeA2AStreamEvent } from './encoder';
 import { RunErrorEvent } from './events';
 

@@ -1,6 +1,6 @@
 import type { DistriFnTool } from '@distri/core'
 import type { IndexedDbStore } from '../storage/indexeddb-store'
-import { COLLECTION_PARAM, FN_BASE, makeResolver, recordView } from './shared'
+import { COLLECTION_PARAM, FN_BASE, makeResolver, recordViewLight } from './shared'
 
 export const DB_SEARCH_TOOL_DEF = {
   name: 'db_search',
@@ -25,7 +25,7 @@ export function createDbSearchHandler(stores: Record<string, IndexedDbStore>) {
     const matches = needle
       ? all.filter((r) => JSON.stringify(r.data).toLowerCase().includes(needle))
       : all
-    return [{ part_type: 'data' as const, data: { count: matches.length, records: matches.map(recordView) } }]
+    return [{ part_type: 'data' as const, data: { count: matches.length, records: matches.map(recordViewLight) } }]
   }
 }
 
