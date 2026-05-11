@@ -1,5 +1,5 @@
 // Distri Framework Types - Based on A2A Protocol and SSE
-import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk/client';
+import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk';
 import { DistriEvent } from './events';
 import { Agent } from './agent';
 
@@ -1017,7 +1017,7 @@ export class ConnectionError extends DistriError {
 }
 
 // Re-export A2A types for convenience
-export type { AgentCard, Message, Task, TaskStatus, MessageSendParams, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from '@a2a-js/sdk/client';
+export type { AgentCard, Message, Task, TaskStatus, MessageSendParams, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from '@a2a-js/sdk';
 
 export type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Task;
 

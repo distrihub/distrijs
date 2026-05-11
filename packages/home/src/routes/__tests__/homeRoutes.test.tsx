@@ -86,9 +86,10 @@ function renderAt(path: string, opts?: Parameters<typeof homeRoutes>[0]) {
 // Tests
 // ---------------------------------------------------------------------------
 describe('homeRoutes', () => {
-  it('mounts AgentsPage at /agents', () => {
+  it('mounts WorkspacePage at /agents (redirected to /workspace/agents)', () => {
     renderAt('/agents');
-    expect(screen.getByRole('heading', { name: /agents/i })).toBeInTheDocument();
+    // /agents → Navigate to /workspace/agents → WorkspacePage shell.
+    expect(screen.getByPlaceholderText('Search workspace…')).toBeInTheDocument();
   });
 
   it('mounts SettingsPage at /settings', () => {

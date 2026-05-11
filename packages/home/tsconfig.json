@@ -21,7 +21,6 @@
     "noFallthroughCasesInSwitch": true,
     "declaration": true,
     "declarationMap": true,
-    "baseUrl": ".",
     "paths": {
       "@distri/components": [
         "../components/src/index.ts"
@@ -30,7 +29,7 @@
         "../core/src/index.ts"
       ],
       "@distri/react": [
-        "../react/src/index.ts"
+        "../react/dist/index.d.ts"
       ],
       "@/*": [
         "./src/*"

@@ -18,8 +18,11 @@ import {
   ToolExecutionEndEvent,
   DistriPart,
   TextPart,
+  TodoChange,
   TodoItem,
   TodosUpdatedEvent,
+  createSuccessfulToolResult,
+  createFailedToolResult,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus, RenderingMode, ChatSessionSettings } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -142,6 +145,12 @@ export interface ChatState {
 
   // Todos state
   todos: TodoItem[];
+  /**
+   * Per-call diff from the latest `write_todos` invocation. Lets the
+   * UI surface "Just changed: X" without re-rendering the whole list.
+   * Reset to `[]` whenever todos are cleared.
+   */
+  lastTodoChanges: TodoChange[];
 }
 
 type ChatStateTool = DistriAnyTool & {
@@ -165,6 +174,8 @@ export interface ChatStateStore extends ChatState {
 
   // Todos actions
   setTodos: (todos: TodoItem[]) => void;
+  /** Replace `lastTodoChanges` with the diff from the latest call. */
+  setLastTodoChanges: (changes: TodoChange[]) => void;
 
   // State actions
   addMessage: (message: DistriChatMessage) => void;
@@ -236,6 +247,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   browserViewerUrl: undefined,
   browserStreamUrl: undefined,
   todos: [],
+  lastTodoChanges: [],
   tools: {
     tools: [],
     agent_tools: new Map(),
@@ -300,6 +312,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
 
   setTodos: (todos: TodoItem[]) => {
     set({ todos });
+  },
+
+  setLastTodoChanges: (changes: TodoChange[]) => {
+    set({ lastTodoChanges: changes });
   },
 
   getToolByName: (toolName: string): ChatStateTool | undefined => {
@@ -793,6 +809,12 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           if (todosEvent.data.todos) {
             get().setTodos(todosEvent.data.todos);
           }
+          // `changes` is what UIs surface as "just changed". Empty
+          // on the very first write_todos call (no prior list to
+          // diff against). Always write — even an empty array is
+          // meaningful, since it clears stale change indicators
+          // from a previous turn.
+          get().setLastTodoChanges(todosEvent.data.changes ?? []);
           break;
         }
 
@@ -956,22 +978,96 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
             tool: distriTool
           });
         } else if (distriTool?.type === 'function') {
-          // For DistriFnTool, automatically create DefaultToolActions component
           const fnTool = distriTool as DistriFnTool;
-          // Only auto-execute if explicitly set on the tool itself, not from global wrapOptions
-          // This ensures tools show confirmation UI by default and only auto-execute when intended
+          // `autoExecute` flag is per-tool, not from global wrapOptions.
           fnTool.autoExecute = fnTool.autoExecute === true;
 
           const error = validateToolCallInput(toolCall);
           if (error) {
             throw new Error(error);
           }
-          component = React.createElement(DefaultToolActions, {
-            toolCall,
-            toolCallState: get().toolCalls.get(toolCall.tool_call_id),
-            completeTool: completeToolFn,
-            tool: fnTool,
-          });
+
+          if (fnTool.autoExecute) {
+            // Auto-executing fn tools (e.g. `db_put`, `init_content`,
+            // `save_content`) should NOT attach a component — they
+            // have nothing interactive to show, and pinning them to
+            // `state.component` makes `ToolExecutionRenderer` defer
+            // to `renderExternalToolCalls`, which then drops the row
+            // once the call completes (status filter). The user
+            // ends up seeing nothing in the chat even though the
+            // trace recorded the call.
+            //
+            // Run the handler directly and feed the result back
+            // through `completeTool` — this mirrors the logic that
+            // used to live inside `DefaultToolActions`. With no
+            // component attached, `ToolExecutionRenderer` falls
+            // through to `MinimalToolRow` which renders the call
+            // inline (and keeps rendering it after completion via
+            // the persistent message in the messages array).
+            //
+            // GUARDS (these used to live in DefaultToolActions's
+            // useEffects — preserving them here is the whole point of
+            // not letting handlers fire on history replay or remount):
+            //   1. `isLiveStream` — set on the state by `initToolCall`
+            //      from the caller's `isFromStream` flag. Historical
+            //      `tool_calls` events (page reload, navigating into
+            //      an old thread) have `isLiveStream=false`. The handler
+            //      already ran when the tool was originally streamed;
+            //      re-firing it now POSTs a duplicate complete-tool the
+            //      server rejects with 400 (the slot is already filled).
+            //   2. status already settled — defends against any other
+            //      path that calls `executeTool` after the store has
+            //      a result. If the call is `running`/`completed`/`error`,
+            //      the handler has either run or is in flight.
+            const justInitedState = get().toolCalls.get(toolCall.tool_call_id);
+            const isLive = !!justInitedState?.isLiveStream;
+            const settled =
+              justInitedState?.status === 'running' ||
+              justInitedState?.status === 'completed' ||
+              justInitedState?.status === 'error';
+            if (!isLive || settled) {
+              // Skip handler. Do NOT attach a component — the call
+              // still renders via MinimalToolRow because the
+              // `tool_calls` event lives in `messages` regardless.
+            } else {
+              (async () => {
+                try {
+                  const handlerResult = await fnTool.handler(toolCall.input);
+                  if (!fnTool.is_final) {
+                    completeToolFn(
+                      createSuccessfulToolResult(
+                        toolCall.tool_call_id,
+                        toolCall.tool_name,
+                        handlerResult,
+                      ),
+                    );
+                  }
+                } catch (handlerError) {
+                  const errMsg = handlerError instanceof Error
+                    ? handlerError.message
+                    : String(handlerError);
+                  completeToolFn(
+                    createFailedToolResult(
+                      toolCall.tool_call_id,
+                      toolCall.tool_name,
+                      errMsg,
+                      'Tool execution failed',
+                    ),
+                  );
+                }
+              })();
+            }
+          } else {
+            // Confirm-required fn tool — show the actions UI.
+            // DefaultToolActions handles its own pending → running →
+            // completed lifecycle and remount semantics.
+            component = React.createElement(DefaultToolActions, {
+              toolCall,
+              toolCallState: get().toolCalls.get(toolCall.tool_call_id),
+              completeTool: completeToolFn,
+              tool: fnTool,
+            });
+          }
         }
       } catch (componentError) {
         console.error(`❌ Error creating component for tool ${toolCall.tool_name}:`, componentError);
@@ -1112,6 +1208,7 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       browserViewerUrl: undefined,
       browserStreamUrl: undefined,
       todos: [],
+      lastTodoChanges: [],
     });
   },
 

@@ -24,6 +24,9 @@ export { uuidv4 } from './distri-client';
 export * from './workflow';
 export * from './workflow-runner';
 
+// Typed Invocation surface (sub-agent dispatch model)
+export * from './invocation';
+
 // Variable resolution and HTTP request handler
 export * from './resolve';
 export { SecretCache } from './secret-cache';
