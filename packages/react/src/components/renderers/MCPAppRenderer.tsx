@@ -84,13 +84,23 @@ interface IframeProps {
 
 const MCPAppIframe: React.FC<IframeProps> = ({ link, toolName, onAction, fetchResource }) => {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [html, setHtml] = useState<string | null>(link.data.text ?? null);
+  // Prefer the direct iframe URL when the server provides one
+  // (`_meta.ui.iframeUrl`) — that's the chromeless page on its own origin
+  // and we can mount it via `src=` without round-tripping resources/read.
+  // Otherwise fall back to inline HTML on `link.data.text`, then to the
+  // optional fetchResource hook for spec-strict hosts.
+  const directUrl = (link.data.meta?.ui as { iframeUrl?: string } | undefined)?.iframeUrl;
+  const [html, setHtml] = useState<string | null>(
+    directUrl ? null : link.data.text ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [height, setHeight] = useState<number>(640);
 
-  // 1. Load resource body. If the server inlined `text`, use it directly;
-  //    otherwise resolve via the optional fetcher.
+  // 1. Load resource body when there's no direct iframe URL. If the server
+  //    inlined `text`, use it directly; otherwise resolve via the optional
+  //    fetcher.
   useEffect(() => {
+    if (directUrl) return;
     if (html != null) return;
     const fetcher = fetchResource;
     if (!fetcher) {
@@ -110,7 +120,7 @@ const MCPAppIframe: React.FC<IframeProps> = ({ link, toolName, onAction, fetchRe
     return () => {
       cancelled = true;
     };
-  }, [link.data.uri, html, fetchResource]);
+  }, [link.data.uri, html, fetchResource, directUrl]);
 
   // 2. Preferred sizing from _meta.ui.preferredSize.
   useEffect(() => {
@@ -162,7 +172,7 @@ const MCPAppIframe: React.FC<IframeProps> = ({ link, toolName, onAction, fetchRe
     );
   }
 
-  if (html == null) {
+  if (!directUrl && html == null) {
     return (
       <div className="my-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
         Loading {toolName}…
@@ -175,7 +185,10 @@ const MCPAppIframe: React.FC<IframeProps> = ({ link, toolName, onAction, fetchRe
       <iframe
         ref={iframeRef}
         title={toolName}
-        srcDoc={html}
+        // Direct URL when the server provides one (single-origin embed —
+        // /embed/new on editor-ui, /embed/learn on the learner ui).
+        // Otherwise fall back to inline HTML via srcDoc.
+        {...(directUrl ? { src: directUrl } : { srcDoc: html ?? '' })}
         sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
         style={{ width: '100%', height: `${height}px`, border: 0, display: 'block' }}
       />
