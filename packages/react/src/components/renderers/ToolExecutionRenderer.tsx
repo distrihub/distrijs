@@ -7,6 +7,7 @@ import { getToolSummary } from './tools/getToolSummary';
 import { MinimalToolRow } from './tools/MinimalToolRow';
 import { RichToolCard } from './tools/RichToolCard';
 import { InteractiveToolCard } from './tools/InteractiveToolCard';
+import { MCPAppRenderer, findResourceLinks, isMcpAppResource } from './MCPAppRenderer';
 
 interface ToolExecutionRendererProps {
   event: any; // Can be ToolCallsEvent or ToolResultsEvent
@@ -350,6 +351,26 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
             <div key={toolCall.tool_call_id}>
               {renderer({ toolCall: toolCallPayload, state })}
             </div>
+          );
+        }
+
+        // MCP-Apps: if the tool result carries a `ui://` resource link
+        // with the mcp-app MIME profile, render it in a sandboxed iframe.
+        // Skipped if a user-provided custom renderer already matched
+        // above — explicit renderers always win.
+        const mcpLinks = findResourceLinks(state.result);
+        if (mcpLinks.some(isMcpAppResource)) {
+          const toolCallPayload: ToolCall = {
+            tool_call_id: toolCall.tool_call_id,
+            tool_name: toolCall.tool_name,
+            input: toolCall.input,
+          };
+          return (
+            <MCPAppRenderer
+              key={toolCall.tool_call_id}
+              toolCall={toolCallPayload}
+              state={state}
+            />
           );
         }
 
