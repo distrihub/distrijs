@@ -37,8 +37,6 @@ export interface MCPAppRendererProps {
   fetchResource?: (uri: string) => Promise<string>;
 }
 
-const MCP_UI_MIME = 'text/html;profile=mcp-app';
-
 export function findResourceLinks(result?: { parts: readonly DistriPart[] }): ResourceLinkPart[] {
   if (!result) return [];
   return result.parts.filter(

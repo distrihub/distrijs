@@ -472,6 +472,24 @@ export function convertDistriPartToA2A(distriPart: DistriPart): Part {
       };
       break;
     }
+    case 'resource_link': {
+      // MCP-Apps resource reference. Same envelope convention as artifact /
+      // tool_call — wrap in A2A DataPart with `part_type` discriminator so
+      // the Rust side deserializes back to Part::ResourceLink via the
+      // `#[serde(tag = "part_type", content = "data")]` Part enum.
+      result = {
+        kind: 'data',
+        data: {
+          part_type: 'resource_link',
+          data: distriPart.data
+        }
+      };
+      break;
+    }
+    default: {
+      const _exhaustive: never = distriPart;
+      throw new Error(`Unhandled DistriPart variant: ${JSON.stringify(_exhaustive)}`);
+    }
   }
   return result;
 }
