@@ -6,6 +6,8 @@ export * from './MessageFeedback';
 export * from './MessageReadContext';
 export * from './MessageReadTracker';
 export * from './MessageRenderer';
+export * from './SubTaskCard';
+export * from './SubTaskTree';
 export * from './StepBasedRenderer';
 export * from './StreamingTextRenderer';
 export * from './TextRenderer';

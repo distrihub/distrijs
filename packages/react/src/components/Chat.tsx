@@ -3,6 +3,7 @@ import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, Tool
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
+import { SubTaskTree } from './renderers/SubTaskTree';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { LoadingStrip } from './renderers/LoadingStrip';
 import { TodosCompact } from './renderers/TodosCompact';
@@ -115,6 +116,13 @@ export interface ChatProps {
   onCommand?: (event: ChatCommandEvent) => void;
   /** Developer mode options: traces, verbosity, tools panel, and parallel diagnose mode */
   developerMode?: DeveloperMode;
+  /**
+   * Group sub-agent activity under collapsible accordion cards instead of
+   * streaming it inline. Sub-task events (anything with a parentTaskId)
+   * are hoisted out of the main message list and rendered by
+   * `<SubTaskTree />` underneath the parent run.
+   */
+  nestedTasksMode?: boolean;
 }
 
 // Wrapper component to ensure consistent width and centering
@@ -223,6 +231,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   sessionSettings,
   onCommand,
   developerMode,
+  nestedTasksMode = false,
 }, ref) {
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -891,6 +900,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           threadId={threadId}
           enableFeedback={enableFeedback}
           onShowTrace={traceOpener}
+          nestedTasksMode={nestedTasksMode}
         />
       );
 
@@ -1169,6 +1179,17 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 {emptyStateContent}
                 {/* Render all messages and state */}
                 {renderMessages()}
+
+                {nestedTasksMode && (
+                  <SubTaskTree
+                    toolRenderers={mergedToolRenderers}
+                    rendering={rendering}
+                    threadId={threadId}
+                    onShowTrace={traceOpener}
+                    verbose={verbose}
+                    debug={tracesEnabled}
+                  />
+                )}
 
                 {renderExternalToolCalls()}
                 {/* Render pending message */}
