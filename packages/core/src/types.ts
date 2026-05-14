@@ -370,6 +370,21 @@ export type ArtifactPart = { part_type: 'artifact'; data: {
   original_filename?: string;
   size?: number;
 } }
+/** MCP-Apps resource reference returned by a tool. Hosts that understand
+ * the `_meta.ui.resourceUri` convention render this as a sandboxed iframe;
+ * everyone else falls back to the optional `text` field. Mirrors
+ * `distri_types::ResourceLink` on the Rust side. */
+export type ResourceLinkPart = {
+  part_type: 'resource_link';
+  data: {
+    uri: string;
+    mime_type?: string;
+    text?: string;
+    /** The raw `_meta` object the MCP server attached, e.g.
+     *  `{ ui: { resourceUri, preferredSize } }` */
+    meta?: Record<string, unknown>;
+  };
+}
 export type DistriPart =
   | TextPart
   | ToolCallPart
@@ -377,7 +392,8 @@ export type DistriPart =
   | ImagePart
   | FilePart
   | DataPart
-  | ArtifactPart;
+  | ArtifactPart
+  | ResourceLinkPart;
 
 
 
