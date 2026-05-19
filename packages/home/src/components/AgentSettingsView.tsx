@@ -70,6 +70,10 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
   const [savingField, setSavingField] = useState<string | null>(null);
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
 
+  // Provider connection test (`POST /providers/test`), keyed by provider id.
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; detail: string }>>({});
+
   // Custom provider management
   const [showAddProvider, setShowAddProvider] = useState(false);
   const [newProviderName, setNewProviderName] = useState('');
@@ -198,6 +202,34 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSavingField(null);
+    }
+  };
+
+  // Validate a saved provider — the backend probes GET /models with the
+  // workspace's stored credentials.
+  const handleTestProvider = async (providerId: string) => {
+    if (!homeClient) return;
+    setTestingProvider(providerId);
+    setTestResults((prev) => {
+      const next = { ...prev };
+      delete next[providerId];
+      return next;
+    });
+    try {
+      const result = await homeClient.testProvider(providerId);
+      setTestResults((prev) => ({
+        ...prev,
+        [providerId]: result.ok
+          ? { ok: true, detail: `Connected — ${result.models.length} model(s)` }
+          : { ok: false, detail: result.error || 'Endpoint test failed' },
+      }));
+    } catch (err) {
+      setTestResults((prev) => ({
+        ...prev,
+        [providerId]: { ok: false, detail: err instanceof Error ? err.message : 'Test failed' },
+      }));
+    } finally {
+      setTestingProvider(null);
     }
   };
 
@@ -713,19 +745,37 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
                     </div>
                   );
                 })}
-                {/* Provider-level save */}
-                {hasUnsaved && (
-                  <div className="flex justify-end pt-1">
+                {/* Provider-level test + save */}
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => handleTestProvider(provider.id)}
+                      disabled={testingProvider === provider.id}
+                      className="rounded-lg border border-border/70 px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted/40 disabled:opacity-50"
+                    >
+                      {testingProvider === provider.id ? 'Testing…' : 'Test connection'}
+                    </button>
+                    {testResults[provider.id] && (
+                      <span
+                        className={`truncate text-xs ${testResults[provider.id].ok ? 'text-emerald-500' : 'text-destructive'}`}
+                      >
+                        {testResults[provider.id].ok ? '✓ ' : '✗ '}
+                        {testResults[provider.id].detail}
+                      </span>
+                    )}
+                  </div>
+                  {hasUnsaved && (
                     <button
                       type="button"
                       onClick={() => handleSaveProvider(provider.id, provider.keys)}
                       disabled={savingField === '__provider__'}
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+                      className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
                     >
                       {savingField === '__provider__' ? 'Saving...' : 'Save'}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })()}

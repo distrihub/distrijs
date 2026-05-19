@@ -894,6 +894,22 @@ export class DistriHomeClient {
   }
 
   /**
+   * Validate a configured provider. The backend probes `GET /models` using
+   * the workspace's stored credentials, so only the provider id is sent.
+   */
+  async testProvider(providerId: string): Promise<TestProviderResponse> {
+    const response = await this.client.fetch('/providers/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider_id: providerId }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to test provider: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+  /**
    * Delete a provider and all its associated secrets and config.
    */
   async deleteProvider(providerId: string): Promise<void> {
@@ -1366,6 +1382,13 @@ export interface UpsertProviderResponse {
   provider_id: string;
   secrets_saved: number;
   config_saved: boolean;
+}
+
+/** Result of `POST /providers/test` — a `GET /models` probe of the saved config. */
+export interface TestProviderResponse {
+  ok: boolean;
+  models: string[];
+  error?: string;
 }
 
 // Model & Provider types
