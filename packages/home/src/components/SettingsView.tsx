@@ -1,7 +1,7 @@
 import { ComponentType } from 'react';
 import { useDistriHomeNavigate } from '../provider/context';
 import { SecretsView } from './SecretsView';
-import { AgentSettingsView } from './AgentSettingsView';
+import { ModelsView } from './models/ModelsView';
 import { Settings as SettingsIcon, LockIcon, LucideIcon } from 'lucide-react';
 
 // Section type definition - exported for consumers to create custom sections
@@ -33,9 +33,9 @@ export interface SettingsViewProps {
   onSectionChange?: (section: string) => void;
 }
 
-// Wrapper for AgentSettingsView to match section component signature
+// Wrapper for ModelsView to match section component signature.
 function AgentSettingsSection({ className }: { className?: string }) {
-  return <AgentSettingsView className={className} />;
+  return <ModelsView className={className} />;
 }
 
 // Default sections - core distri-home sections only (no cloud-specific Account/API Keys)

@@ -1,66 +1,73 @@
 /**
- * Models settings entry point — shell that routes between
- * Catalog, Providers, the model-detail drawer, and the
- * Voice / Image playgrounds.
+ * ModelsView — the full-width Models page. Standalone; no settings shell.
  *
- * Wired to the real `DistriHomeClient`:
- *   listProviders / listSecrets / getWorkspaceSettings
- *   updateWorkspaceSettings (defaults)
- *   upsertProvider (save credential)
- *   deleteSecret (remove credential)
- *   testProvider (probe `GET /models`)
- *   generateImage / generateSpeech (playgrounds)
+ * URL-driven: the consuming app passes `view` + `playgroundMode` and a
+ * `navigate` callback. We render the right sub-page:
+ *   /models             → CatalogTab
+ *   /models/providers   → ProvidersTab
+ *   /models/playground  → Voice or Image playground (per `playgroundMode`)
  *
- * Styling is scoped under `.models-shell` (see ./models/models.css).
- * The shell intentionally bypasses the rest of the app's shadcn
- * theming so the dense dark UI lands as designed.
+ * Owns:
+ *   - server state (providers / secrets / workspace settings),
+ *   - the in-page model-detail drawer,
+ *   - the in-memory favorites set,
+ * and delegates rendering of each view to its dedicated component.
  */
 
-import './models/models.css';
+import './models.css';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Beaker, Layers, Settings as SettingsIcon } from 'lucide-react';
-import { CAPABILITY_META } from './models/data';
-import { useDistriHomeClient } from '../provider/context';
+import { useDistriHomeClient } from '../../provider/context';
 import type {
   CustomModelEntry,
   ModelCapability,
   ModelProviderDefinition,
   Secret,
-} from '../DistriHomeClient';
-import { CatalogTab } from './models/CatalogTab';
-import { ImagePlayground } from './models/ImagePlayground';
-import { ModelDetailDrawer } from './models/ModelDetailDrawer';
-import type { AddCustomProviderInput } from './models/ProvidersTab';
-import { ProvidersTab } from './models/ProvidersTab';
-import { VoicePlayground } from './models/VoicePlayground';
+} from '../../DistriHomeClient';
+import { CAPABILITY_META } from './data';
+import { CatalogTab } from './CatalogTab';
+import { ImagePlayground } from './ImagePlayground';
+import { ModelDetailDrawer } from './ModelDetailDrawer';
+import type { AddCustomProviderInput } from './ProvidersTab';
+import { ProvidersTab } from './ProvidersTab';
+import { VoicePlayground } from './VoicePlayground';
 
-export interface AgentSettingsViewProps {
+export type ModelsViewMode = 'catalog' | 'providers' | 'playground';
+export type PlaygroundCapability = 'tts' | 'image';
+
+export type ModelsNavigateTarget =
+  | { view: 'catalog' }
+  | { view: 'providers'; providerId?: string }
+  | { view: 'playground'; mode: PlaygroundCapability; providerId?: string; modelId?: string };
+
+export interface ModelsViewProps {
   className?: string;
-  /** Active tab from URL: 'models' (default) or 'providers'. */
-  activeTab?: 'models' | 'providers';
-  /** Callback when tab changes — consumer should update URL. */
-  onTabChange?: (tab: 'models' | 'providers') => void;
+  /** Which sub-page to render. Defaults to `catalog`. */
+  view?: ModelsViewMode;
+  /** Playground capability (only when `view === 'playground'`). */
+  playgroundMode?: PlaygroundCapability;
+  /** Initial provider id to focus on the Providers tab. */
+  focusProviderId?: string;
+  /** Initial model id for the playground. */
+  playgroundProviderId?: string;
+  playgroundModelId?: string;
+  /** Consumer routes to the right URL. */
+  navigate?: (target: ModelsNavigateTarget) => void;
 }
 
-type PlaygroundMode = { capability: 'image' | 'tts'; providerId?: string; modelId?: string } | null;
 type DrawerTarget = { providerId: string; modelId: string } | null;
 
-export function AgentSettingsView({
+export function ModelsView({
   className,
-  activeTab: activeTabProp,
-  onTabChange,
-}: AgentSettingsViewProps) {
+  view = 'catalog',
+  playgroundMode = 'tts',
+  focusProviderId,
+  playgroundProviderId,
+  playgroundModelId,
+  navigate,
+}: ModelsViewProps) {
   const homeClient = useDistriHomeClient();
-  const [activeTabInternal, setActiveTabInternal] = useState<'models' | 'providers'>(
-    activeTabProp ?? 'models',
-  );
-  const activeTab = activeTabProp ?? activeTabInternal;
-
-  const setActiveTab = (t: 'models' | 'providers') => {
-    setActiveTabInternal(t);
-    onTabChange?.(t);
-  };
 
   // ── Server state ──
   const [providers, setProviders] = useState<ModelProviderDefinition[]>([]);
@@ -71,18 +78,15 @@ export function AgentSettingsView({
     stt: '',
     image: '',
   });
-  const [customModels, setCustomModels] = useState<CustomModelEntry[]>([]); // kept for symmetry; UI lands later
+  // Kept around; the inline-add-model UI lands later.
+  const [customModels, setCustomModels] = useState<CustomModelEntry[]>([]);
+  void customModels;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // ── Local UI state ──
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [drawer, setDrawer] = useState<DrawerTarget>(null);
-  const [playground, setPlayground] = useState<PlaygroundMode>(null);
-  const [focusProviderId, setFocusProviderId] = useState<string | undefined>(undefined);
-
-  // Avoid an unused warning while the field stays on the type.
-  void customModels;
 
   const loadData = useCallback(async () => {
     if (!homeClient) return;
@@ -100,7 +104,10 @@ export function AgentSettingsView({
         completion: settings?.default_model ?? '',
         tts: settings?.default_tts_model ?? '',
         stt: settings?.default_stt_model ?? '',
-        image: (settings as Record<string, unknown> | null)?.default_image_model as string | undefined ?? '',
+        image:
+          ((settings as Record<string, unknown> | null)?.default_image_model as
+            | string
+            | undefined) ?? '',
       });
       setCustomModels(settings?.custom_models ?? []);
     } catch (err) {
@@ -125,7 +132,20 @@ export function AgentSettingsView({
     return set;
   }, [providers, secrets]);
 
-  // ── Actions ──
+  const totalModels = useMemo(
+    () => providers.reduce((n, p) => n + p.models.length, 0),
+    [providers],
+  );
+
+  // ── Navigation ──
+  const go = useCallback(
+    (target: ModelsNavigateTarget) => {
+      if (navigate) navigate(target);
+    },
+    [navigate],
+  );
+
+  // ── Actions wired to providers/playgrounds ──
   const toggleFavorite = (fullId: string) =>
     setFavorites((prev) => {
       const next = new Set(prev);
@@ -137,30 +157,21 @@ export function AgentSettingsView({
   const handleOpenModel = (providerId: string, modelId: string) =>
     setDrawer({ providerId, modelId });
 
-  const handleOpenPlayground = (capability: ModelCapability, providerId: string, modelId: string) => {
-    if (capability === 'image' || capability === 'tts') {
-      setPlayground({ capability, providerId, modelId });
+  const handleOpenPlayground = (
+    capability: ModelCapability,
+    providerId: string,
+    modelId: string,
+  ) => {
+    if (capability === 'tts' || capability === 'image') {
+      go({ view: 'playground', mode: capability, providerId, modelId });
     } else {
-      // No completion/STT playground built yet — fall through to drawer.
+      // Completion / STT playgrounds aren't built yet — fall through to drawer.
       setDrawer({ providerId, modelId });
     }
   };
 
-  const handleConfigureProvider = (providerId: string) => {
-    setFocusProviderId(providerId);
-    setActiveTab('providers');
-  };
-
-  const handleChangeDefault = async (capability: ModelCapability) => {
-    // The catalog's default cards trigger this. For now, just jump to
-    // the capability-filtered catalog so the user can click a model
-    // and use the drawer's "Set as default". The drawer wires the
-    // actual updateWorkspaceSettings call.
-    setPlayground(null);
-    setDrawer(null);
-    // No-op aside from filtering would be confusing; keep noop.
-    void capability;
-  };
+  const handleConfigureProvider = (providerId: string) =>
+    go({ view: 'providers', providerId });
 
   const handleSetDefaultForModel = async (capability: ModelCapability, fullId: string) => {
     if (!homeClient) return;
@@ -193,11 +204,21 @@ export function AgentSettingsView({
     await loadData();
   };
 
+  const handleTestProvider = async (providerId: string) => {
+    if (!homeClient) return { ok: false, detail: 'No client' };
+    try {
+      const result = await homeClient.testProvider(providerId);
+      const detail = result.ok
+        ? `Connected — ${result.models.length} models reachable`
+        : result.error ?? 'Test failed';
+      return { ok: result.ok, detail };
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : 'Test failed' };
+    }
+  };
+
   const handleAddCustomProvider = async (input: AddCustomProviderInput) => {
     if (!homeClient) return;
-    // Convention: the backend's `from_provider_model_str` accepts any
-    // `custom_*` prefix and routes it to OpenAICompatible. We derive a
-    // stable id from the display name to avoid surprise collisions.
     const slug = input.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
@@ -216,23 +237,10 @@ export function AgentSettingsView({
       },
     });
     await loadData();
-    setFocusProviderId(providerId);
+    go({ view: 'providers', providerId });
   };
 
-  const handleTestProvider = async (providerId: string) => {
-    if (!homeClient) return { ok: false, detail: 'No client' };
-    try {
-      const result = await homeClient.testProvider(providerId);
-      const detail = result.ok
-        ? `Connected — ${result.models.length} models reachable`
-        : result.error ?? 'Test failed';
-      return { ok: result.ok, detail };
-    } catch (err) {
-      return { ok: false, detail: err instanceof Error ? err.message : 'Test failed' };
-    }
-  };
-
-  // ── Renders ──
+  // ── Drawer resolution ──
   const drawerData = useMemo(() => {
     if (!drawer) return null;
     const provider = providers.find((p) => p.id === drawer.providerId);
@@ -241,6 +249,7 @@ export function AgentSettingsView({
     return { provider, model };
   }, [drawer, providers]);
 
+  // ── Render ──
   if (loading) {
     return (
       <div className={`models-shell ${className ?? ''}`}>
@@ -250,7 +259,6 @@ export function AgentSettingsView({
       </div>
     );
   }
-
   if (error) {
     return (
       <div className={`models-shell ${className ?? ''}`}>
@@ -261,19 +269,21 @@ export function AgentSettingsView({
     );
   }
 
+  const isPlayground = view === 'playground';
+
   return (
     <div className={`models-shell ${className ?? ''}`}>
       <div className="page">
         <div className="toolbar-row">
-          {playground ? (
+          {isPlayground ? (
             <>
-              <button className="subtab back" onClick={() => setPlayground(null)}>
+              <button className="subtab back" onClick={() => go({ view: 'catalog' })}>
                 <ArrowLeft size={13} /> Models
               </button>
               <span className="tb-sep" />
               <div className="cap-switcher">
                 {(['tts', 'image'] as const).map((c) => {
-                  const active = playground.capability === c;
+                  const active = playgroundMode === c;
                   return (
                     <button
                       key={c}
@@ -281,8 +291,9 @@ export function AgentSettingsView({
                       onClick={() => {
                         const def = defaults[c];
                         const [pid, mid] = (def || '').split('/');
-                        setPlayground({
-                          capability: c,
+                        go({
+                          view: 'playground',
+                          mode: c,
                           providerId: pid || undefined,
                           modelId: mid || undefined,
                         });
@@ -299,23 +310,23 @@ export function AgentSettingsView({
             <>
               <div className="subtabs">
                 <button
-                  className={`subtab ${activeTab === 'models' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('models')}
+                  className={`subtab ${view === 'catalog' ? 'active' : ''}`}
+                  onClick={() => go({ view: 'catalog' })}
                 >
                   <Layers size={14} /> Models
-                  <span className="subtab-count">
-                    {providers.reduce((n, p) => n + p.models.length, 0)}
-                  </span>
+                  <span className="subtab-count">{totalModels}</span>
                 </button>
                 <button
-                  className={`subtab ${activeTab === 'providers' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('providers')}
+                  className={`subtab ${view === 'providers' ? 'active' : ''}`}
+                  onClick={() => go({ view: 'providers' })}
                 >
                   <SettingsIcon size={14} /> Providers
                   <span
                     className="subtab-count"
                     style={{
-                      color: configuredProviders.size ? '#6EE7B7' : 'var(--m-text-faint)',
+                      color: configuredProviders.size
+                        ? '#6EE7B7'
+                        : 'var(--m-text-faint)',
                     }}
                   >
                     {configuredProviders.size}/{providers.length}
@@ -326,12 +337,11 @@ export function AgentSettingsView({
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => {
-                  // Open Voice playground by default — Completion has no
-                  // playground component built yet; Voice + Image are wired.
                   const def = defaults.tts;
                   const [pid, mid] = (def || '').split('/');
-                  setPlayground({
-                    capability: 'tts',
+                  go({
+                    view: 'playground',
+                    mode: 'tts',
                     providerId: pid || undefined,
                     modelId: mid || undefined,
                   });
@@ -343,27 +353,7 @@ export function AgentSettingsView({
           )}
         </div>
 
-        {playground?.capability === 'image' && homeClient && (
-          <ImagePlayground
-            homeClient={homeClient}
-            providers={providers}
-            configured={configuredProviders}
-            initialProviderId={playground.providerId}
-            initialModelId={playground.modelId}
-            onBack={() => setPlayground(null)}
-          />
-        )}
-        {playground?.capability === 'tts' && homeClient && (
-          <VoicePlayground
-            homeClient={homeClient}
-            providers={providers}
-            configured={configuredProviders}
-            initialProviderId={playground.providerId}
-            initialModelId={playground.modelId}
-            onBack={() => setPlayground(null)}
-          />
-        )}
-        {!playground && activeTab === 'models' && (
+        {view === 'catalog' && (
           <CatalogTab
             providers={providers}
             secrets={secrets}
@@ -373,19 +363,39 @@ export function AgentSettingsView({
             onOpenModel={handleOpenModel}
             onOpenPlayground={handleOpenPlayground}
             onConfigureProvider={handleConfigureProvider}
-            onChangeDefault={handleChangeDefault}
+            onChangeDefault={() => {}}
           />
         )}
-        {!playground && activeTab === 'providers' && (
+        {view === 'providers' && (
           <ProvidersTab
             providers={providers}
             secrets={secrets}
             focusProviderId={focusProviderId}
-            onFocusProvider={setFocusProviderId}
+            onFocusProvider={(id) => go({ view: 'providers', providerId: id })}
             onSaveKey={handleSaveKey}
             onDeleteKey={handleDeleteKey}
             onTestProvider={handleTestProvider}
             onAddCustomProvider={handleAddCustomProvider}
+          />
+        )}
+        {isPlayground && playgroundMode === 'tts' && homeClient && (
+          <VoicePlayground
+            homeClient={homeClient}
+            providers={providers}
+            configured={configuredProviders}
+            initialProviderId={playgroundProviderId}
+            initialModelId={playgroundModelId}
+            onBack={() => go({ view: 'catalog' })}
+          />
+        )}
+        {isPlayground && playgroundMode === 'image' && homeClient && (
+          <ImagePlayground
+            homeClient={homeClient}
+            providers={providers}
+            configured={configuredProviders}
+            initialProviderId={playgroundProviderId}
+            initialModelId={playgroundModelId}
+            onBack={() => go({ view: 'catalog' })}
           />
         )}
       </div>
@@ -395,8 +405,13 @@ export function AgentSettingsView({
           provider={drawerData.provider}
           model={drawerData.model}
           configured={configuredProviders.has(drawerData.provider.id)}
-          isDefault={defaults[drawerData.model.capability] === `${drawerData.provider.id}/${drawerData.model.id}`}
-          isStarred={favorites.has(`${drawerData.provider.id}/${drawerData.model.id}`)}
+          isDefault={
+            defaults[drawerData.model.capability] ===
+            `${drawerData.provider.id}/${drawerData.model.id}`
+          }
+          isStarred={favorites.has(
+            `${drawerData.provider.id}/${drawerData.model.id}`,
+          )}
           onClose={() => setDrawer(null)}
           onSetDefault={() =>
             handleSetDefaultForModel(
@@ -409,7 +424,11 @@ export function AgentSettingsView({
           }
           onOpenPlayground={() => {
             const cap = drawerData.model.capability;
-            handleOpenPlayground(cap, drawerData.provider.id, drawerData.model.id);
+            handleOpenPlayground(
+              cap,
+              drawerData.provider.id,
+              drawerData.model.id,
+            );
             setDrawer(null);
           }}
           onConfigureProvider={() => {

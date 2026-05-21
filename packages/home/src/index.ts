@@ -28,8 +28,13 @@ export { AgentDetails } from './components/AgentDetails';
 export { ThreadsView } from './components/ThreadsView';
 export { SettingsView } from './components/SettingsView';
 export { SecretsView } from './components/SecretsView';
-export { AgentSettingsView } from './components/AgentSettingsView';
-export type { AgentSettingsViewProps } from './components/AgentSettingsView';
+export { ModelsView } from './components/models/ModelsView';
+export type {
+  ModelsViewMode,
+  ModelsViewProps,
+  ModelsNavigateTarget,
+  PlaygroundCapability,
+} from './components/models/ModelsView';
 export { VoicePreviewDialog } from './components/VoicePreviewDialog';
 export { PromptTemplatesView } from './components/PromptTemplatesView';
 export { SessionsView } from './components/SessionsView';

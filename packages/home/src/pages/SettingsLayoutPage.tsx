@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BarChart3, KeyRound, Layers, LockIcon, Settings as SettingsIcon } from 'lucide-react';
 import { useDistriHome } from '../provider/context';
 import { ApiKeysManager } from '../blocks/ApiKeysManager';
-import { AgentSettingsView } from '../components/AgentSettingsView';
+import { ModelsView } from '../components/models/ModelsView';
 import { UsageWidget } from '../blocks/UsageWidget';
 import SecretsPage from './SecretsPage';
 
@@ -28,14 +28,18 @@ function makeSections(navigate: (to: string) => void, prefix: string): SectionDe
       href: '/settings/models',
       icon: Layers,
       render: () => (
-        <AgentSettingsView
-          activeTab={
-            // The /settings/models/providers sub-route activates the providers tab
-            window.location.pathname.endsWith('/providers') ? 'providers' : 'models'
-          }
-          onTabChange={(t) =>
-            navigate(t === 'providers' ? `${prefix}/settings/models/providers` : `${prefix}/settings/models`)
-          }
+        <ModelsView
+          view={window.location.pathname.endsWith('/providers') ? 'providers' : 'catalog'}
+          navigate={(t) => {
+            if (t.view === 'catalog') navigate(`${prefix}/settings/models`);
+            else if (t.view === 'providers') navigate(`${prefix}/settings/models/providers`);
+            else {
+              const p = new URLSearchParams({ mode: t.mode });
+              if (t.providerId) p.set('provider', t.providerId);
+              if (t.modelId) p.set('model', t.modelId);
+              navigate(`${prefix}/models/playground?${p.toString()}`);
+            }
+          }}
         />
       ),
     },
