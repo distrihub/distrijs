@@ -38,6 +38,20 @@ interface ProvidersTabProps {
   onDeleteKey: (key: string) => Promise<void>;
   /** Test a provider's connection via `POST /v1/providers/test`. */
   onTestProvider: (providerId: string) => Promise<{ ok: boolean; detail: string }>;
+  /** Add an OpenAI-compatible custom provider. Resolves once the catalog
+   *  has been refreshed and the new entry shows up in `providers`. */
+  onAddCustomProvider: (input: AddCustomProviderInput) => Promise<void>;
+}
+
+export interface AddCustomProviderInput {
+  /** Display name shown in the provider rail. */
+  name: string;
+  /** OpenAI-compatible `/v1` base URL. */
+  baseUrl: string;
+  /** API key — stored as the provider's `OPENAI_API_KEY`-style secret. */
+  apiKey: string;
+  /** Optional project / org id passed through on the provider config. */
+  projectId?: string;
 }
 
 export function ProvidersTab({
@@ -48,7 +62,9 @@ export function ProvidersTab({
   onSaveKey,
   onDeleteKey,
   onTestProvider,
+  onAddCustomProvider,
 }: ProvidersTabProps) {
+  const [showAddCustom, setShowAddCustom] = useState(false);
   const configured = useMemo(() => {
     const set = new Set<string>();
     for (const p of providers) {
@@ -92,6 +108,7 @@ export function ProvidersTab({
         configured={configured}
         focusId={focusId}
         onFocus={onFocusProvider}
+        onAddCustom={() => setShowAddCustom(true)}
       />
       <ProviderPanel
         key={current.id}
@@ -102,6 +119,15 @@ export function ProvidersTab({
         onDeleteKey={onDeleteKey}
         onTestProvider={onTestProvider}
       />
+      {showAddCustom && (
+        <AddCustomProviderModal
+          onClose={() => setShowAddCustom(false)}
+          onSubmit={async (input) => {
+            await onAddCustomProvider(input);
+            setShowAddCustom(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -111,11 +137,13 @@ function ProviderRail({
   configured,
   focusId,
   onFocus,
+  onAddCustom,
 }: {
   providers: ModelProviderDefinition[];
   configured: Set<string>;
   focusId: string;
   onFocus: (id: string) => void;
+  onAddCustom: () => void;
 }) {
   return (
     <div className="provider-list">
@@ -140,7 +168,11 @@ function ProviderRail({
         >
           {providers.length} providers
         </span>
-        <button className="btn btn-ghost btn-sm" style={{ paddingLeft: 6, paddingRight: 6 }}>
+        <button
+          className="btn btn-ghost btn-sm"
+          style={{ paddingLeft: 6, paddingRight: 6 }}
+          onClick={onAddCustom}
+        >
           <Plus size={12} /> Custom
         </button>
       </div>
@@ -472,6 +504,181 @@ function KeyRow({
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Custom Provider ──────────────────────────────────────────────
+
+function AddCustomProviderModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (input: AddCustomProviderInput) => Promise<void>;
+}) {
+  const [name, setName] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const valid = name.trim().length > 0 && baseUrl.trim().length > 0 && apiKey.trim().length > 0;
+
+  const handleSubmit = async () => {
+    if (!valid) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        baseUrl: baseUrl.trim(),
+        apiKey: apiKey.trim(),
+        projectId: projectId.trim() || undefined,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add provider');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="drawer-backdrop"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 480,
+          background: 'var(--m-bg-elev)',
+          border: '1px solid var(--m-border)',
+          borderRadius: 'var(--m-radius-lg)',
+          padding: 20,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 14,
+          }}
+        >
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--m-text)' }}>Add custom provider</h3>
+          <button onClick={onClose} className="btn btn-ghost" style={{ width: 28, height: 28, padding: 0 }}>
+            <X size={16} />
+          </button>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--m-text-muted)', margin: '0 0 16px' }}>
+          Any OpenAI-compatible endpoint — vLLM, LiteLLM, LangDB, Ollama. The server probes{' '}
+          <code className="mono-text" style={{ fontSize: 11 }}>
+            GET /models
+          </code>{' '}
+          when you save.
+        </p>
+
+        <ModalField
+          label="Display name"
+          placeholder="My local cluster"
+          value={name}
+          onChange={setName}
+        />
+        <ModalField
+          label="Base URL"
+          placeholder="https://llm.acme.io/v1"
+          value={baseUrl}
+          onChange={setBaseUrl}
+          mono
+        />
+        <ModalField
+          label="API key"
+          placeholder="sk-…"
+          value={apiKey}
+          onChange={setApiKey}
+          mono
+          sensitive
+        />
+        <ModalField
+          label="Project ID"
+          placeholder="proj-…"
+          value={projectId}
+          onChange={setProjectId}
+          mono
+          optional
+        />
+
+        {error && (
+          <div style={{ color: '#FDA4AF', fontSize: 12.5, marginTop: 10 }}>{error}</div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={!valid || submitting}
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={13} className="shimmer" /> Adding…
+              </>
+            ) : (
+              'Add provider'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  mono,
+  sensitive,
+  optional,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  mono?: boolean;
+  sensitive?: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label
+        style={{
+          display: 'block',
+          fontSize: 12,
+          color: 'var(--m-text-muted)',
+          marginBottom: 5,
+        }}
+      >
+        {label}
+        {optional && (
+          <span style={{ color: 'var(--m-text-faint)', marginLeft: 6 }}>(optional)</span>
+        )}
+      </label>
+      <div className="input">
+        <input
+          type={sensitive ? 'password' : 'text'}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ fontFamily: mono ? 'var(--m-font-mono)' : 'inherit' }}
+        />
       </div>
     </div>
   );

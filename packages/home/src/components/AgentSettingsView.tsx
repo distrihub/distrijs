@@ -30,6 +30,7 @@ import type {
 import { CatalogTab } from './models/CatalogTab';
 import { ImagePlayground } from './models/ImagePlayground';
 import { ModelDetailDrawer } from './models/ModelDetailDrawer';
+import type { AddCustomProviderInput } from './models/ProvidersTab';
 import { ProvidersTab } from './models/ProvidersTab';
 import { VoicePlayground } from './models/VoicePlayground';
 
@@ -191,6 +192,32 @@ export function AgentSettingsView({
     await loadData();
   };
 
+  const handleAddCustomProvider = async (input: AddCustomProviderInput) => {
+    if (!homeClient) return;
+    // Convention: the backend's `from_provider_model_str` accepts any
+    // `custom_*` prefix and routes it to OpenAICompatible. We derive a
+    // stable id from the display name to avoid surprise collisions.
+    const slug = input.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 32);
+    const providerId = `custom_${slug || `provider_${Date.now()}`}`;
+    const apiKeyName = `${providerId.toUpperCase()}_API_KEY`;
+    await homeClient.upsertProvider({
+      provider_id: providerId,
+      secrets: { [apiKeyName]: input.apiKey },
+      config: {
+        id: providerId,
+        name: input.name,
+        base_url: input.baseUrl,
+        project_id: input.projectId ?? null,
+      },
+    });
+    await loadData();
+    setFocusProviderId(providerId);
+  };
+
   const handleTestProvider = async (providerId: string) => {
     if (!homeClient) return { ok: false, detail: 'No client' };
     try {
@@ -332,6 +359,7 @@ export function AgentSettingsView({
             onSaveKey={handleSaveKey}
             onDeleteKey={handleDeleteKey}
             onTestProvider={handleTestProvider}
+            onAddCustomProvider={handleAddCustomProvider}
           />
         )}
       </div>
