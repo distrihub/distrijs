@@ -152,6 +152,10 @@
   position: relative;
   cursor: pointer;
   transition: border-color .12s ease;
+  /* Allow the inner `.value` text-overflow:ellipsis to actually clip —
+     flex items default to min-width:auto which lets the long mono
+     `provider/model` ids push the grid wider than its column. */
+  min-width: 0;
 }
 .models-shell .default-card:hover { border-color: var(--m-brand-deep); }
 .models-shell .default-card .row1 { display: flex; align-items: center; gap: 8px; }
@@ -810,7 +814,15 @@
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
   }
-  .models-shell .provider-list > div:first-child { display: none; }
+  .models-shell .provider-list > div:first-child {
+    /* Keep the rail header visible on mobile so the "+" button stays
+       reachable — but make it sized as part of the horizontal strip. */
+    flex: 0 0 auto;
+    border-bottom: 0;
+    border-right: 1px solid var(--m-border-soft);
+    margin-bottom: 0;
+    padding: 6px 10px;
+  }
   .models-shell .prov-row { flex: 0 0 auto; min-width: 200px; }
   .models-shell .provider-panel .head {
     grid-template-columns: 36px 1fr;

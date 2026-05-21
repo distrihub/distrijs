@@ -169,11 +169,13 @@ function ProviderRail({
           {providers.length} providers
         </span>
         <button
-          className="btn btn-ghost btn-sm"
-          style={{ paddingLeft: 6, paddingRight: 6 }}
+          className="btn btn-secondary btn-sm"
+          style={{ width: 26, padding: 0 }}
           onClick={onAddCustom}
+          title="Add custom provider"
+          aria-label="Add custom provider"
         >
-          <Plus size={12} /> Custom
+          <Plus size={14} />
         </button>
       </div>
       {providers.map((p) => {
