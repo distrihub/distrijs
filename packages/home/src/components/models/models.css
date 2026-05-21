@@ -717,3 +717,134 @@
 .models-shell .mono-text { font-family: var(--m-font-mono); }
 .models-shell .muted { color: var(--m-text-muted); }
 .models-shell .faint { color: var(--m-text-faint); }
+
+/* ── Mobile (≤768px) ───────────────────────────────────────────────
+ *
+ * The desktop grids collapse:
+ *   - the 4-up default-model strip → 2×2,
+ *   - the dense catalog table → one card-style row per model with the
+ *     numeric columns hidden (model name + capability pill + actions
+ *     stay; pricing is reachable via the detail drawer),
+ *   - the providers split-pane → single column (rail above, panel below),
+ *   - the playground 2-col → stacked surface + params,
+ *   - the drawer + modals → full viewport width.
+ */
+@media (max-width: 768px) {
+  .models-shell .page { padding: 12px 14px 40px; }
+
+  /* Toolbar wraps. Sub-tabs stay first, Playground button drops onto its
+     own line on the narrowest widths. */
+  .models-shell .toolbar-row { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .models-shell .toolbar { flex-wrap: wrap; gap: 8px; }
+  .models-shell .search { min-width: 0; flex: 1 1 100%; }
+
+  /* Capability switcher / cap-chips can scroll horizontally rather than wrap. */
+  .models-shell .cap-chips,
+  .models-shell .cap-switcher {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .models-shell .cap-chips::-webkit-scrollbar,
+  .models-shell .cap-switcher::-webkit-scrollbar { display: none; }
+  .models-shell .cap-chip { white-space: nowrap; flex-shrink: 0; }
+
+  /* Default-model strip: 4 → 2 columns. */
+  .models-shell .defaults {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  /* Catalog table → card list. The header row disappears, and each model
+     row collapses to: monogram + name (with cap pill stacked) on the
+     left, row actions on the right. Numeric columns are hidden — users
+     tap into the detail drawer for pricing. */
+  .models-shell .cat-head { display: none; }
+  .models-shell .cat-cols-completion,
+  .models-shell .cat-cols-voice,
+  .models-shell .cat-cols-image {
+    grid-template-columns: 1fr auto;
+    column-gap: 10px;
+    row-gap: 4px;
+    padding: 10px 14px;
+  }
+  /* Show only the model cell, capability pill, and the row-actions
+     buttons. Everything else (context / price / cached / default)
+     collapses to nothing on mobile. */
+  .models-shell .cat-row > * { display: none; }
+  .models-shell .cat-row > .model { display: grid; grid-column: 1 / 2; }
+  .models-shell .cat-row > div:nth-child(2) {
+    display: inline-flex; align-items: center; justify-self: end; grid-column: 2 / 3; grid-row: 1;
+  }
+  .models-shell .cat-row > .row-actions {
+    display: flex; grid-column: 1 / -1; justify-self: end; opacity: 1;
+  }
+  .models-shell .cat-row > .row-actions button { opacity: 1; }
+
+  /* Provider group header — shrink the right-side chips. */
+  .models-shell .cat-provider {
+    grid-template-columns: 22px 1fr auto;
+    column-gap: 8px;
+    padding: 9px 14px;
+  }
+  .models-shell .cat-provider .name { font-size: 11px; }
+  .models-shell .cat-provider > .status,
+  .models-shell .cat-provider > .quick:not(:last-child) {
+    display: none;
+  }
+
+  /* Providers split-pane → single column. Rail above the panel, both
+     full-width. The rail gets a horizontal scroll bar instead of a tall
+     vertical one so it doesn't dominate the viewport. */
+  .models-shell .providers-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .models-shell .provider-list {
+    position: static;
+    max-height: none;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+  .models-shell .provider-list > div:first-child { display: none; }
+  .models-shell .prov-row { flex: 0 0 auto; min-width: 200px; }
+  .models-shell .provider-panel .head {
+    grid-template-columns: 36px 1fr;
+    padding: 14px 16px;
+  }
+  .models-shell .provider-panel .head > div:last-child {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+  .models-shell .provider-panel .body { padding: 14px 16px 18px; gap: 16px; }
+  .models-shell .field-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  /* Playground: surface above params. */
+  .models-shell .pg {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    min-height: auto;
+  }
+  .models-shell .pg .params { padding: 14px; }
+
+  /* Image canvas: 2 → 1 column on narrow screens so each result is legible. */
+  .models-shell .image-canvas {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  /* Drawer + modals: full-width sheet. */
+  .models-shell .drawer { width: 100vw; }
+  .models-shell .drawer .top { padding: 14px 16px; }
+  .models-shell .drawer .body { padding: 16px; }
+  .models-shell .spec-grid { grid-template-columns: 1fr; }
+}
