@@ -17,11 +17,16 @@
   max-width: 100vw;
   overflow-x: hidden;
   min-width: 0;
-  /* Local tokens — these override only inside the shell. */
+  /* Local tokens — these override only inside the shell.
+     `--m-bg` was previously `var(--background, #121418)` to inherit
+     from shadcn, but shadcn's `--background` is raw HSL components
+     (e.g. `222 47% 11%`), not a color — `var(--background)` evaluates
+     to an invalid value and the drawer / page background fell through
+     to transparent. Use a literal hex. */
   --m-brand: #007C91;
   --m-brand-soft: #4FB5C3;
   --m-brand-deep: #005B6B;
-  --m-bg: var(--background, #121418);
+  --m-bg: #121418;
   --m-bg-elev: #1A1D23;
   --m-bg-sunk: #0C0E11;
   --m-border: #2A2F3A;
