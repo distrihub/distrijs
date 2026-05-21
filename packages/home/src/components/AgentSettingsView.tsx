@@ -19,11 +19,13 @@ function CapabilityBadge({ type }: { type: ModelCapability }) {
     completion: 'bg-blue-500/10 text-blue-500',
     tts: 'bg-emerald-500/10 text-emerald-500',
     stt: 'bg-purple-500/10 text-purple-500',
+    image: 'bg-amber-500/10 text-amber-500',
   };
   const labels: Record<ModelCapability, string> = {
     completion: 'Completion',
     tts: 'TTS',
     stt: 'STT',
+    image: 'Image',
   };
   return (
     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${styles[type]}`}>
@@ -479,17 +481,22 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
   const getDefaultForType = (type: ModelCapability) => {
     if (type === 'completion') return defaultModel;
     if (type === 'tts') return defaultTtsModel;
-    return defaultSttModel;
+    if (type === 'stt') return defaultSttModel;
+    // Image generation is per-request — no workspace-default model setting yet.
+    return '';
   };
 
   // Render a model table for a capability section
   const renderModelTable = (
-    section: 'completion' | 'voice',
+    section: 'completion' | 'voice' | 'image',
     title: string,
     groups: Array<{ providerId: string; providerLabel: string; models: ModelRow[] }>,
     headerAction?: React.ReactNode,
   ) => {
-    const capTypes = section === 'completion' ? ['completion'] : ['tts', 'stt'];
+    const capTypes =
+      section === 'completion' ? ['completion']
+      : section === 'voice' ? ['tts', 'stt']
+      : ['image'];
     const filtered = groups
       .map(g => ({ ...g, models: g.models.filter(m => capTypes.includes(m.type)) }))
       .filter(g => g.models.length > 0);
@@ -497,6 +504,13 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
     if (filtered.length === 0) return null;
 
     const isCompletion = section === 'completion';
+    // Image models render in the same "non-completion" branch as voice models
+    // (single Cost column instead of context/cost/cached), but with their own
+    // pricing formatter and no voice-preview affordance.
+    const defaultAddCap: ModelCapability =
+      section === 'completion' ? 'completion'
+      : section === 'image' ? 'image'
+      : 'tts';
     const configuredGroups = filtered.filter(g => g.models.some(m => m.providerConfigured));
     const unconfiguredGroups = filtered.filter(g => !g.models.some(m => m.providerConfigured));
 
@@ -565,8 +579,16 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
             </div>
           </button>
           <div><CapabilityBadge type={model.type} /></div>
-          <div className="text-right">{model.pricing?.type === 'tts' ? <span className="text-xs font-mono text-muted-foreground/60">${model.pricing.per_1m_chars.toFixed(2)} / 1M chars</span> : model.pricing?.type === 'stt' ? <span className="text-xs font-mono text-muted-foreground/60">${model.pricing.per_minute.toFixed(3)} / min</span> : <span className="text-xs text-muted-foreground/20">&mdash;</span>}</div>
-          <div className="flex justify-end"><button type="button" onClick={() => model.providerConfigured && handleSetDefault(model.type, fullId)} disabled={saving || !model.providerConfigured} className={`p-1 rounded transition ${isDefault ? 'text-primary' : model.providerConfigured ? 'text-muted-foreground/40 hover:text-primary' : 'opacity-0'}`} title={isDefault ? 'Default' : 'Set as default'}><Star className={`h-4 w-4 ${isDefault ? 'fill-primary' : ''}`} /></button></div>
+          <div className="text-right">{
+            model.pricing?.type === 'tts'
+              ? <span className="text-xs font-mono text-muted-foreground/60">${model.pricing.per_1m_chars.toFixed(2)} / 1M chars</span>
+              : model.pricing?.type === 'stt'
+              ? <span className="text-xs font-mono text-muted-foreground/60">${model.pricing.per_minute.toFixed(3)} / min</span>
+              : model.pricing?.type === 'image'
+              ? <span className="text-xs font-mono text-muted-foreground/60">${model.pricing.per_image.toFixed(3)} / image</span>
+              : <span className="text-xs text-muted-foreground/20">&mdash;</span>
+          }</div>
+          <div className="flex justify-end">{model.type === 'image' ? null : <button type="button" onClick={() => model.providerConfigured && handleSetDefault(model.type, fullId)} disabled={saving || !model.providerConfigured} className={`p-1 rounded transition ${isDefault ? 'text-primary' : model.providerConfigured ? 'text-muted-foreground/40 hover:text-primary' : 'opacity-0'}`} title={isDefault ? 'Default' : 'Set as default'}><Star className={`h-4 w-4 ${isDefault ? 'fill-primary' : ''}`} /></button>}</div>
         </div>
       );
     });
@@ -593,7 +615,7 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
                   <div className="flex-1" />
                   <button type="button" onClick={(e) => {
                     e.preventDefault();
-                    const key = `${group.providerId}:${section === 'completion' ? 'completion' : 'tts'}`;
+                    const key = `${group.providerId}:${defaultAddCap}`;
                     setAddingModelKey(addingModelKey === key ? null : key);
                     setNewModelId('');
                   }} className="text-muted-foreground/50 hover:text-foreground transition p-1 shrink-0" title="Add model">
@@ -607,14 +629,14 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
                 </summary>
                 <div className={isConfigured ? '' : 'opacity-50'}>
                   {renderModelRows(group.models)}
-                  {addingModelKey === `${group.providerId}:${section === 'completion' ? 'completion' : 'tts'}` && (
+                  {addingModelKey?.startsWith(`${group.providerId}:`) && capTypes.includes(addingModelKey.split(':')[1] || '') && (
                     <div className="flex items-center gap-2 pl-10 pr-6 py-1.5 bg-muted/10 border-t border-border/20">
                       <input
                         type="text"
                         value={newModelId}
                         onChange={(e) => setNewModelId(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddModel(group.providerId, section === 'completion' ? 'completion' : 'tts');
+                          if (e.key === 'Enter') handleAddModel(group.providerId, (addingModelKey?.split(':')[1] || defaultAddCap) as ModelCapability);
                           if (e.key === 'Escape') { setAddingModelKey(null); setNewModelId(''); }
                         }}
                         placeholder="Model ID (e.g. gpt-4o-mini)"
@@ -631,7 +653,7 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
                           <option value="stt">STT</option>
                         </select>
                       )}
-                      <button type="button" onClick={() => handleAddModel(group.providerId, (addingModelKey?.split(':')[1] || 'completion') as ModelCapability)}
+                      <button type="button" onClick={() => handleAddModel(group.providerId, (addingModelKey?.split(':')[1] || defaultAddCap) as ModelCapability)}
                         disabled={!newModelId.trim()} className="text-xs text-primary hover:text-primary/80 disabled:opacity-30">Add</button>
                       <button type="button" onClick={() => { setAddingModelKey(null); setNewModelId(''); }}
                         className="text-muted-foreground/40 hover:text-foreground"><X className="h-3 w-3" /></button>
@@ -909,6 +931,9 @@ export function AgentSettingsView({ className, activeTab: activeTabProp, onTabCh
         {/* Voice Models (TTS + STT) */}
         {renderModelTable('voice', 'Voice Models', groupedModels)}
 
+        {/* Image Models */}
+        {renderModelTable('image', 'Image Models', groupedModels)}
+
         {/* Add custom provider link */}
         <button
           type="button"
@@ -982,6 +1007,7 @@ const capabilityTitle: Record<ModelCapability, string> = {
   completion: 'Select Default Completion Model',
   tts: 'Select Default Text to Speech Model',
   stt: 'Select Default Speech to Text Model',
+  image: 'Select Image Model',
 };
 
 function ModelSelectorDialog({ open, onClose, capability, models, onSelect }: ModelSelectorDialogProps) {
