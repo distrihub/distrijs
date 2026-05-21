@@ -6,11 +6,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   Check,
+  CheckCircle2,
   Copy,
   Info,
   Play,
   PlayCircle,
-  Star,
   Wrench,
   X,
 } from 'lucide-react';
@@ -27,10 +27,9 @@ interface ModelDetailDrawerProps {
   model: Model;
   configured: boolean;
   isDefault: boolean;
-  isStarred: boolean;
   onClose: () => void;
+  /** Toggle the model as the workspace default for its capability. */
   onSetDefault: () => void;
-  onToggleStar: () => void;
   onOpenPlayground: () => void;
   onConfigureProvider: () => void;
 }
@@ -40,10 +39,8 @@ export function ModelDetailDrawer({
   model,
   configured,
   isDefault,
-  isStarred,
   onClose,
   onSetDefault,
-  onToggleStar,
   onOpenPlayground,
   onConfigureProvider,
 }: ModelDetailDrawerProps) {
@@ -102,19 +99,13 @@ agent = Agent(
           <button className="btn btn-primary" onClick={onOpenPlayground}>
             <Play size={13} /> Open playground
           </button>
-          <button className="btn btn-secondary" onClick={onSetDefault}>
-            <Check size={13} /> {isDefault ? 'Default model' : 'Set as default'}
-          </button>
-          <button className="btn btn-secondary" onClick={onToggleStar}>
-            <Star
-              size={13}
-              style={
-                isStarred
-                  ? { color: 'var(--m-brand-soft)', fill: 'currentColor' }
-                  : undefined
-              }
-            />
-            {isStarred ? 'Starred' : 'Star'}
+          <button
+            className={`btn ${isDefault ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={onSetDefault}
+            aria-pressed={isDefault}
+          >
+            {isDefault ? <CheckCircle2 size={13} /> : <Check size={13} />}
+            {isDefault ? 'Default — click to clear' : 'Set as default'}
           </button>
           <span style={{ flex: 1 }} />
           <button className="btn btn-ghost btn-sm" onClick={onConfigureProvider}>

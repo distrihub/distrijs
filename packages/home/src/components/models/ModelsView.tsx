@@ -10,7 +10,6 @@
  * Owns:
  *   - server state (providers / secrets / workspace settings),
  *   - the in-page model-detail drawer,
- *   - the in-memory favorites set,
  * and delegates rendering of each view to its dedicated component.
  */
 
@@ -85,7 +84,6 @@ export function ModelsView({
   const [error, setError] = useState<string | null>(null);
 
   // ── Local UI state ──
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [drawer, setDrawer] = useState<DrawerTarget>(null);
 
   const loadData = useCallback(async () => {
@@ -146,13 +144,6 @@ export function ModelsView({
   );
 
   // ── Actions wired to providers/playgrounds ──
-  const toggleFavorite = (fullId: string) =>
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(fullId)) next.delete(fullId);
-      else next.add(fullId);
-      return next;
-    });
 
   const handleOpenModel = (providerId: string, modelId: string) =>
     setDrawer({ providerId, modelId });
@@ -358,12 +349,10 @@ export function ModelsView({
             providers={providers}
             secrets={secrets}
             defaults={defaults}
-            favorites={favorites}
-            onToggleFavorite={toggleFavorite}
+            onSetDefault={handleSetDefaultForModel}
             onOpenModel={handleOpenModel}
             onOpenPlayground={handleOpenPlayground}
             onConfigureProvider={handleConfigureProvider}
-            onChangeDefault={() => {}}
           />
         )}
         {view === 'providers' && (
@@ -409,18 +398,12 @@ export function ModelsView({
             defaults[drawerData.model.capability] ===
             `${drawerData.provider.id}/${drawerData.model.id}`
           }
-          isStarred={favorites.has(
-            `${drawerData.provider.id}/${drawerData.model.id}`,
-          )}
           onClose={() => setDrawer(null)}
           onSetDefault={() =>
             handleSetDefaultForModel(
               drawerData.model.capability,
               `${drawerData.provider.id}/${drawerData.model.id}`,
             )
-          }
-          onToggleStar={() =>
-            toggleFavorite(`${drawerData.provider.id}/${drawerData.model.id}`)
           }
           onOpenPlayground={() => {
             const cap = drawerData.model.capability;

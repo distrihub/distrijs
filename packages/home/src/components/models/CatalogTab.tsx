@@ -15,7 +15,9 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  CheckCircle2,
   ChevronRight,
+  Circle,
   Copy,
   Image as ImageIcon,
   Layers,
@@ -25,7 +27,6 @@ import {
   Search,
   Sparkles,
   Speaker,
-  Star,
   Wrench,
 } from 'lucide-react';
 import type {
@@ -46,12 +47,12 @@ interface CatalogTabProps {
     stt: string;
     image: string;
   };
-  favorites: Set<string>;
-  onToggleFavorite: (fullId: string) => void;
+  /** Toggle a model as the workspace default for its capability. Pass
+   *  the same `provider/model` id again to clear. */
+  onSetDefault: (capability: ModelCapability, fullId: string) => void;
   onOpenModel: (providerId: string, modelId: string) => void;
   onOpenPlayground: (capability: ModelCapability, providerId: string, modelId: string) => void;
   onConfigureProvider: (providerId: string) => void;
-  onChangeDefault: (capability: ModelCapability) => void;
 }
 
 interface CatalogRow {
@@ -69,12 +70,10 @@ export function CatalogTab({
   providers,
   secrets,
   defaults,
-  favorites,
-  onToggleFavorite,
+  onSetDefault,
   onOpenModel,
   onOpenPlayground,
   onConfigureProvider,
-  onChangeDefault,
 }: CatalogTabProps) {
   const [search, setSearch] = useState('');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
@@ -215,7 +214,16 @@ export function CatalogTab({
 
   return (
     <>
-      <DefaultStrip defaults={defaults} onChange={onChangeDefault} />
+      <DefaultStrip
+        defaults={defaults}
+        onChange={(capability) => {
+          // No-op for now: the default-card click navigates the user to
+          // the capability-filtered catalog so they can pick a model
+          // and toggle its default circle. We just switch the chip
+          // filter to make that flow obvious.
+          setCapFilter(capability);
+        }}
+      />
 
       <div className="toolbar">
         <CapChips active={capFilter} counts={counts} onChange={setCapFilter} />
@@ -287,8 +295,7 @@ export function CatalogTab({
                     row={row}
                     configured={isConfigured}
                     isDefault={def === fullId}
-                    isStarred={favorites.has(fullId)}
-                    onStar={onToggleFavorite}
+                    onSetDefault={(r) => onSetDefault(r.capability, `${r.providerId}/${r.modelId}`)}
                     onCopy={handleCopy}
                     copied={copiedId === fullId}
                     onClick={(r) => onOpenModel(r.providerId, r.modelId)}
@@ -450,8 +457,7 @@ function CatalogRowView({
   row,
   configured,
   isDefault,
-  isStarred,
-  onStar,
+  onSetDefault,
   onCopy,
   copied,
   onClick,
@@ -461,8 +467,7 @@ function CatalogRowView({
   row: CatalogRow;
   configured: boolean;
   isDefault: boolean;
-  isStarred: boolean;
-  onStar: (fullId: string) => void;
+  onSetDefault: (row: CatalogRow) => void;
   onCopy: (id: string) => void;
   copied: boolean;
   onClick: (row: CatalogRow) => void;
@@ -550,14 +555,23 @@ function CatalogRowView({
           >
             Default
           </span>
-        ) : isStarred ? (
-          <Star size={14} style={{ color: 'var(--m-brand-soft)', fill: 'currentColor' }} />
         ) : null}
       </div>
 
       <div className="row-actions" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => onStar(fullId)} title={isStarred ? 'Unstar' : 'Star'}>
-          <Star size={14} style={isStarred ? { fill: 'currentColor', color: 'var(--m-brand-soft)' } : undefined} />
+        <button
+          onClick={() => onSetDefault(row)}
+          title={isDefault ? 'Clear default for this capability' : 'Set as default for this capability'}
+          aria-pressed={isDefault}
+        >
+          {isDefault ? (
+            <CheckCircle2
+              size={15}
+              style={{ color: 'var(--m-brand-soft)', fill: 'currentColor' }}
+            />
+          ) : (
+            <Circle size={15} />
+          )}
         </button>
         <button className="play" onClick={() => onPlay(row)} title="Open in playground">
           <Play size={13} />
