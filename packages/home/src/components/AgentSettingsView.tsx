@@ -19,7 +19,8 @@
 import './models/models.css';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Beaker, Layers, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft, Beaker, Layers, Settings as SettingsIcon } from 'lucide-react';
+import { CAPABILITY_META } from './models/data';
 import { useDistriHomeClient } from '../provider/context';
 import type {
   CustomModelEntry,
@@ -263,57 +264,82 @@ export function AgentSettingsView({
   return (
     <div className={`models-shell ${className ?? ''}`}>
       <div className="page">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-          <div className="subtabs">
-            <button
-              className={`subtab ${activeTab === 'models' && !playground ? 'active' : ''}`}
-              onClick={() => {
-                setPlayground(null);
-                setActiveTab('models');
-              }}
-            >
-              <Layers size={14} /> Models
-            </button>
-            <button
-              className={`subtab ${activeTab === 'providers' && !playground ? 'active' : ''}`}
-              onClick={() => {
-                setPlayground(null);
-                setActiveTab('providers');
-              }}
-            >
-              <SettingsIcon size={14} /> Providers
-              <span
-                style={{
-                  fontFamily: 'var(--m-font-mono)',
-                  fontSize: 10.5,
-                  color: configuredProviders.size ? '#6EE7B7' : 'var(--m-text-faint)',
-                  background: 'rgba(255,255,255,.04)',
-                  padding: '1px 5px',
-                  borderRadius: 4,
+        <div className="toolbar-row">
+          {playground ? (
+            <>
+              <button className="subtab back" onClick={() => setPlayground(null)}>
+                <ArrowLeft size={13} /> Models
+              </button>
+              <span className="tb-sep" />
+              <div className="cap-switcher">
+                {(['tts', 'image'] as const).map((c) => {
+                  const active = playground.capability === c;
+                  return (
+                    <button
+                      key={c}
+                      className={`cap-switch ${active ? 'active' : ''}`}
+                      onClick={() => {
+                        const def = defaults[c];
+                        const [pid, mid] = (def || '').split('/');
+                        setPlayground({
+                          capability: c,
+                          providerId: pid || undefined,
+                          modelId: mid || undefined,
+                        });
+                      }}
+                    >
+                      {CAPABILITY_META[c].label}
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ flex: 1 }} />
+            </>
+          ) : (
+            <>
+              <div className="subtabs">
+                <button
+                  className={`subtab ${activeTab === 'models' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('models')}
+                >
+                  <Layers size={14} /> Models
+                  <span className="subtab-count">
+                    {providers.reduce((n, p) => n + p.models.length, 0)}
+                  </span>
+                </button>
+                <button
+                  className={`subtab ${activeTab === 'providers' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('providers')}
+                >
+                  <SettingsIcon size={14} /> Providers
+                  <span
+                    className="subtab-count"
+                    style={{
+                      color: configuredProviders.size ? '#6EE7B7' : 'var(--m-text-faint)',
+                    }}
+                  >
+                    {configuredProviders.size}/{providers.length}
+                  </span>
+                </button>
+              </div>
+              <span style={{ flex: 1 }} />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  // Open Voice playground by default — Completion has no
+                  // playground component built yet; Voice + Image are wired.
+                  const def = defaults.tts;
+                  const [pid, mid] = (def || '').split('/');
+                  setPlayground({
+                    capability: 'tts',
+                    providerId: pid || undefined,
+                    modelId: mid || undefined,
+                  });
                 }}
               >
-                {configuredProviders.size}/{providers.length}
-              </span>
-            </button>
-          </div>
-
-          <span style={{ flex: 1 }} />
-
-          {!playground && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => setPlayground({ capability: 'image' })}
-              >
-                <Beaker size={13} /> Image playground
+                <Beaker size={13} /> Playground
               </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => setPlayground({ capability: 'tts' })}
-              >
-                <Beaker size={13} /> Voice playground
-              </button>
-            </div>
+            </>
           )}
         </div>
 

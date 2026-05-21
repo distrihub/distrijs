@@ -43,7 +43,80 @@
 .models-shell button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 
 /* ── Page chrome ───────────────────────────────────────────────────── */
-.models-shell .page { padding: 20px 28px 56px; max-width: 1480px; }
+.models-shell .page {
+  padding: 20px 28px 56px;
+  max-width: 1680px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+/* Unified top toolbar — adapts to route (catalog/providers vs playground). */
+.models-shell .toolbar-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px;
+}
+.models-shell .tb-sep {
+  width: 1px; height: 22px; background: var(--m-border); margin: 0 4px;
+}
+.models-shell .subtab-count {
+  font-family: var(--m-font-mono); font-size: 10.5px;
+  color: var(--m-text-faint);
+  background: rgba(255,255,255,.05);
+  padding: 1px 6px; border-radius: 4px;
+  margin-left: 2px;
+}
+.models-shell .subtab.back {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px 7px 10px;
+  border-radius: var(--m-radius-md);
+  font-size: 13px; font-weight: 500;
+  color: var(--m-text-muted);
+  background: var(--m-bg-elev);
+  border: 1px solid var(--m-border);
+}
+.models-shell .subtab.back:hover { color: var(--m-text); background: rgba(255,255,255,.04); }
+
+.models-shell .cap-switcher {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 3px;
+  border-radius: var(--m-radius-md);
+  background: var(--m-bg-elev);
+  border: 1px solid var(--m-border);
+}
+.models-shell .cap-switch {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--m-text-muted);
+}
+.models-shell .cap-switch:hover { color: var(--m-text); }
+.models-shell .cap-switch.active {
+  background: var(--m-bg);
+  color: var(--m-text);
+  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 1px 2px rgba(0,0,0,.3);
+}
+
+.models-shell .pg-model-picker {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 6px 0 12px;
+  border-radius: var(--m-radius-md);
+  background: var(--m-bg-elev);
+  border: 1px solid var(--m-border);
+  height: 34px;
+}
+.models-shell .pg-model-picker .lbl {
+  font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--m-text-faint); font-weight: 600;
+}
+.models-shell .pg-model-picker select {
+  background: transparent; border: 0; outline: 0;
+  color: var(--m-text);
+  font-family: var(--m-font-mono); font-size: 12.5px;
+  padding: 4px 6px; cursor: pointer;
+  min-width: 280px;
+}
+.models-shell .pg-model-picker select option { background: var(--m-bg-elev); color: var(--m-text); }
 
 .models-shell .subtabs {
   display: inline-flex; align-items: center; gap: 2px;
