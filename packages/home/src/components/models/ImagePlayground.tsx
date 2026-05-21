@@ -11,6 +11,8 @@ import { ArrowLeft, Image as ImageIcon, Loader2, RefreshCw, Sparkles } from 'luc
 import type {
   DistriHomeClient,
   ImageGenerateResponseImage,
+  ImageQuality,
+  ImageSize,
   ModelProviderDefinition,
 } from '../../DistriHomeClient';
 import { CapPill } from './primitives';
@@ -24,12 +26,12 @@ interface ImagePlaygroundProps {
   onBack: () => void;
 }
 
-const QUALITY_OPTIONS: { id: string; label: string }[] = [
+const QUALITY_OPTIONS: { id: ImageQuality; label: string }[] = [
   { id: 'low', label: 'Low' },
   { id: 'medium', label: 'Medium' },
   { id: 'high', label: 'High' },
 ];
-const SIZE_OPTIONS = ['1024x1024', '1024x1536', '1536x1024'];
+const SIZE_OPTIONS: ImageSize[] = ['1024x1024', '1024x1536', '1536x1024'];
 
 export function ImagePlayground({
   homeClient,
@@ -67,8 +69,8 @@ export function ImagePlayground({
   const [prompt, setPrompt] = useState(
     'A wide-angle architectural photo of a brutalist building at golden hour, low-angle, dramatic shadows.',
   );
-  const [size, setSize] = useState<string>('1024x1024');
-  const [quality, setQuality] = useState<string>('low');
+  const [size, setSize] = useState<ImageSize>('1024x1024');
+  const [quality, setQuality] = useState<ImageQuality>('low');
   const [n, setN] = useState<number>(1);
   const [generating, setGenerating] = useState(false);
   const [images, setImages] = useState<ImageGenerateResponseImage[]>([]);
@@ -79,13 +81,15 @@ export function ImagePlayground({
     setGenerating(true);
     setError(null);
     try {
+      // Note: don't send `response_format`. gpt-image-* rejects it (the
+      // model always returns base64). For dall-e-* the server default is
+      // fine; if a caller wants `url` instead they can set it explicitly.
       const result = await homeClient.generateImage({
         model: selected,
         prompt,
         n,
         size,
         quality,
-        response_format: 'b64_json',
       });
       setImages(result.images);
     } catch (err) {
@@ -283,7 +287,7 @@ export function ImagePlayground({
             <select
               className="select"
               value={size}
-              onChange={(e) => setSize(e.target.value)}
+              onChange={(e) => setSize(e.target.value as ImageSize)}
             >
               {SIZE_OPTIONS.map((s) => (
                 <option key={s} value={s}>

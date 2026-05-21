@@ -1448,18 +1448,51 @@ export interface ProviderTypeInfo {
 
 // ---- Image generation ----
 
+export type ImageSize =
+  | 'auto'
+  | '256x256'
+  | '512x512'
+  | '1024x1024'
+  | '1024x1536'
+  | '1536x1024'
+  | '1024x1792'
+  | '1792x1024';
+
+/** Quality tier. gpt-image-* accepts low/medium/high/auto;
+ *  dall-e-3 accepts standard/hd. */
+export type ImageQuality = 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
+
+export type ImageResponseFormat = 'url' | 'b64_json';
+/** gpt-image-only. */
+export type ImageOutputFormat = 'png' | 'jpeg' | 'webp';
+/** gpt-image-only. */
+export type ImageModeration = 'auto' | 'low';
+/** gpt-image-only. */
+export type ImageBackground = 'auto' | 'transparent' | 'opaque';
+/** dall-e-3 only. */
+export type ImageStyle = 'vivid' | 'natural';
+
 export interface ImageGenerateRequest {
   /** `"provider/model"` (e.g. `"openai/gpt-image-1"`, `"fal_ai/fal-ai/flux/schnell"`). */
   model: string;
   prompt: string;
   n?: number;
-  /** Size string — `"1024x1024"`, or fal.ai's `"square_hd"` etc. */
-  size?: string;
-  /** `"low" | "medium" | "high"` for gpt-image-*, `"standard" | "hd"` for dall-e-3. */
-  quality?: string;
-  response_format?: 'url' | 'b64_json';
-  /** Provider-specific pass-through (e.g. `output_format`, `seed`). */
-  extra?: Record<string, unknown>;
+  size?: ImageSize;
+  quality?: ImageQuality;
+  /** Honored by dall-e-*. gpt-image-* always returns base64 and the API
+   *  rejects this field. */
+  response_format?: ImageResponseFormat;
+  /** gpt-image-only. */
+  output_format?: ImageOutputFormat;
+  /** gpt-image-only. 0-100. */
+  output_compression?: number;
+  /** gpt-image-only. */
+  moderation?: ImageModeration;
+  /** gpt-image-only. */
+  background?: ImageBackground;
+  /** dall-e-3 only. */
+  style?: ImageStyle;
+  user?: string;
 }
 
 export interface ImageGenerateResponseImage {
