@@ -981,6 +981,23 @@ export class DistriHomeClient {
   }
 
   /**
+   * Generate an image. POSTs to `/v1/images/generations` and returns the
+   * provider-agnostic response (`{provider, model, images: [...]}`).
+   */
+  async generateImage(request: ImageGenerateRequest): Promise<ImageGenerateResponse> {
+    const response = await this.client.fetch('/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Image generation failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  /**
    * Update workspace settings for the current workspace.
    * Uses /workspaces/current to resolve the workspace from the X-Workspace-Id header.
    */
@@ -1427,6 +1444,37 @@ export interface ModelWithProvider extends Model {
 export interface ProviderTypeInfo {
   id: string;
   label: string;
+}
+
+// ---- Image generation ----
+
+export interface ImageGenerateRequest {
+  /** `"provider/model"` (e.g. `"openai/gpt-image-1"`, `"fal_ai/fal-ai/flux/schnell"`). */
+  model: string;
+  prompt: string;
+  n?: number;
+  /** Size string — `"1024x1024"`, or fal.ai's `"square_hd"` etc. */
+  size?: string;
+  /** `"low" | "medium" | "high"` for gpt-image-*, `"standard" | "hd"` for dall-e-3. */
+  quality?: string;
+  response_format?: 'url' | 'b64_json';
+  /** Provider-specific pass-through (e.g. `output_format`, `seed`). */
+  extra?: Record<string, unknown>;
+}
+
+export interface ImageGenerateResponseImage {
+  url?: string;
+  b64_json?: string;
+  content_type?: string;
+  revised_prompt?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ImageGenerateResponse {
+  provider: string;
+  model: string;
+  images: ImageGenerateResponseImage[];
 }
 
 export interface ProviderKeyDefinition {
