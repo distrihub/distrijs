@@ -23,7 +23,6 @@ import {
   Play,
   Plus,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Speaker,
   Star,
@@ -79,8 +78,6 @@ export function CatalogTab({
 }: CatalogTabProps) {
   const [search, setSearch] = useState('');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
-  /** Show only models from providers whose required keys are saved. */
-  const [configuredOnly, setConfiguredOnly] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
     key: 'context',
     dir: 'desc',
@@ -128,7 +125,6 @@ export function CatalogTab({
   const filtered = useMemo(() => {
     let rows = flatRows;
     if (capFilter !== 'all') rows = rows.filter((r) => r.capability === capFilter);
-    if (configuredOnly) rows = rows.filter((r) => configuredProviders.has(r.providerId));
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(
@@ -139,7 +135,7 @@ export function CatalogTab({
       );
     }
     return rows;
-  }, [flatRows, capFilter, search, configuredOnly, configuredProviders]);
+  }, [flatRows, capFilter, search]);
 
   // Group by provider; configured first, then catalog order.
   const grouped = useMemo(() => {
@@ -233,13 +229,6 @@ export function CatalogTab({
           />
           <span className="kbd">⌘K</span>
         </div>
-        <button
-          className={`btn ${configuredOnly ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-          onClick={() => setConfiguredOnly((v) => !v)}
-          title={configuredOnly ? 'Showing only configured providers — click to clear' : 'Show only configured providers'}
-        >
-          <SlidersHorizontal size={13} /> {configuredOnly ? 'Configured only' : 'Filter'}
-        </button>
       </div>
 
       <div className="cat-card">
