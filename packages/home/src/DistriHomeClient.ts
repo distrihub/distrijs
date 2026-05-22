@@ -981,6 +981,23 @@ export class DistriHomeClient {
   }
 
   /**
+   * Generate an image. POSTs to `/v1/images/generations` and returns the
+   * provider-agnostic response (`{provider, model, images: [...]}`).
+   */
+  async generateImage(request: ImageGenerateRequest): Promise<ImageGenerateResponse> {
+    const response = await this.client.fetch('/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Image generation failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  /**
    * Update workspace settings for the current workspace.
    * Uses /workspaces/current to resolve the workspace from the X-Workspace-Id header.
    */
@@ -1400,12 +1417,13 @@ export interface TtsVoiceInfo {
   languages?: string[];
 }
 
-export type ModelCapability = 'completion' | 'tts' | 'stt';
+export type ModelCapability = 'completion' | 'tts' | 'stt' | 'image';
 
 export type ModelPricing =
   | { type: 'completion'; input: number; output: number; cached_input?: number }
   | { type: 'tts'; per_1m_chars: number }
-  | { type: 'stt'; per_minute: number };
+  | { type: 'stt'; per_minute: number }
+  | { type: 'image'; per_image: number; per_quality?: Record<string, number> };
 
 export interface Model {
   id: string;
@@ -1426,6 +1444,70 @@ export interface ModelWithProvider extends Model {
 export interface ProviderTypeInfo {
   id: string;
   label: string;
+}
+
+// ---- Image generation ----
+
+export type ImageSize =
+  | 'auto'
+  | '256x256'
+  | '512x512'
+  | '1024x1024'
+  | '1024x1536'
+  | '1536x1024'
+  | '1024x1792'
+  | '1792x1024';
+
+/** Quality tier. gpt-image-* accepts low/medium/high/auto;
+ *  dall-e-3 accepts standard/hd. */
+export type ImageQuality = 'auto' | 'low' | 'medium' | 'high' | 'standard' | 'hd';
+
+export type ImageResponseFormat = 'url' | 'b64_json';
+/** gpt-image-only. */
+export type ImageOutputFormat = 'png' | 'jpeg' | 'webp';
+/** gpt-image-only. */
+export type ImageModeration = 'auto' | 'low';
+/** gpt-image-only. */
+export type ImageBackground = 'auto' | 'transparent' | 'opaque';
+/** dall-e-3 only. */
+export type ImageStyle = 'vivid' | 'natural';
+
+export interface ImageGenerateRequest {
+  /** `"provider/model"` (e.g. `"openai/gpt-image-1"`, `"fal_ai/fal-ai/flux/schnell"`). */
+  model: string;
+  prompt: string;
+  n?: number;
+  size?: ImageSize;
+  quality?: ImageQuality;
+  /** Honored by dall-e-*. gpt-image-* always returns base64 and the API
+   *  rejects this field. */
+  response_format?: ImageResponseFormat;
+  /** gpt-image-only. */
+  output_format?: ImageOutputFormat;
+  /** gpt-image-only. 0-100. */
+  output_compression?: number;
+  /** gpt-image-only. */
+  moderation?: ImageModeration;
+  /** gpt-image-only. */
+  background?: ImageBackground;
+  /** dall-e-3 only. */
+  style?: ImageStyle;
+  user?: string;
+}
+
+export interface ImageGenerateResponseImage {
+  url?: string;
+  b64_json?: string;
+  content_type?: string;
+  revised_prompt?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ImageGenerateResponse {
+  provider: string;
+  model: string;
+  images: ImageGenerateResponseImage[];
 }
 
 export interface ProviderKeyDefinition {
