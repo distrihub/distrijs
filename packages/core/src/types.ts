@@ -115,6 +115,14 @@ export interface DistriMessage {
   agent_name?: string;
   /** Message metadata including parts metadata for save filtering */
   metadata?: DistriMessageMetadata;
+  /**
+   * Task this message belongs to. Required for the chat store's parent↔child
+   * task tree (SubTaskCard filters by `m.taskId === task.id`). Without it,
+   * sub-agent text/tool_result messages never land in their owning card.
+   */
+  taskId?: string;
+  /** Parent task when this message was produced inside a sub-agent run. */
+  parentTaskId?: string;
 }
 
 export interface LlmExecuteOptions {

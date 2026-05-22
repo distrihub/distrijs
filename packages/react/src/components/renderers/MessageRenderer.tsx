@@ -24,12 +24,6 @@ export interface MessageRendererProps {
   rendering?: RenderingMode;
   toolSummaryOverrides?: Record<string, SummaryFn>;
   onShowTrace?: (threadId: string) => void;
-  /**
-   * When true, suppress inline rendering of any event/message that belongs
-   * to a sub-task (has a `parentTaskId`). The caller is expected to mount
-   * a `<SubTaskTree />` to surface those sub-tasks in a nested accordion.
-   */
-  nestedTasksMode?: boolean;
 }
 
 // Wrapper component to ensure full width with max constraint for readability
@@ -59,17 +53,14 @@ export function MessageRenderer({
   rendering,
   toolSummaryOverrides,
   onShowTrace,
-  nestedTasksMode = false,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
 
-  // When nested-task mode is on, the SubTaskTree owns rendering for any
-  // event/message belonging to a sub-agent. Bail before the switch so
-  // the same content doesn't appear twice.
-  if (nestedTasksMode) {
-    const parentTaskId = (message as { parentTaskId?: string }).parentTaskId;
-    if (parentTaskId) return null;
-  }
+  // Sub-agent activity is always rendered by <SubTaskTree /> under the
+  // parent run, never inline. Bail before the switch so the same content
+  // doesn't appear twice.
+  const parentTaskId = (message as { parentTaskId?: string }).parentTaskId;
+  if (parentTaskId) return null;
 
   const rendererContextValue = useMemo(() => ({
     rendering: rendering ?? 'minimal',
