@@ -11,14 +11,16 @@
  * ============================================================ */
 
 .models-shell {
-  /* This wrapper exists only to scope the design tokens and the dark
-     palette used across the Models page. It does NOT take responsibility
-     for layout — the parent (AppLayout's <main>) controls width, height,
-     and overflow. Don't add max-width / overflow / min-height here; that
-     was fighting the flex parent and producing both an inner scroll and
-     a sub-viewport width. */
+  /* The wrapper scopes the dark tokens AND owns the scroll. The parent
+     <main> in AppLayout is `overflow-hidden` so it can't scroll — if the
+     shell doesn't, the content past the viewport is just hidden. Taking
+     the parent's full height with `height: 100%` + `overflow-y: auto`
+     makes this the scroll container. */
   width: 100%;
+  height: 100%;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   /* Local tokens — these override only inside the shell. Use literal
      hexes rather than `var(--background)` etc.; shadcn's variables
      ship as raw HSL components and resolve to invalid color values
@@ -697,13 +699,15 @@
   font-size: 11.5px; color: var(--m-text-faint); margin-top: 2px;
 }
 
-/* Image */
+/* Image — tiles centre-wrap in the canvas so a single n=1 generation
+   doesn't sit left-aligned in a 2-column grid. */
 .models-shell .image-canvas {
   flex: 1;
   background:
     linear-gradient(135deg, transparent 24%, rgba(255,255,255,.014) 25%, rgba(255,255,255,.014) 26%, transparent 27%) 0 0 / 24px 24px,
     var(--m-bg-sunk);
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  display: flex; flex-wrap: wrap; gap: 12px;
+  justify-content: center; align-content: flex-start;
   padding: 18px;
 }
 .models-shell .image-tile {
@@ -711,6 +715,11 @@
   background: linear-gradient(135deg, #1d242c, #0e1216);
   aspect-ratio: 1;
   position: relative; overflow: hidden;
+  /* Two tiles per row up to a sensible max width; a single tile lands
+     centred at its max size rather than stretching across the canvas. */
+  flex: 1 1 calc(50% - 6px);
+  max-width: 560px;
+  min-width: 240px;
 }
 .models-shell .image-tile img { width: 100%; height: 100%; object-fit: cover; }
 .models-shell .image-tile .meta {

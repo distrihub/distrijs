@@ -41,6 +41,8 @@ interface ProvidersTabProps {
   /** Add an OpenAI-compatible custom provider. Resolves once the catalog
    *  has been refreshed and the new entry shows up in `providers`. */
   onAddCustomProvider: (input: AddCustomProviderInput) => Promise<void>;
+  /** Open the Add Custom Model modal scoped to the given provider. */
+  onAddModel: (providerId: string) => void;
 }
 
 export interface AddCustomProviderInput {
@@ -63,6 +65,7 @@ export function ProvidersTab({
   onDeleteKey,
   onTestProvider,
   onAddCustomProvider,
+  onAddModel,
 }: ProvidersTabProps) {
   const [showAddCustom, setShowAddCustom] = useState(false);
   const configured = useMemo(() => {
@@ -118,6 +121,7 @@ export function ProvidersTab({
         onSaveKey={onSaveKey}
         onDeleteKey={onDeleteKey}
         onTestProvider={onTestProvider}
+        onAddModel={() => onAddModel(current.id)}
       />
       {showAddCustom && (
         <AddCustomProviderModal
@@ -213,6 +217,7 @@ function ProviderPanel({
   onSaveKey,
   onDeleteKey,
   onTestProvider,
+  onAddModel,
 }: {
   provider: ModelProviderDefinition;
   secrets: Secret[];
@@ -220,6 +225,7 @@ function ProviderPanel({
   onSaveKey: (providerId: string, key: string, value: string) => Promise<void>;
   onDeleteKey: (key: string) => Promise<void>;
   onTestProvider: (providerId: string) => Promise<{ ok: boolean; detail: string }>;
+  onAddModel: () => void;
 }) {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -381,6 +387,10 @@ function ProviderPanel({
             <span style={{ fontSize: 11.5, color: 'var(--m-text-faint)' }}>
               {provider.models.length} available
             </span>
+            <span style={{ flex: 1 }} />
+            <button className="btn btn-secondary btn-sm" onClick={onAddModel}>
+              <Plus size={12} /> Add model
+            </button>
           </div>
           <div
             style={{

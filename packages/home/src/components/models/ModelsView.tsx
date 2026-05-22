@@ -16,7 +16,7 @@
 import './models.css';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Beaker, Layers, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft, Beaker, Layers, Loader2, Settings as SettingsIcon, X } from 'lucide-react';
 import { useDistriHomeClient } from '../../provider/context';
 import type {
   CustomModelEntry,
@@ -85,6 +85,8 @@ export function ModelsView({
 
   // ── Local UI state ──
   const [drawer, setDrawer] = useState<DrawerTarget>(null);
+  /** When set, the Add Custom Model modal is open for this provider id. */
+  const [addModelFor, setAddModelFor] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!homeClient) return;
@@ -206,6 +208,32 @@ export function ModelsView({
     } catch (err) {
       return { ok: false, detail: err instanceof Error ? err.message : 'Test failed' };
     }
+  };
+
+  /** Add a custom model to a built-in or custom provider. The backend
+   *  replaces the full `custom_models` array on each upsert, so we
+   *  send the existing list plus the new entry. */
+  const handleAddCustomModel = async (
+    providerId: string,
+    modelId: string,
+    capability: ModelCapability,
+  ) => {
+    if (!homeClient) return;
+    const trimmed = modelId.trim();
+    if (!trimmed) return;
+    // Avoid creating a duplicate row.
+    const exists = customModels.some(
+      (m) => m.provider === providerId && m.model === trimmed,
+    );
+    const next = exists
+      ? customModels
+      : [...customModels, { provider: providerId, model: trimmed, capability }];
+    await homeClient.upsertProvider({
+      provider_id: providerId,
+      custom_models: next,
+    });
+    await loadData();
+    setAddModelFor(null);
   };
 
   const handleAddCustomProvider = async (input: AddCustomProviderInput) => {
@@ -365,6 +393,7 @@ export function ModelsView({
             onDeleteKey={handleDeleteKey}
             onTestProvider={handleTestProvider}
             onAddCustomProvider={handleAddCustomProvider}
+            onAddModel={(providerId) => setAddModelFor(providerId)}
           />
         )}
         {isPlayground && playgroundMode === 'tts' && homeClient && (
@@ -420,6 +449,174 @@ export function ModelsView({
           }}
         />
       )}
+
+      {addModelFor && (
+        <AddCustomModelModal
+          provider={
+            providers.find((p) => p.id === addModelFor) ?? null
+          }
+          onClose={() => setAddModelFor(null)}
+          onSubmit={(modelId, capability) =>
+            handleAddCustomModel(addModelFor, modelId, capability)
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+// ── AddCustomModelModal ──────────────────────────────────────────────
+//
+// Simple form: Model ID + Capability. Save calls back into ModelsView
+// with the values; ModelsView appends to `custom_models` and upserts.
+
+function AddCustomModelModal({
+  provider,
+  onClose,
+  onSubmit,
+}: {
+  provider: ModelProviderDefinition | null;
+  onClose: () => void;
+  onSubmit: (modelId: string, capability: ModelCapability) => Promise<void>;
+}) {
+  const [modelId, setModelId] = useState('');
+  const [capability, setCapability] = useState<ModelCapability>('completion');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!provider) return null;
+
+  const handleSubmit = async () => {
+    if (!modelId.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(modelId.trim(), capability);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add model');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="drawer-backdrop"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 440,
+          maxWidth: '92vw',
+          background: 'var(--m-bg-elev)',
+          border: '1px solid var(--m-border)',
+          borderRadius: 'var(--m-radius-lg)',
+          padding: 20,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 14,
+          }}
+        >
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--m-text)' }}>
+            Add model to {provider.label}
+          </h3>
+          <button onClick={onClose} className="btn btn-ghost" style={{ width: 28, height: 28, padding: 0 }}>
+            <X size={16} />
+          </button>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--m-text-muted)', margin: '0 0 16px' }}>
+          Type the provider-side model id (e.g. <code className="mono-text" style={{ fontSize: 11 }}>gpt-5.4</code>).
+          It will be stored in workspace settings and surface in the catalog.
+        </p>
+
+        <div style={{ marginBottom: 12 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: 'var(--m-text-muted)',
+              marginBottom: 5,
+            }}
+          >
+            Model ID
+          </label>
+          <div className="input">
+            <input
+              type="text"
+              placeholder="gpt-5.4"
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && modelId.trim()) handleSubmit();
+              }}
+              autoFocus
+              style={{ fontFamily: 'var(--m-font-mono)' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: 'var(--m-text-muted)',
+              marginBottom: 5,
+            }}
+          >
+            Capability
+          </label>
+          <select
+            value={capability}
+            onChange={(e) => setCapability(e.target.value as ModelCapability)}
+            className="select"
+            style={{
+              width: '100%',
+              background: 'rgba(255,255,255,.02)',
+              border: '1px solid var(--m-border)',
+              color: 'var(--m-text)',
+              borderRadius: 'var(--m-radius-md)',
+              padding: '8px 10px',
+              fontSize: 13,
+            }}
+          >
+            <option value="completion">Completion</option>
+            <option value="tts">Text to speech</option>
+            <option value="stt">Speech to text</option>
+            <option value="image">Image</option>
+          </select>
+        </div>
+
+        {error && (
+          <div style={{ color: '#FDA4AF', fontSize: 12.5, marginTop: 4 }}>{error}</div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={!modelId.trim() || submitting}
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={13} className="shimmer" /> Adding…
+              </>
+            ) : (
+              'Add model'
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

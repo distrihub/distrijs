@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { ArrowLeft, Image as ImageIcon, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Loader2, Sparkles } from 'lucide-react';
 import type {
   DistriHomeClient,
   ImageGenerateResponseImage,
@@ -257,13 +257,6 @@ export function ImagePlayground({
                     <Sparkles size={13} /> Generate
                   </>
                 )}
-              </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={handleGenerate}
-                disabled={generating || !selected}
-              >
-                <RefreshCw size={12} /> Variations
               </button>
             </div>
           </div>

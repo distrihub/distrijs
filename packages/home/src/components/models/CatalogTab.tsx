@@ -543,36 +543,34 @@ function CatalogRowView({
         </>
       )}
 
-      <div style={{ textAlign: 'center' }}>
-        {isDefault ? (
-          <span
-            className="cap-pill"
-            style={{
-              background: 'rgba(34,174,195,.16)',
-              color: 'var(--m-brand-soft)',
-              borderColor: 'rgba(34,174,195,.32)',
-            }}
-          >
-            Default
-          </span>
-        ) : null}
-      </div>
-
-      <div className="row-actions" onClick={(e) => e.stopPropagation()}>
+      <div style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+        {/* The Default column IS the toggle. Click flips this model on/off
+            as the workspace default for its capability. */}
         <button
           onClick={() => onSetDefault(row)}
           title={isDefault ? 'Clear default for this capability' : 'Set as default for this capability'}
           aria-pressed={isDefault}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '2px 4px',
+            borderRadius: 4,
+            color: isDefault ? 'var(--m-brand-soft)' : 'var(--m-text-faint)',
+          }}
         >
           {isDefault ? (
-            <CheckCircle2
-              size={15}
-              style={{ color: 'var(--m-brand-soft)', fill: 'currentColor' }}
-            />
+            <CheckCircle2 size={15} style={{ fill: 'currentColor' }} />
           ) : (
             <Circle size={15} />
           )}
+          {isDefault && (
+            <span style={{ fontSize: 11, fontWeight: 600 }}>Default</span>
+          )}
         </button>
+      </div>
+
+      <div className="row-actions" onClick={(e) => e.stopPropagation()}>
         <button className="play" onClick={() => onPlay(row)} title="Open in playground">
           <Play size={13} />
         </button>
