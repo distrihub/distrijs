@@ -387,6 +387,7 @@ export function ModelsView({
           <ProvidersTab
             providers={providers}
             secrets={secrets}
+            defaults={defaults}
             focusProviderId={focusProviderId}
             onFocusProvider={(id) => go({ view: 'providers', providerId: id })}
             onSaveKey={handleSaveKey}

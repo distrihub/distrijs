@@ -163,15 +163,11 @@
   background: var(--m-bg-elev);
   border: 1px solid var(--m-border);
   border-radius: var(--m-radius-md);
-  position: relative;
-  cursor: pointer;
-  transition: border-color .12s ease;
-  /* Allow the inner `.value` text-overflow:ellipsis to actually clip —
-     flex items default to min-width:auto which lets the long mono
-     `provider/model` ids push the grid wider than its column. */
+  /* Purely informational — there's no "Change" control behind the card.
+     Defaults are toggled via the per-row CheckCircle in the catalog's
+     Default column. */
   min-width: 0;
 }
-.models-shell .default-card:hover { border-color: var(--m-brand-deep); }
 .models-shell .default-card .row1 { display: flex; align-items: center; gap: 8px; }
 .models-shell .default-card .cap-label {
   font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
@@ -185,12 +181,6 @@
 .models-shell .default-card .value.empty {
   font-family: inherit; color: var(--m-text-faint); font-style: italic;
 }
-.models-shell .default-card .change {
-  position: absolute; right: 10px; top: 10px;
-  font-size: 11px; color: var(--m-text-faint);
-  opacity: 0; transition: opacity .12s ease;
-}
-.models-shell .default-card:hover .change { opacity: 1; color: var(--m-brand-soft); }
 
 /* ── Capability chips ──────────────────────────────────────────────── */
 .models-shell .toolbar {

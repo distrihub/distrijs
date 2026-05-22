@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import type {
+  ModelCapability,
   ModelProviderDefinition,
   ProviderKeyDefinition,
   Secret,
@@ -30,6 +31,14 @@ import { CapPill, MonoChip } from './primitives';
 interface ProvidersTabProps {
   providers: ModelProviderDefinition[];
   secrets: Secret[];
+  /** Workspace defaults keyed by capability. The default provider for
+   *  each capability is derived from the `"provider/model"` value. */
+  defaults: {
+    completion: string;
+    tts: string;
+    stt: string;
+    image: string;
+  };
   focusProviderId?: string;
   onFocusProvider: (providerId: string) => void;
   /** Save (upsert) a single key. */
@@ -59,6 +68,7 @@ export interface AddCustomProviderInput {
 export function ProvidersTab({
   providers,
   secrets,
+  defaults,
   focusProviderId,
   onFocusProvider,
   onSaveKey,
@@ -68,6 +78,27 @@ export function ProvidersTab({
   onAddModel,
 }: ProvidersTabProps) {
   const [showAddCustom, setShowAddCustom] = useState(false);
+
+  // Capability → provider id, derived from the workspace defaults. The
+  // default model is `"provider/model"`, so the provider is the prefix.
+  // Guard against an undefined `defaults` prop in case a consumer hasn't
+  // upgraded yet — fall back to the empty record.
+  const defaultsByProvider = useMemo(() => {
+    const map = new Map<string, ModelCapability[]>();
+    const caps: ModelCapability[] = ['completion', 'tts', 'stt', 'image'];
+    const d = defaults ?? { completion: '', tts: '', stt: '', image: '' };
+    for (const cap of caps) {
+      const full = d[cap];
+      if (!full) continue;
+      const slash = full.indexOf('/');
+      if (slash <= 0) continue;
+      const providerId = full.slice(0, slash);
+      const list = map.get(providerId) ?? [];
+      list.push(cap);
+      map.set(providerId, list);
+    }
+    return map;
+  }, [defaults]);
   const configured = useMemo(() => {
     const set = new Set<string>();
     for (const p of providers) {
@@ -109,6 +140,7 @@ export function ProvidersTab({
       <ProviderRail
         providers={sorted}
         configured={configured}
+        defaultsByProvider={defaultsByProvider}
         focusId={focusId}
         onFocus={onFocusProvider}
         onAddCustom={() => setShowAddCustom(true)}
@@ -118,6 +150,8 @@ export function ProvidersTab({
         provider={current}
         secrets={secrets}
         configured={configured.has(current.id)}
+        defaults={defaults}
+        defaultCapabilities={defaultsByProvider.get(current.id) ?? []}
         onSaveKey={onSaveKey}
         onDeleteKey={onDeleteKey}
         onTestProvider={onTestProvider}
@@ -139,12 +173,14 @@ export function ProvidersTab({
 function ProviderRail({
   providers,
   configured,
+  defaultsByProvider,
   focusId,
   onFocus,
   onAddCustom,
 }: {
   providers: ModelProviderDefinition[];
   configured: Set<string>;
+  defaultsByProvider: Map<string, ModelCapability[]>;
   focusId: string;
   onFocus: (id: string) => void;
   onAddCustom: () => void;
@@ -185,6 +221,7 @@ function ProviderRail({
       {providers.map((p) => {
         const conf = configured.has(p.id);
         const active = p.id === focusId;
+        const defaultCaps = defaultsByProvider.get(p.id);
         return (
           <div
             key={p.id}
@@ -195,7 +232,30 @@ function ProviderRail({
               {providerMonogram(p.id)}
             </span>
             <div>
-              <div className="label">{p.label}</div>
+              <div
+                className="label"
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span>{p.label}</span>
+                {defaultCaps && defaultCaps.length > 0 && (
+                  <span
+                    title={`Default for ${defaultCaps.map((c) => CAPABILITY_META[c].short).join(', ')}`}
+                    style={{
+                      fontSize: 9.5,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      fontWeight: 600,
+                      color: 'var(--m-brand-soft)',
+                      background: 'rgba(34,174,195,.14)',
+                      border: '1px solid rgba(34,174,195,.32)',
+                      borderRadius: 4,
+                      padding: '1px 5px',
+                    }}
+                  >
+                    Default
+                  </span>
+                )}
+              </div>
               <div className="sub">
                 <span className={`status-dot ${conf ? 'ok' : ''}`} />
                 <span>{conf ? 'Configured' : 'Not configured'}</span>
@@ -214,6 +274,8 @@ function ProviderPanel({
   provider,
   secrets,
   configured,
+  defaults,
+  defaultCapabilities,
   onSaveKey,
   onDeleteKey,
   onTestProvider,
@@ -222,6 +284,8 @@ function ProviderPanel({
   provider: ModelProviderDefinition;
   secrets: Secret[];
   configured: boolean;
+  defaults: ProvidersTabProps['defaults'];
+  defaultCapabilities: ModelCapability[];
   onSaveKey: (providerId: string, key: string, value: string) => Promise<void>;
   onDeleteKey: (key: string) => Promise<void>;
   onTestProvider: (providerId: string) => Promise<{ ok: boolean; detail: string }>;
@@ -284,7 +348,27 @@ function ProviderPanel({
           {providerMonogram(provider.id)}
         </span>
         <div>
-          <h2>{provider.label}</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span>{provider.label}</span>
+            {defaultCapabilities.length > 0 && (
+              <span
+                title={`Workspace default for ${defaultCapabilities.map((c) => CAPABILITY_META[c].short).join(', ')}`}
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '0.10em',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: 'var(--m-brand-soft)',
+                  background: 'rgba(34,174,195,.14)',
+                  border: '1px solid rgba(34,174,195,.32)',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                }}
+              >
+                Default · {defaultCapabilities.map((c) => CAPABILITY_META[c].short).join(' · ')}
+              </span>
+            )}
+          </h2>
           <div className="sub">
             <span style={{ color: configured ? '#6EE7B7' : 'var(--m-text-faint)' }}>
               {configured ? '● Configured' : '○ Not configured'}
@@ -399,31 +483,55 @@ function ProviderPanel({
               overflow: 'hidden',
             }}
           >
-            {provider.models.map((m, idx) => (
-              <div
-                key={m.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr auto auto',
-                  gap: 14,
-                  alignItems: 'center',
-                  padding: '10px 14px',
-                  borderTop: idx === 0 ? '0' : '1px solid var(--m-border-soft)',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</div>
-                  <div
-                    className="mono-text"
-                    style={{ fontSize: 11, color: 'var(--m-text-faint)', marginTop: 1 }}
-                  >
-                    {provider.id}/{m.id}
+            {provider.models.map((m, idx) => {
+              const isDefault = defaults?.[m.capability] === `${provider.id}/${m.id}`;
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto auto auto',
+                    gap: 14,
+                    alignItems: 'center',
+                    padding: '10px 14px',
+                    borderTop: idx === 0 ? '0' : '1px solid var(--m-border-soft)',
+                    background: isDefault ? 'rgba(34,174,195,.04)' : undefined,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</div>
+                    <div
+                      className="mono-text"
+                      style={{ fontSize: 11, color: 'var(--m-text-faint)', marginTop: 1 }}
+                    >
+                      {provider.id}/{m.id}
+                    </div>
                   </div>
+                  {isDefault ? (
+                    <span
+                      title={`Workspace default for ${CAPABILITY_META[m.capability].short}`}
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: '0.10em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        color: 'var(--m-brand-soft)',
+                        background: 'rgba(34,174,195,.14)',
+                        border: '1px solid rgba(34,174,195,.32)',
+                        borderRadius: 4,
+                        padding: '2px 6px',
+                      }}
+                    >
+                      Default
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  <CapPill type={m.capability} />
+                  <MonoChip providerId={provider.id} />
                 </div>
-                <CapPill type={m.capability} />
-                <MonoChip providerId={provider.id} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -214,16 +214,7 @@ export function CatalogTab({
 
   return (
     <>
-      <DefaultStrip
-        defaults={defaults}
-        onChange={(capability) => {
-          // No-op for now: the default-card click navigates the user to
-          // the capability-filtered catalog so they can pick a model
-          // and toggle its default circle. We just switch the chip
-          // filter to make that flow obvious.
-          setCapFilter(capability);
-        }}
-      />
+      <DefaultStrip defaults={defaults} />
 
       <div className="toolbar">
         <CapChips active={capFilter} counts={counts} onChange={setCapFilter} />
@@ -324,13 +315,7 @@ function priceKey(m: Model): number {
   return 0;
 }
 
-function DefaultStrip({
-  defaults,
-  onChange,
-}: {
-  defaults: Record<ModelCapability, string>;
-  onChange: (capability: ModelCapability) => void;
-}) {
+function DefaultStrip({ defaults }: { defaults: Record<ModelCapability, string> }) {
   const caps: ModelCapability[] = ['completion', 'tts', 'stt', 'image'];
   return (
     <div className="defaults">
@@ -338,7 +323,7 @@ function DefaultStrip({
         const meta = CAPABILITY_META[cap];
         const val = defaults[cap];
         return (
-          <div key={cap} className="default-card" onClick={() => onChange(cap)}>
+          <div key={cap} className="default-card">
             <div className="row1">
               <CapPill type={cap} />
               <span className="cap-label">Default {meta.short.toLowerCase()}</span>
@@ -346,7 +331,6 @@ function DefaultStrip({
             <div className={`value ${val ? '' : 'empty'}`} title={val || undefined}>
               {val || 'Not set — pick a model'}
             </div>
-            <span className="change">Change ›</span>
           </div>
         );
       })}
