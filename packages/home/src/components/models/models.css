@@ -11,18 +11,18 @@
  * ============================================================ */
 
 .models-shell {
-  /* Stop any inner grid blowout from forcing the whole page into a
-     horizontal scroll. min-width:0 lets descendants shrink below their
-     intrinsic content width when CSS Grid asks them to. */
-  max-width: 100vw;
-  overflow-x: hidden;
-  min-width: 0;
-  /* Local tokens — these override only inside the shell.
-     `--m-bg` was previously `var(--background, #121418)` to inherit
-     from shadcn, but shadcn's `--background` is raw HSL components
-     (e.g. `222 47% 11%`), not a color — `var(--background)` evaluates
-     to an invalid value and the drawer / page background fell through
-     to transparent. Use a literal hex. */
+  /* This wrapper exists only to scope the design tokens and the dark
+     palette used across the Models page. It does NOT take responsibility
+     for layout — the parent (AppLayout's <main>) controls width, height,
+     and overflow. Don't add max-width / overflow / min-height here; that
+     was fighting the flex parent and producing both an inner scroll and
+     a sub-viewport width. */
+  width: 100%;
+  flex: 1;
+  /* Local tokens — these override only inside the shell. Use literal
+     hexes rather than `var(--background)` etc.; shadcn's variables
+     ship as raw HSL components and resolve to invalid color values
+     when used bare. */
   --m-brand: #007C91;
   --m-brand-soft: #4FB5C3;
   --m-brand-deep: #005B6B;
@@ -46,7 +46,6 @@
   background: var(--m-bg);
   color: var(--m-text);
   font-feature-settings: "ss01","cv11";
-  min-height: 100%;
 }
 .models-shell *,
 .models-shell *::before,
