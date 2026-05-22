@@ -374,15 +374,21 @@ export const ToolExecutionRenderer: React.FC<ToolExecutionRendererProps> = ({
           );
         }
 
-        // If `executeTool` already attached a component (e.g. a
-        // registered DistriUiTool like `ask_follow_up`), defer to it
-        // — Chat.tsx's `renderExternalToolCalls` will render that
-        // copy. Without this, we'd ALSO render the interactive
-        // fallback below and the user would see two UIs for the same
-        // tool call (one inline "Type your answer" box plus the
-        // proper structured form).
+        // If `executeTool` attached a component (e.g. a registered
+        // DistriUiTool like `ask_follow_up`, or DefaultToolActions on a
+        // confirm-required fn tool), `renderExternalToolCalls` in
+        // Chat.tsx renders it WHILE it's awaiting interaction — its
+        // filter is `status === 'pending' || status === 'running'`.
+        //
+        // Once the tool settles (completed/error), the component is no
+        // longer rendered there. Without falling through here, the call
+        // would silently disappear from the chat — even though the
+        // trace recorded it. So while live, defer; after settling, fall
+        // through to MinimalToolRow so the call stays visible.
         if (state.component) {
-          return null;
+          if (state.status === 'pending' || state.status === 'running') {
+            return null;
+          }
         }
 
         // Interactive tools (confirm, input, approval_*) — these have

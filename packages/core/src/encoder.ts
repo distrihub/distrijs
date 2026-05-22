@@ -9,14 +9,20 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
   // Map A2A roles to Distri roles (A2A only supports 'agent' and 'user')
   const role: MessageRole = a2aMessage.role === 'agent' ? 'assistant' : 'user';
 
-  // Extract agent metadata from A2A message metadata (A2A extension)
+  // Extract routing fields from A2A message metadata (Distri extension via
+  // AgentEventEnvelope). `taskId` is the spec-level wire field; the parent
+  // hint lives in metadata because A2A has no native parent-task concept.
   let agent_id: string | undefined;
   let agent_name: string | undefined;
+  let parentTaskId: string | undefined;
   if (a2aMessage.metadata) {
     const metadata = a2aMessage.metadata as any;
     if (metadata.agent) {
       agent_id = metadata.agent.agent_id;
       agent_name = metadata.agent.agent_name;
+    }
+    if (metadata.parent_task_id) {
+      parentTaskId = metadata.parent_task_id;
     }
   }
 
@@ -27,6 +33,8 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
     created_at: (a2aMessage as any).createdAt,
     agent_id,
     agent_name,
+    taskId: a2aMessage.taskId,
+    parentTaskId,
   };
 }
 
