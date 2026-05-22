@@ -1102,12 +1102,13 @@ export interface MessageVoteSummary {
 
 // ========== Models API Types ==========
 
-export type ModelCapability = 'completion' | 'tts' | 'stt';
+export type ModelCapability = 'completion' | 'tts' | 'stt' | 'image';
 
 export type ModelPricing =
   | { type: 'completion'; input: number; output: number; cached_input?: number }
   | { type: 'tts'; per_1m_chars: number }
-  | { type: 'stt'; per_minute: number };
+  | { type: 'stt'; per_minute: number }
+  | { type: 'image'; per_image: number; per_quality?: Record<string, number> };
 
 /**
  * A model with its capability, pricing, and metadata.
