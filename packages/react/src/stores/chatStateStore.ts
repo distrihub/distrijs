@@ -126,6 +126,17 @@ export interface ChatState {
   currentTaskId?: string;   // From A2A status-update taskId - this is what we send back
   currentPlanId?: string;   // Generated locally
   currentAgentId?: string;  // Current executing agent (changes on handover)
+  /**
+   * **Live** messages only — optimistic user messages from `sendMessage`
+   * and assistant messages/events arriving on the current stream. The
+   * thread's *persisted* history is NOT loaded here; the server already
+   * loads it from its own DB when building the planner's context (see
+   * `distri/server/distri-core/src/agent/context.rs::collect_top_level_message_history`),
+   * and the client just renders it alongside this live buffer
+   * (`useChat` returns `[...initialMessages, ...messages]`). Keeping the
+   * two streams separate is what prevents a returning history fetch from
+   * clobbering an in-flight optimistic user message.
+   */
   messages: DistriChatMessage[];
 
   // Streaming indicator state
