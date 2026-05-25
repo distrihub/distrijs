@@ -83,18 +83,24 @@ export function useAgent({
     }
   }, [clientLoading, clientError, client, agentIdOrDef, initializeAgent, enabled]);
 
-  // Reset agent when agentId changes
+  // Reset agent ONLY on a true transition between two non-null values.
+  // The initial-mount case (`currentXxxRef.current === null` vs. a real
+  // incoming value) is NOT a "change" — it's first assignment, which
+  // `initializeAgent` handles. Wiping in that case used to flicker
+  // `agent` null → real on first render, which unmounts any parent
+  // that conditionally renders on `agent` (e.g. `<Chat>` via
+  // `chatConfig = agent ? {...} : null` in editor-ui), losing
+  // optimistic / streaming chat state on every cold open.
   React.useEffect(() => {
-    if (currentAgentIdRef.current !== agentIdOrDef) {
+    if (currentAgentIdRef.current !== null && currentAgentIdRef.current !== agentIdOrDef) {
       agentRef.current = null;
       setAgent(null);
       currentAgentIdRef.current = null;
     }
   }, [agentIdOrDef]);
 
-  // Reset agent when client instance changes
   React.useEffect(() => {
-    if (currentClientRef.current !== client) {
+    if (currentClientRef.current !== null && currentClientRef.current !== client) {
       agentRef.current = null;
       setAgent(null);
       currentClientRef.current = null;
