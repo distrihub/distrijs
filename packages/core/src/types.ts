@@ -348,6 +348,42 @@ export interface ContextCompactionEvent {
   usage_ratio: number;
   /** Optional summary text (for Tier 2 summarization) */
   summary?: string;
+  /** "auto" when fired by the agent loop, "manual" when via /compact. */
+  source?: 'auto' | 'manual';
+}
+
+/**
+ * Per-component context budget breakdown. Mirrors `ContextBudget` on the
+ * server. Emitted on every turn as part of `ContextBudgetUpdate`.
+ */
+export interface ContextBudget {
+  system_prompt_static_tokens: number;
+  system_prompt_dynamic_tokens: number;
+  tool_schema_tokens: number;
+  deferred_tool_tokens: number;
+  skill_listing_tokens: number;
+  conversation_tokens: number;
+  tool_result_tokens: number;
+  context_window_size: number;
+  static_prefix_cache_hit: boolean;
+  static_prefix_hash?: string;
+}
+
+/**
+ * Result body returned by `DistriClient.compactTask()` /
+ * `Agent.compact()` — mirrors `POST /v1/tasks/{task_id}/compact`.
+ */
+export interface CompactTaskResult {
+  /** True when entries were modified; false means there was nothing to compact. */
+  compacted: boolean;
+  /** Reason text when `compacted === false`. */
+  reason?: string;
+  /** Compaction tier applied (only set when `compacted === true`). */
+  tier?: CompactionTier;
+  tokens_before?: number;
+  tokens_after?: number;
+  entries_affected?: number;
+  usage_ratio?: number;
 }
 
 /**

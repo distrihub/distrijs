@@ -33,6 +33,7 @@ import {
   ModelWithProvider,
   TtsSpeechRequest,
   TtsSpeechResponse,
+  CompactTaskResult,
 } from './types';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
@@ -1087,6 +1088,34 @@ export class DistriClient {
       this.debug(`Cancelled task ${taskId} on agent ${agentId}`);
     } catch (error) {
       throw new DistriError(`Failed to cancel task ${taskId} on agent ${agentId}`, 'CANCEL_TASK_ERROR', error);
+    }
+  }
+
+  /**
+   * Manually compact the conversation history for a task. Calls
+   * `POST /v1/tasks/{taskId}/compact`. The server runs the same compactor as
+   * the agent loop's auto-trigger, unconditionally.
+   *
+   * Returns the parsed JSON body — `{ compacted, tokens_before, tokens_after,
+   * entries_affected, usage_ratio, tier }` when compaction ran, or
+   * `{ compacted: false, reason }` when there was nothing to compact.
+   */
+  async compactTask(taskId: string): Promise<CompactTaskResult> {
+    try {
+      const response = await this.fetch(`/tasks/${encodeURIComponent(taskId)}/compact`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new DistriError(
+          `Failed to compact task ${taskId}: ${response.status} ${text}`,
+          'COMPACT_TASK_ERROR'
+        );
+      }
+      return (await response.json()) as CompactTaskResult;
+    } catch (error) {
+      if (error instanceof DistriError) throw error;
+      throw new DistriError(`Failed to compact task ${taskId}`, 'COMPACT_TASK_ERROR', error);
     }
   }
 
