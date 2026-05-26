@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useEffect, useState } from 'react';
-import { DeveloperModeComponent } from './DeveloperModeComponent';
-import { DeveloperMode, DistriAnyTool } from '@/types';
-import { useChatStateStore } from '@/stores/chatStateStore';
+import { DeveloperModeComponent, type DeveloperMode, type DistriAnyTool, useChatStateStore } from '@distri/react';
 
 // ---------------------------------------------------------------------------
 // Helpers & mock data
