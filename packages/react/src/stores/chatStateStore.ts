@@ -23,6 +23,8 @@ import {
   TodosUpdatedEvent,
   createSuccessfulToolResult,
   createFailedToolResult,
+  ContextBudget,
+  ContextCompactionEvent,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiTool, ToolCallStatus, RenderingMode, ChatSessionSettings } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
@@ -162,6 +164,27 @@ export interface ChatState {
    * Reset to `[]` whenever todos are cleared.
    */
   lastTodoChanges: TodoChange[];
+
+  /** Latest `ContextBudget` from a `context_budget_update` event. */
+  contextBudget?: ContextBudget;
+  /** Whether the latest budget update crossed the warning threshold (≥80%). */
+  contextWarning?: boolean;
+  /** Whether the latest budget update crossed the critical threshold (≥90%). */
+  contextCritical?: boolean;
+  /**
+   * Compaction events received this session, in arrival order. Used by
+   * `<ContextIndicator />` to show "Compacted N times" and surface a recent
+   * before/after slot in the breakdown popover.
+   */
+  compactionEvents: CompactionLogEntry[];
+}
+
+export interface CompactionLogEntry {
+  ts: number;
+  before: number;
+  after: number;
+  tier: ContextCompactionEvent['tier'];
+  source: 'auto' | 'manual';
 }
 
 type ChatStateTool = DistriAnyTool & {
@@ -259,6 +282,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   browserStreamUrl: undefined,
   todos: [],
   lastTodoChanges: [],
+  contextBudget: undefined,
+  contextWarning: false,
+  contextCritical: false,
+  compactionEvents: [],
   tools: {
     tools: [],
     agent_tools: new Map(),
@@ -829,6 +856,33 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
           break;
         }
 
+        case 'context_budget_update': {
+          const data: any = (event as any).data || {};
+          set({
+            contextBudget: data.budget as ContextBudget | undefined,
+            contextWarning: !!data.is_warning,
+            contextCritical: !!data.is_critical,
+          });
+          break;
+        }
+
+        case 'context_compaction': {
+          const data: any = (event as any).data || {};
+          const entry: CompactionLogEntry = {
+            ts: Date.now(),
+            before: Number(data.tokens_before ?? 0),
+            after: Number(data.tokens_after ?? 0),
+            tier: (data.tier as ContextCompactionEvent['tier']) ?? 'trim',
+            source: (data.source as 'auto' | 'manual') ?? 'auto',
+          };
+          set(state => ({
+            compactionEvents: [...state.compactionEvents, entry],
+            // The compaction event also carries the post-compact budget snapshot.
+            contextBudget: (data.context_budget as ContextBudget | undefined) ?? state.contextBudget,
+          }));
+          break;
+        }
+
         default:
           // Handle any other events
           break;
@@ -1220,6 +1274,10 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
       browserStreamUrl: undefined,
       todos: [],
       lastTodoChanges: [],
+      contextBudget: undefined,
+      contextWarning: false,
+      contextCritical: false,
+      compactionEvents: [],
     });
   },
 

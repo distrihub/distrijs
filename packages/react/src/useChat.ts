@@ -43,6 +43,13 @@ export interface UseChatReturn {
   hasPendingToolCalls: () => boolean;
   stopStreaming: () => void;
   addMessage: (message: DistriChatMessage) => void;
+  /**
+   * Manually run compaction on the current task. Resolves when the server
+   * has applied the compactor; the resulting `context_compaction` event
+   * arrives over the stream and updates `useChatStateStore.compactionEvents`.
+   * No-op (with a warning) when there is no active task to compact.
+   */
+  compact: () => Promise<void>;
 }
 
 export function useChat({
@@ -369,6 +376,19 @@ export function useChat({
     setLoading(false);
   }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
 
+  const compact = useCallback(async () => {
+    const taskId = currentTaskId;
+    if (!agent || !taskId) {
+      console.warn('[useChat] compact() called with no active task — nothing to compact');
+      return;
+    }
+    try {
+      await agent.compact(taskId);
+    } catch (err) {
+      onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+    }
+  }, [agent, currentTaskId]);
+
   // Combined display array: persisted history (from parent) first, live
   // optimistic + streamed messages from the store after. Memoised so
   // downstream effects keyed on `messages` don't fire on every render.
@@ -389,5 +409,6 @@ export function useChat({
     hasPendingToolCalls,
     stopStreaming,
     addMessage,
+    compact,
   };
 }
