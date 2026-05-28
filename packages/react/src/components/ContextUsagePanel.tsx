@@ -1,4 +1,5 @@
 import type { ContextBudget } from '@distri/core';
+import { contextUsageColor } from './contextColors';
 
 export interface CompactionLogItem {
   ts: number;
@@ -51,7 +52,7 @@ export function ContextUsagePanel({
   const total = totalTokens(budget);
   const window = budget.context_window_size || 0;
   const pct = window > 0 ? Math.round((total / window) * 100) : 0;
-  const color = pctColor(pct / 100);
+  const color = contextUsageColor(pct / 100);
 
   const rows: Array<[string, number]> = [
     ['Static prompt', budget.system_prompt_static_tokens],
@@ -185,13 +186,6 @@ function totalTokens(b: ContextBudget): number {
     b.conversation_tokens +
     b.tool_result_tokens
   );
-}
-
-function pctColor(ratio: number): string {
-  if (ratio < 0.5) return '#22c55e';
-  if (ratio < 0.7) return '#eab308';
-  if (ratio < 0.85) return '#f97316';
-  return '#ef4444';
 }
 
 function fmt(n: number): string {

@@ -1,4 +1,5 @@
 import type { ContextHealth } from '@distri/core';
+import { contextUsageColor } from './contextColors';
 
 interface ContextIndicatorProps {
   contextHealth: ContextHealth | null;
@@ -26,7 +27,7 @@ export function ContextIndicator({
   if (!contextHealth) return null;
 
   const percentage = Math.round(contextHealth.usage_ratio * 100);
-  const color = getColor(contextHealth.usage_ratio);
+  const color = contextUsageColor(contextHealth.usage_ratio);
   const tierLabel = contextHealth.last_compaction?.tier;
 
   return (
@@ -57,9 +58,3 @@ export function ContextIndicator({
   );
 }
 
-function getColor(ratio: number): string {
-  if (ratio < 0.5) return '#22c55e';  // green
-  if (ratio < 0.7) return '#eab308';  // yellow
-  if (ratio < 0.85) return '#f97316'; // orange
-  return '#ef4444';                    // red
-}
