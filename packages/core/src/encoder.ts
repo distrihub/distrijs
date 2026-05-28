@@ -247,6 +247,45 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       } as TodosUpdatedEvent);
     }
 
+    case 'context_budget_update': {
+      return out({
+        type: 'context_budget_update',
+        data: {
+          budget: metadata.budget,
+          is_warning: !!metadata.is_warning,
+          is_critical: !!metadata.is_critical,
+        },
+      } as any);
+    }
+
+    case 'context_compaction': {
+      return out({
+        type: 'context_compaction',
+        data: {
+          tier: metadata.tier,
+          tokens_before: metadata.tokens_before ?? 0,
+          tokens_after: metadata.tokens_after ?? 0,
+          entries_affected: metadata.entries_affected ?? 0,
+          context_limit: metadata.context_limit ?? 0,
+          usage_ratio: metadata.usage_ratio ?? 0,
+          summary: metadata.summary,
+          reinjected_skills: metadata.reinjected_skills,
+          context_budget: metadata.context_budget,
+          source: metadata.source,
+          duration_ms: metadata.duration_ms,
+        },
+      } as any);
+    }
+
+    case 'compaction_requested': {
+      // Pre-compaction signal — let the store render an in-flight UI.
+      // No DistriEvent variant exists for this yet; passthrough is fine.
+      return out({
+        type: 'compaction_requested',
+        data: { source: metadata.source ?? 'auto' },
+      } as any);
+    }
+
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);

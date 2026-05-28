@@ -376,16 +376,28 @@ export function useChat({
     setLoading(false);
   }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
 
+  const compactingRef = useRef(false);
   const compact = useCallback(async () => {
     const taskId = currentTaskId;
     if (!agent || !taskId) {
       console.warn('[useChat] compact() called with no active task — nothing to compact');
       return;
     }
+    // Reentrancy guard: a second click (or double-bound handler) would
+    // otherwise fire a duplicate POST while the first is still in flight.
+    if (compactingRef.current) return;
+    compactingRef.current = true;
+    useChatStateStore.setState({ isCompacting: true });
     try {
       await agent.compact(taskId);
     } catch (err) {
+      // Surface the error so onError handlers can render it, and clear
+      // the in-flight flag — the matching context_compaction event will
+      // not arrive on failure.
+      useChatStateStore.setState({ isCompacting: false });
       onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      compactingRef.current = false;
     }
   }, [agent, currentTaskId]);
 
