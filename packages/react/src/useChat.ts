@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata } from '@distri/core';
+import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata, CompactTaskResult } from '@distri/core';
 import {
   DistriPart,
   InvokeContext,
@@ -44,12 +44,15 @@ export interface UseChatReturn {
   stopStreaming: () => void;
   addMessage: (message: DistriChatMessage) => void;
   /**
-   * Manually run compaction on the current task. Resolves when the server
-   * has applied the compactor; the resulting `context_compaction` event
-   * arrives over the stream and updates `useChatStateStore.compactionEvents`.
-   * No-op (with a warning) when there is no active task to compact.
+   * Manually run compaction on the current task. Resolves with the typed
+   * `CompactTaskResult` body the server returned — token counts are
+   * available synchronously here, while the streaming
+   * `context_compaction` event still arrives over the stream and updates
+   * `useChatStateStore.compactionEvents` for observers that prefer the
+   * event-driven path. Resolves with `undefined` when there is no
+   * active task to compact.
    */
-  compact: () => Promise<void>;
+  compact: () => Promise<CompactTaskResult | undefined>;
 }
 
 export function useChat({
@@ -377,25 +380,48 @@ export function useChat({
   }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
 
   const compactingRef = useRef(false);
-  const compact = useCallback(async () => {
+  const compact = useCallback(async (): Promise<CompactTaskResult | undefined> => {
     const taskId = currentTaskId;
     if (!agent || !taskId) {
       console.warn('[useChat] compact() called with no active task — nothing to compact');
-      return;
+      return undefined;
     }
     // Reentrancy guard: a second click (or double-bound handler) would
     // otherwise fire a duplicate POST while the first is still in flight.
-    if (compactingRef.current) return;
+    if (compactingRef.current) return undefined;
     compactingRef.current = true;
     useChatStateStore.setState({ isCompacting: true });
     try {
-      await agent.compact(taskId);
+      const result = await agent.compact(taskId);
+      // Mirror the compaction event into the store so observers that
+      // depend on `compactionEvents` see the result even before the
+      // streaming `context_compaction` event arrives (or in case it
+      // races past `useChat` after compactingRef has cleared).
+      if (result?.compacted && result.tier) {
+        useChatStateStore.setState(s => ({
+          isCompacting: false,
+          compactionEvents: [
+            ...s.compactionEvents,
+            {
+              ts: Date.now(),
+              before: result.tokens_before ?? 0,
+              after: result.tokens_after ?? 0,
+              tier: result.tier!,
+              source: 'manual' as const,
+            },
+          ].slice(-50),
+        }));
+      } else {
+        useChatStateStore.setState({ isCompacting: false });
+      }
+      return result;
     } catch (err) {
       // Surface the error so onError handlers can render it, and clear
       // the in-flight flag — the matching context_compaction event will
       // not arrive on failure.
       useChatStateStore.setState({ isCompacting: false });
       onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+      return undefined;
     } finally {
       compactingRef.current = false;
     }
