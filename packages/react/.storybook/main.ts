@@ -15,6 +15,7 @@ const config: StorybookConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname, '../src'),
+      '@distri/react': path.resolve(__dirname, '../src/index.ts'),
       '@distri/core': path.resolve(__dirname, '../../core/src'),
       // Point lucide-react directly at its CJS build to avoid missing ESM entry issue
       'lucide-react': path.resolve(__dirname, '../node_modules/lucide-react/dist/cjs/lucide-react.js'),

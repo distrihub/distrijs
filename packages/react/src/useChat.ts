@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata } from '@distri/core';
 import {
   DistriPart,
@@ -100,17 +100,17 @@ export function useChat({
   const isLoading = useChatStateStore(state => state.isLoading);
   const isStreaming = useChatStateStore(state => state.isStreaming);
 
-  // Handle initial messages processing - static recalculation when initialMessages change
-  useEffect(() => {
-    if (initialMessages) {
-      // Clear state and process initial messages
-      clearAllStates();
-      // Process initial messages as historical (not from stream)
-      initialMessages.forEach(message => processMessage(message, false));
-
-
-    }
-  }, [clearAllStates, initialMessages, processMessage]);
+  // `initialMessages` is the thread's persisted history (fetched by the
+  // parent via `useChatMessages`). It is **render-only** — we never pump
+  // it into the live zustand store, because:
+  //   * the server already loads thread history from its own DB when
+  //     building the planner's context (so we don't need to ship it
+  //     anywhere), and
+  //   * a returning history fetch arriving mid-turn must not be allowed
+  //     to clobber an in-flight optimistic user message or streaming
+  //     response.
+  // The display array is composed at return time as
+  // `[...initialMessages, ...store.messages]`.
 
   // Direct message processing
   const addMessage = useCallback((message: DistriChatMessage) => {
@@ -153,12 +153,20 @@ export function useChat({
   const agentNameRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (agent?.name !== agentNameRef.current) {
-      // Agent changed, reset all state
+    const prev = agentNameRef.current;
+    const curr = agent?.name;
+    if (prev === curr) return;
+
+    // Only wipe on a true agent-to-agent transition. The first non-null
+    // assignment (undefined → "agent_a") and any null reset are NOT
+    // user-initiated agent switches; they're just async resolution from
+    // `useAgent` arriving after the store has already been populated.
+    // Wiping there clobbers in-flight optimistic / streaming state.
+    if (prev !== undefined && curr !== undefined) {
       clearAllStates();
       setError(null);
-      agentNameRef.current = agent?.name;
     }
+    agentNameRef.current = curr;
   }, [agent?.name, clearAllStates, setError]);
 
   // Reset state when threadId changes (e.g. user clicks "new conversation").
@@ -181,7 +189,6 @@ export function useChat({
 
   const handleStreamEvent = useCallback(
     (event: DistriChatMessage) => {
-      // Process event directly - mark as from stream
       processMessage(event, true);
     }, [processMessage]);
 
@@ -362,9 +369,19 @@ export function useChat({
     setLoading(false);
   }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
 
+  // Combined display array: persisted history (from parent) first, live
+  // optimistic + streamed messages from the store after. Memoised so
+  // downstream effects keyed on `messages` don't fire on every render.
+  const displayedMessages = useMemo(
+    () => (initialMessages && initialMessages.length > 0
+      ? [...initialMessages, ...messages]
+      : messages),
+    [initialMessages, messages],
+  );
+
   return {
     isStreaming,
-    messages,
+    messages: displayedMessages,
     sendMessage,
     sendMessageStream,
     isLoading,
