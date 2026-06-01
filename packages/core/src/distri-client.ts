@@ -115,6 +115,88 @@ export interface DynamicToolFactory {
   description?: string;
 }
 
+// ============================================================
+// Token issuance — see DistriClient.issueToken for usage docs
+// ============================================================
+
+/** Scope under which the minted token operates. Matches cloud spec §6. */
+export type TokenScope = 'workspace' | 'user';
+
+/** Built-in role names. Cloud rejects any other string. */
+export type TokenRole = 'owner' | 'admin' | 'member' | 'viewer' | 'end_user';
+
+/**
+ * Resource kinds known to cloud's typed authorization model. Used as keys
+ * in `IssueTokenOptions.permissions`. PascalCase to match the wire form.
+ */
+export type ResourceKind =
+  | 'Completion'
+  | 'Agent'
+  | 'Skill'
+  | 'Workflow'
+  | 'Note'
+  | 'Bot'
+  | 'Secret'
+  | 'ConnectionWorkspace'
+  | 'ConnectionUser'
+  | 'Workspace'
+  | 'Observability'
+  | 'Mcp';
+
+/**
+ * Bitmask of allowed actions on a resource. Cloud serialises `ActionSet`
+ * as a `u8`; combine flags with bitwise OR.
+ */
+export const TokenAction = {
+  Read: 1,
+  Write: 2,
+  Manage: 4,
+  Execute: 8,
+} as const;
+export type TokenActionValue = number;
+
+/** Per-token rate-limit overrides. Cloud caps at user-tier defaults. */
+export interface TokenLimits {
+  daily_calls?: number;
+  weekly_calls?: number;
+}
+
+/** Optional body for [`DistriClient.issueToken`]. */
+export interface IssueTokenOptions {
+  scope?: TokenScope;
+  role?: TokenRole;
+  /** Per-resource bitmask of allowed actions. */
+  permissions?: Partial<Record<ResourceKind, TokenActionValue>>;
+  identifier_id?: string;
+  limits?: TokenLimits;
+}
+
+/** Cloud's response body for `POST /v1/token`. Fields beyond `access_token`,
+ *  `refresh_token`, and `expires_at` are optional and informational —
+ *  permissions/scope/role reflect what cloud actually granted (post §6.1
+ *  attenuation). */
+export interface IssueTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  identifier_id?: string;
+  limits?: TokenLimits;
+  permissions?: Partial<Record<ResourceKind, TokenActionValue>>;
+  scope?: TokenScope;
+}
+
+/** Build the JSON body cloud expects on `POST /v1/token`. Cloud accepts
+ *  unknown fields silently per spec §6; we only emit fields the caller set. */
+function serializeIssueTokenOptions(opts: IssueTokenOptions): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (opts.scope !== undefined) out.scope = opts.scope;
+  if (opts.role !== undefined) out.role = opts.role;
+  if (opts.permissions !== undefined) out.permissions = opts.permissions;
+  if (opts.identifier_id !== undefined) out.identifier_id = opts.identifier_id;
+  if (opts.limits !== undefined) out.limits = opts.limits;
+  return out;
+}
+
 export class DistriClient {
   private config: ResolvedConfig;
   private accessToken?: string;
@@ -366,22 +448,65 @@ export class DistriClient {
    * Issue an access token + refresh token for temporary authentication.
    * Requires an existing authenticated session (bearer token).
    *
-   * @returns Token response with access/refresh token strings
+   * Cloud spec §6: the request body is optional. When supplied, it lets the
+   * caller request a specific token shape:
+   *
+   *  - `scope`: `'workspace'` (the default for SDK callers) or `'user'`
+   *    (for tokens that represent an end-user identifier; requires
+   *    `identifier_id`).
+   *  - `role`: a named permission bundle (`owner | admin | member | viewer | end_user`).
+   *    Takes precedence over `permissions`. Caller must hold equal-or-higher
+   *    rank, else cloud responds 403.
+   *  - `permissions`: an explicit `(ResourceKind, Action)` map for fine
+   *    control. Cloud intersects this against the caller's own ceiling.
+   *  - `identifier_id`: a per-tenant customer identifier (e.g.
+   *    `'blinksheets'`); when set, cloud mints a `scope=user` token bound
+   *    to that external actor.
+   *  - `limits`: per-token rate-limit overrides.
+   *
+   * Defaults (no body) → cloud mints a `scope=workspace` token with
+   * full workspace-member permissions, suitable for typical SDK usage.
+   *
+   * @returns Token response with access/refresh token strings; cloud also
+   *          surfaces the granted permissions/scope/role for inspection.
    * @throws ApiError if not authenticated or token issuance fails
    *
    * @example
    * ```typescript
+   * // Default — workspace-member token
    * const { access_token, refresh_token } = await client.issueToken();
+   *
+   * // Read-only viewer token
+   * await client.issueToken({ role: 'viewer' });
+   *
+   * // End-user-scoped token bound to a customer identifier
+   * await client.issueToken({
+   *   scope: 'user',
+   *   identifier_id: 'customer-42',
+   * });
+   *
+   * // Fine-grained — only completion + agent.read
+   * await client.issueToken({
+   *   scope: 'workspace',
+   *   permissions: {
+   *     Completion: 8,  // Execute
+   *     Agent: 1,       // Read
+   *   },
+   * });
    * // Persist the refresh token and use access_token for requests
    * ```
    */
-  async issueToken(): Promise<{ access_token: string; refresh_token: string; expires_at: number }> {
+  async issueToken(
+    options?: IssueTokenOptions,
+  ): Promise<IssueTokenResponse> {
+    const body = options ? JSON.stringify(serializeIssueTokenOptions(options)) : undefined;
     const response = await this.fetch('/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...this.config.headers,
       },
+      ...(body ? { body } : {}),
     });
 
     if (!response.ok) {
