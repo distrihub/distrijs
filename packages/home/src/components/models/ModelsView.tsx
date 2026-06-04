@@ -182,11 +182,15 @@ export function ModelsView({
     setDefaults((prev) => ({ ...prev, [capability]: next ?? '' }));
   };
 
-  const handleSaveKey = async (providerId: string, key: string, value: string) => {
+  /** Save every entered credential for a provider in a single upsert. The
+   *  backend persists the whole `secrets` map (plus any settings) in one
+   *  transaction — no per-field round-trips. */
+  const handleSaveKeys = async (providerId: string, secrets: Record<string, string>) => {
     if (!homeClient) return;
+    if (Object.keys(secrets).length === 0) return;
     await homeClient.upsertProvider({
       provider_id: providerId,
-      secrets: { [key]: value },
+      secrets,
     });
     await loadData();
   };
@@ -390,7 +394,7 @@ export function ModelsView({
             defaults={defaults}
             focusProviderId={focusProviderId}
             onFocusProvider={(id) => go({ view: 'providers', providerId: id })}
-            onSaveKey={handleSaveKey}
+            onSaveKeys={handleSaveKeys}
             onDeleteKey={handleDeleteKey}
             onTestProvider={handleTestProvider}
             onAddCustomProvider={handleAddCustomProvider}

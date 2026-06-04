@@ -2,9 +2,10 @@
  * Providers tab — split-pane: provider rail (left) + selected provider's
  * config panel (right). Configured providers sort to the top of the rail.
  *
- * Real wiring: `upsertSecret`, `deleteSecret`, `testProvider` come from
- * the existing `DistriHomeClient` — pass them in as callbacks so this
- * component stays UI-only.
+ * Real wiring: `upsertProvider` (one transactional save for all of a
+ * provider's credentials), `deleteSecret`, and `testProvider` come from the
+ * existing `DistriHomeClient` — passed in as callbacks so this component
+ * stays UI-only.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -41,8 +42,8 @@ interface ProvidersTabProps {
   };
   focusProviderId?: string;
   onFocusProvider: (providerId: string) => void;
-  /** Save (upsert) a single key. */
-  onSaveKey: (providerId: string, key: string, value: string) => Promise<void>;
+  /** Save (upsert) every entered credential for a provider in one call. */
+  onSaveKeys: (providerId: string, secrets: Record<string, string>) => Promise<void>;
   /** Delete a stored secret. */
   onDeleteKey: (key: string) => Promise<void>;
   /** Test a provider's connection via `POST /v1/providers/test`. */
@@ -71,7 +72,7 @@ export function ProvidersTab({
   defaults,
   focusProviderId,
   onFocusProvider,
-  onSaveKey,
+  onSaveKeys,
   onDeleteKey,
   onTestProvider,
   onAddCustomProvider,
@@ -152,7 +153,7 @@ export function ProvidersTab({
         configured={configured.has(current.id)}
         defaults={defaults}
         defaultCapabilities={defaultsByProvider.get(current.id) ?? []}
-        onSaveKey={onSaveKey}
+        onSaveKeys={onSaveKeys}
         onDeleteKey={onDeleteKey}
         onTestProvider={onTestProvider}
         onAddModel={() => onAddModel(current.id)}
@@ -276,7 +277,7 @@ function ProviderPanel({
   configured,
   defaults,
   defaultCapabilities,
-  onSaveKey,
+  onSaveKeys,
   onDeleteKey,
   onTestProvider,
   onAddModel,
@@ -286,22 +287,20 @@ function ProviderPanel({
   configured: boolean;
   defaults: ProvidersTabProps['defaults'];
   defaultCapabilities: ModelCapability[];
-  onSaveKey: (providerId: string, key: string, value: string) => Promise<void>;
+  onSaveKeys: (providerId: string, secrets: Record<string, string>) => Promise<void>;
   onDeleteKey: (key: string) => Promise<void>;
   onTestProvider: (providerId: string) => Promise<{ ok: boolean; detail: string }>;
   onAddModel: () => void;
 }) {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; detail: string } | null>(null);
-  const [revealed, setRevealed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setFieldValues({});
     setTestResult(null);
     setTesting(false);
-    setRevealed(new Set());
   }, [provider.id]);
 
   const caps = useMemo(() => {
@@ -312,19 +311,34 @@ function ProviderPanel({
 
   const docs = providerDocs(provider.id);
 
-  const handleSaveOne = async (key: string) => {
-    const value = fieldValues[key]?.trim();
-    if (!value) return;
-    setSavingKey(key);
+  // Collect every field the user has entered/changed and persist them in a
+  // single upsert — no per-field round-trips.
+  const pendingSecrets = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const k of provider.keys) {
+      const draft = fieldValues[k.key];
+      if (draft === undefined) continue;
+      const trimmed = draft.trim();
+      if (!trimmed) continue;
+      const saved = secrets.find((s) => s.key === k.key);
+      // A non-sensitive (env-var) field prefills its saved value, so skip it
+      // when unchanged; sensitive fields always re-save what was typed.
+      if (saved && !k.sensitive && saved.masked_value === trimmed) continue;
+      out[k.key] = trimmed;
+    }
+    return out;
+  }, [provider.keys, fieldValues, secrets]);
+
+  const hasPending = Object.keys(pendingSecrets).length > 0;
+
+  const handleSave = async () => {
+    if (!hasPending) return;
+    setSaving(true);
     try {
-      await onSaveKey(provider.id, key, value);
-      setFieldValues((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
+      await onSaveKeys(provider.id, pendingSecrets);
+      setFieldValues({});
     } finally {
-      setSavingKey(null);
+      setSaving(false);
     }
   };
 
@@ -444,22 +458,31 @@ function ProviderPanel({
                 saved={secrets.find((s) => s.key === k.key)}
                 draftValue={fieldValues[k.key]}
                 onDraftChange={(v) =>
-                  setFieldValues((prev) => ({ ...prev, [k.key]: v }))
-                }
-                onSave={() => handleSaveOne(k.key)}
-                onDelete={async () => onDeleteKey(k.key)}
-                saving={savingKey === k.key}
-                revealed={revealed.has(k.key)}
-                onToggleReveal={() =>
-                  setRevealed((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(k.key)) next.delete(k.key);
-                    else next.add(k.key);
+                  setFieldValues((prev) => {
+                    const next = { ...prev };
+                    if (v === undefined) delete next[k.key];
+                    else next[k.key] = v;
                     return next;
                   })
                 }
+                onDelete={async () => onDeleteKey(k.key)}
               />
             ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSave}
+              disabled={!hasPending || saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={12} className="shimmer" /> Saving…
+                </>
+              ) : (
+                'Save credentials'
+              )}
+            </button>
           </div>
         </div>
 
@@ -544,23 +567,35 @@ function KeyRow({
   saved,
   draftValue,
   onDraftChange,
-  onSave,
   onDelete,
-  saving,
-  revealed,
-  onToggleReveal,
 }: {
   k: ProviderKeyDefinition;
   saved?: Secret;
   draftValue?: string;
-  onDraftChange: (value: string) => void;
-  onSave: () => void;
+  /** Pass `undefined` to discard the draft and revert to the saved value. */
+  onDraftChange: (value: string | undefined) => void;
   onDelete: () => Promise<void>;
-  saving: boolean;
-  revealed: boolean;
-  onToggleReveal: () => void;
 }) {
-  const hasDraft = !!draftValue?.trim() && !saved;
+  // A non-sensitive field (e.g. an Azure resource name) is a plain
+  // environment variable, not a secret: show its stored value in the clear
+  // and let it be edited inline. Sensitive fields stay masked and are
+  // overwritten only after an explicit "Replace".
+  const isEnvVar = !k.sensitive;
+  const editing = draftValue !== undefined;
+
+  let displayValue: string;
+  if (editing) {
+    displayValue = draftValue ?? '';
+  } else if (saved) {
+    displayValue = isEnvVar ? saved.masked_value : '••••••••••••';
+  } else {
+    displayValue = '';
+  }
+
+  // Env-var fields are always editable; a saved sensitive field stays
+  // read-only until the user clicks Replace (which starts a draft).
+  const readOnly = !isEnvVar && !!saved && !editing;
+
   return (
     <div className="field-row">
       <div>
@@ -579,26 +614,17 @@ function KeyRow({
         </div>
       </div>
       <div>
-        <div className={`input ${saved ? 'saved' : ''}`}>
+        <div className={`input ${saved && !editing ? 'saved' : ''}`}>
           <input
             type="text"
-            value={
-              saved
-                ? revealed && saved.masked_value
-                  ? saved.masked_value
-                  : '••••••••••••'
-                : (draftValue ?? '')
-            }
+            value={displayValue}
             placeholder={k.placeholder}
             onChange={(e) => onDraftChange(e.target.value)}
-            readOnly={!!saved}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && hasDraft) onSave();
-            }}
+            readOnly={readOnly}
           />
           <div className="actions">
-            {saved && k.sensitive && saved.masked_value && (
-              <button title={revealed ? 'Hide' : 'Reveal mask'} onClick={onToggleReveal}>
+            {saved && k.sensitive && !editing && (
+              <button title="Replace" onClick={() => onDraftChange('')}>
                 <Eye size={13} />
               </button>
             )}
@@ -607,18 +633,8 @@ function KeyRow({
                 <Trash2 size={13} />
               </button>
             )}
-            {hasDraft && (
-              <button
-                title="Save"
-                onClick={onSave}
-                disabled={saving}
-                style={{ color: 'var(--m-brand-soft)' }}
-              >
-                {saving ? <Loader2 size={13} className="shimmer" /> : <Check size={13} />}
-              </button>
-            )}
-            {hasDraft && (
-              <button title="Clear" onClick={() => onDraftChange('')}>
+            {editing && (
+              <button title="Cancel" onClick={() => onDraftChange(undefined)}>
                 <X size={13} />
               </button>
             )}
