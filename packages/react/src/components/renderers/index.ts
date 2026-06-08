@@ -13,6 +13,7 @@ export * from './SubTaskTree';
 export * from './StepBasedRenderer';
 export * from './StreamingTextRenderer';
 export * from './TextRenderer';
+export { default as TextRenderer } from './TextRenderer';
 export * from './ThinkingRenderer';
 export * from './TodosDisplay';
 export * from './TypingIndicator';
