@@ -51,6 +51,16 @@ export interface PromptSection {
 }
 
 /**
+ * Inbound distributed trace context propagated to the backend.
+ * Matches Rust's trace-context shape (W3C-style ids).
+ * `trace_id` is 32 lowercase hex chars, `parent_span_id` is 16 lowercase hex chars.
+ */
+export interface TraceContext {
+  trace_id: string;
+  parent_span_id: string;
+}
+
+/**
  * Metadata sent by clients alongside A2A messages.
  * This is the canonical schema — matches Rust's `ExecutorContextMetadata` in distri-types.
  * All clients (CLI, browser SDK, etc.) serialize this shape.
@@ -78,6 +88,10 @@ export interface ExecutorContextMetadata {
   dry_run?: boolean;
   /** Runtime environment. Determines which system agent variants to use. */
   runtime_mode?: RuntimeMode;
+  /** Arbitrary search tags attached to the resulting spans/traces. */
+  tags?: Record<string, string>;
+  /** Inbound distributed trace context to continue an existing trace. */
+  trace_context?: TraceContext;
 }
 
 /**
