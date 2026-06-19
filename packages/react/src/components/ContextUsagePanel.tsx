@@ -1,6 +1,23 @@
 import type { ContextBudget } from '@distri/core';
 import { contextUsageColor } from './contextColors';
 
+// One-time keyframes injection so the in-flight compaction shimmer + spinner
+// animate without pulling in a CSS dependency. SSR-safe (guards on document).
+if (typeof document !== 'undefined' && !document.getElementById('distri-ctx-anim')) {
+  const style = document.createElement('style');
+  style.id = 'distri-ctx-anim';
+  style.textContent = `
+    @keyframes distri-ctx-shimmer {
+      0%   { background-position: -60% 0; }
+      100% { background-position: 160% 0; }
+    }
+    @keyframes distri-ctx-spin {
+      to { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export interface CompactionLogItem {
   ts: number;
   before: number;
@@ -89,7 +106,14 @@ export function ContextUsagePanel({
         )}
       </div>
 
-      <div style={barBg}>
+      {isCompacting && (
+        <div style={compactingBanner}>
+          <span style={spinnerStyle} aria-hidden />
+          <span>Summarizing earlier turns to free context…</span>
+        </div>
+      )}
+
+      <div style={{ ...barBg, position: 'relative' }}>
         <div
           style={{
             ...barFill,
@@ -97,6 +121,7 @@ export function ContextUsagePanel({
             background: color,
           }}
         />
+        {isCompacting && <div style={barShimmer} aria-hidden />}
       </div>
 
       <div style={breakdownGrid}>
@@ -262,6 +287,39 @@ const barBgSmall: React.CSSProperties = {
 const barFill: React.CSSProperties = {
   height: '100%',
   transition: 'width 0.4s ease, background 0.3s ease',
+};
+
+const barShimmer: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  background:
+    'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%)',
+  backgroundSize: '60% 100%',
+  backgroundRepeat: 'no-repeat',
+  animation: 'distri-ctx-shimmer 1.2s linear infinite',
+};
+
+const compactingBanner: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  marginBottom: 8,
+  padding: '6px 10px',
+  borderRadius: 6,
+  background: '#eff6ff',
+  color: '#1d4ed8',
+  fontSize: 11,
+  border: '1px solid #bfdbfe',
+};
+
+const spinnerStyle: React.CSSProperties = {
+  display: 'inline-block',
+  width: 10,
+  height: 10,
+  borderRadius: '50%',
+  border: '2px solid #93c5fd',
+  borderTopColor: '#1d4ed8',
+  animation: 'distri-ctx-spin 0.8s linear infinite',
 };
 
 const breakdownGrid: React.CSSProperties = {
