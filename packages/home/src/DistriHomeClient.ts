@@ -84,6 +84,8 @@ export interface DetailedThreadListParams {
   search?: string;
   from_date?: string;
   to_date?: string;
+  /** Filter to threads tagged with any of these tags. */
+  tags?: string[];
   limit?: number;
   offset?: number;
 }
@@ -258,6 +260,7 @@ export class DistriHomeClient {
     if (params.search) searchParams.set('search', params.search);
     if (params.from_date) searchParams.set('from_date', params.from_date);
     if (params.to_date) searchParams.set('to_date', params.to_date);
+    if (params.tags?.length) searchParams.set('tags', params.tags.join(','));
     if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
     if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
 
@@ -279,6 +282,7 @@ export class DistriHomeClient {
       search: params.search,
       from_date: params.from_date,
       to_date: params.to_date,
+      tags: params.tags,
       limit: params.limit,
       offset: params.offset,
     });

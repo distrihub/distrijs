@@ -345,6 +345,7 @@ export function ThreadsView({
   const [dialogBotId, setDialogBotId] = useState(initialBotId || '');
   const [dialogFromDate, setDialogFromDate] = useState('');
   const [dialogToDate, setDialogToDate] = useState('');
+  const [dialogTags, setDialogTags] = useState('');
 
   const {
     threads: rawThreads,
@@ -447,6 +448,14 @@ export function ThreadsView({
     [params, setParams]
   );
 
+  const handleTagClick = useCallback(
+    (tag: string) => {
+      setParams({ ...params, tags: [tag], offset: 0 });
+      setDialogTags(tag);
+    },
+    [params, setParams]
+  );
+
   const handleUserClick = useCallback(
     (userId: string) => {
       navigate(`/users/${userId}`);
@@ -470,6 +479,7 @@ export function ThreadsView({
     setDialogBotId(params.bot_id || '');
     setDialogFromDate(params.from_date ? params.from_date.split('T')[0] : '');
     setDialogToDate(params.to_date ? params.to_date.split('T')[0] : '');
+    setDialogTags(params.tags?.join(', ') || '');
     setShowFilterDialog(true);
   }, [params]);
 
@@ -484,10 +494,17 @@ export function ThreadsView({
       bot_id: dialogBotId || undefined,
       from_date: dialogFromDate ? new Date(dialogFromDate).toISOString() : undefined,
       to_date: dialogToDate ? new Date(dialogToDate + 'T23:59:59').toISOString() : undefined,
+      tags: (() => {
+        const parsed = dialogTags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean);
+        return parsed.length ? parsed : undefined;
+      })(),
       offset: 0,
     });
     setShowFilterDialog(false);
-  }, [params, dialogAgentId, dialogExternalId, dialogUserId, dialogChannelId, dialogBotId, dialogFromDate, dialogToDate, setParams]);
+  }, [params, dialogAgentId, dialogExternalId, dialogUserId, dialogChannelId, dialogBotId, dialogFromDate, dialogToDate, dialogTags, setParams]);
 
   const clearAllFilters = useCallback(() => {
     setDialogAgentId('');
@@ -497,6 +514,7 @@ export function ThreadsView({
     setDialogBotId('');
     setDialogFromDate('');
     setDialogToDate('');
+    setDialogTags('');
     setQuickTimeFilter(null);
     setSearchInput('');
     setParams({ limit: params.limit, offset: 0 });
@@ -546,6 +564,7 @@ export function ThreadsView({
     params.from_date,
     params.to_date,
     params.search,
+    params.tags?.length ? 'tags' : undefined,
   ].filter(Boolean).length;
 
   const showWarning = Boolean(error);
@@ -652,7 +671,7 @@ export function ThreadsView({
                 {filter === '7d' && 'Last 7 days'}
               </button>
             ))}
-            {(params.agent_id || params.external_id || params.user_id || params.channel_id || params.search) && (
+            {(params.agent_id || params.external_id || params.user_id || params.channel_id || params.search || params.tags?.length) && (
               <button
                 type="button"
                 onClick={clearAllFilters}
@@ -793,13 +812,19 @@ export function ThreadsView({
                       {thread.tags && thread.tags.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {thread.tags.map((tag) => (
-                            <span
+                            <button
                               key={tag}
-                              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTagClick(tag);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+                              title={`Filter by tag: ${tag}`}
                             >
                               <Tag className="h-2.5 w-2.5" />
                               {tag}
-                            </span>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -964,6 +989,23 @@ export function ThreadsView({
                   placeholder="Filter by bot ID..."
                   className="h-10 w-full rounded-md border border-border/70 bg-background px-3 text-sm text-foreground"
                 />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  value={dialogTags}
+                  onChange={(e) => setDialogTags(e.target.value)}
+                  placeholder="Comma-separated, e.g. team, prod"
+                  className="h-10 w-full rounded-md border border-border/70 bg-background px-3 text-sm text-foreground"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Threads matching any of these tags are shown.
+                </p>
               </div>
 
               {/* Date range */}

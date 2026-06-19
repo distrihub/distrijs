@@ -8,6 +8,7 @@ import {
   AgentConfigWithTools,
   DynamicMetadata,
   ExecutorContextMetadata,
+  TraceContext,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk';
 import { decodeA2AStreamEvent } from './encoder';
@@ -31,6 +32,10 @@ export interface InvokeConfig {
    *  Use to control which parts are saved to the database.
    *  Parts with `save: false` will be filtered out before saving. */
   parts?: DynamicMetadata['parts'];
+  /** Arbitrary search tags forwarded as `metadata.tags`. */
+  tags?: Record<string, string>;
+  /** Inbound distributed trace context forwarded as `metadata.trace_context`. */
+  trace_context?: TraceContext;
 }
 
 /**

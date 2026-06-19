@@ -43,6 +43,10 @@ export interface TraceSummary {
   totalCost: number;
   stepCount: number;
   models: string[];
+  agentId?: string;
+  agentName?: string;
+  agentVersion?: string;
+  tags?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
