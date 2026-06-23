@@ -21,6 +21,7 @@ export * from './components/AuthLoading';
 export * from './components/AskFollowUp';
 export * from './components/ContextIndicator';
 export * from './components/ContextUsagePanel';
+export * from './components/ContextControl';
 
 // Provider exports
 export * from './DistriProvider';
