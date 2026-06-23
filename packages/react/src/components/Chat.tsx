@@ -9,7 +9,8 @@ import { LoadingStrip } from './renderers/LoadingStrip';
 import { TodosCompact } from './renderers/TodosCompact';
 import { type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { ChatState, TaskState, useChatStateStore } from '../stores/chatStateStore';
+import { useStore } from 'zustand';
+import { ChatState, TaskState, ChatStore, ChatStoreContext, createChatStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
 import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode } from '@/types';
@@ -225,6 +226,12 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   onCommand,
   developerMode,
 }, ref) {
+  // This Chat instance owns its chat-state store. Created once per mount, so a
+  // keyed remount (`<Chat key={threadId}>`) gets a fresh, empty store — the old
+  // thread's messages and streaming flags cannot leak in. Published to renderer
+  // descendants via ChatStoreContext and handed to useChat below.
+  const [chatStore] = useState<ChatStore>(() => createChatStore());
+
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -271,7 +278,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const [isHandsfree, setIsHandsfree] = useState(handsfree);
   const toggleHandsfree = useCallback(() => setIsHandsfree(prev => !prev), []);
   const [browserEnabled, setBrowserEnabled] = useState(false);
-  const browserViewerUrl = useChatStateStore(state => state.browserViewerUrl);
+  const browserViewerUrl = useStore(chatStore, state => state.browserViewerUrl);
   const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
   const supportsBrowserStreaming = allowBrowserPreview && Boolean(agentDefinition?.browser_config);
   const browserAgentIdRef = useRef<string | undefined>(undefined);
@@ -301,7 +308,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   }, [initialInput]);
 
 
-  const browserSessionId = useChatStateStore(state => state.browserSessionId);
+  const browserSessionId = useStore(chatStore, state => state.browserSessionId);
 
   const mergedMetadataProvider = useCallback(async () => {
     const baseMetadata = (await getMetadataProp?.()) ?? {};
@@ -336,6 +343,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     executionOptions,
     initialMessages,
     beforeSendMessage,
+    store: chatStore,
   });
 
   // Merge starterCommands with emptyState categories
@@ -364,16 +372,16 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   }, [emptyStateProp, starterCommands]);
 
   // Get reactive state from store
-  const toolCalls = useChatStateStore(state => state.toolCalls);
-  const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls());
-  const currentState = useChatStateStore(state => state);
-  const todos = useChatStateStore(state => state.todos);
-  const lastTodoChanges = useChatStateStore(state => state.lastTodoChanges);
-  const verbose = useChatStateStore(state => state.verbose);
-  const setVerbose = useChatStateStore(state => state.setVerbose);
-  const audioEnabled = useChatStateStore(s => s.audioEnabled ?? false);
-  const rendering = useChatStateStore(s => s.rendering);
-  const setSessionSettings = useChatStateStore(s => s.setSessionSettings);
+  const toolCalls = useStore(chatStore, state => state.toolCalls);
+  const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
+  const currentState = useStore(chatStore, state => state);
+  const todos = useStore(chatStore, state => state.todos);
+  const lastTodoChanges = useStore(chatStore, state => state.lastTodoChanges);
+  const verbose = useStore(chatStore, state => state.verbose);
+  const setVerbose = useStore(chatStore, state => state.setVerbose);
+  const audioEnabled = useStore(chatStore, s => s.audioEnabled ?? false);
+  const rendering = useStore(chatStore, s => s.rendering);
+  const setSessionSettings = useStore(chatStore, s => s.setSessionSettings);
 
   const handleToggleVerbose = useCallback(() => {
     setVerbose(!verbose);
@@ -462,7 +470,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     if (enabled && !browserSessionId && distriClient) {
       try {
         const session = await distriClient.createBrowserSession();
-        useChatStateStore.getState().setBrowserSession(session.session_id, session.viewer_url);
+        chatStore.getState().setBrowserSession(session.session_id, session.viewer_url);
       } catch (err) {
         console.error('Failed to create browser session:', err);
       }
@@ -559,7 +567,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           throw new Error('Diagnose agent is not available');
         }
 
-        const store = useChatStateStore.getState();
+        const store = chatStore.getState();
         const previousContext = {
           currentRunId: store.currentRunId,
           currentTaskId: store.currentTaskId,
@@ -646,7 +654,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           store.setStreamingIndicator(undefined);
           store.setLoading(false);
           store.setStreaming(false);
-          useChatStateStore.setState(previousContext);
+          chatStore.setState(previousContext);
         }
         return;
       }
@@ -672,7 +680,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     stopStreaming();
 
     // Reset all streaming states in the store
-    useChatStateStore.getState().resetStreamingStates();
+    chatStore.getState().resetStreamingStates();
   }, [stopStreaming]);
 
   // Built-in slash commands
@@ -704,7 +712,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     };
 
     // Get the chat state to initialize the tool call
-    const chatState = useChatStateStore.getState();
+    const chatState = chatStore.getState();
     const tool = chatState.getToolByName(toolName);
     if (tool) {
       // Initialize the tool call in the state store
@@ -820,8 +828,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const completedTaskIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!onTaskFinish) return;
-    const unsub = useChatStateStore.subscribe((state) => state.tasks);
-    const tasks = useChatStateStore.getState().tasks;
+    const unsub = chatStore.subscribe((state) => state.tasks);
+    const tasks = chatStore.getState().tasks;
     tasks.forEach((task) => {
       if (task.status === 'completed' && !completedTaskIdsRef.current.has(task.id)) {
         completedTaskIdsRef.current.add(task.id);
@@ -1131,6 +1139,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     return <div> Agent not available</div>
 
   return (
+    <ChatStoreContext.Provider value={chatStore}>
     <div
       className={`flex flex-col h-full bg-background font-sans overflow-hidden relative ${getThemeClasses(theme)} ${className}`}
       style={{ maxWidth }}
@@ -1255,6 +1264,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
 
     </div >
+    </ChatStoreContext.Provider>
   );
 });
 

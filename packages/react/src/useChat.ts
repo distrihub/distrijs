@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useStore } from 'zustand';
 import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata } from '@distri/core';
 import {
   DistriPart,
@@ -17,7 +18,7 @@ import {
 export interface SendMessageOptions {
   partsMetadata?: Record<number, PartMetadata>;
 }
-import { useChatStateStore } from './stores/chatStateStore';
+import { ChatStore, createChatStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
 
 export interface UseChatOptions {
@@ -31,9 +32,23 @@ export interface UseChatOptions {
   executionOptions?: ToolExecutionOptions;
   initialMessages?: (DistriChatMessage)[];
   beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
+  /**
+   * Optional externally-owned store. `<Chat>` creates the store itself (it
+   * needs `browser_session_id` from store state to build request metadata
+   * before this hook runs) and passes it in. When omitted, `useChat` creates
+   * and owns its own per-instance store.
+   */
+  store?: ChatStore;
 }
 
 export interface UseChatReturn {
+  /**
+   * The per-instance chat-state store backing this hook. `<Chat>` publishes it
+   * through `ChatStoreContext` so renderer descendants can read reactive
+   * slices. Standalone consumers can wrap their own UI with
+   * `<ChatStoreContext.Provider value={store}>` if they use Distri renderers.
+   */
+  store: ChatStore;
   messages: (DistriChatMessage)[];
   isStreaming: boolean;
   sendMessage: (content: string | DistriPart[], options?: SendMessageOptions) => Promise<void>;
@@ -53,7 +68,15 @@ export function useChat({
   externalTools,
   beforeSendMessage,
   initialMessages,
+  store: providedStore,
 }: UseChatOptions): UseChatReturn {
+  // Per-instance store: created once and owned by this hook (unless the caller
+  // supplies one). Conversation state lives exactly as long as this hook
+  // instance, so a `<Chat>` remount (e.g. `key={threadId}`) starts from an
+  // empty store — no leaked messages or stuck `isStreaming` flags across threads.
+  const [fallbackStore] = useState<ChatStore>(() => createChatStore());
+  const store = providedStore ?? fallbackStore;
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Store onError in a ref to avoid dependency issues
@@ -67,20 +90,20 @@ export function useChat({
     getMetadataRef.current = getMetadata;
   }, [getMetadata]);
 
-  const currentRunId = useChatStateStore(state => state.currentRunId);
-  const currentTaskId = useChatStateStore(state => state.currentTaskId);
-  const processMessage = useChatStateStore(state => state.processMessage);
-  const clearAllStates = useChatStateStore(state => state.clearAllStates);
-  const setError = useChatStateStore(state => state.setError);
-  const setLoading = useChatStateStore(state => state.setLoading);
-  const setStreaming = useChatStateStore(state => state.setStreaming);
-  const setAgent = useChatStateStore(state => state.setAgent);
-  const hasPendingToolCalls = useChatStateStore(state => state.hasPendingToolCalls);
-  const failAllPendingToolCalls = useChatStateStore(state => state.failAllPendingToolCalls);
-  const setStreamingIndicator = useChatStateStore(state => state.setStreamingIndicator);
-  const setExternalTools = useChatStateStore(state => state.setExternalTools);
-  const errorState = useChatStateStore(state => state.error);
-  const messages = useChatStateStore(state => state.messages);
+  const currentRunId = useStore(store, state => state.currentRunId);
+  const currentTaskId = useStore(store, state => state.currentTaskId);
+  const processMessage = useStore(store, state => state.processMessage);
+  const clearAllStates = useStore(store, state => state.clearAllStates);
+  const setError = useStore(store, state => state.setError);
+  const setLoading = useStore(store, state => state.setLoading);
+  const setStreaming = useStore(store, state => state.setStreaming);
+  const setAgent = useStore(store, state => state.setAgent);
+  const hasPendingToolCalls = useStore(store, state => state.hasPendingToolCalls);
+  const failAllPendingToolCalls = useStore(store, state => state.failAllPendingToolCalls);
+  const setStreamingIndicator = useStore(store, state => state.setStreamingIndicator);
+  const setExternalTools = useStore(store, state => state.setExternalTools);
+  const errorState = useStore(store, state => state.error);
+  const messages = useStore(store, state => state.messages);
 
   useEffect(() => {
     if (externalTools && externalTools.length > 0) {
@@ -97,8 +120,8 @@ export function useChat({
     getMetadata: getMetadataRef.current
   }), [currentRunId, currentTaskId, threadId]);
 
-  const isLoading = useChatStateStore(state => state.isLoading);
-  const isStreaming = useChatStateStore(state => state.isStreaming);
+  const isLoading = useStore(store, state => state.isLoading);
+  const isStreaming = useStore(store, state => state.isStreaming);
 
   // `initialMessages` is the thread's persisted history (fetched by the
   // parent via `useChatMessages`). It is **render-only** — we never pump
@@ -169,9 +192,11 @@ export function useChat({
     agentNameRef.current = curr;
   }, [agent?.name, clearAllStates, setError]);
 
-  // Reset state when threadId changes (e.g. user clicks "new conversation").
-  // Skipped on first mount so we don't clobber initialMessages — that effect
-  // already calls clearAllStates() before processing.
+  // Reset state when threadId changes IN PLACE (consumer swaps threadId on a
+  // persistent <Chat> without a remount). The first-mount case needs no reset:
+  // this hook's store was just created empty by `createChatStore()`. The remount
+  // case (`<Chat key={threadId}>`) is handled for free — a new key builds a new
+  // hook instance with a fresh store, so the prior thread's state is already gone.
   const threadIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -380,6 +405,7 @@ export function useChat({
   );
 
   return {
+    store,
     isStreaming,
     messages: displayedMessages,
     sendMessage,
