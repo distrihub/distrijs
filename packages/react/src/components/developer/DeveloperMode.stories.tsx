@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useEffect, useState } from 'react';
-import { DeveloperModeComponent, type DeveloperMode, type DistriAnyTool, useChatStateStore } from '@distri/react';
+import { DeveloperModeComponent, type DeveloperMode, type DistriAnyTool, type ChatStore, createChatStore, ChatStoreContext } from '@distri/react';
 
 // ---------------------------------------------------------------------------
 // Helpers & mock data
@@ -52,10 +52,12 @@ const mockExternalTools: DistriAnyTool[] = [
   },
 ] as unknown as DistriAnyTool[];
 
-function useMockStore(tools: DistriAnyTool[]) {
+function useMockStore(tools: DistriAnyTool[]): ChatStore {
+  const [store] = useState<ChatStore>(() => createChatStore());
   useEffect(() => {
-    useChatStateStore.getState().setExternalTools(tools);
-  }, [tools]);
+    store.getState().setExternalTools(tools);
+  }, [store, tools]);
+  return store;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,23 +76,25 @@ type ToolbarStory = StoryObj<typeof DeveloperModeComponent>;
 
 function ToolbarWrapper({ developerMode }: { developerMode: DeveloperMode }) {
   const [verbose, setVerbose] = useState(false);
-  useMockStore(mockExternalTools);
+  const store = useMockStore(mockExternalTools);
 
   return (
-    <div className="border border-border rounded-lg p-4 bg-background max-w-xl">
-      <div className="text-xs text-muted-foreground mb-3">
-        Simulated chat footer area — the developer pane opens inline above the trigger
+    <ChatStoreContext.Provider value={store}>
+      <div className="border border-border rounded-lg p-4 bg-background max-w-xl">
+        <div className="text-xs text-muted-foreground mb-3">
+          Simulated chat footer area — the developer pane opens inline above the trigger
+        </div>
+        <DeveloperModeComponent
+          developerMode={developerMode}
+          threadId="thread-demo-123"
+          verbose={verbose}
+          onToggleVerbose={() => setVerbose(v => !v)}
+          diagnoseEnabled={false}
+          onToggleDiagnose={() => undefined}
+          onOpenTrace={(threadId) => alert(`Navigate to trace for: ${threadId}`)}
+        />
       </div>
-      <DeveloperModeComponent
-        developerMode={developerMode}
-        threadId="thread-demo-123"
-        verbose={verbose}
-        onToggleVerbose={() => setVerbose(v => !v)}
-        diagnoseEnabled={false}
-        onToggleDiagnose={() => undefined}
-        onOpenTrace={(threadId) => alert(`Navigate to trace for: ${threadId}`)}
-      />
-    </div>
+    </ChatStoreContext.Provider>
   );
 }
 

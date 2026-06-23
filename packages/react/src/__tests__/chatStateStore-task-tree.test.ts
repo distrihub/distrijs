@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useChatStateStore } from '../stores/chatStateStore';
+import { createChatStore, type ChatStore } from '../stores/chatStateStore';
 import type { DistriEvent } from '@distri/core';
 
 /**
@@ -22,8 +22,11 @@ import type { DistriEvent } from '@distri/core';
  *   4. Task tree (parent → children) is built idempotently.
  */
 describe('chatStateStore — task-tree event routing', () => {
+  // Each test gets a fresh, isolated store from the factory — the same
+  // per-instance construction `useChat` uses. No global state to reset.
+  let store: ChatStore;
   beforeEach(() => {
-    useChatStateStore.getState().clearAllStates();
+    store = createChatStore();
   });
 
   const ROOT = 'task-root-aaaaaaaa';
@@ -33,7 +36,7 @@ describe('chatStateStore — task-tree event routing', () => {
   function send(event: DistriEvent) {
     // processMessage takes DistriChatMessage which is a superset of DistriEvent;
     // any cast keeps the test ergonomic without dragging in encoder deps.
-    useChatStateStore.getState().processMessage(event as any, true);
+    store.getState().processMessage(event as any, true);
   }
 
   it('builds parent → child linkage from event.parentTaskId', () => {
@@ -41,9 +44,9 @@ describe('chatStateStore — task-tree event routing', () => {
     send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
     send({ type: 'run_started', taskId: FORK2, parentTaskId: ROOT, data: { taskId: FORK2 } } as any);
 
-    const root = useChatStateStore.getState().getTaskById(ROOT);
-    const fork1 = useChatStateStore.getState().getTaskById(FORK1);
-    const fork2 = useChatStateStore.getState().getTaskById(FORK2);
+    const root = store.getState().getTaskById(ROOT);
+    const fork1 = store.getState().getTaskById(FORK1);
+    const fork2 = store.getState().getTaskById(FORK2);
 
     expect(root).toBeTruthy();
     expect(root!.parentTaskId).toBeUndefined();
@@ -58,7 +61,7 @@ describe('chatStateStore — task-tree event routing', () => {
     send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
     send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
 
-    const root = useChatStateStore.getState().getTaskById(ROOT);
+    const root = store.getState().getTaskById(ROOT);
     expect(root!.childTaskIds.filter(id => id === FORK1).length).toBe(1);
   });
 
@@ -74,7 +77,7 @@ describe('chatStateStore — task-tree event routing', () => {
       },
     } as any);
 
-    const tc = useChatStateStore.getState().toolCalls.get('call_x');
+    const tc = store.getState().toolCalls.get('call_x');
     expect(tc).toBeTruthy();
     expect(tc!.taskId).toBe(FORK1);
   });
@@ -97,8 +100,8 @@ describe('chatStateStore — task-tree event routing', () => {
       data: { tool_calls: [{ tool_call_id: 'b', tool_name: 'db_put', input: {} }] },
     } as any);
 
-    const fork1Calls = useChatStateStore.getState().getToolCallsByTaskId(FORK1);
-    const fork2Calls = useChatStateStore.getState().getToolCallsByTaskId(FORK2);
+    const fork1Calls = store.getState().getToolCallsByTaskId(FORK1);
+    const fork2Calls = store.getState().getToolCallsByTaskId(FORK2);
     expect(fork1Calls.map(c => c.tool_call_id)).toEqual(['a']);
     expect(fork2Calls.map(c => c.tool_call_id)).toEqual(['b']);
   });
@@ -122,14 +125,14 @@ describe('chatStateStore — task-tree event routing', () => {
     } as any);
 
     // Sanity: both pending.
-    expect(useChatStateStore.getState().toolCalls.get('call_fork1')!.status).toBe('pending');
-    expect(useChatStateStore.getState().toolCalls.get('call_fork2')!.status).toBe('pending');
+    expect(store.getState().toolCalls.get('call_fork1')!.status).toBe('pending');
+    expect(store.getState().toolCalls.get('call_fork2')!.status).toBe('pending');
 
     // Fork 1 finishes (sub-agent — has a parent).
     send({ type: 'run_finished', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
 
-    const f1 = useChatStateStore.getState().toolCalls.get('call_fork1')!;
-    const f2 = useChatStateStore.getState().toolCalls.get('call_fork2')!;
+    const f1 = store.getState().toolCalls.get('call_fork1')!;
+    const f2 = store.getState().toolCalls.get('call_fork2')!;
     expect(f1.status).toBe('completed'); // scoped cleanup
     expect(f2.status).toBe('pending');   // untouched — different task
   });
@@ -137,15 +140,15 @@ describe('chatStateStore — task-tree event routing', () => {
   it("only the root run's finish flips isStreaming=false", () => {
     send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT } } as any);
     send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
-    expect(useChatStateStore.getState().isStreaming).toBe(true);
+    expect(store.getState().isStreaming).toBe(true);
 
     // Sub-agent finishes — wire stream stays open (parent still working).
     send({ type: 'run_finished', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
-    expect(useChatStateStore.getState().isStreaming).toBe(true);
+    expect(store.getState().isStreaming).toBe(true);
 
     // Root finishes — now streaming closes.
     send({ type: 'run_finished', taskId: ROOT, data: { taskId: ROOT } } as any);
-    expect(useChatStateStore.getState().isStreaming).toBe(false);
+    expect(store.getState().isStreaming).toBe(false);
   });
 
   it('regression: fork-after-fork sequence keeps fork2 tool_call routable', () => {
@@ -178,11 +181,11 @@ describe('chatStateStore — task-tree event routing', () => {
       data: { tool_calls: [{ tool_call_id: 'call_b', tool_name: 'db_get', input: {} }] },
     } as any);
 
-    const callB = useChatStateStore.getState().toolCalls.get('call_b');
+    const callB = store.getState().toolCalls.get('call_b');
     expect(callB).toBeTruthy();
     expect(callB!.status).toBe('pending');
     expect(callB!.taskId).toBe(FORK2);
-    expect(useChatStateStore.getState().isStreaming).toBe(true);
+    expect(store.getState().isStreaming).toBe(true);
   });
 
   it('getTaskTree walks root + descendants depth-first', () => {
@@ -192,7 +195,7 @@ describe('chatStateStore — task-tree event routing', () => {
     const GRANDCHILD = 'task-grand-dddddddd';
     send({ type: 'run_started', taskId: GRANDCHILD, parentTaskId: FORK1, data: { taskId: GRANDCHILD } } as any);
 
-    const tree = useChatStateStore.getState().getTaskTree(ROOT);
+    const tree = store.getState().getTaskTree(ROOT);
     const ids = tree.map(t => t.id);
     expect(ids[0]).toBe(ROOT);
     expect(ids).toContain(FORK1);
@@ -204,10 +207,10 @@ describe('chatStateStore — task-tree event routing', () => {
 
   it('first run_started without parent claims currentTaskId; sub-agent run_starts do not', () => {
     send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT } } as any);
-    expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
+    expect(store.getState().currentTaskId).toBe(ROOT);
 
     send({ type: 'run_started', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
-    expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
+    expect(store.getState().currentTaskId).toBe(ROOT);
   });
 
   it('root run_finished clears currentTaskId/RunId/PlanId so the next user message starts a fresh task', () => {
@@ -218,18 +221,18 @@ describe('chatStateStore — task-tree event routing', () => {
     // timed-out external tool calls.
     send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT, runId: 'run-1' } } as any);
     send({ type: 'plan_started', taskId: ROOT, data: {} } as any);
-    expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
-    expect(useChatStateStore.getState().currentRunId).toBe('run-1');
-    expect(useChatStateStore.getState().currentPlanId).toBeTruthy();
+    expect(store.getState().currentTaskId).toBe(ROOT);
+    expect(store.getState().currentRunId).toBe('run-1');
+    expect(store.getState().currentPlanId).toBeTruthy();
 
     send({ type: 'run_finished', taskId: ROOT, data: { taskId: ROOT } } as any);
 
     // After the ROOT run finishes, the next sendMessage must build an
     // InvokeContext with task_id=undefined → server mints a new task.
-    expect(useChatStateStore.getState().currentTaskId).toBeUndefined();
-    expect(useChatStateStore.getState().currentRunId).toBeUndefined();
-    expect(useChatStateStore.getState().currentPlanId).toBeUndefined();
-    expect(useChatStateStore.getState().isStreaming).toBe(false);
+    expect(store.getState().currentTaskId).toBeUndefined();
+    expect(store.getState().currentRunId).toBeUndefined();
+    expect(store.getState().currentPlanId).toBeUndefined();
+    expect(store.getState().isStreaming).toBe(false);
 
     // And the NEXT root run_started can claim a fresh currentTaskId
     // (the !get().currentTaskId guard at chatStateStore.ts:528 only lets
@@ -237,8 +240,8 @@ describe('chatStateStore — task-tree event routing', () => {
     // makes a second run register at all).
     const NEW_ROOT = 'task-root2-eeeeeeee';
     send({ type: 'run_started', taskId: NEW_ROOT, data: { taskId: NEW_ROOT, runId: 'run-2' } } as any);
-    expect(useChatStateStore.getState().currentTaskId).toBe(NEW_ROOT);
-    expect(useChatStateStore.getState().currentRunId).toBe('run-2');
+    expect(store.getState().currentTaskId).toBe(NEW_ROOT);
+    expect(store.getState().currentRunId).toBe('run-2');
   });
 
   it('root run_finished flips leftover in_progress todos to done', () => {
@@ -246,7 +249,7 @@ describe('chatStateStore — task-tree event routing', () => {
     // the TodosCompact spinner would otherwise keep spinning above the
     // chat input after the run ended. Lock the close-out behavior here.
     send({ type: 'run_started', taskId: ROOT, data: { taskId: ROOT, runId: 'run-1' } } as any);
-    useChatStateStore.getState().setTodos([
+    store.getState().setTodos([
       { id: 't1', content: 'first', status: 'done' },
       { id: 't2', content: 'second', status: 'in_progress' },
       { id: 't3', content: 'third', status: 'open' },
@@ -254,7 +257,7 @@ describe('chatStateStore — task-tree event routing', () => {
 
     send({ type: 'run_finished', taskId: ROOT, data: { taskId: ROOT } } as any);
 
-    const todos = useChatStateStore.getState().todos;
+    const todos = store.getState().todos;
     expect(todos.find(t => t.id === 't1')!.status).toBe('done');     // unchanged
     expect(todos.find(t => t.id === 't2')!.status).toBe('done');     // flipped
     expect(todos.find(t => t.id === 't3')!.status).toBe('open');     // unchanged — never started
@@ -270,7 +273,7 @@ describe('chatStateStore — task-tree event routing', () => {
 
     send({ type: 'run_finished', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
 
-    expect(useChatStateStore.getState().currentTaskId).toBe(ROOT);
-    expect(useChatStateStore.getState().isStreaming).toBe(true);
+    expect(store.getState().currentTaskId).toBe(ROOT);
+    expect(store.getState().isStreaming).toBe(true);
   });
 });

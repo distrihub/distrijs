@@ -1,4 +1,5 @@
-import { create } from 'zustand';
+import { createStore, StoreApi } from 'zustand/vanilla';
+import { useStore } from 'zustand';
 import {
   DistriEvent,
   DistriMessage,
@@ -27,10 +28,7 @@ import {
 import { DistriAnyTool, DistriUiTool, ToolCallStatus, RenderingMode, ChatSessionSettings } from '../types';
 import { StreamingIndicator } from '@/components/renderers/ThinkingRenderer';
 import { DefaultToolActions } from '../components/renderers/tools/DefaultToolActions';
-import React from 'react';
-
-// Prevent duplicate completion posts when React StrictMode double-invokes handlers
-const completingToolCallIds = new Set<string>();
+import React, { createContext, useContext } from 'react';
 
 // State types
 export interface TaskState {
@@ -236,7 +234,28 @@ export interface ChatStateStore extends ChatState {
   // Main task management
 }
 
-export const useChatStateStore = create<ChatStateStore>((set, get) => ({
+/**
+ * The vanilla store instance type. Each `<Chat>` / `useChat` owns its own
+ * instance (see `createChatStore`), so conversation state never leaks across
+ * threads, remounts, or sibling chats.
+ */
+export type ChatStore = StoreApi<ChatStateStore>;
+
+/**
+ * Factory for a fresh, isolated chat-state store. Replaces the old
+ * module-level singleton: state (messages, streaming flags, tasks, todos,
+ * browser session, …) now lives for exactly as long as the owning chat
+ * instance. Remounting `<Chat key={threadId}>` constructs a new store, so the
+ * previous thread's messages and `isStreaming`/`isLoading` flags are gone by
+ * construction — no manual `clearAllStates()` required by consumers.
+ */
+export function createChatStore(): ChatStore {
+  // Per-instance dedup guard: prevents duplicate completion posts when React
+  // StrictMode double-invokes handlers. Scoped to this store so two chats
+  // can't suppress each other's tool completions.
+  const completingToolCallIds = new Set<string>();
+
+  return createStore<ChatStateStore>((set, get) => ({
   isStreaming: false,
   isLoading: false,
   error: null,
@@ -1373,7 +1392,44 @@ export const useChatStateStore = create<ChatStateStore>((set, get) => ({
   setWrapOptions: (wrapOptions: { autoExecute?: boolean }) => {
     set({ wrapOptions });
   },
-}));
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Per-instance store wiring (React context)
+//
+// The store is no longer a module singleton. `useChat` creates one via
+// `createChatStore()` and publishes it through this context; `<Chat>` wraps its
+// renderer subtree in the provider. Components read reactive slices through the
+// `useChatStateStore(selector)` hook below — same call signature as before, so
+// every existing `useChatStateStore(s => s.x)` call site is unchanged; only the
+// source (module global → nearest provider) differs.
+// ---------------------------------------------------------------------------
+
+export const ChatStoreContext = createContext<ChatStore | null>(null);
+
+/**
+ * Returns the raw vanilla store for the nearest `<Chat>` / `useChat`. Use for
+ * imperative access (`getState()`, `setState()`, `subscribe()`). Throws when
+ * called outside a chat subtree — there is no global fallback by design.
+ */
+export function useChatStoreApi(): ChatStore {
+  const store = useContext(ChatStoreContext);
+  if (!store) {
+    throw new Error('useChatStoreApi must be used within a <Chat> / useChat subtree (ChatStoreContext is missing).');
+  }
+  return store;
+}
+
+/**
+ * Reactive selector hook bound to the nearest chat store. Drop-in replacement
+ * for the former global `useChatStateStore` — identical `(selector) => slice`
+ * signature.
+ */
+export function useChatStateStore<T>(selector: (state: ChatStateStore) => T): T {
+  const store = useChatStoreApi();
+  return useStore(store, selector);
+}
 
 
 const validateToolCallInput = (toolCall: ToolCall): string | null => {
