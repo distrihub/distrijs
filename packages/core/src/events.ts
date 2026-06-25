@@ -240,6 +240,40 @@ export interface LiveViewEvent {
 }
 
 /**
+ * Per-turn snapshot of the planner's context budget. Mirrors the server's
+ * `ContextBudgetUpdate` event.
+ */
+export interface ContextBudgetUpdateEvent {
+  type: 'context_budget_update';
+  data: {
+    budget: import('./types').ContextBudget;
+    is_warning: boolean;
+    is_critical: boolean;
+  };
+}
+
+/**
+ * Fired when the agent compacts conversation history. Mirrors the server's
+ * `ContextCompaction` event.
+ */
+export interface ContextCompactionStreamEvent {
+  type: 'context_compaction';
+  data: {
+    tier: 'trim' | 'summarize' | 'reset';
+    tokens_before: number;
+    tokens_after: number;
+    entries_affected: number;
+    context_limit: number;
+    usage_ratio: number;
+    summary?: string;
+    reinjected_skills?: string[];
+    context_budget?: import('./types').ContextBudget;
+    source?: 'auto' | 'manual';
+    duration_ms?: number;
+  };
+}
+
+/**
  * Routing envelope present on every decoded DistriEvent.
  *
  * Every consumer (chatStateStore reducer, useChat handlers, custom UIs) MUST
@@ -284,4 +318,6 @@ export type DistriEvent =
   | WithEnvelope<BrowserSessionStartedEvent>
   | WithEnvelope<InlineHookRequestedEvent>
   | WithEnvelope<TodosUpdatedEvent>
-  | WithEnvelope<LiveViewEvent>;
+  | WithEnvelope<LiveViewEvent>
+  | WithEnvelope<ContextBudgetUpdateEvent>
+  | WithEnvelope<ContextCompactionStreamEvent>;

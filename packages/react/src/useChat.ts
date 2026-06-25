@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata } from '@distri/core';
+import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata, CompactTaskResult } from '@distri/core';
 import {
   DistriPart,
   InvokeContext,
@@ -58,6 +58,16 @@ export interface UseChatReturn {
   hasPendingToolCalls: () => boolean;
   stopStreaming: () => void;
   addMessage: (message: DistriChatMessage) => void;
+  /**
+   * Manually run compaction on the current task. Resolves with the typed
+   * `CompactTaskResult` body the server returned — token counts are
+   * available synchronously here, while the streaming
+   * `context_compaction` event still arrives over the stream and updates
+   * `useChatStateStore.compactionEvents` for observers that prefer the
+   * event-driven path. Resolves with `undefined` when there is no
+   * active task to compact.
+   */
+  compact: () => Promise<CompactTaskResult | undefined>;
 }
 
 export function useChat({
@@ -394,6 +404,54 @@ export function useChat({
     setLoading(false);
   }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
 
+  const compactingRef = useRef(false);
+  const compact = useCallback(async (): Promise<CompactTaskResult | undefined> => {
+    const taskId = currentTaskId;
+    if (!agent || !taskId) {
+      console.warn('[useChat] compact() called with no active task — nothing to compact');
+      return undefined;
+    }
+    // Reentrancy guard: a second click (or double-bound handler) would
+    // otherwise fire a duplicate POST while the first is still in flight.
+    if (compactingRef.current) return undefined;
+    compactingRef.current = true;
+    store.setState({ isCompacting: true });
+    try {
+      const result = await agent.compact(taskId);
+      // Mirror the compaction event into the store so observers that
+      // depend on `compactionEvents` see the result even before the
+      // streaming `context_compaction` event arrives (or in case it
+      // races past `useChat` after compactingRef has cleared).
+      if (result?.compacted && result.tier) {
+        store.setState(s => ({
+          isCompacting: false,
+          compactionEvents: [
+            ...s.compactionEvents,
+            {
+              ts: Date.now(),
+              before: result.tokens_before ?? 0,
+              after: result.tokens_after ?? 0,
+              tier: result.tier!,
+              source: 'manual' as const,
+            },
+          ].slice(-50),
+        }));
+      } else {
+        store.setState({ isCompacting: false });
+      }
+      return result;
+    } catch (err) {
+      // Surface the error so onError handlers can render it, and clear
+      // the in-flight flag — the matching context_compaction event will
+      // not arrive on failure.
+      store.setState({ isCompacting: false });
+      onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+      return undefined;
+    } finally {
+      compactingRef.current = false;
+    }
+  }, [agent, currentTaskId, store]);
+
   // Combined display array: persisted history (from parent) first, live
   // optimistic + streamed messages from the store after. Memoised so
   // downstream effects keyed on `messages` don't fire on every render.
@@ -415,5 +473,6 @@ export function useChat({
     hasPendingToolCalls,
     stopStreaming,
     addMessage,
+    compact,
   };
 }
