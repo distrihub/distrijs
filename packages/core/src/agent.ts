@@ -328,6 +328,14 @@ export class Agent {
   }
 
   /**
+   * Manually compact the conversation history for `taskId`. Thin wrapper
+   * over `DistriClient.compactTask()` — see that method for behavior.
+   */
+  async compact(taskId: string) {
+    return this.client.compactTask(taskId);
+  }
+
+  /**
    * List all available agents
    */
   static async list(client: DistriClient): Promise<Agent[]> {
