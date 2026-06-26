@@ -3,10 +3,26 @@ import { AgentCard, AgentDefinition } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
 export interface UseAgentsResult {
-  agents: AgentDefinition[];
+  /**
+   * Lightweight A2A {@link AgentCard} list used for listings/pickers. Populated
+   * on mount from the bulk `GET /agents/cards` endpoint (name, description,
+   * version, icon, skills) — it does NOT include the full agent definition.
+   */
+  agents: AgentCard[];
   loading: boolean;
   error: Error | null;
+  /** Refetch the lightweight card list (same source as {@link agents}). */
   refetch: () => Promise<void>;
+  /**
+   * Fetch the full, heavy {@link AgentDefinition} list (system prompts, tools,
+   * model settings). Reserved for admin/edit surfaces — NOT loaded on mount.
+   */
+  getAgents: () => Promise<AgentDefinition[]>;
+  /**
+   * Fetch the lightweight {@link AgentCard} list (bulk). Same data that backs
+   * {@link agents}; exposed for callers that want to fetch on demand.
+   */
+  getAgentCards: () => Promise<AgentCard[]>;
   /**
    * Fetch the full, heavy {@link AgentDefinition} for a single agent (system
    * prompt, tools, model settings). Use this when editing or running the agent.
@@ -22,10 +38,28 @@ export interface UseAgentsResult {
 
 export function useAgentDefinitions(): UseAgentsResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
-  const [agents, setAgents] = useState<AgentDefinition[]>([]);
+  // List state holds lightweight cards (display-only: name/description/version/icon).
+  // The heavy AgentDefinition list is fetched on demand via getAgents().
+  const [agents, setAgents] = useState<AgentCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const getAgentCards = useCallback(async (): Promise<AgentCard[]> => {
+    if (!client) {
+      throw new Error('Client not available');
+    }
+    return await client.getAgentCards();
+  }, [client]);
+
+  const getAgents = useCallback(async (): Promise<AgentDefinition[]> => {
+    if (!client) {
+      throw new Error('Client not available');
+    }
+    return await client.getAgents();
+  }, [client]);
+
+  // Populate the list from the lightweight bulk card endpoint. The list is
+  // display-only, so cards are sufficient and avoid the heavy admin fetch.
   const fetchAgents = useCallback(async () => {
     if (!client) {
       return;
@@ -34,11 +68,11 @@ export function useAgentDefinitions(): UseAgentsResult {
     try {
       setLoading(true);
       setError(null);
-      const fetchedAgents = await client.getAgents();
-      setAgents(fetchedAgents);
+      const fetchedCards = await client.getAgentCards();
+      setAgents(fetchedCards);
     } catch (err) {
-      console.error('[useAgentDefinitions] Failed to fetch agents:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch agents'));
+      console.error('[useAgentDefinitions] Failed to fetch agent cards:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch agent cards'));
     } finally {
       setLoading(false);
     }
@@ -51,10 +85,6 @@ export function useAgentDefinitions(): UseAgentsResult {
 
     try {
       const agent = await client.getAgent(agentId);
-
-      // Update the agent in our local state if it exists
-      setAgents(prev => prev.map(a => a.name === agent.name ? agent : a));
-
       return agent;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to get agent');
@@ -103,6 +133,8 @@ export function useAgentDefinitions(): UseAgentsResult {
     loading: loading || clientLoading,
     error: error || clientError,
     refetch: fetchAgents,
+    getAgents,
+    getAgentCards,
     getAgent,
     getAgentCard
   };

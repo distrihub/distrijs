@@ -1,4 +1,4 @@
-import React, { useMemo, useState, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAgentDefinitions } from '@distri/react';
 import type { AgentDefinition } from '@distri/core';
 import { Bot, Workflow, Globe, ArrowRight, Clock, TrendingUp, MessageSquare } from 'lucide-react';
@@ -150,8 +150,35 @@ function AgentsGrid({
  * Does NOT include the full-page header/layout chrome — that belongs in Task 11 pages.
  */
 export function AgentList({ slots, onAction, className }: AgentListProps) {
-  const { agents, loading } = useAgentDefinitions();
+  // This is an admin/workspace surface: it renders Distri-only fields
+  // (is_workspace, is_system, published, stats, config, workspace_slug) that
+  // the lightweight A2A agent cards do NOT carry. So it fetches the full
+  // AgentDefinition list via getAgents() rather than the hook's card-backed
+  // `agents` list (which now sources from the bulk cards endpoint).
+  const { getAgents, loading: hookLoading } = useAgentDefinitions();
+  const [agents, setAgents] = useState<AgentDefinition[]>([]);
+  const [defsLoading, setDefsLoading] = useState(true);
   const home = useDistriHome();
+
+  useEffect(() => {
+    let cancelled = false;
+    setDefsLoading(true);
+    getAgents()
+      .then((defs) => {
+        if (!cancelled) setAgents(defs);
+      })
+      .catch((err) => {
+        console.error('[home/AgentList] Failed to fetch agent definitions:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setDefsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getAgents]);
+
+  const loading = hookLoading || defsLoading;
 
   const emptyCta = slots?.emptyCta ?? home.slots?.emptyAgentsCta;
 
