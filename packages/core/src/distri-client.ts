@@ -6,6 +6,7 @@ import {
   ConfigurationResponse,
   DistriConfiguration,
   AgentDefinition,
+  AgentCard,
   DistriThread,
   InvokeContext,
   DistriClientConfig,
@@ -654,7 +655,14 @@ export class DistriClient {
   }
 
   /**
-   * Get all available agents from the Distri server
+   * Get all available agents from the Distri server.
+   *
+   * NOTE: This is a HEAVY call — it returns full {@link AgentDefinition}
+   * objects including system prompts, tools, and model settings. The backend
+   * exposes no bulk "agent card" list endpoint, so for listings/pickers that
+   * only need metadata (name, description, version, icon) consume only those
+   * card-shaped fields from the result and avoid reading heavy fields, or fetch
+   * per-item cards via {@link getAgentCard}.
    */
   async getAgents(): Promise<AgentDefinition[]> {
     try {
@@ -698,6 +706,38 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch agent ${agentId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Fetch the lightweight A2A agent card for a single agent.
+   *
+   * Returns only the public metadata the A2A protocol exposes
+   * (name, description, version, icon, skills, capabilities) — it does NOT
+   * include the full {@link AgentDefinition} (system prompt, tools, model
+   * settings). Use this for listings, pickers, and anywhere only metadata is
+   * needed; use {@link getAgent} when the full, heavy definition is required
+   * (editing or running an agent through our own interface).
+   */
+  async getAgentCard(agentId: string): Promise<AgentCard> {
+    try {
+      const response = await this.fetch(`/agents/${agentId}/.well-known/agent.json`, {
+        headers: {
+          ...this.config.headers,
+        }
+      });
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Agent not found: ${agentId}`, 404);
+        }
+        throw new ApiError(`Failed to fetch agent card: ${response.statusText}`, response.status);
+      }
+
+      const card: AgentCard = await response.json();
+      return card;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to fetch agent card ${agentId}`, 'FETCH_ERROR', error);
     }
   }
 
