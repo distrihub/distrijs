@@ -3,33 +3,34 @@ import { describe, it, expect, vi } from 'vitest';
 import { AgentList } from '../AgentList';
 import { DistriHomeProvider } from '../../provider/DistriHomeProvider';
 
+// The block loads the full definitions directly via the client's getAgents().
 vi.mock('@distri/react', () => ({
-  useDistriClient: () => ({}),
-  useAgentDefinitions: () => ({
-    agents: [
-      {
-        id: 'a1',
-        name: 'Agent One',
-        description: 'First test agent',
-        is_workspace: true,
-        is_system: false,
-        published: false,
-        is_owner: true,
-      },
-      {
-        id: 'a2',
-        name: 'System Bot',
-        description: 'A system agent',
-        is_workspace: false,
-        is_system: true,
-        published: false,
-        is_owner: false,
-      },
-    ],
-    loading: false,
+  useDistri: () => ({
+    client: {
+      getAgents: () =>
+        Promise.resolve([
+          {
+            id: 'a1',
+            name: 'Agent One',
+            description: 'First test agent',
+            is_workspace: true,
+            is_system: false,
+            published: false,
+            is_owner: true,
+          },
+          {
+            id: 'a2',
+            name: 'System Bot',
+            description: 'A system agent',
+            is_workspace: false,
+            is_system: true,
+            published: false,
+            is_owner: false,
+          },
+        ]),
+    },
     error: null,
-    refetch: vi.fn(),
-    getAgent: vi.fn(),
+    isLoading: false,
   }),
 }));
 
@@ -68,54 +69,31 @@ vi.mock('@distri/components', () => ({
 }));
 
 describe('AgentList', () => {
-  it('renders agents', () => {
+  it('renders agents', async () => {
     render(
       <DistriHomeProvider config={{}}>
         <AgentList />
       </DistriHomeProvider>,
     );
-    expect(screen.getByText('Agent One')).toBeInTheDocument();
+    expect(await screen.findByText('Agent One')).toBeInTheDocument();
   });
 
-  it('renders rowActions slot', () => {
+  it('renders rowActions slot', async () => {
     render(
       <DistriHomeProvider config={{}}>
         <AgentList slots={{ rowActions: (id) => <span>action-{id}</span> }} />
       </DistriHomeProvider>,
     );
-    expect(screen.getByText('action-Agent One')).toBeInTheDocument();
+    expect(await screen.findByText('action-Agent One')).toBeInTheDocument();
   });
 
-  it('renders emptyCta slot when no agents', () => {
-    // Override useAgentDefinitions for this test
-    vi.doMock('@distri/react', () => ({
-      useDistriClient: () => ({}),
-      useAgentDefinitions: () => ({
-        agents: [],
-        loading: false,
-        error: null,
-        refetch: vi.fn(),
-        getAgent: vi.fn(),
-      }),
-    }));
-
-    render(
-      <DistriHomeProvider config={{}}>
-        <AgentList slots={{ emptyCta: <span>Create your first agent</span> }} />
-      </DistriHomeProvider>,
-    );
-    // The non-empty mock is still in play from the top-level mock — this just verifies
-    // the component renders without throwing.
-    expect(screen.getByText('Agent One')).toBeInTheDocument();
-  });
-
-  it('renders emptyAgentsCta from home config slot', () => {
+  it('renders emptyAgentsCta from home config slot', async () => {
     render(
       <DistriHomeProvider config={{ slots: { emptyAgentsCta: <span>home-cta</span> } }}>
         <AgentList />
       </DistriHomeProvider>,
     );
     // agents are present so we expect agent names, not the CTA
-    expect(screen.getByText('Agent One')).toBeInTheDocument();
+    expect(await screen.findByText('Agent One')).toBeInTheDocument();
   });
 });

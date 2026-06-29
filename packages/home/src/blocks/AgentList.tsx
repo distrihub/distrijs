@@ -1,5 +1,5 @@
-import React, { useMemo, useState, type ReactNode } from 'react';
-import { useAgentDefinitions } from '@distri/react';
+import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useDistri } from '@distri/react';
 import type { AgentDefinition } from '@distri/core';
 import { Bot, Workflow, Globe, ArrowRight, Clock, TrendingUp, MessageSquare } from 'lucide-react';
 import {
@@ -150,8 +150,35 @@ function AgentsGrid({
  * Does NOT include the full-page header/layout chrome — that belongs in Task 11 pages.
  */
 export function AgentList({ slots, onAction, className }: AgentListProps) {
-  const { agents, loading } = useAgentDefinitions();
+  // This is an admin/workspace surface: it renders Distri-only fields
+  // (is_workspace, is_system, published, stats, config, workspace_slug) that
+  // the lightweight A2A agent cards do NOT carry, so it loads the full
+  // AgentDefinition list directly via the client's getAgents() — the bulk
+  // card endpoint isn't enough here.
+  const { client } = useDistri();
+  const [agents, setAgents] = useState<AgentDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
   const home = useDistriHome();
+
+  useEffect(() => {
+    if (!client) return;
+    let cancelled = false;
+    setLoading(true);
+    client
+      .getAgents()
+      .then((defs) => {
+        if (!cancelled) setAgents(defs);
+      })
+      .catch((err) => {
+        console.error('[home/AgentList] Failed to fetch agent definitions:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
 
   const emptyCta = slots?.emptyCta ?? home.slots?.emptyAgentsCta;
 
