@@ -1149,6 +1149,8 @@ export function createChatStore(): ChatStore {
                         toolCall.tool_call_id,
                         toolCall.tool_name,
                         handlerResult,
+                        undefined,
+                        { stopAfterTurn: fnTool.stopAfterTurn },
                       ),
                     );
                   }

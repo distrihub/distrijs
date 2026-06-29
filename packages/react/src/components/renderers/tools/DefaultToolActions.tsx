@@ -68,7 +68,9 @@ export const DefaultToolActions: React.FC<DefaultToolActionsProps> = ({
         const toolResult = createSuccessfulToolResult(
           toolCall.tool_call_id,
           toolName,
-          result
+          result,
+          undefined,
+          { stopAfterTurn: tool.stopAfterTurn }
         );
 
         await completeTool(toolResult);

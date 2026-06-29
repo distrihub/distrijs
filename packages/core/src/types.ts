@@ -507,6 +507,16 @@ export interface DistriBaseTool extends ToolDefinition {
   is_final?: boolean;
   autoExecute?: boolean;
   isExternal?: boolean; // True if frontend handles execution, false if backend handles it
+  /**
+   * Early-stop: end the agent's turn as soon as THIS tool's result is sent back,
+   * instead of letting the loop chain into another LLM round-trip. Implemented by
+   * appending a `{ should_continue: false }` data part to the tool result, which
+   * the backend's `ExecutionStrategy::should_continue` already honors
+   * (server/distri-core/.../execution/default.rs). Use for interactive editor
+   * tools (e.g. `save_content`) so execution returns control to the UI instantly
+   * and "feels fast". Distinct from `is_final` (an LLM-side terminal-tool flag).
+   */
+  stopAfterTurn?: boolean;
 }
 
 export interface DistriFnTool extends DistriBaseTool {
@@ -573,7 +583,8 @@ export function createSuccessfulToolResult(
   toolCallId: string,
   toolName: string,
   result: string | number | boolean | null | object | DistriPart[],
-  partsMetadata?: Record<number, PartMetadata>
+  partsMetadata?: Record<number, PartMetadata>,
+  options?: { stopAfterTurn?: boolean }
 ): ToolResult {
   const parts: DistriPart[] = isArrayParts(result) ? result as DistriPart[] : [{
     part_type: 'data' as const,
@@ -583,6 +594,16 @@ export function createSuccessfulToolResult(
       error: undefined
     } satisfies ToolResultData
   }];
+
+  // Early-stop signal: a standalone control data part the backend's
+  // `should_continue()` scans for. Appended (rather than merged into the result
+  // part) so it works whether `result` is a primitive/object or a DistriPart[].
+  if (options?.stopAfterTurn) {
+    parts.push({
+      part_type: 'data' as const,
+      data: { should_continue: false }
+    });
+  }
 
   return {
     tool_call_id: toolCallId,
