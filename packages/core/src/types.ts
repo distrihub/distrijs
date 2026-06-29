@@ -2,6 +2,7 @@
 import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk';
 import { DistriEvent } from './events';
 import { Agent } from './agent';
+import type { Invocation } from './invocation';
 
 /**
  * Message roles supported by Distri
@@ -92,6 +93,23 @@ export interface ExecutorContextMetadata {
   tags?: Record<string, string>;
   /** Inbound distributed trace context to continue an existing trace. */
   trace_context?: TraceContext;
+  /**
+   * Skills to auto-load at task start (by id), WITHOUT the agent having to
+   * call `load_skill` first. Inline skills are injected up-front so the run
+   * reaches the actual task without a wasted round-trip; fork-type skills are
+   * deferred to explicit dispatch. Maps to the backend's
+   * `ExecutorContextMetadata.load_skills`.
+   */
+  load_skills?: string[];
+  /**
+   * Dictate fork behaviour for this task: dispatch it as an isolated subtask
+   * (child context, returns only a gist to the parent) instead of running
+   * inline. Reuses the {@link Invocation} model (targets / context / join /
+   * tools). Backend dispatch of a metadata-supplied fork is landing in a
+   * follow-up; the field is part of the wire contract now so callers can adopt
+   * it. Child runs already surface in chat via the parent/child task tree.
+   */
+  fork?: Invocation;
 }
 
 /**
