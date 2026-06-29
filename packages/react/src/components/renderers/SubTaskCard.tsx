@@ -38,6 +38,47 @@ function StatusIcon({ status }: { status: TaskState['status'] }) {
 }
 
 /**
+ * Total number of tasks nested under `task` (children, grandchildren, …).
+ * Walks the live tree from the store map so the count stays correct as
+ * descendants stream in. Guards against cycles defensively.
+ */
+export function countDescendants(
+  task: TaskState,
+  tasks: Map<string, TaskState>,
+  seen: Set<string> = new Set(),
+): number {
+  let total = 0;
+  for (const id of task.childTaskIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const child = tasks.get(id);
+    if (!child) continue;
+    total += 1 + countDescendants(child, tasks, seen);
+  }
+  return total;
+}
+
+/**
+ * One-line gist for the collapsed header: the child's final assistant text,
+ * so the parent thread shows the *result* without expanding the internal
+ * steps (the "one gist out" contract). Falls back to empty when the task has
+ * produced no text yet.
+ */
+export function deriveGist(ownMessages: DistriChatMessage[]): string {
+  for (let i = ownMessages.length - 1; i >= 0; i--) {
+    const m = ownMessages[i];
+    if (!isDistriMessage(m)) continue;
+    const text = m.parts
+      ?.filter((p) => p.part_type === 'text')
+      .map((p) => (p as { data: string }).data)
+      .join('')
+      .trim();
+    if (text) return text.replace(/\s+/g, ' ').slice(0, 120);
+  }
+  return '';
+}
+
+/**
  * Best-effort title derivation: agent name from event envelope, else the
  * first piece of streamed text, else the task id tail.
  */
@@ -93,16 +134,24 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     [messages, task.id],
   );
 
-  // Default: expand while running, collapse when completed.
-  const [expanded, setExpanded] = useState(task.status === 'running');
+  // Default: expand while running, collapse when completed, and re-expand on
+  // failure so the error surfaces without a manual click.
+  const [expanded, setExpanded] = useState(
+    task.status === 'running' || task.status === 'failed',
+  );
   const [userToggled, setUserToggled] = useState(false);
   useEffect(() => {
     if (userToggled) return;
-    if (task.status === 'running') setExpanded(true);
+    if (task.status === 'running' || task.status === 'failed') setExpanded(true);
     if (task.status === 'completed') setExpanded(false);
   }, [task.status, userToggled]);
 
   const title = deriveTitle(messages, task);
+  const descendantCount = useMemo(
+    () => countDescendants(task, tasks),
+    [task, tasks],
+  );
+  const gist = useMemo(() => deriveGist(ownMessages), [ownMessages]);
   const indent = depth * 12;
 
   return (
@@ -124,7 +173,19 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
           <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
         )}
         <StatusIcon status={task.status} />
-        <span className="font-medium text-foreground truncate flex-1 text-left">{title}</span>
+        <span className="font-medium text-foreground truncate flex-shrink-0 text-left max-w-[40%]">{title}</span>
+        {/* Gist preview when collapsed — the "one gist out" of the subtask. */}
+        {!expanded && gist && (
+          <span className="text-[10px] text-muted-foreground truncate flex-1 text-left italic">
+            {gist}
+          </span>
+        )}
+        {expanded && <span className="flex-1" />}
+        {descendantCount > 0 && (
+          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+            {descendantCount} subtask{descendantCount === 1 ? '' : 's'}
+          </span>
+        )}
         {task.status === 'running' && (
           <span className="text-[10px] text-muted-foreground flex-shrink-0">running…</span>
         )}
