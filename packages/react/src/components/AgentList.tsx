@@ -1,14 +1,30 @@
 import React from 'react';
 import { RefreshCw, Play, Bot } from 'lucide-react';
-import { AgentDefinition } from '@distri/core';
 
-interface AgentListProps {
-  agents: AgentDefinition[];
-  onRefresh: () => Promise<void>;
-  onStartChat: (agent: AgentDefinition) => void;
+/**
+ * Card-shaped subset of agent metadata this list renders. Intentionally limited
+ * to the lightweight A2A "agent card" fields (name, description, version, icon)
+ * so the listing never depends on the heavy {@link AgentDefinition} (system
+ * prompt, tools, model settings). Both `AgentCard` and `AgentDefinition` are
+ * structurally assignable to this type, so existing callers keep working.
+ */
+export interface AgentCardLike {
+  name: string;
+  description?: string;
+  version?: string;
+  /** A2A agent card icon field. */
+  iconUrl?: string;
+  /** distri AgentDefinition icon field (kept for compatibility). */
+  icon_url?: string;
 }
 
-const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat }) => {
+interface AgentListProps<T extends AgentCardLike = AgentCardLike> {
+  agents: T[];
+  onRefresh: () => Promise<void>;
+  onStartChat: (agent: T) => void;
+}
+
+function AgentList<T extends AgentCardLike>({ agents, onRefresh, onStartChat }: AgentListProps<T>) {
   const [refreshing, setRefreshing] = React.useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -90,6 +106,6 @@ const AgentList: React.FC<AgentListProps> = ({ agents, onRefresh, onStartChat })
 
     </div>
   );
-};
+}
 
 export default AgentList;
