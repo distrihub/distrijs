@@ -189,6 +189,7 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     <div
       className="rounded-md border border-border bg-muted/20 overflow-hidden text-xs"
       style={{ marginLeft: indent }}
+      data-task-id={task.id}
     >
       <button
         type="button"
@@ -246,6 +247,7 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
           {ownMessages.map((message, index) => (
             <MessageRenderer
               key={`${task.id}-${index}`}
+              inSubTaskCard
               message={message}
               index={index}
               toolRenderers={toolRenderers}
