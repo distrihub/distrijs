@@ -405,6 +405,57 @@ export interface CompactTaskResult {
 }
 
 /**
+ * Task status as reported by the task-monitor endpoints
+ * (`GET /tasks`, `GET /tasks/{id}`). Superset of the client-side
+ * `TaskState.status` union — `input_required` and `canceled` only
+ * exist on the wire.
+ */
+export type TaskSummaryStatus =
+  | 'pending'
+  | 'running'
+  | 'input_required'
+  | 'completed'
+  | 'failed'
+  | 'canceled';
+
+/**
+ * Enriched task object returned by the task-monitor endpoints
+ * (`GET /tasks`, `GET /tasks/{id}`). Field names are snake_case —
+ * the server's wire format is passed through untouched (same
+ * convention as {@link CompactTaskResult}).
+ */
+export interface TaskSummary {
+  id: string;
+  thread_id: string;
+  /** Dispatching (parent) task id, or `null` for a root task. */
+  parent_task_id: string | null;
+  status: TaskSummaryStatus;
+  /** Creation time (epoch ms). */
+  created_at: number;
+  /** Last update time (epoch ms). */
+  updated_at: number;
+  /** Latest activity preview text, when available. */
+  preview: string | null;
+  /** Timestamp of the most recent event (epoch ms), when available. */
+  last_event_at: number | null;
+}
+
+/** Query params for `DistriClient.listTasks`. */
+export interface ListTasksParams {
+  /** Only tasks belonging to this thread. */
+  threadId?: string;
+  /**
+   * Scope results to the sub-tree under this task. The named task
+   * itself (the root of the sub-tree) is excluded by the server.
+   */
+  parentTaskId?: string;
+  /** Filter by a single {@link TaskSummaryStatus} value. */
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/**
  * Current context health information derived from compaction events
  * and usage tracking.
  */

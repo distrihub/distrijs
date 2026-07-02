@@ -4,6 +4,7 @@ export * from './useAgent';
 export * from './useAgentDefinitions';
 export * from './useThreads';
 export * from './useModels';
+export * from './useBackgroundTasks';
 
 // Component exports
 export * from './components/Chat';
