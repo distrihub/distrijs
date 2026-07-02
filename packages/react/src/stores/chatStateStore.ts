@@ -951,8 +951,10 @@ export function createChatStore(): ChatStore {
     }
 
     set((state: ChatState) => {
-      const newState = { ...state };
-      newState.toolCalls.set(toolCall.tool_call_id, {
+      // Copy-on-write (same reactivity bug as tasks): in-place Map mutation
+      // never re-renders zustand selectors (SubTaskCard tool rows).
+      const toolCalls = new Map(state.toolCalls);
+      toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         taskId,
         tool_name: toolCall.tool_name || 'Unknown Tool',
@@ -962,7 +964,7 @@ export function createChatStore(): ChatStore {
         isExternal: !!externalTool,
         isLiveStream: isFromStream,
       });
-      return newState;
+      return { ...state, toolCalls };
     });
     if (externalTool) {
       console.log('🔧 Tool found:', {
@@ -979,7 +981,7 @@ export function createChatStore(): ChatStore {
 
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => {
     set((state: ChatState) => {
-      const newState = { ...state };
+      const newState = { ...state, toolCalls: new Map(state.toolCalls) };
       const existingToolCall = newState.toolCalls.get(toolCallId);
       if (existingToolCall) {
         newState.toolCalls.set(toolCallId, {

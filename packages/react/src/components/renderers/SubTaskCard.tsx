@@ -134,6 +134,18 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     [messages, task.id],
   );
 
+  // Live child runs relay tool activity as EVENTS (tool_calls/tool_results),
+  // which land in the toolCalls map — not in `messages`. Without these rows a
+  // running fork's card looked empty even while it was busy.
+  const toolCallsMap = useChatStateStore((s) => s.toolCalls);
+  const ownToolCalls = useMemo(
+    () =>
+      Array.from(toolCallsMap.values())
+        .filter((tc) => tc.taskId === task.id)
+        .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0)),
+    [toolCallsMap, task.id],
+  );
+
   // Default: expand while running, collapse when completed, and re-expand on
   // failure so the error surfaces without a manual click.
   const [expanded, setExpanded] = useState(
@@ -154,10 +166,19 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   // Streamed text wins; fall back to the polled monitor's latest-update
   // preview (useBackgroundTasks stores it in metadata) so hydrated background
   // tasks show what they last did even without a live stream.
-  const gist = useMemo(
-    () => deriveGist(ownMessages) || ((task.metadata?.preview as string | undefined) ?? ''),
-    [ownMessages, task.metadata],
-  );
+  const gist = useMemo(() => {
+    const fromMessages = deriveGist(ownMessages);
+    if (fromMessages) return fromMessages;
+    // The worker's answer usually lives in its `final` tool call.
+    for (let i = ownToolCalls.length - 1; i >= 0; i--) {
+      const tc = ownToolCalls[i];
+      if (tc.tool_name === 'final') {
+        const inner = (tc.input as { input?: unknown })?.input ?? tc.input;
+        if (typeof inner === 'string' && inner.trim()) return inner.replace(/\s+/g, ' ').slice(0, 120);
+      }
+    }
+    return (task.metadata?.preview as string | undefined) ?? '';
+  }, [ownMessages, ownToolCalls, task.metadata]);
   const indent = depth * 12;
 
   return (
@@ -204,6 +225,20 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
 
       {expanded && (
         <div className="border-t border-border bg-background/40 px-2 py-2 space-y-1">
+          {ownToolCalls.map((tc) => (
+            <div key={tc.tool_call_id} className="flex items-center gap-2 px-1 py-0.5 text-[11px]">
+              <StatusIcon status={tc.status === 'completed' ? 'completed' : tc.status === 'error' ? 'failed' : 'running'} />
+              <span className="font-medium text-foreground flex-shrink-0">{tc.tool_name}</span>
+              <span className="text-muted-foreground truncate flex-1">
+                {typeof ((tc.input as { input?: unknown })?.input ?? '') === 'string' && ((tc.input as { input?: string }).input ?? '').trim()
+                  ? ((tc.input as { input?: string }).input as string).slice(0, 100)
+                  : JSON.stringify(tc.input ?? {}).slice(0, 100)}
+              </span>
+              {tc.startTime && tc.endTime && (
+                <span className="text-[10px] text-muted-foreground flex-shrink-0">{((tc.endTime - tc.startTime) / 1000).toFixed(1)}s</span>
+              )}
+            </div>
+          ))}
           {ownMessages.map((message, index) => (
             <MessageRenderer
               key={`${task.id}-${index}`}
