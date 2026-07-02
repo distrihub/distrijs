@@ -422,6 +422,11 @@ export function createChatStore(): ChatStore {
             step_id: stepId,
             is_final: isFinal,
             metadata: (event.data as { metadata?: Record<string, unknown> }).metadata,
+            // Route by the envelope's task: without this, a sub-task's streamed
+            // text was unstamped — SubTaskCard (filters m.taskId === task.id)
+            // showed an empty card and the text leaked into the flat column.
+            taskId: (event as { taskId?: string }).taskId,
+            parentTaskId: (event as { parentTaskId?: string }).parentTaskId,
           };
 
           // Create new messages array with the new message

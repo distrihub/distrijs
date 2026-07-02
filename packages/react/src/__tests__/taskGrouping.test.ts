@@ -35,3 +35,24 @@ describe('isChildTaskMessage', () => {
     expect(isChildTaskMessage({} as never, childIds)).toBe(false);
   });
 });
+
+describe('streamed text carries its task (regression: empty SubTaskCards)', () => {
+  it('text_message_start stamps taskId/parentTaskId from the envelope', async () => {
+    const { createChatStore } = await import('../stores/chatStateStore');
+    const store = createChatStore();
+    store.getState().addMessage({
+      type: 'text_message_start',
+      taskId: 'fork-1',
+      parentTaskId: 'root',
+      data: { message_id: 'mm1', role: 'assistant', is_final: false },
+    } as never);
+    const msg = store.getState().messages.find((m) => (m as { id?: string }).id === 'mm1') as {
+      taskId?: string;
+      parentTaskId?: string;
+    };
+    expect(msg?.taskId).toBe('fork-1');
+    expect(msg?.parentTaskId).toBe('root');
+    // …and the grouping filter routes it to the card, not the flat column.
+    expect(isChildTaskMessage(msg as never, new Set(['fork-1']))).toBe(true);
+  });
+});
