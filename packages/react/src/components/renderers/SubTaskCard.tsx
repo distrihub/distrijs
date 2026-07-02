@@ -151,7 +151,13 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     () => countDescendants(task, tasks),
     [task, tasks],
   );
-  const gist = useMemo(() => deriveGist(ownMessages), [ownMessages]);
+  // Streamed text wins; fall back to the polled monitor's latest-update
+  // preview (useBackgroundTasks stores it in metadata) so hydrated background
+  // tasks show what they last did even without a live stream.
+  const gist = useMemo(
+    () => deriveGist(ownMessages) || ((task.metadata?.preview as string | undefined) ?? ''),
+    [ownMessages, task.metadata],
+  );
   const indent = depth * 12;
 
   return (

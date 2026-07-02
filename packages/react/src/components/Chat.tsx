@@ -4,6 +4,7 @@ import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
+import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { LoadingStrip } from './renderers/LoadingStrip';
 import { LoadingShimmer } from './renderers/ThinkingRenderer';
@@ -894,8 +895,14 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const renderMessages = (): React.ReactNode[] => {
     const elements: React.ReactNode[] = [];
 
+    // Child-task messages (forked sub-agents) render inside their SubTaskCard,
+    // not in the flat column — otherwise every fork's relayed activity
+    // interleaves with the parent's own and the run reads as one giant thread.
+    const childIds = childTaskIdSet(chatStore.getState().tasks);
+
     // Render all messages using MessageRenderer
     messages.forEach((message: any, index: number) => {
+      if (isChildTaskMessage(message, childIds)) return;
       const renderedMessage = (
         <MessageRenderer
           key={`message-${index}`}
