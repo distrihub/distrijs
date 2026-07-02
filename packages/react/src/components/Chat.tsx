@@ -4,8 +4,10 @@ import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
+import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { LoadingStrip } from './renderers/LoadingStrip';
+import { LoadingShimmer } from './renderers/ThinkingRenderer';
 import { TodosCompact } from './renderers/TodosCompact';
 import { type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -374,6 +376,18 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // Get reactive state from store
   const toolCalls = useStore(chatStore, state => state.toolCalls);
   const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
+  // Cosmetic only: how many external (frontend-handled) tool calls are still
+  // awaiting a result. The backend already join_all's the batch with a timeout —
+  // this just tells the user we're waiting on outstanding tool calls. If one
+  // result is sent and another isn't, the count reflects the laggard until it
+  // resolves or the backend timeout fires.
+  const pendingToolCallCount = useMemo(
+    () =>
+      Array.from(toolCalls.values()).filter(
+        (tc) => (tc.status === 'pending' || tc.status === 'running') && tc.isExternal,
+      ).length,
+    [toolCalls],
+  );
   const currentState = useStore(chatStore, state => state);
   const todos = useStore(chatStore, state => state.todos);
   const lastTodoChanges = useStore(chatStore, state => state.lastTodoChanges);
@@ -881,8 +895,14 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const renderMessages = (): React.ReactNode[] => {
     const elements: React.ReactNode[] = [];
 
+    // Child-task messages (forked sub-agents) render inside their SubTaskCard,
+    // not in the flat column — otherwise every fork's relayed activity
+    // interleaves with the parent's own and the run reads as one giant thread.
+    const childIds = childTaskIdSet(chatStore.getState().tasks);
+
     // Render all messages using MessageRenderer
     messages.forEach((message: any, index: number) => {
+      if (isChildTaskMessage(message, childIds)) return;
       const renderedMessage = (
         <MessageRenderer
           key={`message-${index}`}
@@ -1227,14 +1247,20 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             style={{ maxWidth: maxWidth || '768px' }}
           >
 
-            {/* Pre-input zone: todos + loading strip */}
-            {(todos?.length > 0 || isStreaming) && (
+            {/* Pre-input zone: todos + loading strip + tool-call wait */}
+            {(todos?.length > 0 || isStreaming || pendingToolCallCount > 0) && (
               <div className="space-y-1.5">
                 {todos && todos.length > 0 && (
                   <TodosCompact todos={todos} changes={lastTodoChanges} />
                 )}
-                {isStreaming && (
-                  <LoadingStrip words={loadingAnimation?.cycleWords} />
+                {pendingToolCallCount > 0 ? (
+                  <LoadingShimmer
+                    showIcon
+                    className="text-xs sm:text-sm"
+                    text={`Waiting for ${pendingToolCallCount} tool response${pendingToolCallCount === 1 ? '' : 's'}…`}
+                  />
+                ) : (
+                  isStreaming && <LoadingStrip words={loadingAnimation?.cycleWords} />
                 )}
               </div>
             )}

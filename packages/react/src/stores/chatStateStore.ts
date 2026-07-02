@@ -1149,6 +1149,8 @@ export function createChatStore(): ChatStore {
                         toolCall.tool_call_id,
                         toolCall.tool_name,
                         handlerResult,
+                        undefined,
+                        { stopAfterTurn: fnTool.stopAfterTurn },
                       ),
                     );
                   }
@@ -1433,8 +1435,7 @@ export function createChatStore(): ChatStore {
 
   updateTask: (taskId: string, updates: Partial<TaskState>) => {
     set((state: ChatState) => {
-      const newState = { ...state };
-      const existingTask = newState.tasks.get(taskId);
+      const existingTask = state.tasks.get(taskId);
       const taskToUpdate: TaskState = existingTask || {
         id: taskId,
         title: updates.title ?? 'Task',
@@ -1443,8 +1444,12 @@ export function createChatStore(): ChatStore {
         toolCalls: [],
         results: [],
       };
-      newState.tasks.set(taskId, { ...taskToUpdate, ...updates });
-      return newState;
+      // Copy-on-write: mutating the Map in place kept the same reference, so
+      // zustand selectors (SubTaskTree, task monitors) never re-rendered on
+      // live task updates — sub-task cards stayed frozen at mount.
+      const tasks = new Map(state.tasks);
+      tasks.set(taskId, { ...taskToUpdate, ...updates });
+      return { ...state, tasks };
     });
   },
 
