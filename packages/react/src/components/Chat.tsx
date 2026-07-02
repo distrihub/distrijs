@@ -5,6 +5,8 @@ import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
 import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
+import { ContextIndicator } from './ContextIndicator';
+import { ContextUsagePanel } from './ContextUsagePanel';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { LoadingStrip } from './renderers/LoadingStrip';
 import { LoadingShimmer } from './renderers/ThinkingRenderer';
@@ -375,6 +377,29 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Get reactive state from store
   const toolCalls = useStore(chatStore, state => state.toolCalls);
+
+  // Context usage — the thin bar above the composer. Budget updates stream in
+  // via `context_budget_update`; click expands the per-component breakdown.
+  const contextBudget = useStore(chatStore, state => state.contextBudget);
+  const compactionEvents = useStore(chatStore, state => state.compactionEvents);
+  const storeIsCompacting = useStore(chatStore, state => Boolean(state.isCompacting));
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  const footerContextHealth = useMemo(() => {
+    if (!contextBudget || !contextBudget.context_window_size) return null;
+    const used =
+      contextBudget.system_prompt_static_tokens +
+      contextBudget.system_prompt_dynamic_tokens +
+      contextBudget.tool_schema_tokens +
+      contextBudget.deferred_tool_tokens +
+      contextBudget.skill_listing_tokens +
+      contextBudget.conversation_tokens +
+      contextBudget.tool_result_tokens;
+    return {
+      usage_ratio: used / contextBudget.context_window_size,
+      tokens_used: used,
+      tokens_limit: contextBudget.context_window_size,
+    };
+  }, [contextBudget]);
   const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
   // Cosmetic only: how many external (frontend-handled) tool calls are still
   // awaiting a result. The backend already join_all's the batch with a timeout —
@@ -1283,6 +1308,26 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               </div>
             )}
 
+            {footerContextHealth && (
+              <div className="mb-1.5">
+                {contextPanelOpen && (
+                  <ContextUsagePanel
+                    budget={contextBudget}
+                    compactions={compactionEvents}
+                    isCompacting={storeIsCompacting}
+                    className="mb-2"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => setContextPanelOpen((v) => !v)}
+                  className="block w-full cursor-pointer text-left"
+                  title="Context usage — click for the breakdown"
+                >
+                  <ContextIndicator contextHealth={footerContextHealth} isCompacting={storeIsCompacting} />
+                </button>
+              </div>
+            )}
             {shouldRenderFooterComposer ? footerComposer : null}
           </div>
         </footer>
