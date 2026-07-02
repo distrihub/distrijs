@@ -13,6 +13,8 @@ import { MessageRenderer } from './MessageRenderer';
 import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
 
 export interface SubTaskCardProps {
+  /** Message source override (display array incl. history); defaults to the store's live messages. */
+  messages?: DistriChatMessage[];
   task: TaskState;
   depth: number;
   toolRenderers?: ToolRendererMap;
@@ -104,6 +106,7 @@ function deriveTitle(messages: DistriChatMessage[], task: TaskState): string {
 }
 
 export const SubTaskCard: React.FC<SubTaskCardProps> = ({
+  messages: messagesProp,
   task,
   depth,
   toolRenderers,
@@ -114,7 +117,8 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   verbose,
   debug,
 }) => {
-  const messages = useChatStateStore((s) => s.messages);
+  const storeMessages = useChatStateStore((s) => s.messages);
+  const messages = messagesProp ?? storeMessages;
   const tasks = useChatStateStore((s) => s.tasks);
 
   const childTasks = useMemo(
@@ -256,6 +260,7 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
           {childTasks.map((child) => (
             <SubTaskCard
               key={child.id}
+              messages={messagesProp}
               task={child}
               depth={depth + 1}
               toolRenderers={toolRenderers}

@@ -56,3 +56,30 @@ describe('streamed text carries its task (regression: empty SubTaskCards)', () =
     expect(isChildTaskMessage(msg as never, new Set(['fork-1']))).toBe(true);
   });
 });
+
+describe('hydrateTaskTree (history reload)', () => {
+  it('rebuilds parent/child links from message routing fields', async () => {
+    const { createChatStore } = await import('../stores/chatStateStore');
+    const store = createChatStore();
+    store.getState().hydrateTaskTree([
+      { taskId: 'root' },
+      { taskId: 'fork-1', parentTaskId: 'root' },
+      { taskId: 'grand', parentTaskId: 'fork-1' },
+      { taskId: 'fork-1', parentTaskId: 'root' }, // idempotent
+    ]);
+    const tasks = store.getState().tasks;
+    expect(tasks.get('root')?.childTaskIds).toEqual(['fork-1']);
+    expect(tasks.get('fork-1')?.parentTaskId).toBe('root');
+    expect(tasks.get('fork-1')?.childTaskIds).toEqual(['grand']);
+    expect([...childTaskIdSet(tasks)].sort()).toEqual(['fork-1', 'grand']);
+  });
+
+  it('never overwrites live task entries', async () => {
+    const { createChatStore } = await import('../stores/chatStateStore');
+    const store = createChatStore();
+    store.getState().updateTask('fork-1', { id: 'fork-1', title: 'Live', status: 'running', childTaskIds: [], parentTaskId: 'root' } as never);
+    store.getState().hydrateTaskTree([{ taskId: 'fork-1', parentTaskId: 'root' }]);
+    expect(store.getState().tasks.get('fork-1')?.status).toBe('running');
+    expect(store.getState().tasks.get('fork-1')?.title).toBe('Live');
+  });
+});

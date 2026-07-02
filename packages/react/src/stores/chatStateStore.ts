@@ -254,6 +254,13 @@ export interface ChatStateStore extends ChatState {
 
   // Updates
   updateTask: (taskId: string, updates: Partial<TaskState>) => void;
+  /**
+   * Rebuild the parent↔child task tree from persisted history (messages carry
+   * taskId/parentTaskId). History is render-only — without this, a reloaded
+   * thread has an empty tasks map: no SubTaskCards, and every fork's messages
+   * flatten inline. Never overwrites live task entries.
+   */
+  hydrateTaskTree: (links: Array<{ taskId: string; parentTaskId?: string }>) => void;
   updatePlan: (planId: string, updates: Partial<PlanState>) => void;
   updateStep: (stepId: string, updates: Partial<StepState>) => void;
   // Setup
@@ -1438,6 +1445,41 @@ export function createChatStore(): ChatStore {
   getPlanById: (planId: string) => {
     const state = get();
     return state.plans.get(planId) || null;
+  },
+
+  hydrateTaskTree: (links: Array<{ taskId: string; parentTaskId?: string }>) => {
+    set((state: ChatState) => {
+      const tasks = new Map(state.tasks);
+      let changed = false;
+      const ensure = (id: string): TaskState => {
+        let t = tasks.get(id);
+        if (!t) {
+          t = { id, title: 'Task', status: 'completed', childTaskIds: [], toolCalls: [], results: [] } as TaskState;
+          tasks.set(id, t);
+          changed = true;
+        }
+        return t;
+      };
+      for (const { taskId, parentTaskId } of links) {
+        if (!taskId) continue;
+        const existing = tasks.get(taskId);
+        const node = existing ? { ...existing } : ensure(taskId);
+        if (parentTaskId && node.parentTaskId !== parentTaskId) {
+          node.parentTaskId = parentTaskId;
+          changed = true;
+        }
+        tasks.set(taskId, node);
+        if (parentTaskId) {
+          const parent = { ...ensure(parentTaskId) };
+          if (!parent.childTaskIds.includes(taskId)) {
+            parent.childTaskIds = [...parent.childTaskIds, taskId];
+            tasks.set(parentTaskId, parent);
+            changed = true;
+          }
+        }
+      }
+      return changed ? { ...state, tasks } : state;
+    });
   },
 
   updateTask: (taskId: string, updates: Partial<TaskState>) => {

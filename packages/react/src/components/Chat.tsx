@@ -1226,6 +1226,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 {renderMessages()}
 
                 <SubTaskTree
+                  messages={messages}
                   toolRenderers={mergedToolRenderers}
                   rendering={rendering}
                   threadId={threadId}

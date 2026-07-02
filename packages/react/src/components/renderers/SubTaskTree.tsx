@@ -4,6 +4,9 @@ import { SubTaskCard } from './SubTaskCard';
 import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
 
 export interface SubTaskTreeProps {
+  /** Message source override — pass the DISPLAYED array (history + live) so
+   *  cards can render history-only children. Defaults to the store's live messages. */
+  messages?: import('@distri/core').DistriChatMessage[];
   /**
    * Optional explicit root. When omitted, picks every task in the store
    * that has no parent — typically just one per turn.

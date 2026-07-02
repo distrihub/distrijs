@@ -153,6 +153,19 @@ export function useChat({
   // The display array is composed at return time as
   // `[...initialMessages, ...store.messages]`.
 
+  // Rebuild the task tree from persisted history so reloaded threads still
+  // group fork activity into SubTaskCards (messages carry taskId/parentTaskId).
+  useEffect(() => {
+    if (!initialMessages || initialMessages.length === 0) return;
+    const links = initialMessages
+      .map((m) => ({
+        taskId: (m as { taskId?: string }).taskId as string,
+        parentTaskId: (m as { parentTaskId?: string }).parentTaskId,
+      }))
+      .filter((l) => Boolean(l.taskId));
+    if (links.length > 0) store.getState().hydrateTaskTree(links);
+  }, [initialMessages, store]);
+
   // Direct message processing
   const addMessage = useCallback((message: DistriChatMessage) => {
     // When manually adding messages, treat as non-stream by default
