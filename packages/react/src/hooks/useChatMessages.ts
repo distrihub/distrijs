@@ -39,6 +39,17 @@ export function useChatMessages({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // Reset SYNCHRONOUSLY when the thread changes (render-time state adjustment).
+  // Without this, the previous thread's messages are returned for one render
+  // after a switch — a freshly mounted <Chat key={newThread}> receives them as
+  // initialMessages and hydrates the OLD thread's task tree into the new
+  // chat's store (stale Task cards under an empty chat).
+  const [lastThreadId, setLastThreadId] = useState(threadId);
+  if (threadId !== lastThreadId) {
+    setLastThreadId(threadId);
+    setMessages([]);
+  }
+
   const initialMessagesLength = initialMessages.length;
 
   // Handle initialMessages updates
