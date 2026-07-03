@@ -5,7 +5,7 @@ import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
 import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
-import { ContextIndicator } from './ContextIndicator';
+import { ContextChip } from './ContextChip';
 import { ContextUsagePanel } from './ContextUsagePanel';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { LoadingStrip } from './renderers/LoadingStrip';
@@ -1310,7 +1310,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             )}
 
             {footerContextHealth && (
-              <div className="mb-1.5">
+              <div className="mb-1">
                 {contextPanelOpen && (
                   <ContextUsagePanel
                     budget={contextBudget}
@@ -1319,14 +1319,17 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                     className="mb-2"
                   />
                 )}
-                <button
-                  type="button"
-                  onClick={() => setContextPanelOpen((v) => !v)}
-                  className="block w-full cursor-pointer text-left"
-                  title="Context usage — click for the breakdown"
-                >
-                  <ContextIndicator contextHealth={footerContextHealth} isCompacting={storeIsCompacting} />
-                </button>
+                {/* Capacity dial, right-aligned and tiny — deliberately NOT a
+                    horizontal bar, which reads as run progress next to the
+                    composer's streaming indicators. */}
+                <div className="flex justify-end pr-1">
+                  <ContextChip
+                    ratio={footerContextHealth.usage_ratio}
+                    isCompacting={storeIsCompacting}
+                    showLabel
+                    onClick={() => setContextPanelOpen((v) => !v)}
+                  />
+                </div>
               </div>
             )}
             {shouldRenderFooterComposer ? footerComposer : null}

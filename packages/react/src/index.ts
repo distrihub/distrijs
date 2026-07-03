@@ -97,6 +97,7 @@ export * from './components/ui';
 
 // Renderer exports (for customization)
 export * from './components/renderers';
+export { ContextChip, budgetRatio, budgetUsedTokens } from './components/ContextChip';
 export { LoadingStrip } from './components/renderers/LoadingStrip';
 export { TodosCompact } from './components/renderers/TodosCompact';
 export { DiffView, looksLikeDiff } from './components/renderers/tools/DiffView';

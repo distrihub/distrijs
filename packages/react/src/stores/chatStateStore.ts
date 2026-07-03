@@ -163,8 +163,12 @@ export interface ChatState {
    */
   lastTodoChanges: TodoChange[];
 
-  /** Latest `ContextBudget` from a `context_budget_update` event. */
+  /** Latest ROOT-task `ContextBudget` from a `context_budget_update` event. */
   contextBudget?: ContextBudget;
+  /** Latest budget PER TASK (root + forked children), keyed by taskId. Lets
+   *  SubTaskCards show each child's context dial; child updates must not
+   *  clobber the root's composer chip. */
+  contextBudgets: Map<string, ContextBudget>;
   /** Whether the latest budget update crossed the warning threshold (≥80%). */
   contextWarning?: boolean;
   /** Whether the latest budget update crossed the critical threshold (≥90%). */
@@ -310,6 +314,7 @@ export function createChatStore(): ChatStore {
   streamingIndicator: undefined,
   currentThought: undefined,
   messages: [],
+  contextBudgets: new Map(),
   browserSessionId: undefined,
   browserViewerUrl: undefined,
   browserStreamUrl: undefined,
@@ -897,10 +902,21 @@ export function createChatStore(): ChatStore {
 
         case 'context_budget_update': {
           const data: any = (event as any).data || {};
-          set({
-            contextBudget: data.budget as ContextBudget | undefined,
-            contextWarning: !!data.is_warning,
-            contextCritical: !!data.is_critical,
+          const budget = data.budget as ContextBudget | undefined;
+          const budgetTaskId = (event as { taskId?: string }).taskId;
+          const isChild = Boolean((event as { parentTaskId?: string }).parentTaskId);
+          set((state) => {
+            const contextBudgets = new Map(state.contextBudgets);
+            if (budget && budgetTaskId) contextBudgets.set(budgetTaskId, budget);
+            // Child budgets must not clobber the root's composer chip.
+            if (isChild) return { ...state, contextBudgets };
+            return {
+              ...state,
+              contextBudgets,
+              contextBudget: budget,
+              contextWarning: !!data.is_warning,
+              contextCritical: !!data.is_critical,
+            };
           });
           break;
         }
@@ -1318,6 +1334,7 @@ export function createChatStore(): ChatStore {
 
   clearAllStates: () => {
     set({
+      contextBudgets: new Map(),
       tasks: new Map(),
       plans: new Map(),
       steps: new Map(),

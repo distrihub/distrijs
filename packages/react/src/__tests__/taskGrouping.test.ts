@@ -83,3 +83,44 @@ describe('hydrateTaskTree (history reload)', () => {
     expect(store.getState().tasks.get('fork-1')?.title).toBe('Live');
   });
 });
+
+describe('per-task context budgets', () => {
+  const budget = (conversation: number) => ({
+    system_prompt_static_tokens: 1000,
+    system_prompt_dynamic_tokens: 0,
+    tool_schema_tokens: 500,
+    deferred_tool_tokens: 0,
+    skill_listing_tokens: 0,
+    conversation_tokens: conversation,
+    tool_result_tokens: 0,
+    context_window_size: 100000,
+    static_prefix_cache_hit: true,
+  });
+
+  it("routes budgets by task; a child's update never clobbers the root chip", async () => {
+    const { createChatStore } = await import('../stores/chatStateStore');
+    const store = createChatStore();
+    store.getState().processMessage({
+      type: 'context_budget_update',
+      taskId: 'root-1',
+      data: { budget: budget(10000), is_warning: false, is_critical: false },
+    } as never, true);
+    store.getState().processMessage({
+      type: 'context_budget_update',
+      taskId: 'fork-1',
+      parentTaskId: 'root-1',
+      data: { budget: budget(90000), is_warning: true, is_critical: true },
+    } as never, true);
+    const s = store.getState();
+    expect(s.contextBudget?.conversation_tokens).toBe(10000); // root untouched
+    expect(s.contextWarning).toBe(false);
+    expect(s.contextBudgets.get('fork-1')?.conversation_tokens).toBe(90000);
+    expect(s.contextBudgets.get('root-1')?.conversation_tokens).toBe(10000);
+  });
+
+  it('budgetRatio computes used/window', async () => {
+    const { budgetRatio } = await import('../components/ContextChip');
+    expect(budgetRatio(budget(48500) as never)).toBeCloseTo(0.5);
+    expect(budgetRatio(undefined)).toBeNull();
+  });
+});

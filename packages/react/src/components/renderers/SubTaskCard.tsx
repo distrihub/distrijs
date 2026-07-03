@@ -10,6 +10,7 @@ import {
 import { isDistriEvent, isDistriMessage, DistriChatMessage } from '@distri/core';
 import { useChatStateStore, TaskState } from '@/stores/chatStateStore';
 import { MessageRenderer } from './MessageRenderer';
+import { ContextChip, budgetRatio } from '../ContextChip';
 import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
 
 export interface SubTaskCardProps {
@@ -142,6 +143,10 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   // which land in the toolCalls map — not in `messages`. Without these rows a
   // running fork's card looked empty even while it was busy.
   const toolCallsMap = useChatStateStore((s) => s.toolCalls);
+  // Per-child context usage — a tiny capacity dial in the header when the
+  // fork has reported a budget. Subtle by design: dial only, no label.
+  const childBudget = useChatStateStore((s) => s.contextBudgets.get(task.id));
+  const childCtxRatio = budgetRatio(childBudget);
   const ownToolCalls = useMemo(
     () =>
       Array.from(toolCallsMap.values())
@@ -217,6 +222,14 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
           <span className="text-[10px] text-muted-foreground flex-shrink-0">
             {descendantCount} subtask{descendantCount === 1 ? '' : 's'}
           </span>
+        )}
+        {childCtxRatio !== null && (
+          <ContextChip
+            ratio={childCtxRatio}
+            size={12}
+            className="flex-shrink-0 opacity-70"
+            title={`This sub-task's context: ${Math.round(childCtxRatio * 100)}% used`}
+          />
         )}
         {task.status === 'running' && (
           <span className="text-[10px] text-muted-foreground flex-shrink-0">running…</span>
