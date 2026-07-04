@@ -381,10 +381,19 @@ export function convertA2APartToDistri(a2aPart: Part): DistriPart {
     }
     case 'data':
       switch (a2aPart.data.part_type) {
-        case 'tool_call':
-          return { part_type: 'tool_call', data: a2aPart.data as unknown as ToolCall };
-        case 'tool_result':
-          return { part_type: 'tool_result', data: a2aPart.data as unknown as ToolResult };
+        case 'tool_call': {
+          // Wire shape is nested — { part_type: 'tool_call', data: ToolCall } —
+          // casting the WRAPPER as the ToolCall left history tool_call parts
+          // without tool_call_id/tool_name. Accept both shapes.
+          const raw = a2aPart.data as unknown as { data?: ToolCall } & ToolCall;
+          const tc = raw.data && (raw.data as ToolCall).tool_call_id ? (raw.data as ToolCall) : (raw as ToolCall);
+          return { part_type: 'tool_call', data: tc };
+        }
+        case 'tool_result': {
+          const raw = a2aPart.data as unknown as { data?: ToolResult } & ToolResult;
+          const tr = raw.data && (raw.data as ToolResult).tool_call_id ? (raw.data as ToolResult) : (raw as ToolResult);
+          return { part_type: 'tool_result', data: tr };
+        }
         default:
           return { part_type: 'data', data: a2aPart.data };
       }

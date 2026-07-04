@@ -7,6 +7,9 @@ export interface SubTaskTreeProps {
   /** Message source override — pass the DISPLAYED array (history + live) so
    *  cards can render history-only children. Defaults to the store's live messages. */
   messages?: import('@distri/core').DistriChatMessage[];
+  /** Roots already rendered inline (anchored after their turn) — the trailing
+   *  catch-all tree skips them so cards never appear twice. */
+  excludeRootIds?: Set<string>;
   /**
    * Optional explicit root. When omitted, picks every task in the store
    * that has no parent — typically just one per turn.
@@ -36,6 +39,7 @@ export interface SubTaskTreeProps {
 export const SubTaskTree: React.FC<SubTaskTreeProps> = ({
   rootTaskId,
   hideRoot = true,
+  excludeRootIds,
   ...rest
 }) => {
   const tasks = useChatStateStore((s) => s.tasks);
@@ -45,8 +49,10 @@ export const SubTaskTree: React.FC<SubTaskTreeProps> = ({
       const t = tasks.get(rootTaskId);
       return t ? [t] : [];
     }
-    return Array.from(tasks.values()).filter((t) => !t.parentTaskId);
-  }, [tasks, rootTaskId]);
+    return Array.from(tasks.values()).filter(
+      (t) => !t.parentTaskId && !(excludeRootIds?.has(t.id)),
+    );
+  }, [tasks, rootTaskId, excludeRootIds]);
 
   const cards = useMemo(() => {
     const out: { task: TaskState; depth: number }[] = [];

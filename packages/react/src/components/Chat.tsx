@@ -916,6 +916,10 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
 
 
+  // Roots whose fork-trees were anchored inline this render (consumed by the
+  // trailing catch-all tree so nothing renders twice).
+  const anchoredRootsRef = useRef<Set<string>>(new Set());
+
   // Render messages using the new MessageRenderer
   const renderMessages = (): React.ReactNode[] => {
     const elements: React.ReactNode[] = [];
@@ -923,11 +927,37 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     // Child-task messages (forked sub-agents) render inside their SubTaskCard,
     // not in the flat column — otherwise every fork's relayed activity
     // interleaves with the parent's own and the run reads as one giant thread.
-    const childIds = childTaskIdSet(chatStore.getState().tasks);
+    const tasksSnapshot = chatStore.getState().tasks;
+    const childIds = childTaskIdSet(tasksSnapshot);
+
+    // Anchor each turn's fork cards right AFTER that turn's last message —
+    // one global tree at the bottom mixed every turn's forks into a single
+    // pile detached from the conversation.
+    const rootsWithChildren = Array.from(tasksSnapshot.values()).filter(
+      (t) => !t.parentTaskId && t.childTaskIds.length > 0,
+    );
+    const lastIndexByRoot = new Map<string, number>();
+    messages.forEach((m: any, i: number) => {
+      const tid = (m as { taskId?: string }).taskId;
+      if (tid && rootsWithChildren.some((r) => r.id === tid)) lastIndexByRoot.set(tid, i);
+    });
+    const treesAtIndex = new Map<number, string[]>();
+    const anchoredRoots = new Set<string>();
+    for (const r of rootsWithChildren) {
+      const idx = lastIndexByRoot.get(r.id);
+      if (idx !== undefined) {
+        treesAtIndex.set(idx, [...(treesAtIndex.get(idx) ?? []), r.id]);
+        anchoredRoots.add(r.id);
+      }
+    }
+    anchoredRootsRef.current = anchoredRoots;
 
     // Render all messages using MessageRenderer
     messages.forEach((message: any, index: number) => {
-      if (isChildTaskMessage(message, childIds)) return;
+      if (isChildTaskMessage(message, childIds)) {
+        maybeAppendTrees(index);
+        return;
+      }
       const renderedMessage = (
         <MessageRenderer
           key={`message-${index}`}
@@ -952,9 +982,28 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       if (renderedMessage !== null) {
         elements.push(renderedMessage);
       }
+      maybeAppendTrees(index);
     });
 
     return elements;
+
+    function maybeAppendTrees(index: number) {
+      for (const rootId of treesAtIndex.get(index) ?? []) {
+        elements.push(
+          <SubTaskTree
+            key={`tree-${rootId}`}
+            rootTaskId={rootId}
+            messages={messages}
+            toolRenderers={mergedToolRenderers}
+            rendering={rendering}
+            threadId={threadId}
+            onShowTrace={traceOpener}
+            verbose={verbose}
+            debug={tracesEnabled}
+          />,
+        );
+      }
+    }
   };
 
   const renderExternalToolCalls = () => {
@@ -1226,6 +1275,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 {renderMessages()}
 
                 <SubTaskTree
+                  excludeRootIds={anchoredRootsRef.current}
                   messages={messages}
                   toolRenderers={mergedToolRenderers}
                   rendering={rendering}

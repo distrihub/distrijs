@@ -86,7 +86,22 @@ export function deriveGist(ownMessages: DistriChatMessage[]): string {
  * first piece of streamed text, else the task id tail.
  */
 function deriveTitle(messages: DistriChatMessage[], task: TaskState): string {
-  if (task.title && task.title !== 'Agent Run') return task.title;
+  // 'Task' is the store's placeholder (hydration/updateTask default) — fall
+  // through to the content-derived title instead of showing six anonymous
+  // "Task" rows.
+  if (task.title && task.title !== 'Agent Run' && task.title !== 'Task') return task.title;
+  for (const m of messages) {
+    if (!isDistriMessage(m)) continue;
+    if ((m as { taskId?: string }).taskId !== task.id) continue;
+    const dm = m as { role?: string; parts?: { part_type?: string; data?: unknown }[] };
+    if (dm.role !== 'user') continue;
+    const text = (dm.parts ?? [])
+      .filter((p: { part_type?: string }) => p.part_type === 'text')
+      .map((p: { data?: unknown }) => String(p.data ?? ''))
+      .join('')
+      .trim();
+    if (text) return text.replace(/\s+/g, ' ').slice(0, 48);
+  }
   for (const m of messages) {
     if (isDistriEvent(m) && m.taskId === task.id) {
       const e = m as { type: string; data?: { agentId?: string } };
@@ -143,17 +158,39 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   // which land in the toolCalls map — not in `messages`. Without these rows a
   // running fork's card looked empty even while it was busy.
   const toolCallsMap = useChatStateStore((s) => s.toolCalls);
+  // History messages carry the child's tool calls as message PARTS (the live
+  // toolCalls map only has streamed ones) — merge both so hydrated cards show
+  // what the fork actually did (its final code, edits, …), not just its prompt.
+  const messagePartToolCalls = useMemo(() => {
+    const out: { tool_call_id: string; tool_name: string; input: Record<string, unknown>; status: 'completed' }[] = [];
+    for (const m of messages) {
+      if (!isDistriMessage(m)) continue;
+      if ((m as { taskId?: string }).taskId !== task.id) continue;
+      for (const part of (m as { parts?: { part_type?: string; data?: { tool_call_id?: string; tool_name?: string; input?: Record<string, unknown> } }[] }).parts ?? []) {
+        if (part.part_type === 'tool_call' && part.data?.tool_call_id) {
+          out.push({
+            tool_call_id: part.data.tool_call_id,
+            tool_name: part.data.tool_name ?? 'tool',
+            input: part.data.input ?? {},
+            status: 'completed',
+          });
+        }
+      }
+    }
+    return out;
+  }, [messages, task.id]);
   // Per-child context usage — a tiny capacity dial in the header when the
   // fork has reported a budget. Subtle by design: dial only, no label.
   const childBudget = useChatStateStore((s) => s.contextBudgets.get(task.id));
   const childCtxRatio = budgetRatio(childBudget);
-  const ownToolCalls = useMemo(
-    () =>
-      Array.from(toolCallsMap.values())
-        .filter((tc) => tc.taskId === task.id)
-        .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0)),
-    [toolCallsMap, task.id],
-  );
+  const ownToolCalls = useMemo(() => {
+    const live = Array.from(toolCallsMap.values())
+      .filter((tc) => tc.taskId === task.id)
+      .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0));
+    const liveIds = new Set(live.map((tc) => tc.tool_call_id));
+    const fromMessages = messagePartToolCalls.filter((tc) => !liveIds.has(tc.tool_call_id));
+    return [...fromMessages, ...live] as typeof live;
+  }, [toolCallsMap, task.id, messagePartToolCalls]);
 
   // Default: expand while running, collapse when completed, and re-expand on
   // failure so the error surfaces without a manual click.
