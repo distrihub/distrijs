@@ -5,6 +5,7 @@ import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
 import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
+import { useBackgroundTasks } from '../useBackgroundTasks';
 import { ContextChip } from './ContextChip';
 import { ContextUsagePanel } from './ContextUsagePanel';
 import { MessageReadProvider } from './renderers/MessageReadContext';
@@ -122,6 +123,17 @@ export interface ChatProps {
   /** Developer mode options: traces, verbosity, tools panel, and parallel diagnose mode */
   developerMode?: DeveloperMode;
 }
+
+/**
+ * Hydrates fork tasks from the REST monitor projection (intent, context
+ * usage, statuses) into THIS chat's store — reloaded threads have no live
+ * events, so without it SubTaskCards lack titles/dials. Renders nothing;
+ * polling stops once every known task is terminal.
+ */
+const TaskHydrator: React.FC<{ threadId: string }> = ({ threadId }) => {
+  useBackgroundTasks(threadId);
+  return null;
+};
 
 // Wrapper component to ensure consistent width and centering
 const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
@@ -1263,6 +1275,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
           {/* Thread token usage */}
           <ThreadTokensBanner thread={threadDetails} />
+          <TaskHydrator threadId={threadId} />
 
           <div
             className="flex flex-col gap-4 lg:flex-row lg:items-start"
