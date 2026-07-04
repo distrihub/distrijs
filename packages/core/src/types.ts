@@ -438,6 +438,11 @@ export interface TaskSummary {
   preview: string | null;
   /** Timestamp of the most recent event (epoch ms), when available. */
   last_event_at: number | null;
+  /** The task's first user message — its intent/prompt (human label). */
+  intent?: string | null;
+  /** Latest context usage from the task's context_budget_update events. */
+  context_used_tokens?: number | null;
+  context_window_tokens?: number | null;
 }
 
 /** Query params for `DistriClient.listTasks`. */

@@ -90,6 +90,8 @@ function deriveTitle(messages: DistriChatMessage[], task: TaskState): string {
   // through to the content-derived title instead of showing six anonymous
   // "Task" rows.
   if (task.title && task.title !== 'Agent Run' && task.title !== 'Task') return task.title;
+  const intent = (task.metadata?.intent as string | undefined)?.trim();
+  if (intent) return intent.replace(/\s+/g, ' ').slice(0, 48);
   for (const m of messages) {
     if (!isDistriMessage(m)) continue;
     if ((m as { taskId?: string }).taskId !== task.id) continue;
@@ -182,7 +184,12 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   // Per-child context usage — a tiny capacity dial in the header when the
   // fork has reported a budget. Subtle by design: dial only, no label.
   const childBudget = useChatStateStore((s) => s.contextBudgets.get(task.id));
-  const childCtxRatio = budgetRatio(childBudget);
+  const metaCtxRatio = useMemo(() => {
+    const used = task.metadata?.context_used_tokens as number | undefined;
+    const window = task.metadata?.context_window_tokens as number | undefined;
+    return used && window ? used / window : null;
+  }, [task.metadata]);
+  const childCtxRatio = budgetRatio(childBudget) ?? metaCtxRatio;
   const ownToolCalls = useMemo(() => {
     const live = Array.from(toolCallsMap.values())
       .filter((tc) => tc.taskId === task.id)

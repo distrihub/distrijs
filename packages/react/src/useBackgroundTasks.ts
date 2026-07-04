@@ -72,6 +72,9 @@ export function mergeTaskSummaries(store: ChatStore, summaries: TaskSummary[]): 
         ...existing?.metadata,
         preview: summary.preview ?? undefined,
         last_event_at: summary.last_event_at ?? undefined,
+        intent: summary.intent ?? undefined,
+        context_used_tokens: summary.context_used_tokens ?? undefined,
+        context_window_tokens: summary.context_window_tokens ?? undefined,
         remote_status: summary.status,
       },
     });
