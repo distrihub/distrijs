@@ -35,7 +35,10 @@ import {
   TtsSpeechRequest,
   TtsSpeechResponse,
   CompactTaskResult,
+  TaskSummary,
+  ListTasksParams,
 } from './types';
+import { DistriEvent } from './events';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
 
 export type ChatCompletionRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -1187,6 +1190,158 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof DistriError) throw error;
       throw new DistriError(`Failed to compact task ${taskId}`, 'COMPACT_TASK_ERROR', error);
+    }
+  }
+
+  // ============================================================
+  // Task monitor API
+  // ============================================================
+  // Enriched, cross-agent task listing served by the distri-server task
+  // routes (`GET /tasks`, `GET /tasks/{id}`, `GET /tasks/{id}/events`).
+  // Distinct from the per-agent A2A `getTask(agentId, taskId)` surface.
+
+  /**
+   * List enriched tasks, optionally filtered by thread, parent task
+   * (sub-tree scope — the parent itself is excluded), or status.
+   *
+   * Returns the server's snake_case {@link TaskSummary} objects untouched.
+   */
+  async listTasks(params: ListTasksParams = {}): Promise<TaskSummary[]> {
+    try {
+      const searchParams = new URLSearchParams();
+      if (params.threadId) searchParams.set('thread_id', params.threadId);
+      if (params.parentTaskId) searchParams.set('parent_task_id', params.parentTaskId);
+      if (params.status) searchParams.set('status', params.status);
+      if (params.limit !== undefined) searchParams.set('limit', params.limit.toString());
+      if (params.offset !== undefined) searchParams.set('offset', params.offset.toString());
+
+      const query = searchParams.toString();
+      const url = query ? `/tasks?${query}` : '/tasks';
+
+      const response = await this.fetch(url);
+      if (!response.ok) {
+        throw new ApiError(`Failed to list tasks: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError('Failed to list tasks', 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Fetch a single enriched task by id via `GET /tasks/{id}`.
+   *
+   * Named `getTaskById` to avoid clashing with the A2A
+   * {@link getTask}(agentId, taskId) surface.
+   *
+   * @throws ApiError with status 404 when the task is unknown.
+   */
+  async getTaskById(taskId: string): Promise<TaskSummary> {
+    try {
+      const response = await this.fetch(`/tasks/${encodeURIComponent(taskId)}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new ApiError(`Task not found: ${taskId}`, 404);
+        }
+        throw new ApiError(`Failed to fetch task: ${response.statusText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new DistriError(`Failed to fetch task ${taskId}`, 'FETCH_ERROR', error);
+    }
+  }
+
+  /**
+   * Subscribe to a task's live event stream (`GET /tasks/{id}/events`, SSE).
+   *
+   * Each `data:` line is a serialized AgentEvent JSON — the same envelope
+   * the chat stream uses (every variant carries `taskId`/`parentTaskId`).
+   * `onEvent` is invoked once per event; the returned promise resolves when
+   * the server closes the stream (the task reached its own terminal state)
+   * or when `options.signal` is aborted.
+   */
+  async subscribeTaskEvents(
+    taskId: string,
+    onEvent: (event: DistriEvent) => void,
+    options?: { signal?: AbortSignal }
+  ): Promise<void> {
+    const response = await this.fetch(`/tasks/${encodeURIComponent(taskId)}/events`, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        ...this.config.headers,
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new ApiError(`Task not found: ${taskId}`, 404);
+      }
+      throw new ApiError(`Failed to subscribe to task events: ${response.statusText}`, response.status);
+    }
+    if (!response.body) {
+      throw new DistriError('Task event stream has no body', 'STREAM_ERROR');
+    }
+
+    const reader = response.body.getReader();
+    const signal = options?.signal;
+    const onAbort = () => {
+      reader.cancel().catch(() => { /* already closed */ });
+    };
+    if (signal) {
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener('abort', onAbort);
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let dataLines: string[] = [];
+
+    const dispatch = () => {
+      if (dataLines.length === 0) return;
+      const raw = dataLines.join('\n');
+      dataLines = [];
+      if (!raw || raw === '[DONE]') return;
+      try {
+        onEvent(JSON.parse(raw));
+      } catch {
+        this.debug('Skipping non-JSON SSE data line:', raw);
+      }
+    };
+
+    const consumeLine = (line: string) => {
+      if (line === '') {
+        // Blank line = end of one SSE event.
+        dispatch();
+      } else if (line.startsWith('data:')) {
+        // Strip the field name and the single optional leading space.
+        dataLines.push(line.slice(5).replace(/^ /, ''));
+      }
+      // Other fields (`event:`, `id:`, `retry:`, comments) are ignored.
+    };
+
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, newlineIdx).replace(/\r$/, '');
+          buffer = buffer.slice(newlineIdx + 1);
+          consumeLine(line);
+        }
+      }
+      // Flush a trailing event that wasn't newline-terminated.
+      const tail = buffer.replace(/\r$/, '');
+      if (tail) consumeLine(tail);
+      dispatch();
+    } finally {
+      if (signal) signal.removeEventListener('abort', onAbort);
     }
   }
 

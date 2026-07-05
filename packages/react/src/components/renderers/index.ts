@@ -28,4 +28,5 @@ export type { MessageReadTrackerProps } from './MessageReadTracker';
 export type { MessageReadProviderProps } from './MessageReadContext';
 export type { ThinkingRendererProps } from './ThinkingRenderer';
 export type { TodosDisplayProps } from './TodosDisplay';
-export type { LoadingAnimationConfig, LoadingAnimationPreset, LoadingAnimationProps } from './LoadingAnimation';
+export type { LoadingAnimationConfig, LoadingAnimationPreset, LoadingAnimationProps } from './LoadingAnimation';export * from './taskGrouping';
+
