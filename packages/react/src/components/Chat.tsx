@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
-import { useChat } from '../useChat';
+import { useChat, type SendMessageOptions } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
 import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
@@ -282,6 +282,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Pending message state single message with accumulated parts
   const [pendingMessage, setPendingMessage] = useState<DistriPart[] | null>(null);
+  // Per-send options for a queued (streaming) message, replayed when the
+  // current stream ends and the pending message drains.
+  const pendingOptionsRef = useRef<SendMessageOptions | undefined>(undefined);
 
   // Image upload state moved from ChatInput
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
@@ -593,7 +596,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     return content;
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string | DistriPart[]) => {
+  const handleSendMessage = useCallback(async (content: string | DistriPart[], options?: SendMessageOptions) => {
     if (typeof content === 'string' && !content.trim()) return;
     if (Array.isArray(content) && content.length === 0) return;
 
@@ -604,9 +607,13 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       return [];
     });
 
-    // If streaming, add to pending message parts instead of sending immediately
+    // If streaming, add to pending message parts instead of sending immediately.
+    // Stash the per-send options (metadata.load_skills / partsMetadata / …) so
+    // the drain-on-stream-end forwards them — otherwise a queued send silently
+    // loses its skill preload + part metadata.
     if (isStreaming) {
       const newParts = contentToParts(content);
+      if (options) pendingOptionsRef.current = options;
       setPendingMessage(prev => prev ? [...prev, ...newParts] : newParts);
     } else {
       if (diagnoseModeEnabled && diagnoseConfig && threadId) {
@@ -710,7 +717,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         return;
       }
 
-      await sendMessage(content);
+      await sendMessage(content, options);
     }
   }, [
     beforeSendMessage,
@@ -813,11 +820,13 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       if (!isStreaming && pendingMessage && pendingMessage.length > 0) {
         console.log('Streaming ended, sending pending message parts:', pendingMessage);
         const messageToSend = [...pendingMessage];
+        const optionsToSend = pendingOptionsRef.current;
+        pendingOptionsRef.current = undefined;
         setPendingMessage(null);
 
-        // Send the accumulated message parts
+        // Send the accumulated message parts (with the stashed per-send options).
         try {
-          await handleSendMessage(messageToSend);
+          await handleSendMessage(messageToSend, optionsToSend);
         } catch (error) {
           console.error('Failed to send pending message:', error);
         }
