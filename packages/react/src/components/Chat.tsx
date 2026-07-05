@@ -4,8 +4,13 @@ import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat } from '../useChat';
 import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
+import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
+import { useBackgroundTasks } from '../useBackgroundTasks';
+import { ContextChip } from './ContextChip';
+import { ContextUsagePanel } from './ContextUsagePanel';
 import { MessageReadProvider } from './renderers/MessageReadContext';
 import { LoadingStrip } from './renderers/LoadingStrip';
+import { LoadingShimmer } from './renderers/ThinkingRenderer';
 import { TodosCompact } from './renderers/TodosCompact';
 import { type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -118,6 +123,17 @@ export interface ChatProps {
   /** Developer mode options: traces, verbosity, tools panel, and parallel diagnose mode */
   developerMode?: DeveloperMode;
 }
+
+/**
+ * Hydrates fork tasks from the REST monitor projection (intent, context
+ * usage, statuses) into THIS chat's store — reloaded threads have no live
+ * events, so without it SubTaskCards lack titles/dials. Renders nothing;
+ * polling stops once every known task is terminal.
+ */
+const TaskHydrator: React.FC<{ threadId: string }> = ({ threadId }) => {
+  useBackgroundTasks(threadId);
+  return null;
+};
 
 // Wrapper component to ensure consistent width and centering
 const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string }> = ({
@@ -373,7 +389,42 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Get reactive state from store
   const toolCalls = useStore(chatStore, state => state.toolCalls);
+
+  // Context usage — the thin bar above the composer. Budget updates stream in
+  // via `context_budget_update`; click expands the per-component breakdown.
+  const contextBudget = useStore(chatStore, state => state.contextBudget);
+  const compactionEvents = useStore(chatStore, state => state.compactionEvents);
+  const storeIsCompacting = useStore(chatStore, state => Boolean(state.isCompacting));
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  const footerContextHealth = useMemo(() => {
+    if (!contextBudget || !contextBudget.context_window_size) return null;
+    const used =
+      contextBudget.system_prompt_static_tokens +
+      contextBudget.system_prompt_dynamic_tokens +
+      contextBudget.tool_schema_tokens +
+      contextBudget.deferred_tool_tokens +
+      contextBudget.skill_listing_tokens +
+      contextBudget.conversation_tokens +
+      contextBudget.tool_result_tokens;
+    return {
+      usage_ratio: used / contextBudget.context_window_size,
+      tokens_used: used,
+      tokens_limit: contextBudget.context_window_size,
+    };
+  }, [contextBudget]);
   const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
+  // Cosmetic only: how many external (frontend-handled) tool calls are still
+  // awaiting a result. The backend already join_all's the batch with a timeout —
+  // this just tells the user we're waiting on outstanding tool calls. If one
+  // result is sent and another isn't, the count reflects the laggard until it
+  // resolves or the backend timeout fires.
+  const pendingToolCallCount = useMemo(
+    () =>
+      Array.from(toolCalls.values()).filter(
+        (tc) => (tc.status === 'pending' || tc.status === 'running') && tc.isExternal,
+      ).length,
+    [toolCalls],
+  );
   const currentState = useStore(chatStore, state => state);
   const todos = useStore(chatStore, state => state.todos);
   const lastTodoChanges = useStore(chatStore, state => state.lastTodoChanges);
@@ -877,12 +928,48 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
 
 
+  // Roots whose fork-trees were anchored inline this render (consumed by the
+  // trailing catch-all tree so nothing renders twice).
+  const anchoredRootsRef = useRef<Set<string>>(new Set());
+
   // Render messages using the new MessageRenderer
   const renderMessages = (): React.ReactNode[] => {
     const elements: React.ReactNode[] = [];
 
+    // Child-task messages (forked sub-agents) render inside their SubTaskCard,
+    // not in the flat column — otherwise every fork's relayed activity
+    // interleaves with the parent's own and the run reads as one giant thread.
+    const tasksSnapshot = chatStore.getState().tasks;
+    const childIds = childTaskIdSet(tasksSnapshot);
+
+    // Anchor each turn's fork cards right AFTER that turn's last message —
+    // one global tree at the bottom mixed every turn's forks into a single
+    // pile detached from the conversation.
+    const rootsWithChildren = Array.from(tasksSnapshot.values()).filter(
+      (t) => !t.parentTaskId && t.childTaskIds.length > 0,
+    );
+    const lastIndexByRoot = new Map<string, number>();
+    messages.forEach((m: any, i: number) => {
+      const tid = (m as { taskId?: string }).taskId;
+      if (tid && rootsWithChildren.some((r) => r.id === tid)) lastIndexByRoot.set(tid, i);
+    });
+    const treesAtIndex = new Map<number, string[]>();
+    const anchoredRoots = new Set<string>();
+    for (const r of rootsWithChildren) {
+      const idx = lastIndexByRoot.get(r.id);
+      if (idx !== undefined) {
+        treesAtIndex.set(idx, [...(treesAtIndex.get(idx) ?? []), r.id]);
+        anchoredRoots.add(r.id);
+      }
+    }
+    anchoredRootsRef.current = anchoredRoots;
+
     // Render all messages using MessageRenderer
     messages.forEach((message: any, index: number) => {
+      if (isChildTaskMessage(message, childIds)) {
+        maybeAppendTrees(index);
+        return;
+      }
       const renderedMessage = (
         <MessageRenderer
           key={`message-${index}`}
@@ -907,9 +994,28 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       if (renderedMessage !== null) {
         elements.push(renderedMessage);
       }
+      maybeAppendTrees(index);
     });
 
     return elements;
+
+    function maybeAppendTrees(index: number) {
+      for (const rootId of treesAtIndex.get(index) ?? []) {
+        elements.push(
+          <SubTaskTree
+            key={`tree-${rootId}`}
+            rootTaskId={rootId}
+            messages={messages}
+            toolRenderers={mergedToolRenderers}
+            rendering={rendering}
+            threadId={threadId}
+            onShowTrace={traceOpener}
+            verbose={verbose}
+            debug={tracesEnabled}
+          />,
+        );
+      }
+    }
   };
 
   const renderExternalToolCalls = () => {
@@ -1169,6 +1275,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
           {/* Thread token usage */}
           <ThreadTokensBanner thread={threadDetails} />
+          <TaskHydrator threadId={threadId} />
 
           <div
             className="flex flex-col gap-4 lg:flex-row lg:items-start"
@@ -1181,6 +1288,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                 {renderMessages()}
 
                 <SubTaskTree
+                  excludeRootIds={anchoredRootsRef.current}
+                  messages={messages}
                   toolRenderers={mergedToolRenderers}
                   rendering={rendering}
                   threadId={threadId}
@@ -1227,14 +1336,20 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             style={{ maxWidth: maxWidth || '768px' }}
           >
 
-            {/* Pre-input zone: todos + loading strip */}
-            {(todos?.length > 0 || isStreaming) && (
+            {/* Pre-input zone: todos + loading strip + tool-call wait */}
+            {(todos?.length > 0 || isStreaming || pendingToolCallCount > 0) && (
               <div className="space-y-1.5">
                 {todos && todos.length > 0 && (
                   <TodosCompact todos={todos} changes={lastTodoChanges} />
                 )}
-                {isStreaming && (
-                  <LoadingStrip words={loadingAnimation?.cycleWords} />
+                {pendingToolCallCount > 0 ? (
+                  <LoadingShimmer
+                    showIcon
+                    className="text-xs sm:text-sm"
+                    text={`Waiting for ${pendingToolCallCount} tool response${pendingToolCallCount === 1 ? '' : 's'}…`}
+                  />
+                ) : (
+                  isStreaming && <LoadingStrip words={loadingAnimation?.cycleWords} />
                 )}
               </div>
             )}
@@ -1257,6 +1372,29 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               </div>
             )}
 
+            {footerContextHealth && (
+              <div className="mb-1">
+                {contextPanelOpen && (
+                  <ContextUsagePanel
+                    budget={contextBudget}
+                    compactions={compactionEvents}
+                    isCompacting={storeIsCompacting}
+                    className="mb-2"
+                  />
+                )}
+                {/* Capacity dial, right-aligned and tiny — deliberately NOT a
+                    horizontal bar, which reads as run progress next to the
+                    composer's streaming indicators. */}
+                <div className="flex justify-end pr-1">
+                  <ContextChip
+                    ratio={footerContextHealth.usage_ratio}
+                    isCompacting={storeIsCompacting}
+                    showLabel
+                    onClick={() => setContextPanelOpen((v) => !v)}
+                  />
+                </div>
+              </div>
+            )}
             {shouldRenderFooterComposer ? footerComposer : null}
           </div>
         </footer>

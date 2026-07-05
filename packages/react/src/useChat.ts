@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata, CompactTaskResult } from '@distri/core';
+import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata, CompactTaskResult, ExecutorContextMetadata } from '@distri/core';
 import {
   DistriPart,
   InvokeContext,
@@ -17,6 +17,14 @@ import {
  */
 export interface SendMessageOptions {
   partsMetadata?: Record<number, PartMetadata>;
+  /**
+   * Per-send execution metadata merged into the request's
+   * `ExecutorContextMetadata` (on top of the chat-level `getMetadata`). Use
+   * this to dictate behaviour for a single invocation — e.g. `load_skills` to
+   * eagerly preload a skill for this task, or `fork` to dispatch it as an
+   * isolated subtask — without making it global to the whole chat.
+   */
+  metadata?: Partial<ExecutorContextMetadata>;
 }
 import { ChatStore, createChatStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
@@ -145,6 +153,19 @@ export function useChat({
   // The display array is composed at return time as
   // `[...initialMessages, ...store.messages]`.
 
+  // Rebuild the task tree from persisted history so reloaded threads still
+  // group fork activity into SubTaskCards (messages carry taskId/parentTaskId).
+  useEffect(() => {
+    if (!initialMessages || initialMessages.length === 0) return;
+    const links = initialMessages
+      .map((m) => ({
+        taskId: (m as { taskId?: string }).taskId as string,
+        parentTaskId: (m as { parentTaskId?: string }).parentTaskId,
+      }))
+      .filter((l) => Boolean(l.taskId));
+    if (links.length > 0) store.getState().hydrateTaskTree(links);
+  }, [initialMessages, store]);
+
   // Direct message processing
   const addMessage = useCallback((message: DistriChatMessage) => {
     // When manually adding messages, treat as non-stream by default
@@ -271,6 +292,9 @@ export function useChat({
       // by it (save: false) and downstream consumers see developer flags.
       const requestMetadata: Record<string, unknown> = {
         ...contextMetadata,
+        // Per-send metadata (load_skills / fork / …) overrides the chat-level
+        // getMetadata for this one invocation.
+        ...(options?.metadata ?? {}),
         task_id: currentTaskId,
       };
       if (partsMetadata && Object.keys(partsMetadata).length > 0) {

@@ -22,6 +22,9 @@ export interface MessageRendererProps {
   /** Enable message feedback (voting) UI */
   enableFeedback?: boolean;
   rendering?: RenderingMode;
+  /** Set when rendering inside a SubTaskCard — child-task messages must render
+   *  there (the parentTaskId bail below only guards the flat column). */
+  inSubTaskCard?: boolean;
   toolSummaryOverrides?: Record<string, SummaryFn>;
   onShowTrace?: (threadId: string) => void;
 }
@@ -53,6 +56,7 @@ export function MessageRenderer({
   rendering,
   toolSummaryOverrides,
   onShowTrace,
+  inSubTaskCard = false,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
 
@@ -60,7 +64,7 @@ export function MessageRenderer({
   // parent run, never inline. Bail before the switch so the same content
   // doesn't appear twice.
   const parentTaskId = (message as { parentTaskId?: string }).parentTaskId;
-  if (parentTaskId) return null;
+  if (parentTaskId && !inSubTaskCard) return null;
 
   const rendererContextValue = useMemo(() => ({
     rendering: rendering ?? 'minimal',

@@ -163,8 +163,12 @@ export interface ChatState {
    */
   lastTodoChanges: TodoChange[];
 
-  /** Latest `ContextBudget` from a `context_budget_update` event. */
+  /** Latest ROOT-task `ContextBudget` from a `context_budget_update` event. */
   contextBudget?: ContextBudget;
+  /** Latest budget PER TASK (root + forked children), keyed by taskId. Lets
+   *  SubTaskCards show each child's context dial; child updates must not
+   *  clobber the root's composer chip. */
+  contextBudgets: Map<string, ContextBudget>;
   /** Whether the latest budget update crossed the warning threshold (≥80%). */
   contextWarning?: boolean;
   /** Whether the latest budget update crossed the critical threshold (≥90%). */
@@ -254,6 +258,13 @@ export interface ChatStateStore extends ChatState {
 
   // Updates
   updateTask: (taskId: string, updates: Partial<TaskState>) => void;
+  /**
+   * Rebuild the parent↔child task tree from persisted history (messages carry
+   * taskId/parentTaskId). History is render-only — without this, a reloaded
+   * thread has an empty tasks map: no SubTaskCards, and every fork's messages
+   * flatten inline. Never overwrites live task entries.
+   */
+  hydrateTaskTree: (links: Array<{ taskId: string; parentTaskId?: string }>) => void;
   updatePlan: (planId: string, updates: Partial<PlanState>) => void;
   updateStep: (stepId: string, updates: Partial<StepState>) => void;
   // Setup
@@ -303,6 +314,7 @@ export function createChatStore(): ChatStore {
   streamingIndicator: undefined,
   currentThought: undefined,
   messages: [],
+  contextBudgets: new Map(),
   browserSessionId: undefined,
   browserViewerUrl: undefined,
   browserStreamUrl: undefined,
@@ -422,6 +434,11 @@ export function createChatStore(): ChatStore {
             step_id: stepId,
             is_final: isFinal,
             metadata: (event.data as { metadata?: Record<string, unknown> }).metadata,
+            // Route by the envelope's task: without this, a sub-task's streamed
+            // text was unstamped — SubTaskCard (filters m.taskId === task.id)
+            // showed an empty card and the text leaked into the flat column.
+            taskId: (event as { taskId?: string }).taskId,
+            parentTaskId: (event as { parentTaskId?: string }).parentTaskId,
           };
 
           // Create new messages array with the new message
@@ -885,10 +902,21 @@ export function createChatStore(): ChatStore {
 
         case 'context_budget_update': {
           const data: any = (event as any).data || {};
-          set({
-            contextBudget: data.budget as ContextBudget | undefined,
-            contextWarning: !!data.is_warning,
-            contextCritical: !!data.is_critical,
+          const budget = data.budget as ContextBudget | undefined;
+          const budgetTaskId = (event as { taskId?: string }).taskId;
+          const isChild = Boolean((event as { parentTaskId?: string }).parentTaskId);
+          set((state) => {
+            const contextBudgets = new Map(state.contextBudgets);
+            if (budget && budgetTaskId) contextBudgets.set(budgetTaskId, budget);
+            // Child budgets must not clobber the root's composer chip.
+            if (isChild) return { ...state, contextBudgets };
+            return {
+              ...state,
+              contextBudgets,
+              contextBudget: budget,
+              contextWarning: !!data.is_warning,
+              contextCritical: !!data.is_critical,
+            };
           });
           break;
         }
@@ -946,8 +974,10 @@ export function createChatStore(): ChatStore {
     }
 
     set((state: ChatState) => {
-      const newState = { ...state };
-      newState.toolCalls.set(toolCall.tool_call_id, {
+      // Copy-on-write (same reactivity bug as tasks): in-place Map mutation
+      // never re-renders zustand selectors (SubTaskCard tool rows).
+      const toolCalls = new Map(state.toolCalls);
+      toolCalls.set(toolCall.tool_call_id, {
         tool_call_id: toolCall.tool_call_id,
         taskId,
         tool_name: toolCall.tool_name || 'Unknown Tool',
@@ -957,7 +987,7 @@ export function createChatStore(): ChatStore {
         isExternal: !!externalTool,
         isLiveStream: isFromStream,
       });
-      return newState;
+      return { ...state, toolCalls };
     });
     if (externalTool) {
       console.log('🔧 Tool found:', {
@@ -974,7 +1004,7 @@ export function createChatStore(): ChatStore {
 
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => {
     set((state: ChatState) => {
-      const newState = { ...state };
+      const newState = { ...state, toolCalls: new Map(state.toolCalls) };
       const existingToolCall = newState.toolCalls.get(toolCallId);
       if (existingToolCall) {
         newState.toolCalls.set(toolCallId, {
@@ -1149,6 +1179,8 @@ export function createChatStore(): ChatStore {
                         toolCall.tool_call_id,
                         toolCall.tool_name,
                         handlerResult,
+                        undefined,
+                        { stopAfterTurn: fnTool.stopAfterTurn },
                       ),
                     );
                   }
@@ -1302,6 +1334,7 @@ export function createChatStore(): ChatStore {
 
   clearAllStates: () => {
     set({
+      contextBudgets: new Map(),
       tasks: new Map(),
       plans: new Map(),
       steps: new Map(),
@@ -1431,10 +1464,44 @@ export function createChatStore(): ChatStore {
     return state.plans.get(planId) || null;
   },
 
+  hydrateTaskTree: (links: Array<{ taskId: string; parentTaskId?: string }>) => {
+    set((state: ChatState) => {
+      const tasks = new Map(state.tasks);
+      let changed = false;
+      const ensure = (id: string): TaskState => {
+        let t = tasks.get(id);
+        if (!t) {
+          t = { id, title: 'Task', status: 'completed', childTaskIds: [], toolCalls: [], results: [] } as TaskState;
+          tasks.set(id, t);
+          changed = true;
+        }
+        return t;
+      };
+      for (const { taskId, parentTaskId } of links) {
+        if (!taskId) continue;
+        const existing = tasks.get(taskId);
+        const node = existing ? { ...existing } : ensure(taskId);
+        if (parentTaskId && node.parentTaskId !== parentTaskId) {
+          node.parentTaskId = parentTaskId;
+          changed = true;
+        }
+        tasks.set(taskId, node);
+        if (parentTaskId) {
+          const parent = { ...ensure(parentTaskId) };
+          if (!parent.childTaskIds.includes(taskId)) {
+            parent.childTaskIds = [...parent.childTaskIds, taskId];
+            tasks.set(parentTaskId, parent);
+            changed = true;
+          }
+        }
+      }
+      return changed ? { ...state, tasks } : state;
+    });
+  },
+
   updateTask: (taskId: string, updates: Partial<TaskState>) => {
     set((state: ChatState) => {
-      const newState = { ...state };
-      const existingTask = newState.tasks.get(taskId);
+      const existingTask = state.tasks.get(taskId);
       const taskToUpdate: TaskState = existingTask || {
         id: taskId,
         title: updates.title ?? 'Task',
@@ -1443,8 +1510,12 @@ export function createChatStore(): ChatStore {
         toolCalls: [],
         results: [],
       };
-      newState.tasks.set(taskId, { ...taskToUpdate, ...updates });
-      return newState;
+      // Copy-on-write: mutating the Map in place kept the same reference, so
+      // zustand selectors (SubTaskTree, task monitors) never re-rendered on
+      // live task updates — sub-task cards stayed frozen at mount.
+      const tasks = new Map(state.tasks);
+      tasks.set(taskId, { ...taskToUpdate, ...updates });
+      return { ...state, tasks };
     });
   },
 

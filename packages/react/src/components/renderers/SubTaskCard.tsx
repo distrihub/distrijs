@@ -10,9 +10,12 @@ import {
 import { isDistriEvent, isDistriMessage, DistriChatMessage } from '@distri/core';
 import { useChatStateStore, TaskState } from '@/stores/chatStateStore';
 import { MessageRenderer } from './MessageRenderer';
+import { ContextChip, budgetRatio } from '../ContextChip';
 import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
 
 export interface SubTaskCardProps {
+  /** Message source override (display array incl. history); defaults to the store's live messages. */
+  messages?: DistriChatMessage[];
   task: TaskState;
   depth: number;
   toolRenderers?: ToolRendererMap;
@@ -38,11 +41,69 @@ function StatusIcon({ status }: { status: TaskState['status'] }) {
 }
 
 /**
+ * Total number of tasks nested under `task` (children, grandchildren, …).
+ * Walks the live tree from the store map so the count stays correct as
+ * descendants stream in. Guards against cycles defensively.
+ */
+export function countDescendants(
+  task: TaskState,
+  tasks: Map<string, TaskState>,
+  seen: Set<string> = new Set(),
+): number {
+  let total = 0;
+  for (const id of task.childTaskIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const child = tasks.get(id);
+    if (!child) continue;
+    total += 1 + countDescendants(child, tasks, seen);
+  }
+  return total;
+}
+
+/**
+ * One-line gist for the collapsed header: the child's final assistant text,
+ * so the parent thread shows the *result* without expanding the internal
+ * steps (the "one gist out" contract). Falls back to empty when the task has
+ * produced no text yet.
+ */
+export function deriveGist(ownMessages: DistriChatMessage[]): string {
+  for (let i = ownMessages.length - 1; i >= 0; i--) {
+    const m = ownMessages[i];
+    if (!isDistriMessage(m)) continue;
+    const text = m.parts
+      ?.filter((p) => p.part_type === 'text')
+      .map((p) => (p as { data: string }).data)
+      .join('')
+      .trim();
+    if (text) return text.replace(/\s+/g, ' ').slice(0, 120);
+  }
+  return '';
+}
+
+/**
  * Best-effort title derivation: agent name from event envelope, else the
  * first piece of streamed text, else the task id tail.
  */
 function deriveTitle(messages: DistriChatMessage[], task: TaskState): string {
-  if (task.title && task.title !== 'Agent Run') return task.title;
+  // 'Task' is the store's placeholder (hydration/updateTask default) — fall
+  // through to the content-derived title instead of showing six anonymous
+  // "Task" rows.
+  if (task.title && task.title !== 'Agent Run' && task.title !== 'Task') return task.title;
+  const intent = (task.metadata?.intent as string | undefined)?.trim();
+  if (intent) return intent.replace(/\s+/g, ' ').slice(0, 48);
+  for (const m of messages) {
+    if (!isDistriMessage(m)) continue;
+    if ((m as { taskId?: string }).taskId !== task.id) continue;
+    const dm = m as { role?: string; parts?: { part_type?: string; data?: unknown }[] };
+    if (dm.role !== 'user') continue;
+    const text = (dm.parts ?? [])
+      .filter((p: { part_type?: string }) => p.part_type === 'text')
+      .map((p: { data?: unknown }) => String(p.data ?? ''))
+      .join('')
+      .trim();
+    if (text) return text.replace(/\s+/g, ' ').slice(0, 48);
+  }
   for (const m of messages) {
     if (isDistriEvent(m) && m.taskId === task.id) {
       const e = m as { type: string; data?: { agentId?: string } };
@@ -63,6 +124,7 @@ function deriveTitle(messages: DistriChatMessage[], task: TaskState): string {
 }
 
 export const SubTaskCard: React.FC<SubTaskCardProps> = ({
+  messages: messagesProp,
   task,
   depth,
   toolRenderers,
@@ -73,7 +135,8 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   verbose,
   debug,
 }) => {
-  const messages = useChatStateStore((s) => s.messages);
+  const storeMessages = useChatStateStore((s) => s.messages);
+  const messages = messagesProp ?? storeMessages;
   const tasks = useChatStateStore((s) => s.tasks);
 
   const childTasks = useMemo(
@@ -93,22 +156,89 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     [messages, task.id],
   );
 
-  // Default: expand while running, collapse when completed.
-  const [expanded, setExpanded] = useState(task.status === 'running');
+  // Live child runs relay tool activity as EVENTS (tool_calls/tool_results),
+  // which land in the toolCalls map — not in `messages`. Without these rows a
+  // running fork's card looked empty even while it was busy.
+  const toolCallsMap = useChatStateStore((s) => s.toolCalls);
+  // History messages carry the child's tool calls as message PARTS (the live
+  // toolCalls map only has streamed ones) — merge both so hydrated cards show
+  // what the fork actually did (its final code, edits, …), not just its prompt.
+  const messagePartToolCalls = useMemo(() => {
+    const out: { tool_call_id: string; tool_name: string; input: Record<string, unknown>; status: 'completed' }[] = [];
+    for (const m of messages) {
+      if (!isDistriMessage(m)) continue;
+      if ((m as { taskId?: string }).taskId !== task.id) continue;
+      for (const part of (m as { parts?: { part_type?: string; data?: { tool_call_id?: string; tool_name?: string; input?: Record<string, unknown> } }[] }).parts ?? []) {
+        if (part.part_type === 'tool_call' && part.data?.tool_call_id) {
+          out.push({
+            tool_call_id: part.data.tool_call_id,
+            tool_name: part.data.tool_name ?? 'tool',
+            input: part.data.input ?? {},
+            status: 'completed',
+          });
+        }
+      }
+    }
+    return out;
+  }, [messages, task.id]);
+  // Per-child context usage — a tiny capacity dial in the header when the
+  // fork has reported a budget. Subtle by design: dial only, no label.
+  const childBudget = useChatStateStore((s) => s.contextBudgets.get(task.id));
+  const metaCtxRatio = useMemo(() => {
+    const used = task.metadata?.context_used_tokens as number | undefined;
+    const window = task.metadata?.context_window_tokens as number | undefined;
+    return used && window ? used / window : null;
+  }, [task.metadata]);
+  const childCtxRatio = budgetRatio(childBudget) ?? metaCtxRatio;
+  const ownToolCalls = useMemo(() => {
+    const live = Array.from(toolCallsMap.values())
+      .filter((tc) => tc.taskId === task.id)
+      .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0));
+    const liveIds = new Set(live.map((tc) => tc.tool_call_id));
+    const fromMessages = messagePartToolCalls.filter((tc) => !liveIds.has(tc.tool_call_id));
+    return [...fromMessages, ...live] as typeof live;
+  }, [toolCallsMap, task.id, messagePartToolCalls]);
+
+  // Default: expand while running, collapse when completed, and re-expand on
+  // failure so the error surfaces without a manual click.
+  const [expanded, setExpanded] = useState(
+    task.status === 'running' || task.status === 'failed',
+  );
   const [userToggled, setUserToggled] = useState(false);
   useEffect(() => {
     if (userToggled) return;
-    if (task.status === 'running') setExpanded(true);
+    if (task.status === 'running' || task.status === 'failed') setExpanded(true);
     if (task.status === 'completed') setExpanded(false);
   }, [task.status, userToggled]);
 
   const title = deriveTitle(messages, task);
+  const descendantCount = useMemo(
+    () => countDescendants(task, tasks),
+    [task, tasks],
+  );
+  // Streamed text wins; fall back to the polled monitor's latest-update
+  // preview (useBackgroundTasks stores it in metadata) so hydrated background
+  // tasks show what they last did even without a live stream.
+  const gist = useMemo(() => {
+    const fromMessages = deriveGist(ownMessages);
+    if (fromMessages) return fromMessages;
+    // The worker's answer usually lives in its `final` tool call.
+    for (let i = ownToolCalls.length - 1; i >= 0; i--) {
+      const tc = ownToolCalls[i];
+      if (tc.tool_name === 'final') {
+        const inner = (tc.input as { input?: unknown })?.input ?? tc.input;
+        if (typeof inner === 'string' && inner.trim()) return inner.replace(/\s+/g, ' ').slice(0, 120);
+      }
+    }
+    return (task.metadata?.preview as string | undefined) ?? '';
+  }, [ownMessages, ownToolCalls, task.metadata]);
   const indent = depth * 12;
 
   return (
     <div
       className="rounded-md border border-border bg-muted/20 overflow-hidden text-xs"
       style={{ marginLeft: indent }}
+      data-task-id={task.id}
     >
       <button
         type="button"
@@ -124,7 +254,27 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
           <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
         )}
         <StatusIcon status={task.status} />
-        <span className="font-medium text-foreground truncate flex-1 text-left">{title}</span>
+        <span className="font-medium text-foreground truncate flex-shrink-0 text-left max-w-[40%]">{title}</span>
+        {/* Gist preview when collapsed — the "one gist out" of the subtask. */}
+        {!expanded && gist && (
+          <span className="text-[10px] text-muted-foreground truncate flex-1 text-left italic">
+            {gist}
+          </span>
+        )}
+        {expanded && <span className="flex-1" />}
+        {descendantCount > 0 && (
+          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+            {descendantCount} subtask{descendantCount === 1 ? '' : 's'}
+          </span>
+        )}
+        {childCtxRatio !== null && (
+          <ContextChip
+            ratio={childCtxRatio}
+            size={12}
+            className="flex-shrink-0 opacity-70"
+            title={`This sub-task's context: ${Math.round(childCtxRatio * 100)}% used`}
+          />
+        )}
         {task.status === 'running' && (
           <span className="text-[10px] text-muted-foreground flex-shrink-0">running…</span>
         )}
@@ -137,9 +287,24 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
 
       {expanded && (
         <div className="border-t border-border bg-background/40 px-2 py-2 space-y-1">
+          {ownToolCalls.map((tc) => (
+            <div key={tc.tool_call_id} className="flex items-center gap-2 px-1 py-0.5 text-[11px]">
+              <StatusIcon status={tc.status === 'completed' ? 'completed' : tc.status === 'error' ? 'failed' : 'running'} />
+              <span className="font-medium text-foreground flex-shrink-0">{tc.tool_name}</span>
+              <span className="text-muted-foreground truncate flex-1">
+                {typeof ((tc.input as { input?: unknown })?.input ?? '') === 'string' && ((tc.input as { input?: string }).input ?? '').trim()
+                  ? ((tc.input as { input?: string }).input as string).slice(0, 100)
+                  : JSON.stringify(tc.input ?? {}).slice(0, 100)}
+              </span>
+              {tc.startTime && tc.endTime && (
+                <span className="text-[10px] text-muted-foreground flex-shrink-0">{((tc.endTime - tc.startTime) / 1000).toFixed(1)}s</span>
+              )}
+            </div>
+          ))}
           {ownMessages.map((message, index) => (
             <MessageRenderer
               key={`${task.id}-${index}`}
+              inSubTaskCard
               message={message}
               index={index}
               toolRenderers={toolRenderers}
@@ -154,6 +319,7 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
           {childTasks.map((child) => (
             <SubTaskCard
               key={child.id}
+              messages={messagesProp}
               task={child}
               depth={depth + 1}
               toolRenderers={toolRenderers}

@@ -2,6 +2,7 @@
 import { AgentSkill, Message, Task, TaskArtifactUpdateEvent, TaskStatusUpdateEvent } from '@a2a-js/sdk';
 import { DistriEvent } from './events';
 import { Agent } from './agent';
+import type { Invocation } from './invocation';
 
 /**
  * Message roles supported by Distri
@@ -92,6 +93,23 @@ export interface ExecutorContextMetadata {
   tags?: Record<string, string>;
   /** Inbound distributed trace context to continue an existing trace. */
   trace_context?: TraceContext;
+  /**
+   * Skills to auto-load at task start (by id), WITHOUT the agent having to
+   * call `load_skill` first. Inline skills are injected up-front so the run
+   * reaches the actual task without a wasted round-trip; fork-type skills are
+   * deferred to explicit dispatch. Maps to the backend's
+   * `ExecutorContextMetadata.load_skills`.
+   */
+  load_skills?: string[];
+  /**
+   * Dictate fork behaviour for this task: dispatch it as an isolated subtask
+   * (child context, returns only a gist to the parent) instead of running
+   * inline. Reuses the {@link Invocation} model (targets / context / join /
+   * tools). Backend dispatch of a metadata-supplied fork is landing in a
+   * follow-up; the field is part of the wire contract now so callers can adopt
+   * it. Child runs already surface in chat via the parent/child task tree.
+   */
+  fork?: Invocation;
 }
 
 /**
@@ -387,6 +405,62 @@ export interface CompactTaskResult {
 }
 
 /**
+ * Task status as reported by the task-monitor endpoints
+ * (`GET /tasks`, `GET /tasks/{id}`). Superset of the client-side
+ * `TaskState.status` union — `input_required` and `canceled` only
+ * exist on the wire.
+ */
+export type TaskSummaryStatus =
+  | 'pending'
+  | 'running'
+  | 'input_required'
+  | 'completed'
+  | 'failed'
+  | 'canceled';
+
+/**
+ * Enriched task object returned by the task-monitor endpoints
+ * (`GET /tasks`, `GET /tasks/{id}`). Field names are snake_case —
+ * the server's wire format is passed through untouched (same
+ * convention as {@link CompactTaskResult}).
+ */
+export interface TaskSummary {
+  id: string;
+  thread_id: string;
+  /** Dispatching (parent) task id, or `null` for a root task. */
+  parent_task_id: string | null;
+  status: TaskSummaryStatus;
+  /** Creation time (epoch ms). */
+  created_at: number;
+  /** Last update time (epoch ms). */
+  updated_at: number;
+  /** Latest activity preview text, when available. */
+  preview: string | null;
+  /** Timestamp of the most recent event (epoch ms), when available. */
+  last_event_at: number | null;
+  /** The task's first user message — its intent/prompt (human label). */
+  intent?: string | null;
+  /** Latest context usage from the task's context_budget_update events. */
+  context_used_tokens?: number | null;
+  context_window_tokens?: number | null;
+}
+
+/** Query params for `DistriClient.listTasks`. */
+export interface ListTasksParams {
+  /** Only tasks belonging to this thread. */
+  threadId?: string;
+  /**
+   * Scope results to the sub-tree under this task. The named task
+   * itself (the root of the sub-tree) is excluded by the server.
+   */
+  parentTaskId?: string;
+  /** Filter by a single {@link TaskSummaryStatus} value. */
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/**
  * Current context health information derived from compaction events
  * and usage tracking.
  */
@@ -489,6 +563,16 @@ export interface DistriBaseTool extends ToolDefinition {
   is_final?: boolean;
   autoExecute?: boolean;
   isExternal?: boolean; // True if frontend handles execution, false if backend handles it
+  /**
+   * Early-stop: end the agent's turn as soon as THIS tool's result is sent back,
+   * instead of letting the loop chain into another LLM round-trip. Implemented by
+   * appending a `{ should_continue: false }` data part to the tool result, which
+   * the backend's `ExecutionStrategy::should_continue` already honors
+   * (server/distri-core/.../execution/default.rs). Use for interactive editor
+   * tools (e.g. `save_content`) so execution returns control to the UI instantly
+   * and "feels fast". Distinct from `is_final` (an LLM-side terminal-tool flag).
+   */
+  stopAfterTurn?: boolean;
 }
 
 export interface DistriFnTool extends DistriBaseTool {
@@ -555,7 +639,8 @@ export function createSuccessfulToolResult(
   toolCallId: string,
   toolName: string,
   result: string | number | boolean | null | object | DistriPart[],
-  partsMetadata?: Record<number, PartMetadata>
+  partsMetadata?: Record<number, PartMetadata>,
+  options?: { stopAfterTurn?: boolean }
 ): ToolResult {
   const parts: DistriPart[] = isArrayParts(result) ? result as DistriPart[] : [{
     part_type: 'data' as const,
@@ -565,6 +650,16 @@ export function createSuccessfulToolResult(
       error: undefined
     } satisfies ToolResultData
   }];
+
+  // Early-stop signal: a standalone control data part the backend's
+  // `should_continue()` scans for. Appended (rather than merged into the result
+  // part) so it works whether `result` is a primitive/object or a DistriPart[].
+  if (options?.stopAfterTurn) {
+    parts.push({
+      part_type: 'data' as const,
+      data: { should_continue: false }
+    });
+  }
 
   return {
     tool_call_id: toolCallId,
