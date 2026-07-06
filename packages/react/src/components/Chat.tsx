@@ -6,12 +6,8 @@ import { MessageRenderer } from './renderers/MessageRenderer';
 import { SubTaskTree } from './renderers/SubTaskTree';
 import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
 import { useBackgroundTasks } from '../useBackgroundTasks';
-import { ContextChip } from './ContextChip';
-import { ContextUsagePanel } from './ContextUsagePanel';
+import { ContextRow } from './ContextRow';
 import { MessageReadProvider } from './renderers/MessageReadContext';
-import { LoadingStrip } from './renderers/LoadingStrip';
-import { LoadingShimmer } from './renderers/ThinkingRenderer';
-import { TodosCompact } from './renderers/TodosCompact';
 import { type LoadingAnimationConfig } from './renderers/LoadingAnimation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useStore } from 'zustand';
@@ -398,23 +394,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const contextBudget = useStore(chatStore, state => state.contextBudget);
   const compactionEvents = useStore(chatStore, state => state.compactionEvents);
   const storeIsCompacting = useStore(chatStore, state => Boolean(state.isCompacting));
-  const [contextPanelOpen, setContextPanelOpen] = useState(false);
-  const footerContextHealth = useMemo(() => {
-    if (!contextBudget || !contextBudget.context_window_size) return null;
-    const used =
-      contextBudget.system_prompt_static_tokens +
-      contextBudget.system_prompt_dynamic_tokens +
-      contextBudget.tool_schema_tokens +
-      contextBudget.deferred_tool_tokens +
-      contextBudget.skill_listing_tokens +
-      contextBudget.conversation_tokens +
-      contextBudget.tool_result_tokens;
-    return {
-      usage_ratio: used / contextBudget.context_window_size,
-      tokens_used: used,
-      tokens_limit: contextBudget.context_window_size,
-    };
-  }, [contextBudget]);
   const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
   // Cosmetic only: how many external (frontend-handled) tool calls are still
   // awaiting a result. The backend already join_all's the batch with a timeout —
@@ -1345,23 +1324,18 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             style={{ maxWidth: maxWidth || '768px' }}
           >
 
-            {/* Pre-input zone: todos + loading strip + tool-call wait */}
-            {(todos?.length > 0 || isStreaming || pendingToolCallCount > 0) && (
-              <div className="space-y-1.5">
-                {todos && todos.length > 0 && (
-                  <TodosCompact todos={todos} changes={lastTodoChanges} />
-                )}
-                {pendingToolCallCount > 0 ? (
-                  <LoadingShimmer
-                    showIcon
-                    className="text-xs sm:text-sm"
-                    text={`Waiting for ${pendingToolCallCount} tool response${pendingToolCallCount === 1 ? '' : 's'}…`}
-                  />
-                ) : (
-                  isStreaming && <LoadingStrip words={loadingAnimation?.cycleWords} />
-                )}
-              </div>
-            )}
+            {/* Single-line status strip: thinking | todos chip | context dial.
+                Renders nothing when there's nothing to show. */}
+            <ContextRow
+              todos={todos}
+              todoChanges={lastTodoChanges}
+              isStreaming={isStreaming}
+              pendingToolCallCount={pendingToolCallCount}
+              loadingWords={loadingAnimation?.cycleWords}
+              contextBudget={contextBudget ?? undefined}
+              compactions={compactionEvents}
+              isCompacting={storeIsCompacting}
+            />
 
             {models && models.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
@@ -1381,29 +1355,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               </div>
             )}
 
-            {footerContextHealth && (
-              <div className="mb-1">
-                {contextPanelOpen && (
-                  <ContextUsagePanel
-                    budget={contextBudget}
-                    compactions={compactionEvents}
-                    isCompacting={storeIsCompacting}
-                    className="mb-2"
-                  />
-                )}
-                {/* Capacity dial, right-aligned and tiny — deliberately NOT a
-                    horizontal bar, which reads as run progress next to the
-                    composer's streaming indicators. */}
-                <div className="flex justify-end pr-1">
-                  <ContextChip
-                    ratio={footerContextHealth.usage_ratio}
-                    isCompacting={storeIsCompacting}
-                    showLabel
-                    onClick={() => setContextPanelOpen((v) => !v)}
-                  />
-                </div>
-              </div>
-            )}
             {shouldRenderFooterComposer ? footerComposer : null}
           </div>
         </footer>
