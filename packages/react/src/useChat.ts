@@ -116,6 +116,7 @@ export function useChat({
   const setLoading = useStore(store, state => state.setLoading);
   const setStreaming = useStore(store, state => state.setStreaming);
   const setAgent = useStore(store, state => state.setAgent);
+  const setResumeWithToolResult = useStore(store, state => state.setResumeWithToolResult);
   const hasPendingToolCalls = useStore(store, state => state.hasPendingToolCalls);
   const failAllPendingToolCalls = useStore(store, state => state.failAllPendingToolCalls);
   const setStreamingIndicator = useStore(store, state => state.setStreamingIndicator);
@@ -415,6 +416,14 @@ export function useChat({
     }
   }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
 
+  // Register the tool-result resume path with the store: when a human-in-the-loop
+  // checkpoint tool is answered AFTER its pending call timed out (agent turn
+  // ended), the store delivers the answer as a fresh `role:'tool'` message via
+  // this instead of failing on `/complete-tool`.
+  useEffect(() => {
+    setResumeWithToolResult((parts) => sendMessageStream(parts, 'tool'));
+    return () => setResumeWithToolResult(undefined);
+  }, [setResumeWithToolResult, sendMessageStream]);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {

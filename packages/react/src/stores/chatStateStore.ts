@@ -236,6 +236,15 @@ export interface ChatStateStore extends ChatState {
   getPendingToolCalls: () => ToolCallState[];
   getCompletedToolCalls: () => ToolCallState[];
   completeTool: (toolCall: ToolCall, result: ToolResult) => Promise<void>;
+  /** Registered by useChat: deliver a tool result as a NEW `role:'tool'`
+   *  message (resuming the run). Used when a human-in-the-loop checkpoint tool
+   *  is answered AFTER its pending call timed out (the agent's turn already
+   *  ended, `isStreaming` false) — `/complete-tool` would fail, so instead we
+   *  send the answer as a fresh tool message and the backend resumes. When the
+   *  call is still pending (`isStreaming` true) we complete it in place so the
+   *  answer lands in the SAME turn. */
+  resumeWithToolResult?: (parts: DistriPart[]) => Promise<void>;
+  setResumeWithToolResult: (fn: ((parts: DistriPart[]) => Promise<void>) | undefined) => void;
   executeTool: (toolCall: ToolCall, distriTool: DistriAnyTool) => void;
   hasPendingToolCalls: () => boolean;
   failAllPendingToolCalls: (errorMessage: string) => void;
@@ -1017,6 +1026,9 @@ export function createChatStore(): ChatStore {
     });
   },
 
+  resumeWithToolResult: undefined,
+  setResumeWithToolResult: (fn) => set({ resumeWithToolResult: fn }),
+
   completeTool: async (toolCall: ToolCall, result: ToolResult) => {
     const ownerTaskId = get().toolCalls.get(toolCall.tool_call_id)?.taskId;
     console.log('completeTool', toolCall.tool_call_id, { ownerTaskId, tool: toolCall.tool_name });
@@ -1055,9 +1067,20 @@ export function createChatStore(): ChatStore {
       console.log(`🔧 Executing external function tool: ${toolCall.tool_name}`);
       console.log(`✅ Tool ${toolCall.tool_name} executed successfully:`, result);
 
-      // Call agent's completeTool API
-      await agent.completeTool(result);
-      console.log(`✅ Tool completion sent to agent via API`);
+      // Two delivery paths (the backend accepts both):
+      //  • still streaming → the tool's pending call is alive on the server;
+      //    complete it in place so the answer lands in the SAME turn.
+      //  • not streaming → the pending call already timed out and the agent's
+      //    turn ended; `/complete-tool` would fail, so resume the run by
+      //    delivering the answer as a fresh `role:'tool'` message instead.
+      const resume = get().resumeWithToolResult;
+      if (!get().isStreaming && resume) {
+        console.log(`↻ Tool ${toolCall.tool_name} answered after timeout — resuming via new tool message`);
+        await resume([...result.parts]);
+      } else {
+        await agent.completeTool(result);
+      }
+      console.log(`✅ Tool completion sent to agent`);
 
     } catch (error) {
       console.error(`❌ Error completing tool ${toolCall.tool_name}:`, error);
