@@ -1528,4 +1528,7 @@ export interface ModelProviderDefinition {
   keys: ProviderKeyDefinition[];
   models: Model[];
   is_custom: boolean;
+  /** Coarse grouping, e.g. "coding_plan" for subscription-backed
+   * Anthropic-compatible endpoints (Z.ai). Absent for ordinary providers. */
+  category?: string;
 }
