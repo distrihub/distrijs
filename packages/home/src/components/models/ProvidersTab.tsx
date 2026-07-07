@@ -17,6 +17,8 @@ import {
   Loader2,
   Plus,
   Power,
+  Search,
+  Terminal,
   Trash2,
   X,
 } from 'lucide-react';
@@ -186,6 +188,16 @@ function ProviderRail({
   onFocus: (id: string) => void;
   onAddCustom: () => void;
 }) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? providers.filter(
+        (p) =>
+          p.label.toLowerCase().includes(q) ||
+          p.id.toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q),
+      )
+    : providers;
   return (
     <div className="provider-list">
       <div
@@ -207,7 +219,7 @@ function ProviderRail({
             fontWeight: 600,
           }}
         >
-          {providers.length} providers
+          {q ? `${visible.length}/${providers.length}` : providers.length} providers
         </span>
         <button
           className="btn btn-secondary btn-sm"
@@ -219,7 +231,52 @@ function ProviderRail({
           <Plus size={14} />
         </button>
       </div>
-      {providers.map((p) => {
+      <div style={{ padding: '0 8px 8px' }}>
+        <div
+          className="input"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px' }}
+        >
+          <Search size={13} style={{ color: 'var(--m-text-faint)', flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Filter providers…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: 'var(--m-text)',
+              fontSize: 12.5,
+              padding: '6px 0',
+            }}
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              title="Clear filter"
+              aria-label="Clear filter"
+              style={{ display: 'inline-flex', color: 'var(--m-text-faint)' }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+      {visible.length === 0 && (
+        <div
+          style={{
+            padding: '18px 12px',
+            textAlign: 'center',
+            fontSize: 12.5,
+            color: 'var(--m-text-faint)',
+          }}
+        >
+          No providers match “{query}”.
+        </div>
+      )}
+      {visible.map((p) => {
         const conf = configured.has(p.id);
         const active = p.id === focusId;
         const defaultCaps = defaultsByProvider.get(p.id);
@@ -238,9 +295,17 @@ function ProviderRail({
                 style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 <span>{p.label}</span>
+                {p.category === 'coding_plan' && (
+                  <span
+                    title="Coding plan — reuse a Claude Code / z.ai subscription (Anthropic-compatible API)"
+                    style={{ display: 'inline-flex', color: '#a855f7', flexShrink: 0 }}
+                  >
+                    <Terminal size={13} />
+                  </span>
+                )}
                 {defaultCaps && defaultCaps.length > 0 && (
                   <span
-                    title={`Default for ${defaultCaps.map((c) => CAPABILITY_META[c].short).join(', ')}`}
+                    title={`Workspace default for ${defaultCaps.map((c) => CAPABILITY_META[c].short).join(', ')}`}
                     style={{
                       fontSize: 9.5,
                       letterSpacing: '0.08em',
@@ -253,7 +318,7 @@ function ProviderRail({
                       padding: '1px 5px',
                     }}
                   >
-                    Default
+                    Default · {defaultCaps.map((c) => CAPABILITY_META[c].short).join(' · ')}
                   </span>
                 )}
               </div>
@@ -364,6 +429,21 @@ function ProviderPanel({
         <div>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span>{provider.label}</span>
+            {provider.category === 'coding_plan' && (
+              <span
+                title="Coding plan — reuse a Claude Code / z.ai subscription (Anthropic-compatible API)"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#c084fc',
+                }}
+              >
+                <Terminal size={14} /> Coding Plan
+              </span>
+            )}
             {defaultCapabilities.length > 0 && (
               <span
                 title={`Workspace default for ${defaultCapabilities.map((c) => CAPABILITY_META[c].short).join(', ')}`}

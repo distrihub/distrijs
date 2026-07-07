@@ -2,9 +2,7 @@ import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, f
 import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
-import { MessageRenderer } from './renderers/MessageRenderer';
-import { SubTaskTree } from './renderers/SubTaskTree';
-import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
+import { ChatMessageList } from './ChatMessageList';
 import { useBackgroundTasks } from '../useBackgroundTasks';
 import { ContextRow } from './ContextRow';
 import { MessageReadProvider } from './renderers/MessageReadContext';
@@ -246,7 +244,6 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
-  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const diagnoseThreadIdsRef = useRef<Map<string, string>>(new Map());
   const diagnoseAgentRef = useRef<Agent | null>(null);
@@ -878,133 +875,10 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     return () => unsub();
   }, [onTaskFinish]);
 
-  const toggleToolExpansion = useCallback((toolId: string) => {
-    setExpandedTools(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(toolId)) {
-        newSet.delete(toolId);
-      } else {
-        newSet.add(toolId);
-      }
-      return newSet;
-    });
-  }, []);
-
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Auto-expand tools that are running or have errors
-  useEffect(() => {
-    const newExpanded = new Set(expandedTools);
-    let hasChanges = false;
-
-    toolCalls.forEach(toolCall => {
-      if (toolCall.status === 'running' || toolCall.status === 'error' || toolCall.status === 'user_action_required') {
-        if (!newExpanded.has(toolCall.tool_call_id)) {
-          newExpanded.add(toolCall.tool_call_id);
-          hasChanges = true;
-        }
-      }
-    });
-
-    if (hasChanges) {
-      setExpandedTools(newExpanded);
-    }
-  }, [toolCalls, expandedTools]);
-
-
-
-  // Roots whose fork-trees were anchored inline this render (consumed by the
-  // trailing catch-all tree so nothing renders twice).
-  const anchoredRootsRef = useRef<Set<string>>(new Set());
-
-  // Render messages using the new MessageRenderer
-  const renderMessages = (): React.ReactNode[] => {
-    const elements: React.ReactNode[] = [];
-
-    // Child-task messages (forked sub-agents) render inside their SubTaskCard,
-    // not in the flat column — otherwise every fork's relayed activity
-    // interleaves with the parent's own and the run reads as one giant thread.
-    const tasksSnapshot = chatStore.getState().tasks;
-    const childIds = childTaskIdSet(tasksSnapshot);
-
-    // Anchor each turn's fork cards right AFTER that turn's last message —
-    // one global tree at the bottom mixed every turn's forks into a single
-    // pile detached from the conversation.
-    const rootsWithChildren = Array.from(tasksSnapshot.values()).filter(
-      (t) => !t.parentTaskId && t.childTaskIds.length > 0,
-    );
-    const lastIndexByRoot = new Map<string, number>();
-    messages.forEach((m: any, i: number) => {
-      const tid = (m as { taskId?: string }).taskId;
-      if (tid && rootsWithChildren.some((r) => r.id === tid)) lastIndexByRoot.set(tid, i);
-    });
-    const treesAtIndex = new Map<number, string[]>();
-    const anchoredRoots = new Set<string>();
-    for (const r of rootsWithChildren) {
-      const idx = lastIndexByRoot.get(r.id);
-      if (idx !== undefined) {
-        treesAtIndex.set(idx, [...(treesAtIndex.get(idx) ?? []), r.id]);
-        anchoredRoots.add(r.id);
-      }
-    }
-    anchoredRootsRef.current = anchoredRoots;
-
-    // Render all messages using MessageRenderer
-    messages.forEach((message: any, index: number) => {
-      if (isChildTaskMessage(message, childIds)) {
-        maybeAppendTrees(index);
-        return;
-      }
-      const renderedMessage = (
-        <MessageRenderer
-          key={`message-${index}`}
-          message={message}
-          index={index}
-          toolRenderers={mergedToolRenderers}
-          isExpanded={expandedTools.has(message.id || `message-${index}`)}
-          onToggle={() => {
-            const messageId = message.id || `message-${index}`;
-            toggleToolExpansion(messageId);
-          }}
-          debug={tracesEnabled}
-          verbose={verbose}
-          rendering={rendering}
-          threadId={threadId}
-          enableFeedback={enableFeedback}
-          onShowTrace={traceOpener}
-        />
-      );
-
-      // Only add non-null rendered messages
-      if (renderedMessage !== null) {
-        elements.push(renderedMessage);
-      }
-      maybeAppendTrees(index);
-    });
-
-    return elements;
-
-    function maybeAppendTrees(index: number) {
-      for (const rootId of treesAtIndex.get(index) ?? []) {
-        elements.push(
-          <SubTaskTree
-            key={`tree-${rootId}`}
-            rootTaskId={rootId}
-            messages={messages}
-            toolRenderers={mergedToolRenderers}
-            rendering={rendering}
-            threadId={threadId}
-            onShowTrace={traceOpener}
-            verbose={verbose}
-            debug={tracesEnabled}
-          />,
-        );
-      }
-    }
-  };
 
   const renderExternalToolCalls = () => {
     const elements: React.ReactNode[] = [];
@@ -1272,18 +1146,16 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
             <MessageReadProvider threadId={threadId} enabled={enableFeedback}>
               <div className="flex-1 min-w-0 space-y-4 w-full">
                 {emptyStateContent}
-                {/* Render all messages and state */}
-                {renderMessages()}
-
-                <SubTaskTree
-                  excludeRootIds={anchoredRootsRef.current}
+                {/* Render all messages and state (shared with read-only <TaskView>) */}
+                <ChatMessageList
                   messages={messages}
                   toolRenderers={mergedToolRenderers}
                   rendering={rendering}
-                  threadId={threadId}
-                  onShowTrace={traceOpener}
                   verbose={verbose}
                   debug={tracesEnabled}
+                  threadId={threadId}
+                  enableFeedback={enableFeedback}
+                  onShowTrace={traceOpener}
                 />
 
                 {renderExternalToolCalls()}

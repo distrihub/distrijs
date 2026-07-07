@@ -219,6 +219,22 @@ export function CatalogTab({
       <div className="toolbar">
         <CapChips active={capFilter} counts={counts} onChange={setCapFilter} />
         <span style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
+          <button
+            className="cap-chip"
+            title="Expand all providers"
+            onClick={() => setOpenProviders(new Set(grouped.map((g) => g.providerId)))}
+          >
+            Expand all
+          </button>
+          <button
+            className="cap-chip"
+            title="Collapse all providers"
+            onClick={() => setOpenProviders(new Set())}
+          >
+            Collapse all
+          </button>
+        </div>
         <div className="search">
           <Search size={14} />
           <input

@@ -26,6 +26,19 @@ beforeAll(() => {
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 async function* emptyStream(): AsyncGenerator<never> {}
 
+// Minimal DistriContext client covering the methods ChatInner's effects call
+// on mount (thread details + background-task hydration). Without these the
+// effects throw, and under React 19.2's stricter passive-effect error handling
+// that fails the render.
+function makeMockDistriClient() {
+  return {
+    getThread: vi.fn(async () => null),
+    listTasks: vi.fn(async () => []),
+    getTaskById: vi.fn(async () => null),
+    cancelTask: vi.fn(async () => {}),
+  } as never
+}
+
 function makeMockAgent(invokeStream: ReturnType<typeof vi.fn>) {
   return {
     name: 'zippy_browser',
@@ -47,7 +60,7 @@ describe('Chat — forwards per-send options.metadata to agent.invokeStream', ()
     let instance: ChatInstance | undefined
 
     render(
-      <DistriContext.Provider value={{ client: {} as never }}>
+      <DistriContext.Provider value={{ client: makeMockDistriClient() }}>
         <ChatInner
           agent={agent as never}
           threadId="t-1"
@@ -79,7 +92,7 @@ describe('Chat — forwards per-send options.metadata to agent.invokeStream', ()
     let instance: ChatInstance | undefined
 
     render(
-      <DistriContext.Provider value={{ client: {} as never }}>
+      <DistriContext.Provider value={{ client: makeMockDistriClient() }}>
         <ChatInner
           agent={agent as never}
           threadId="t-2"

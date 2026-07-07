@@ -1153,6 +1153,28 @@ export class DistriClient {
   }
 
   /**
+   * Re-attach to a task's event stream over A2A `tasks/resubscribe` (SSE).
+   *
+   * Read-only twin of {@link sendMessageStream}: instead of starting a new turn
+   * it replays the task's server-side event log, then follows the live tail,
+   * then (for an already-terminal task) receives a synthesized final status.
+   * Yields the raw A2A stream frames — decode with `decodeA2AStreamEvent`
+   * (or use {@link Agent.resubscribe}, which decodes for you).
+   *
+   * `agentId` is required because A2A clients are per-agent-URL; the caller
+   * following a task always holds the owning agent.
+   */
+  async *resubscribeTask(agentId: string, taskId: string, _opts?: { signal?: AbortSignal }): AsyncGenerator<A2AStreamEventData> {
+    try {
+      const client = this.getA2AClient(agentId);
+      yield* await client.resubscribeTask({ id: taskId });
+    } catch (error) {
+      const errorMessage = this.extractErrorMessage(error);
+      throw new DistriError(errorMessage, 'RESUBSCRIBE_TASK_ERROR', error);
+    }
+  }
+
+  /**
    * Cancel a task
    */
   async cancelTask(agentId: string, taskId: string): Promise<void> {
