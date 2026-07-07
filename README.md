@@ -38,6 +38,37 @@ DistriJS now includes comprehensive voice interaction capabilities:
 
 👉 **[See Voice Support Guide](VOICE_SUPPORT.md)** for complete setup instructions.
 
+## 👁️ Read-Only Task Streaming (NEW!)
+
+Follow an agent task **without owning the turn**. Where `<Chat>` / `useChat` _send_ a
+message and stream the response, `<TaskView>` / `useTaskStreaming` **attach** to a task
+that is already running (or already finished), replay its history, and follow the live
+tail — using the exact same renderers `<Chat>` uses, with **no composer** and no tool
+interaction. Under the hood this is A2A `tasks/resubscribe`.
+
+```tsx
+import { TaskView, useTaskStreaming } from '@distri/react';
+
+// 1. Turnkey read-only surface — same renderer surface as <Chat>.
+<TaskView agent={agent} taskId={taskId} rendering="rich" />
+
+// 2. Or drive your own UI from the hook.
+const { messages, isStreaming, isTerminal, reconnect } = useTaskStreaming({ agent, taskId });
+```
+
+New API:
+
+- **`@distri/core`** — `agent.resubscribe(taskId)` (decoded, read-only twin of
+  `invokeStream`) and `client.resubscribeTask(agentId, taskId)`.
+- **`@distri/react`** — `useTaskStreaming({ agent, taskId })`, `<TaskView>`, and
+  `<ChatMessageList>` (the message-list + fork-anchoring renderer shared with `<Chat>`).
+
+Three consumption levels — turnkey `<TaskView>`, `useTaskStreaming` + `<ChatMessageList>`
+in your own shell, or `useTaskStreaming` alone for a fully custom view.
+
+👉 **[See the Task Streaming guide](docs/task-streaming.md)** and the runnable
+`apps/task-stream-demo`.
+
 ## 🏗️ Architecture
 
 ```
@@ -393,6 +424,7 @@ When the agent processes a message, it will automatically include the session va
 
 - **[API Reference](./docs/api/)** - Complete API documentation
 - **[Tool System Guide](./docs/tools.md)** - In-depth tool development
+- **[Task Streaming Guide](./docs/task-streaming.md)** - Read-only task following (`useTaskStreaming` / `<TaskView>`)
 - **[Migration Guide](./docs/migration.md)** - Upgrading from previous versions
 - **[Samples](./samples/)** - Working examples and tutorials
 
