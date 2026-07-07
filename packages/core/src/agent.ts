@@ -192,6 +192,41 @@ export class Agent {
   }
 
   /**
+   * Read-only follow of an existing task via A2A `tasks/resubscribe`.
+   *
+   * The read-only twin of {@link invokeStream}: it opens no new turn and sends
+   * nothing. It re-attaches to `taskId`, replays the server-side event log,
+   * follows the live tail, and (for an already-finished task) receives a
+   * synthesized terminal status. Each raw A2A frame is decoded via
+   * `decodeA2AStreamEvent` and yielded as a `DistriChatMessage`.
+   *
+   * Unlike `invokeStream`, this performs NO side effects — it never completes
+   * inline hooks or external tools. Following is strictly observational; the
+   * task's own owner (the live turn, elsewhere) drives it.
+   *
+   * Abort is cooperative: break out of the `for await` loop (e.g. on an
+   * `AbortSignal`) to return the generator and close the underlying stream.
+   */
+  public async *resubscribe(taskId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<DistriChatMessage> {
+    const a2aStream = this.client.resubscribeTask(this.agentDefinition.name, taskId, opts);
+    try {
+      for await (const event of a2aStream) {
+        const converted = decodeA2AStreamEvent(event);
+        if (converted) yield converted;
+      }
+    } catch (error) {
+      // Mirror invokeStream: surface stream errors in-band so read-only UIs
+      // render them as a run_error instead of throwing out of the loop.
+      const message = error instanceof Error ? error.message : String(error);
+      const runError: RunErrorEvent = {
+        type: 'run_error',
+        data: { message, code: 'STREAM_ERROR' },
+      };
+      yield runError;
+    }
+  }
+
+  /**
    * Validate that required external tools are registered before invoking.
    */
   public validateExternalTools(tools: DistriBaseTool[] = []): ExternalToolValidationResult {
