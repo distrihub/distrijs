@@ -1,5 +1,6 @@
 // Core exports
 export * from './useChat';
+export * from './useTaskStreaming';
 export * from './useAgent';
 export * from './useAgentDefinitions';
 export * from './useThreads';
@@ -8,6 +9,8 @@ export * from './useBackgroundTasks';
 
 // Component exports
 export * from './components/Chat';
+export * from './components/ChatMessageList';
+export * from './components/TaskView';
 export * from './components/AgentList';
 export * from './components/AgentSelect';
 export * from './components/ChatInput';
