@@ -1,9 +1,14 @@
 import { Component, ViewChild } from '@angular/core';
-import { DistriClient, DistriMessage } from '@distri/core';
+import { DistriMessage } from '@distri/core';
 import { DistriChatComponent } from '@distri/angular/components';
 import { IncidentFormComponent } from './incident-form.component';
 import { getFormHtml, getFormTools } from './tools';
 
+/**
+ * The client comes from `provideDistri(...)` in `app.config.ts` — `<distri-chat>`
+ * picks it up from DI, exactly like `@distri/react`'s components read it from
+ * `<DistriProvider>`. Nothing to wire up here.
+ */
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -15,11 +20,11 @@ import { getFormHtml, getFormTools } from './tools';
       </div>
       <div class="app-shell__chat">
         <distri-chat
-          [client]="client"
           [agentIdOrDef]="agentId"
           [threadId]="threadId"
           [externalTools]="tools"
           [beforeSendMessage]="beforeSendMessage"
+          [starterPrompts]="starterPrompts"
         />
       </div>
     </div>
@@ -34,12 +39,15 @@ import { getFormHtml, getFormTools } from './tools';
 export class AppComponent {
   @ViewChild(IncidentFormComponent) private formComponent?: IncidentFormComponent;
 
-  client = new DistriClient({
-    baseUrl: (window as unknown as { DISTRI_API_URL?: string }).DISTRI_API_URL ?? 'http://localhost:8080',
-  });
   agentId = 'form_filler_agent_v2';
   threadId = `form-filler-${Date.now()}`;
   tools = getFormTools(() => this.formComponent);
+
+  /** One click fills the whole form — the point of the demo. */
+  starterPrompts = [
+    "I'm John Smith (john@example.com). Yesterday we had a phishing attack where several " +
+      'employees received fake emails. Medium impact. We should implement additional email filtering.',
+  ];
 
   // Injects the form's HTML structure as context so the agent knows which
   // fields/options are available before it decides which tool to call.

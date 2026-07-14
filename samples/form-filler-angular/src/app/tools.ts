@@ -33,6 +33,10 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
     name: 'fill_field',
     description: 'Fill a specific field in the security incident report form. Available fields: full_name, email, incident_type (Data Breach, Unauthorized Access, Malware, Phishing, Other), date_of_incident (YYYY-MM-DD format), impact_level (Low, Medium, High, Critical), description, suggested_actions',
     type: 'function',
+    // Runs the handler as soon as the agent calls it. Without this the store
+    // waits for a confirm-UI that Angular has no renderer for, so the call
+    // would sit pending forever and the form would never fill.
+    autoExecute: true,
     parameters: {
       type: 'object',
       properties: {
@@ -58,6 +62,10 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
     name: 'fill_multiple_fields',
     description: 'Fill multiple fields at once in the security incident report form. More efficient than calling fill_field multiple times.',
     type: 'function',
+    // Runs the handler as soon as the agent calls it. Without this the store
+    // waits for a confirm-UI that Angular has no renderer for, so the call
+    // would sit pending forever and the form would never fill.
+    autoExecute: true,
     parameters: {
       type: 'object',
       properties: {
@@ -106,6 +114,10 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
     name: 'get_form_values',
     description: 'Get the current values of all fields in the form',
     type: 'function',
+    // Runs the handler as soon as the agent calls it. Without this the store
+    // waits for a confirm-UI that Angular has no renderer for, so the call
+    // would sit pending forever and the form would never fill.
+    autoExecute: true,
     parameters: { type: 'object', properties: {} },
     handler: async () => {
       const form = getForm();
@@ -117,6 +129,10 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
     name: 'clear_form',
     description: 'Clear all fields in the form and reset to default values',
     type: 'function',
+    // Runs the handler as soon as the agent calls it. Without this the store
+    // waits for a confirm-UI that Angular has no renderer for, so the call
+    // would sit pending forever and the form would never fill.
+    autoExecute: true,
     parameters: { type: 'object', properties: {} },
     handler: async () => {
       const form = getForm();
@@ -129,6 +145,10 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
     name: 'submit_form',
     description: 'Submit the security incident report form. Will validate required fields before submission.',
     type: 'function',
+    // Runs the handler as soon as the agent calls it. Without this the store
+    // waits for a confirm-UI that Angular has no renderer for, so the call
+    // would sit pending forever and the form would never fill.
+    autoExecute: true,
     parameters: { type: 'object', properties: {} },
     handler: async () => {
       const form = getForm();
@@ -141,6 +161,10 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
     name: 'get_field_options',
     description: 'Get the available options for a select field (incident_type or impact_level)',
     type: 'function',
+    // Runs the handler as soon as the agent calls it. Without this the store
+    // waits for a confirm-UI that Angular has no renderer for, so the call
+    // would sit pending forever and the form would never fill.
+    autoExecute: true,
     parameters: {
       type: 'object',
       properties: { field_name: { type: 'string', description: 'incident_type or impact_level' } },

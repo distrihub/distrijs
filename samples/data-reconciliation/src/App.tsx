@@ -1,13 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { DistriProvider, Chat } from '@distri/react';
+import { Chat } from '@distri/react';
+import { DistriTokenProvider } from './DistriTokenProvider';
 import DataReconciliationGrid, { DataReconciliationGridRef } from './DataReconciliationGrid';
 import { getReconciliationTools } from './tools';
-
-const distriConfig = {
-  baseUrl: import.meta.env.VITE_DISTRI_API_URL ?? 'http://localhost:8080',
-  clientId: import.meta.env.VITE_DISTRI_CLIENT_ID,
-  workspaceId: import.meta.env.VITE_DISTRI_WORKSPACE_ID,
-};
 
 export function App() {
   const gridRef = useRef<DataReconciliationGridRef | null>(null);
@@ -16,7 +11,7 @@ export function App() {
   const tools = useMemo(() => getReconciliationTools(gridRef), []);
 
   return (
-    <DistriProvider config={distriConfig}>
+    <DistriTokenProvider>
       <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           <DataReconciliationGrid ref={gridRef} />
@@ -30,6 +25,6 @@ export function App() {
           />
         </div>
       </div>
-    </DistriProvider>
+    </DistriTokenProvider>
   );
 }

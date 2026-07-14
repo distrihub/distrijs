@@ -5,6 +5,13 @@ a security-incident report form from conversation), same agent
 (`form_filler_agent_v2`), built on `@distri/angular` instead of
 `@distri/react`.
 
+
+## Running
+```sh
+# Edit api key in .env
+cp .env.sample .env
+```
+
 ## How it works
 
 - `src/app/incident-form.component.ts` — Angular port of the React sample's

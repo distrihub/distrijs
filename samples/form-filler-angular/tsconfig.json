@@ -25,6 +25,11 @@
     ],
     "baseUrl": ".",
     "paths": {
+      // Both must map to SOURCE. If `@distri/angular` resolved to the built
+      // dist while `/components` resolved to src, you'd get two copies of the
+      // module — and two distinct DISTRI_SERVICE InjectionTokens, so
+      // <distri-chat> would silently never see the client from provideDistri().
+      "@distri/angular": ["../../packages/angular/src/index.ts"],
       "@distri/angular/components": ["../../packages/angular/src/components/index.ts"]
     }
   },

@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_DISTRI_API_URL?: string;
-  readonly VITE_DISTRI_CLIENT_ID?: string;
-  readonly VITE_DISTRI_WORKSPACE_ID?: string;
+  /** Where the frontend fetches its short-lived Distri token from. */
+  readonly VITE_DISTRI_TOKEN_ENDPOINT?: string;
 }
 
 interface ImportMeta {

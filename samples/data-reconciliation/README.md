@@ -19,16 +19,30 @@ statement), flags discrepancies, and explains findings in plain language.
 - `agent.md` — the agent definition (`reconciliation_agent`) this sample
   expects to be registered on your Distri backend.
 
+## Auth: the API key never reaches the browser
+
+`vite.config.ts` installs the `distri-token-proxy` dev-server middleware
+(`../shared/distri-token-proxy.ts`). It reads `DISTRI_API_KEY` from the Vite
+**server** process (no `VITE_` prefix, so Vite will not inline it into the
+bundle) and exchanges it for a short-lived access token via
+`POST {DISTRI_BASE_URL}/token`.
+
+The frontend (`src/DistriTokenProvider.tsx`) fetches that short-lived token
+from `/api/distri/token` and hands it to `<DistriProvider>`. So the long-lived
+API key stays server-side; only the scoped, expiring token is ever sent to the
+browser. If the exchange fails, the middleware returns an error rather than
+falling back to shipping the key.
+
 ## Running it
 
-1. Copy `.env.example` to `.env` and point `VITE_DISTRI_API_URL` at a running
-   Distri backend (plus `VITE_DISTRI_CLIENT_ID`/`VITE_DISTRI_WORKSPACE_ID` if
-   your backend requires them).
+1. Copy `.env.example` to `.env` and set `DISTRI_API_KEY`. `DISTRI_BASE_URL`
+   defaults to `https://api.distri.dev/v1`.
 2. Register the agent in `agent.md` on that backend.
 3. `pnpm --filter @distri/data-reconciliation-sample dev`
 
-Without a backend, the grid still renders with sample data — only the
-chat-driven reconciliation/analysis needs a live agent.
+Without a valid key the app shows a token error; the grid itself still renders
+with sample data — only the chat-driven reconciliation/analysis needs a live
+agent.
 
 ## Try it
 

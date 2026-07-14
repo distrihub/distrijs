@@ -1,14 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { DistriProvider, Chat } from '@distri/react';
+import { Chat } from '@distri/react';
 import type { DistriMessage } from '@distri/core';
+import { DistriTokenProvider } from './DistriTokenProvider';
 import IncidentForm, { IncidentFormRef } from './IncidentForm';
 import { getFormHtml, getFormTools } from './tools';
-
-const distriConfig = {
-  baseUrl: import.meta.env.VITE_DISTRI_API_URL ?? 'http://localhost:8080',
-  clientId: import.meta.env.VITE_DISTRI_CLIENT_ID,
-  workspaceId: import.meta.env.VITE_DISTRI_WORKSPACE_ID,
-};
 
 export function App() {
   const formRef = useRef<IncidentFormRef | null>(null);
@@ -31,7 +26,7 @@ export function App() {
   }, []);
 
   return (
-    <DistriProvider config={distriConfig}>
+    <DistriTokenProvider>
       <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           <IncidentForm ref={formRef} />
@@ -46,6 +41,6 @@ export function App() {
           />
         </div>
       </div>
-    </DistriProvider>
+    </DistriTokenProvider>
   );
 }
