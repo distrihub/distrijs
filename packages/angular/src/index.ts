@@ -12,3 +12,9 @@ export * from './adapter';
 export * from './agent';
 export * from './chat';
 export * from './provider';
+
+// Components ship from the same entry point, so published consumers have a
+// single import path (`@distri/angular`) and — critically — only ever load ONE
+// copy of the module. Two copies means two distinct DISTRI_SERVICE
+// InjectionTokens, and <distri-chat> silently never receives the client.
+export * from './components';

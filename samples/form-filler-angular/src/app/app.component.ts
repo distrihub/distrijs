@@ -1,6 +1,6 @@
 import { Component, ViewChild } from '@angular/core';
 import { DistriMessage } from '@distri/core';
-import { DistriChatComponent } from '@distri/angular/components';
+import { DistriChatComponent } from '@distri/angular';
 import { IncidentFormComponent } from './incident-form.component';
 import { getFormHtml, getFormTools } from './tools';
 
