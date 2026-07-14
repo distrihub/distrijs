@@ -1,6 +1,9 @@
 import React from "react";
 import { DistriFnTool, DistriBaseTool, ToolCall, ToolResult } from "@distri/core";
+import type { ToolSummary, SummaryFn } from "@distri/state";
 import { ToolCallState } from "./stores/chatStateStore";
+
+export type { ToolSummary, SummaryFn };
 
 
 export type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
@@ -31,17 +34,6 @@ export type ChatCustomRenderers = never;
 // --- Tool renderer types ---
 
 export type RenderingMode = 'minimal' | 'rich';
-
-export interface ToolSummary {
-  verb: string;         // "GET", "Read", "Search", "Run", …
-  subject?: string;     // filename, path, query — derived from input
-  detail?: string;      // result hint — derived from result
-}
-
-export type SummaryFn = (
-  input: Record<string, unknown>,
-  result?: ToolResult
-) => ToolSummary;
 
 export interface RendererConfig {
   rendering?: RenderingMode;

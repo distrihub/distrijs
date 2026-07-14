@@ -1,33 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import { Agent, DistriBaseTool, DistriChatMessage, DistriClient, DistriMessage, ToolExecutionOptions, PartMetadata, CompactTaskResult, ExecutorContextMetadata } from '@distri/core';
-import {
-  DistriPart,
-  InvokeContext,
-  convertDistriMessageToA2A,
-} from '@distri/core';
-
-/**
- * Optional knobs for sendMessage / sendMessageStream.
- *
- * `partsMetadata` mirrors the wire-format `Message.metadata.parts` map: keys
- * are part indices into the `content` array, values are PartMetadata. Used to
- * mark parts as `developer: true` (skipped by chat renderers) or `save: false`
- * (filtered out at DB persist) — see `distri/docs/design/parts-metadata.md`.
- */
-export interface SendMessageOptions {
-  partsMetadata?: Record<number, PartMetadata>;
-  /**
-   * Per-send execution metadata merged into the request's
-   * `ExecutorContextMetadata` (on top of the chat-level `getMetadata`). Use
-   * this to dictate behaviour for a single invocation — e.g. `load_skills` to
-   * eagerly preload a skill for this task, or `fork` to dispatch it as an
-   * isolated subtask — without making it global to the whole chat.
-   */
-  metadata?: Partial<ExecutorContextMetadata>;
-}
+import { Agent, DistriBaseTool, DistriChatMessage, ToolExecutionOptions, DistriMessage, CompactTaskResult } from '@distri/core';
+import { DistriPart } from '@distri/core';
+import { ChatController, SendMessageOptions } from '@distri/state';
 import { ChatStore, createChatStore } from './stores/chatStateStore';
 import { DistriAnyTool } from './types';
+
+export type { SendMessageOptions } from '@distri/state';
 
 export interface UseChatOptions {
   threadId: string;
@@ -95,21 +74,28 @@ export function useChat({
   const [fallbackStore] = useState<ChatStore>(() => createChatStore());
   const store = providedStore ?? fallbackStore;
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Send/stream/stop/compact orchestration lives in @distri/state's
+  // ChatController (framework-agnostic). This hook owns only the
+  // mutable-context sync (agent/threadId/tools/callbacks can change across
+  // renders) and React lifecycle.
+  const [controller] = useState(() => new ChatController(store, threadId));
 
-  // Store onError in a ref to avoid dependency issues
-  const onErrorRef = useRef(onError);
   useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
-  // Store getMetadata in a ref to avoid dependency issues
-  const getMetadataRef = useRef(getMetadata);
-  useEffect(() => {
-    getMetadataRef.current = getMetadata;
-  }, [getMetadata]);
+    controller.setThreadId(threadId);
+  }, [controller, threadId]);
 
-  const currentRunId = useStore(store, state => state.currentRunId);
-  const currentTaskId = useStore(store, state => state.currentTaskId);
+  useEffect(() => {
+    controller.setAgent(agent);
+  }, [controller, agent]);
+
+  useEffect(() => {
+    controller.setExternalTools(externalTools);
+  }, [controller, externalTools]);
+
+  useEffect(() => {
+    controller.setCallbacks({ onError, getMetadata, beforeSendMessage });
+  }, [controller, onError, getMetadata, beforeSendMessage]);
+
   const processMessage = useStore(store, state => state.processMessage);
   const clearAllStates = useStore(store, state => state.clearAllStates);
   const setError = useStore(store, state => state.setError);
@@ -118,7 +104,6 @@ export function useChat({
   const setAgent = useStore(store, state => state.setAgent);
   const setResumeWithToolResult = useStore(store, state => state.setResumeWithToolResult);
   const hasPendingToolCalls = useStore(store, state => state.hasPendingToolCalls);
-  const failAllPendingToolCalls = useStore(store, state => state.failAllPendingToolCalls);
   const setStreamingIndicator = useStore(store, state => state.setStreamingIndicator);
   const setExternalTools = useStore(store, state => state.setExternalTools);
   const errorState = useStore(store, state => state.error);
@@ -129,15 +114,6 @@ export function useChat({
       setExternalTools(externalTools as DistriAnyTool[]);
     }
   }, [externalTools, setExternalTools]);
-
-
-  // Create InvokeContext for message construction
-  const createInvokeContext = useCallback((): InvokeContext => ({
-    thread_id: threadId,
-    run_id: currentRunId,
-    task_id: currentTaskId,
-    getMetadata: getMetadataRef.current
-  }), [currentRunId, currentTaskId, threadId]);
 
   const isLoading = useStore(store, state => state.isLoading);
   const isStreaming = useStore(store, state => state.isStreaming);
@@ -173,14 +149,11 @@ export function useChat({
     processMessage(message, false);
   }, [processMessage]);
 
-
-
   // Set up the agent and tools in the store
   useEffect(() => {
     if (agent) {
       setAgent(agent);
     }
-
   }, [agent, setAgent]);
 
   // Store cleanup functions in refs to avoid dependency changes
@@ -194,15 +167,13 @@ export function useChat({
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      controller.dispose();
       // Clear any lingering streaming states on unmount
       if (cleanupRef.current) {
         setTimeout(cleanupRef.current, 0);
       }
     };
-  }, []); // Empty dependencies to avoid re-creating cleanup function
+  }, [controller]); // controller is stable for the lifetime of this hook instance
 
   // Reset state when agent changes
   const agentNameRef = useRef<string | undefined>(undefined);
@@ -235,186 +206,18 @@ export function useChat({
     if (threadIdRef.current !== undefined && threadIdRef.current !== threadId) {
       clearAllStates();
       setError(null);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+      controller.dispose();
     }
     threadIdRef.current = threadId;
-  }, [threadId, clearAllStates, setError]);
+  }, [threadId, clearAllStates, setError, controller]);
 
+  const sendMessage = useCallback((content: string | DistriPart[], options?: SendMessageOptions) => {
+    return controller.sendMessage(content, options);
+  }, [controller]);
 
-  const handleStreamEvent = useCallback(
-    (event: DistriChatMessage) => {
-      processMessage(event, true);
-    }, [processMessage]);
-
-  const sendMessage = useCallback(async (content: string | DistriPart[], options?: SendMessageOptions) => {
-    if (!agent) return;
-
-    setLoading(true);
-    setStreaming(true);
-    setError(null);
-    setStreamingIndicator('typing');
-
-    // Cancel any existing stream
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-
-    try {
-      // Ensure token is fresh before opening the stream
-      await agent.client.ensureAccessToken();
-
-      const parts: DistriPart[] = typeof content === 'string'
-        ? [{ part_type: 'text', data: content }]
-        : content;
-      const partsMetadata = options?.partsMetadata;
-
-      let distriMessage = DistriClient.initDistriMessage('user', parts);
-      if (partsMetadata && Object.keys(partsMetadata).length > 0) {
-        distriMessage.metadata = { ...(distriMessage.metadata ?? {}), parts: partsMetadata };
-      }
-
-      // Add user message immediately - not from stream, user initiated
-      processMessage(distriMessage, false);
-
-      if (beforeSendMessage) {
-        distriMessage = await beforeSendMessage(distriMessage);
-      }
-
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
-
-      const contextMetadata = await getMetadataRef.current?.() || {};
-      // Forward parts_metadata to the request so the backend persists / filters
-      // by it (save: false) and downstream consumers see developer flags.
-      const requestMetadata: Record<string, unknown> = {
-        ...contextMetadata,
-        // Per-send metadata (load_skills / fork / …) overrides the chat-level
-        // getMetadata for this one invocation.
-        ...(options?.metadata ?? {}),
-        task_id: currentTaskId,
-      };
-      if (partsMetadata && Object.keys(partsMetadata).length > 0) {
-        requestMetadata.parts = { ...(contextMetadata.parts as object | undefined ?? {}), ...partsMetadata };
-      }
-      // Start streaming
-      const stream = await agent.invokeStream({
-        message: a2aMessage,
-        metadata: requestMetadata,
-      }, externalTools);
-
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
-        handleStreamEvent(event);
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // Stream was cancelled, don't show error
-        // **FIX**: Clean up streaming state even on abort
-        setStreamingIndicator(undefined);
-        setStreaming(false);
-        setLoading(false);
-        return;
-      }
-      const error = err instanceof Error ? err : new Error('Failed to send message');
-      setError(error);
-      onErrorRef.current?.(error);
-
-      // **FIX**: Fail all pending tool calls so input isn't blocked
-      failAllPendingToolCalls(error.message);
-
-      // **FIX**: Clear streaming indicators immediately on error
-      setStreamingIndicator(undefined);
-      setStreaming(false);
-      setLoading(false);
-    } finally {
-      setStreamingIndicator(undefined);
-      setLoading(false);
-      setStreaming(false);
-      abortControllerRef.current = null;
-    }
-  }, [agent, beforeSendMessage, createInvokeContext, currentTaskId, externalTools, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
-
-  const sendMessageStream = useCallback(async (content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
-    if (!agent) return;
-
-    setLoading(true);
-    setStreaming(true);
-    setError(null);
-    setStreamingIndicator('typing');
-
-    // Cancel any existing stream
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-
-    try {
-      // Ensure token is fresh before opening the stream
-      await agent.client.ensureAccessToken();
-
-      const parts: DistriPart[] = typeof content === 'string'
-        ? [{ part_type: 'text', data: content }]
-        : content;
-
-      const distriMessage = DistriClient.initDistriMessage(role, parts);
-
-      // Add user/tool message immediately - not from stream, user initiated
-      processMessage(distriMessage, false);
-
-      const context = createInvokeContext();
-      const a2aMessage = convertDistriMessageToA2A(distriMessage, context);
-
-      const contextMetadata = await getMetadataRef.current?.() || {};
-      // Start streaming
-      const stream = await agent.invokeStream({
-        message: a2aMessage,
-        metadata: {
-          ...contextMetadata,
-          task_id: currentTaskId
-        }
-      });
-
-      for await (const event of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
-        }
-        handleStreamEvent(event);
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // Stream was cancelled, don't show error
-        // **FIX**: Clean up streaming state even on abort
-        setStreamingIndicator(undefined);
-        setStreaming(false);
-        setLoading(false);
-        return;
-      }
-      const error = err instanceof Error ? err : new Error('Failed to send message');
-      setError(error);
-      onErrorRef.current?.(error);
-
-      // **FIX**: Fail all pending tool calls so input isn't blocked
-      failAllPendingToolCalls(error.message);
-
-      // **FIX**: Clear streaming indicators immediately on error
-      setStreamingIndicator(undefined);
-      setStreaming(false);
-      setLoading(false);
-    } finally {
-      setStreamingIndicator(undefined);
-      setLoading(false);
-      setStreaming(false);
-      abortControllerRef.current = null;
-    }
-  }, [agent, createInvokeContext, currentTaskId, handleStreamEvent, processMessage, setError, setLoading, setStreaming, setStreamingIndicator, failAllPendingToolCalls]);
+  const sendMessageStream = useCallback((content: string | DistriPart[], role: 'user' | 'tool' = 'user') => {
+    return controller.sendMessageStream(content, role);
+  }, [controller]);
 
   // Register the tool-result resume path with the store: when a human-in-the-loop
   // checkpoint tool is answered AFTER its pending call timed out (agent turn
@@ -426,64 +229,12 @@ export function useChat({
   }, [setResumeWithToolResult, sendMessageStream]);
 
   const stopStreaming = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    // Fail all pending tool calls so they don't complete after cancel
-    // and trigger the agent to restart via completeTool retry
-    failAllPendingToolCalls('User cancelled the operation');
-    setStreamingIndicator(undefined);
-    setStreaming(false);
-    setLoading(false);
-  }, [failAllPendingToolCalls, setStreamingIndicator, setStreaming, setLoading]);
+    controller.stopStreaming();
+  }, [controller]);
 
-  const compactingRef = useRef(false);
-  const compact = useCallback(async (): Promise<CompactTaskResult | undefined> => {
-    const taskId = currentTaskId;
-    if (!agent || !taskId) {
-      console.warn('[useChat] compact() called with no active task — nothing to compact');
-      return undefined;
-    }
-    // Reentrancy guard: a second click (or double-bound handler) would
-    // otherwise fire a duplicate POST while the first is still in flight.
-    if (compactingRef.current) return undefined;
-    compactingRef.current = true;
-    store.setState({ isCompacting: true });
-    try {
-      const result = await agent.compact(taskId);
-      // Mirror the compaction event into the store so observers that
-      // depend on `compactionEvents` see the result even before the
-      // streaming `context_compaction` event arrives (or in case it
-      // races past `useChat` after compactingRef has cleared).
-      if (result?.compacted && result.tier) {
-        store.setState(s => ({
-          isCompacting: false,
-          compactionEvents: [
-            ...s.compactionEvents,
-            {
-              ts: Date.now(),
-              before: result.tokens_before ?? 0,
-              after: result.tokens_after ?? 0,
-              tier: result.tier!,
-              source: 'manual' as const,
-            },
-          ].slice(-50),
-        }));
-      } else {
-        store.setState({ isCompacting: false });
-      }
-      return result;
-    } catch (err) {
-      // Surface the error so onError handlers can render it, and clear
-      // the in-flight flag — the matching context_compaction event will
-      // not arrive on failure.
-      store.setState({ isCompacting: false });
-      onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
-      return undefined;
-    } finally {
-      compactingRef.current = false;
-    }
-  }, [agent, currentTaskId, store]);
+  const compact = useCallback((): Promise<CompactTaskResult | undefined> => {
+    return controller.compact();
+  }, [controller]);
 
   // Combined display array: persisted history (from parent) first, live
   // optimistic + streamed messages from the store after. Memoised so

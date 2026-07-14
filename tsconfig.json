@@ -21,7 +21,9 @@
     "baseUrl": ".",
     "paths": {
       "@distri/core": ["./packages/core/src"],
-      "@distri/react": ["./packages/react/src"]
+      "@distri/state": ["./packages/state/src"],
+      "@distri/react": ["./packages/react/src"],
+      "@distri/angular": ["./packages/angular/src"]
     }
   },
   "include": ["packages/**/*"],
