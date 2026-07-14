@@ -46,18 +46,18 @@ const impactLevelOptions = ['Low', 'Medium', 'High', 'Critical'];
         <form class="form" (submit)="onSubmit($event)">
           <div class="field-group">
             <label class="label">Full Name</label>
-            <input class="input" type="text" [(ngModel)]="data.fullName" name="fullName" placeholder="Enter your full name" (ngModelChange)="onDirty()" />
+            <input class="input" type="text" [(ngModel)]="data.fullName" [class.animate-distri-field-fill]="justFilled('fullName')" name="fullName" placeholder="Enter your full name" (ngModelChange)="onDirty()" />
           </div>
 
           <div class="field-group">
             <label class="label">Email</label>
-            <input class="input" type="email" [(ngModel)]="data.email" name="email" placeholder="your.email@company.com" (ngModelChange)="onDirty()" />
+            <input class="input" type="email" [(ngModel)]="data.email" [class.animate-distri-field-fill]="justFilled('email')" name="email" placeholder="your.email@company.com" (ngModelChange)="onDirty()" />
           </div>
 
           <div class="row">
             <div class="field-group-half">
               <label class="label">Incident Type</label>
-              <select class="select" [(ngModel)]="data.incidentType" name="incidentType" (ngModelChange)="onDirty()">
+              <select class="select" [(ngModel)]="data.incidentType" [class.animate-distri-field-fill]="justFilled('incidentType')" name="incidentType" (ngModelChange)="onDirty()">
                 <option value="">Select type...</option>
                 @for (opt of incidentTypeOptions; track opt) {
                   <option [value]="opt">{{ opt }}</option>
@@ -66,13 +66,13 @@ const impactLevelOptions = ['Low', 'Medium', 'High', 'Critical'];
             </div>
             <div class="field-group-half">
               <label class="label">Date of Incident</label>
-              <input class="input" type="date" [(ngModel)]="data.dateOfIncident" name="dateOfIncident" (ngModelChange)="onDirty()" />
+              <input class="input" type="date" [(ngModel)]="data.dateOfIncident" [class.animate-distri-field-fill]="justFilled('dateOfIncident')" name="dateOfIncident" (ngModelChange)="onDirty()" />
             </div>
           </div>
 
           <div class="field-group">
             <label class="label">Impact Level</label>
-            <select class="select" [(ngModel)]="data.impactLevel" name="impactLevel" (ngModelChange)="onDirty()">
+            <select class="select" [(ngModel)]="data.impactLevel" [class.animate-distri-field-fill]="justFilled('impactLevel')" name="impactLevel" (ngModelChange)="onDirty()">
               <option value="">Select impact level...</option>
               @for (opt of impactLevelOptions; track opt) {
                 <option [value]="opt">{{ opt }}</option>
@@ -82,12 +82,12 @@ const impactLevelOptions = ['Low', 'Medium', 'High', 'Critical'];
 
           <div class="field-group">
             <label class="label">Incident Description</label>
-            <textarea class="textarea" rows="4" [(ngModel)]="data.description" name="description" placeholder="Describe the incident in detail..." (ngModelChange)="onDirty()"></textarea>
+            <textarea class="textarea" rows="4" [(ngModel)]="data.description" [class.animate-distri-field-fill]="justFilled('description')" name="description" placeholder="Describe the incident in detail..." (ngModelChange)="onDirty()"></textarea>
           </div>
 
           <div class="field-group">
             <label class="label">Suggested Actions</label>
-            <textarea class="textarea" rows="3" [(ngModel)]="data.suggestedActions" name="suggestedActions" placeholder="Any recommended actions or remediation steps..." (ngModelChange)="onDirty()"></textarea>
+            <textarea class="textarea" rows="3" [(ngModel)]="data.suggestedActions" [class.animate-distri-field-fill]="justFilled('suggestedActions')" name="suggestedActions" placeholder="Any recommended actions or remediation steps..." (ngModelChange)="onDirty()"></textarea>
           </div>
 
           @if (submitStatus() === 'success') {
@@ -132,9 +132,29 @@ export class IncidentFormComponent {
     this.submitStatus.set('idle');
   }
 
+  /**
+   * Fields the agent just wrote, so we can flash them. A burst of `fill_field`
+   * calls then reads as progressive motion rather than everything snapping in
+   * at once — the same effect the distri.dev demo has.
+   */
+  readonly recentlyFilled = signal<Set<string>>(new Set());
+
   setValue(field: keyof IncidentFormData, value: string): void {
     this.data = { ...this.data, [field]: value };
     this.submitStatus.set('idle');
+
+    this.recentlyFilled.update((s) => new Set(s).add(field));
+    setTimeout(() => {
+      this.recentlyFilled.update((s) => {
+        const next = new Set(s);
+        next.delete(field);
+        return next;
+      });
+    }, 1100); // matches the distri-field-fill keyframe duration
+  }
+
+  justFilled(field: keyof IncidentFormData): boolean {
+    return this.recentlyFilled().has(field);
   }
 
   getValues(): IncidentFormData {

@@ -1,41 +1,32 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+/**
+ * Streaming/thinking indicator, mirroring @distri/react's: a shimmering label
+ * plus three bouncing dots, so the user can tell the agent is working rather
+ * than stalled.
+ */
 @Component({
   selector: 'distri-typing-indicator',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (visible) {
-      <div class="distri-typing" role="status" aria-label="Assistant is responding">
-        <span class="distri-typing__dot"></span>
-        <span class="distri-typing__dot"></span>
-        <span class="distri-typing__dot"></span>
+    @if (visible()) {
+      <div
+        class="flex shrink-0 items-center gap-2 px-3 py-2"
+        role="status"
+        aria-label="Assistant is responding"
+      >
+        <span class="animate-pulse text-xs font-medium text-muted-foreground">{{ label() }}</span>
+        <span class="flex items-center gap-1">
+          <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]"></span>
+          <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]"></span>
+          <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground"></span>
+        </span>
       </div>
     }
   `,
-  styles: [`
-    .distri-typing {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 0;
-    }
-    .distri-typing__dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      opacity: 0.4;
-      animation: distri-typing-pulse 1s infinite ease-in-out;
-    }
-    .distri-typing__dot:nth-child(2) { animation-delay: 0.15s; }
-    .distri-typing__dot:nth-child(3) { animation-delay: 0.3s; }
-    @keyframes distri-typing-pulse {
-      0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
-      40% { opacity: 1; transform: scale(1); }
-    }
-  `],
 })
 export class TypingIndicatorComponent {
-  @Input() visible = false;
+  readonly visible = input(false);
+  readonly label = input('Thinking');
 }

@@ -18,7 +18,9 @@ import { getFormHtml, getFormTools } from './tools';
       <div class="app-shell__form">
         <app-incident-form />
       </div>
-      <div class="app-shell__chat">
+      <!-- The "dark" class flips the Distri design tokens to their dark values
+           for the chat panel only, so it matches the dark shell. -->
+      <div class="app-shell__chat dark">
         <distri-chat
           [agentIdOrDef]="agentId"
           [threadId]="threadId"

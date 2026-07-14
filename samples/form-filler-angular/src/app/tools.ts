@@ -102,6 +102,9 @@ export const getFormTools = (getForm: () => IncidentFormComponent | undefined): 
         }
         form.setValue(mappedField, value);
         results.push(`${field_name}: "${value}"`);
+        // Stagger the writes so a batched call still animates field-by-field
+        // instead of snapping the whole form in at once.
+        await new Promise((r) => setTimeout(r, 220));
       }
 
       let response = '';

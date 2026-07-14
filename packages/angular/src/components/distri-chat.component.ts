@@ -12,12 +12,12 @@ import {
   untracked,
 } from '@angular/core';
 import { AgentDefinition, DistriBaseTool, DistriClient, DistriMessage } from '@distri/core';
+import type { ToolCallState } from '@distri/state';
 import { ChatService, createChatService } from '../chat';
 import { resolveAgentOnce } from '../agent';
 import { DISTRI_SERVICE } from '../provider';
 import { MessageListComponent } from './message-list.component';
 import { ChatInputComponent } from './chat-input.component';
-import { ToolCallRowComponent } from './tool-call-row.component';
 import { TypingIndicatorComponent } from './typing-indicator.component';
 
 /**
@@ -31,97 +31,73 @@ import { TypingIndicatorComponent } from './typing-indicator.component';
 @Component({
   selector: 'distri-chat',
   standalone: true,
-  imports: [MessageListComponent, ChatInputComponent, ToolCallRowComponent, TypingIndicatorComponent],
+  imports: [MessageListComponent, ChatInputComponent, TypingIndicatorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="distri-chat">
+    <!-- h-full + min-h-0 on every flex level: that's what makes the transcript
+         scroll internally instead of growing and shoving the composer away. -->
+    <div class="flex h-full min-h-0 flex-col bg-background text-foreground">
+      <!-- Header: agent identity + start a fresh thread. -->
+      <div class="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <div class="flex min-w-0 items-center gap-2">
+          <span class="h-1.5 w-1.5 shrink-0 rounded-full"
+                [class]="ready() ? 'bg-primary' : 'bg-muted-foreground'"></span>
+          <span class="truncate font-mono text-xs text-muted-foreground">{{ agentLabel() }}</span>
+        </div>
+        <button
+          type="button"
+          (click)="newThread()"
+          class="flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-xs
+                 font-medium text-muted-foreground transition-colors
+                 hover:border-primary/50 hover:bg-primary/10 hover:text-foreground"
+          title="Start a new conversation"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+               stroke-linecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          New
+        </button>
+      </div>
+
       @if (errorMessage(); as err) {
-        <div class="distri-chat__error" role="alert">
+        <div
+          class="flex flex-col gap-0.5 border-l-2 border-destructive bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          role="alert"
+        >
           <strong>{{ authFailed() ? 'Authentication failed' : 'Error' }}</strong>
-          <span>{{ err }}</span>
+          <span class="break-words opacity-90">{{ err }}</span>
         </div>
       } @else if (isConnecting()) {
-        <div class="distri-chat__status">Connecting to Distri…</div>
+        <div class="px-3 py-2 text-xs text-muted-foreground">Connecting to Distri…</div>
       }
+
       @if (showStarters()) {
-        <div class="distri-chat__starters">
-          <div class="distri-chat__starters-label">Try one:</div>
+        <div class="flex flex-col items-start gap-1.5 p-3">
+          <div class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Try one</div>
           @for (prompt of starterPrompts; track prompt) {
-            <button type="button" class="distri-chat__starter" (click)="onSend(prompt)">
+            <button
+              type="button"
+              (click)="onSend(prompt)"
+              class="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-left text-xs
+                     leading-relaxed transition-colors hover:border-primary/50 hover:bg-primary/10"
+            >
               {{ prompt }}
             </button>
           }
         </div>
       }
-      <distri-message-list [messages]="messages()" />
-      <div class="distri-chat__pending-tools">
-        @for (tc of pendingToolCalls(); track tc.tool_call_id) {
-          <distri-tool-call-row [toolCall]="tc" />
-        }
-      </div>
+
+      <distri-message-list
+        class="flex min-h-0 flex-1 flex-col"
+        [messages]="messages()"
+        [toolCalls]="toolCalls()"
+      />
+
       <distri-typing-indicator [visible]="isStreaming()" />
       <distri-chat-input [disabled]="isStreaming() || !ready()" (send)="onSend($event)" />
     </div>
   `,
-  styles: [`
-    .distri-chat {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-    }
-    .distri-chat__error {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: 10px 12px;
-      background: rgba(220, 38, 38, 0.12);
-      border-left: 3px solid #dc2626;
-      color: #dc2626;
-      font-size: 13px;
-      word-break: break-word;
-    }
-    .distri-chat__status {
-      padding: 10px 12px;
-      font-size: 13px;
-      opacity: 0.7;
-    }
-    .distri-chat__pending-tools {
-      padding: 0 8px;
-    }
-    .distri-chat__starters {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
-      padding: 12px;
-    }
-    .distri-chat__starters-label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      opacity: 0.55;
-    }
-    .distri-chat__starter {
-      width: 100%;
-      text-align: left;
-      padding: 10px 12px;
-      border: 1px solid rgba(127, 127, 127, 0.35);
-      border-radius: 8px;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      font-size: 13px;
-      line-height: 1.45;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .distri-chat__starter:hover {
-      background: rgba(59, 130, 246, 0.1);
-      border-color: rgba(59, 130, 246, 0.5);
-    }
-  `],
 })
 export class DistriChatComponent implements OnChanges, OnDestroy {
   /**
@@ -171,11 +147,9 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
   readonly showStarters = computed(
     () => !!this.starterPrompts?.length && this.ready() && this.messages().length === 0,
   );
-  readonly pendingToolCalls = computed(() => {
-    const tcs = this.chat()?.toolCalls();
-    if (!tcs) return [];
-    return Array.from(tcs.values()).filter((tc) => tc.status === 'pending' || tc.status === 'running');
-  });
+  /** All tool calls (not just pending) — the transcript renders them inline,
+   *  in the position where they happened. */
+  readonly toolCalls = computed(() => this.chat()?.toolCalls() ?? new Map<string, ToolCallState>());
   /** Auth/config failed in `provideDistri` — there is no client, so nothing works. */
   readonly authFailed = computed(() => this.distri?.error() != null);
   /** Waiting on `provideDistri`'s config (e.g. a token fetch) to resolve. */
@@ -187,6 +161,22 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
     const err = this.distri?.error() ?? this.chat()?.error() ?? this.agentError() ?? null;
     return err?.message ?? null;
   });
+
+  readonly agentLabel = computed(() => {
+    const agent = this.agentInput();
+    if (!agent) return '';
+    return typeof agent === 'string' ? agent : agent.name;
+  });
+
+  /**
+   * Start a fresh conversation. Swapping the thread id re-runs the connect
+   * effect, which builds a brand-new chat store — so the transcript, tool
+   * calls and streaming flags all reset by construction.
+   */
+  newThread(): void {
+    const base = (this.threadId ?? 'thread').replace(/-\d+$/, '');
+    this.threadInput.set(`${base}-${Date.now()}`);
+  }
 
   constructor() {
     // Reconnect whenever the client (which may arrive asynchronously, once

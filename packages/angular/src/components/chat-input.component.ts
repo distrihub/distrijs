@@ -1,86 +1,116 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  EventEmitter,
+  OnDestroy,
+  Output,
+  ViewChild,
+  effect,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
+import { Editor } from '@tiptap/core';
+import Placeholder from '@tiptap/extension-placeholder';
+import StarterKit from '@tiptap/starter-kit';
 
+/**
+ * Tiptap-backed composer — the same editor @distri/react's ChatInput uses, so
+ * both SDKs get identical editing behaviour (and there's one obvious place to
+ * add slash-commands / mentions later).
+ *
+ * Enter sends, Shift+Enter inserts a newline.
+ */
 @Component({
   selector: 'distri-chat-input',
   standalone: true,
-  imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <form class="distri-chat-input" (submit)="onSubmit($event)">
-      <textarea
-        class="distri-chat-input__textarea"
-        rows="2"
-        [disabled]="disabled"
-        [(ngModel)]="value"
-        name="distri-chat-input"
-        placeholder="Message the agent…"
-        (keydown.enter)="onEnter($event)"
-      ></textarea>
+    <div class="flex items-end gap-2 border-t border-border p-2">
+      <div
+        #host
+        class="distri-editor min-w-0 flex-1 cursor-text rounded-lg border border-input bg-background
+               px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring"
+        [class.pointer-events-none]="disabled()"
+        [class.opacity-50]="disabled()"
+      ></div>
+
       <button
-        type="submit"
-        class="distri-chat-input__send"
-        [disabled]="disabled || !value.trim()"
+        type="button"
+        (click)="submit()"
+        [disabled]="disabled() || empty()"
+        class="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground
+               transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Send
       </button>
-    </form>
+    </div>
   `,
-  styles: [`
-    .distri-chat-input {
-      display: flex;
-      gap: 8px;
-      align-items: flex-end;
-      padding: 8px;
-      border-top: 1px solid rgba(127, 127, 127, 0.25);
-    }
-    .distri-chat-input__textarea {
-      flex: 1;
-      resize: none;
-      border-radius: 6px;
-      border: 1px solid rgba(127, 127, 127, 0.35);
-      padding: 8px 10px;
-      font: inherit;
-      background: transparent;
-      color: inherit;
-    }
-    .distri-chat-input__send {
-      padding: 8px 16px;
-      border-radius: 6px;
-      border: none;
-      background: #3b82f6;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .distri-chat-input__send:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  `],
 })
-export class ChatInputComponent {
-  @Input() disabled = false;
+export class ChatInputComponent implements AfterViewInit, OnDestroy {
+  readonly disabled = input(false);
+  readonly placeholder = input('Message the agent…');
   @Output() readonly send = new EventEmitter<string>();
 
-  value = '';
+  @ViewChild('host') private host?: ElementRef<HTMLDivElement>;
 
-  onSubmit(event: Event): void {
-    event.preventDefault();
-    this.submit();
+  private editor?: Editor;
+  readonly empty = signal(true);
+
+  constructor() {
+    // Tiptap owns its own editable flag; mirror `disabled` into it so the
+    // caret disappears while the agent is streaming.
+    effect(() => {
+      const disabled = this.disabled();
+      this.editor?.setEditable(!disabled);
+    });
   }
 
-  onEnter(event: Event): void {
-    const keyboardEvent = event as KeyboardEvent;
-    if (keyboardEvent.shiftKey) return;
-    keyboardEvent.preventDefault();
-    this.submit();
+  ngAfterViewInit(): void {
+    if (!this.host) return;
+
+    this.editor = new Editor({
+      element: this.host.nativeElement,
+      extensions: [
+        // A chat composer isn't a document editor: no headings/lists/quotes.
+        StarterKit.configure({
+          heading: false,
+          bulletList: false,
+          orderedList: false,
+          blockquote: false,
+          codeBlock: false,
+          horizontalRule: false,
+        }),
+        Placeholder.configure({ placeholder: () => this.placeholder() }),
+      ],
+      editable: !this.disabled(),
+      editorProps: {
+        handleKeyDown: (_view, event) => {
+          if (event.key !== 'Enter' || event.shiftKey) return false;
+          event.preventDefault();
+          this.submit();
+          return true; // swallow it — Enter sends, it does not insert a newline
+        },
+      },
+      // `untracked`: setEditable() (called from the effect below) makes Tiptap
+      // emit an update synchronously, so this would otherwise be a signal
+      // write inside an effect — NG0600.
+      onUpdate: ({ editor }) => untracked(() => this.empty.set(editor.isEmpty)),
+    });
   }
 
-  private submit(): void {
-    const trimmed = this.value.trim();
-    if (!trimmed || this.disabled) return;
-    this.send.emit(trimmed);
-    this.value = '';
+  ngOnDestroy(): void {
+    this.editor?.destroy();
+  }
+
+  submit(): void {
+    if (this.disabled()) return;
+    const text = this.editor?.getText().trim() ?? '';
+    if (!text) return;
+    this.send.emit(text);
+    this.editor?.commands.clearContent();
+    this.empty.set(true);
   }
 }
