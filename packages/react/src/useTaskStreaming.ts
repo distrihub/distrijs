@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { Agent, DistriChatMessage } from '@distri/core';
+import { TaskStreamingController, hydrateFromHistory } from '@distri/state';
 import { ChatStore, createChatStore } from './stores/chatStateStore';
 
 export interface UseTaskStreamingOptions {
@@ -47,19 +48,6 @@ export interface UseTaskStreamingReturn {
   stop: () => void;
 }
 
-const MAX_RECONNECTS = 3;
-
-function hydrateFromHistory(store: ChatStore, initialMessages?: DistriChatMessage[]): void {
-  if (!initialMessages || initialMessages.length === 0) return;
-  const links = initialMessages
-    .map((m) => ({
-      taskId: (m as { taskId?: string }).taskId as string,
-      parentTaskId: (m as { parentTaskId?: string }).parentTaskId,
-    }))
-    .filter((l) => Boolean(l.taskId));
-  if (links.length > 0) store.getState().hydrateTaskTree(links);
-}
-
 /**
  * Read-only follow of an existing task. The observational twin of `useChat`:
  * it owns a chat-state store and drives it from `agent.resubscribe(taskId)`
@@ -68,9 +56,9 @@ function hydrateFromHistory(store: ChatStore, initialMessages?: DistriChatMessag
  * (via `<ChatStoreContext.Provider value={store}>`) or build a custom view from
  * the returned `messages` / `store`.
  *
- * (Re)connect is idempotent: `tasks/resubscribe` always replays the full event
- * log from position 0, so every connect first clears the store and replays —
- * guaranteeing consistent state with no doubled text deltas.
+ * The reconnect loop itself lives in `@distri/state`'s `TaskStreamingController`
+ * — this hook owns only React lifecycle (mount/dep-change wiring) and the
+ * `isTerminal`/`error` view state.
  */
 export function useTaskStreaming({
   agent,
@@ -82,6 +70,7 @@ export function useTaskStreaming({
 }: UseTaskStreamingOptions): UseTaskStreamingReturn {
   const [fallbackStore] = useState<ChatStore>(() => createChatStore());
   const store = providedStore ?? fallbackStore;
+  const [controller] = useState(() => new TaskStreamingController(store));
 
   const messages = useStore(store, (s) => s.messages);
   const isStreaming = useStore(store, (s) => s.isStreaming);
@@ -89,7 +78,6 @@ export function useTaskStreaming({
   const [error, setError] = useState<Error | null>(null);
   const [reconnectKey, setReconnectKey] = useState(0);
 
-  const abortRef = useRef<AbortController | null>(null);
   const onErrorRef = useRef(onError);
   useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
@@ -102,75 +90,24 @@ export function useTaskStreaming({
   useEffect(() => {
     if (!enabled || !agent || !taskId) return;
 
-    const ac = new AbortController();
-    abortRef.current = ac;
-    let cancelled = false;
-    setIsTerminal(false);
     setError(null);
+    controller.start({
+      agent,
+      taskId,
+      initialMessages,
+      onError: (e) => {
+        setError(e);
+        onErrorRef.current?.(e);
+      },
+      onTerminalChange: setIsTerminal,
+    });
 
-    const run = async () => {
-      let attempt = 0;
-      while (!cancelled && !ac.signal.aborted) {
-        // Fresh (re)connect: resubscribe replays the full log from position 0,
-        // so wipe the store first and rebuild — avoids doubled text deltas.
-        store.getState().clearAllStates();
-        hydrateFromHistory(store, initialMessages);
-
-        let sawTransientError = false;
-        let sawTerminal = false;
-        try {
-          const stream: AsyncGenerator<DistriChatMessage> = agent.resubscribe(taskId, { signal: ac.signal });
-          for await (const evt of stream) {
-            if (cancelled || ac.signal.aborted) break;
-            store.getState().processMessage(evt, true);
-            const type = (evt as { type?: string }).type;
-            const evtTaskId = (evt as { taskId?: string }).taskId;
-            const code = (evt as { data?: { code?: string } }).data?.code;
-            if (type === 'run_error' && code === 'STREAM_ERROR') {
-              sawTransientError = true;
-              const msg = (evt as { data?: { message?: string } }).data?.message ?? 'Stream error';
-              const e = new Error(msg);
-              setError(e);
-              onErrorRef.current?.(e);
-            } else if ((type === 'run_finished' || type === 'run_error') && evtTaskId === taskId) {
-              sawTerminal = true;
-            }
-          }
-        } catch (e) {
-          sawTransientError = true;
-          const err = e instanceof Error ? e : new Error(String(e));
-          setError(err);
-          onErrorRef.current?.(err);
-        }
-
-        if (cancelled || ac.signal.aborted) return;
-        if (sawTerminal || !sawTransientError) {
-          // Terminal frame seen, or the server closed the stream cleanly
-          // (it only closes on the task's own terminal — `until_own_terminal`).
-          setIsTerminal(true);
-          return;
-        }
-        // Transient error → reconnect with capped linear backoff.
-        attempt += 1;
-        if (attempt > MAX_RECONNECTS) {
-          setIsTerminal(true);
-          return;
-        }
-        await new Promise((r) => setTimeout(r, 500 * attempt));
-      }
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-      ac.abort();
-    };
+    return () => controller.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agent, taskId, enabled, reconnectKey, store]);
+  }, [agent, taskId, enabled, reconnectKey, store, controller]);
 
   const reconnect = useCallback(() => setReconnectKey((k) => k + 1), []);
-  const stop = useCallback(() => abortRef.current?.abort(), []);
+  const stop = useCallback(() => controller.stop(), [controller]);
 
   const displayedMessages = useMemo(
     () => (initialMessages && initialMessages.length > 0 ? [...initialMessages, ...messages] : messages),

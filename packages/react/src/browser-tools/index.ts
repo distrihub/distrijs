@@ -1,5 +1,7 @@
-export { IndexedDbStore } from './storage/indexeddb-store'
-export type { StoreRecord, StoreChangeOp, StoreChangeEvent } from './storage/indexeddb-store'
+// Moved to @distri/state (framework-agnostic). Re-exported here so existing
+// `@distri/react` import paths keep working unchanged.
+export { IndexedDbStore } from '@distri/state'
+export type { StoreRecord, StoreChangeOp, StoreChangeEvent } from '@distri/state'
 
 export {
   createDbTools,
@@ -28,7 +30,7 @@ export {
   createDbClearTool,
   createDbCollectionsTool,
   createExecJsTool,
-} from './tools'
+} from '@distri/state'
 export type {
   CollectionDef,
   CreateDbToolsOptions,
@@ -36,4 +38,4 @@ export type {
   ExecJsParams,
   ExecDbApi,
   CreateExecJsHandlerOptions,
-} from './tools'
+} from '@distri/state'

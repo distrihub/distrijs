@@ -12,10 +12,20 @@
       "import": "./packages/core/dist/index.mjs",
       "require": "./packages/core/dist/index.js"
     },
+    "./state": {
+      "types": "./packages/state/dist/index.d.ts",
+      "import": "./packages/state/dist/index.mjs",
+      "require": "./packages/state/dist/index.js"
+    },
     "./react": {
       "types": "./packages/react/dist/index.d.ts",
       "import": "./packages/react/dist/index.js",
       "require": "./packages/react/dist/index.cjs"
+    },
+    "./angular": {
+      "types": "./packages/angular/dist/index.d.ts",
+      "import": "./packages/angular/dist/index.mjs",
+      "require": "./packages/angular/dist/index.js"
     },
     "./react/globals.css": "./packages/react/dist/globals.css",
     "./components": {
@@ -31,8 +41,10 @@
   },
   "files": [
     "packages/core/dist/",
+    "packages/state/dist/",
     "packages/fs/dist/",
     "packages/react/dist/",
+    "packages/angular/dist/",
     "packages/components/dist/",
     "README.md"
   ],

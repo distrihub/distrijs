@@ -27,6 +27,9 @@
     "README.md"
   ],
   "dependencies": {
+    "@distri/components": "workspace:*",
+    "@distri/core": "workspace:*",
+    "@distri/react": "workspace:*",
     "@monaco-editor/react": "^4.6.0",
     "codemirror": "^5.65.16",
     "lucide-react": "^0.460.0",

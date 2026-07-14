@@ -1,0 +1,56 @@
+{
+  "name": "@distri/angular",
+  "version": "0.1.0",
+  "description": "Angular services (Signal-based) for Distri agents, built on @distri/state",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@distri/core": "workspace:*",
+    "@distri/state": "workspace:*",
+    "@tiptap/core": "^3.27.4",
+    "@tiptap/extension-placeholder": "^3.27.4",
+    "@tiptap/starter-kit": "^3.22.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/core": "^18.0.0",
+    "@angular/forms": "^18.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.1"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=17.0.0",
+    "@angular/forms": ">=17.0.0",
+    "@distri/core": "workspace:*",
+    "@distri/state": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
