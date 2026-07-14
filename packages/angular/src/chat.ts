@@ -1,5 +1,5 @@
 import { Signal } from '@angular/core';
-import { Agent, CompactTaskResult, DistriBaseTool, DistriChatMessage, DistriPart } from '@distri/core';
+import { Agent, CompactTaskResult, DistriBaseTool, DistriChatMessage, DistriMessage, DistriPart } from '@distri/core';
 import {
   ChatController,
   ChatStore,
@@ -16,6 +16,9 @@ export interface ChatServiceOptions {
   externalTools?: DistriBaseTool[];
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<Record<string, unknown>>;
+  /** Runs on the outgoing user message before it's sent — e.g. to inject
+   *  extra context (form HTML, current grid state) the agent should see. */
+  beforeSendMessage?: (message: DistriMessage) => Promise<DistriMessage>;
 }
 
 export interface ChatService {
@@ -48,7 +51,11 @@ export function createChatService(options: ChatServiceOptions): ChatService {
 
   controller.setAgent(options.agent);
   controller.setExternalTools(options.externalTools);
-  controller.setCallbacks({ onError: options.onError, getMetadata: options.getMetadata });
+  controller.setCallbacks({
+    onError: options.onError,
+    getMetadata: options.getMetadata,
+    beforeSendMessage: options.beforeSendMessage,
+  });
 
   store.getState().setAgent(options.agent);
   if (options.externalTools && options.externalTools.length > 0) {

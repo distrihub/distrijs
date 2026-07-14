@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, Input, OnChanges, OnDestroy, SimpleChanges, computed, signal } from '@angular/core';
-import { AgentDefinition, DistriClient } from '@distri/core';
+import { AgentDefinition, DistriBaseTool, DistriClient, DistriMessage } from '@distri/core';
 import { ChatService, createChatService } from '../chat';
 import { resolveAgentOnce } from '../agent';
 import { MessageListComponent } from './message-list.component';
@@ -57,6 +57,16 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) client!: DistriClient;
   @Input({ required: true }) agentIdOrDef!: string | AgentDefinition;
   @Input({ required: true }) threadId!: string;
+  /**
+   * Frontend-executed tools the agent can call. Expected to be stable for
+   * this component's lifetime (define once, e.g. as a class field) — unlike
+   * `client`/`agentIdOrDef`/`threadId`, changing this alone does not
+   * reconnect the chat.
+   */
+  @Input() externalTools?: DistriBaseTool[];
+  /** Runs on the outgoing user message before it's sent — e.g. to inject
+   *  extra context (form HTML, current grid state) the agent should see. */
+  @Input() beforeSendMessage?: (message: DistriMessage) => Promise<DistriMessage>;
 
   private chat = signal<ChatService | null>(null);
   private agentError = signal<Error | null>(null);
@@ -101,7 +111,12 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
         // Bail if a newer `reconnect()` (from a subsequent input change)
         // already ran while this resolution was in flight.
         if (this.client !== client || this.agentIdOrDef !== agentIdOrDef || this.threadId !== threadId) return;
-        this.chat.set(createChatService({ agent, threadId }));
+        this.chat.set(createChatService({
+          agent,
+          threadId,
+          externalTools: this.externalTools,
+          beforeSendMessage: this.beforeSendMessage,
+        }));
       })
       .catch((err) => {
         this.agentError.set(err instanceof Error ? err : new Error('Failed to initialize agent'));
