@@ -1,55 +1,62 @@
 {
   "name": "@distri/angular",
-  "version": "0.1.0",
-  "description": "Angular services (Signal-based) for Distri agents, built on @distri/state",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
+  "version": "0.0.2",
+  "description": "Angular SDK for Distri agents \u2014 Signal-based services and chat components, built on @distri/state",
+  "keywords": [
+    "distri",
+    "angular",
+    "ai",
+    "agents",
+    "chat",
+    "llm"
+  ],
+  "license": "MIT",
+  "homepage": "https://distri.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/distrihub/distrijs.git",
+    "directory": "packages/angular"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
+    "dev": "ng-packagr -p ng-package.json -c tsconfig.lib.json --watch",
     "lint": "eslint src --ext ts",
     "lint:fix": "eslint src --ext ts --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release": "pnpm build && npm publish ./dist --access public"
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "dependencies": {
-    "@distri/core": "workspace:*",
-    "@distri/state": "workspace:*",
     "@tiptap/core": "^3.27.4",
     "@tiptap/extension-placeholder": "^3.27.4",
     "@tiptap/starter-kit": "^3.22.0",
     "tslib": "^2.3.0"
   },
+  "peerDependencies": {
+    "@angular/common": ">=17.0.0",
+    "@angular/core": ">=17.0.0",
+    "@angular/forms": ">=17.0.0",
+    "@distri/core": "^0.4.4",
+    "@distri/state": "^0.1.0"
+  },
   "devDependencies": {
+    "@angular/common": "^18.2.14",
+    "@angular/compiler": "^18.2.14",
+    "@angular/compiler-cli": "^18.2.14",
     "@angular/core": "^18.0.0",
     "@angular/forms": "^18.0.0",
+    "@distri/core": "workspace:*",
+    "@distri/state": "workspace:*",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0",
+    "ng-packagr": "^18.2.1",
+    "typescript": "^5.5.4",
     "vitest": "^4.1.1"
   },
-  "peerDependencies": {
-    "@angular/core": ">=17.0.0",
-    "@angular/forms": ">=17.0.0",
-    "@distri/core": "workspace:*",
-    "@distri/state": "workspace:*"
-  },
+  "sideEffects": false,
   "publishConfig": {
     "access": "public"
   }
