@@ -891,7 +891,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
       // Render the tool call component directly
       elements.push(
         <RendererWrapper key={`external-tool-${toolCall.tool_call_id}`}>
-          {toolCall.component}
+          {toolCall.component as React.ReactNode}
         </RendererWrapper>
       );
     });

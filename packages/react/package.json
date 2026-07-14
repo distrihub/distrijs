@@ -31,6 +31,8 @@
     "README.md"
   ],
   "dependencies": {
+    "@distri/core": "workspace:*",
+    "@distri/state": "workspace:*",
     "@floating-ui/dom": "^1.7.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.3.2",
@@ -90,6 +92,7 @@
   },
   "peerDependencies": {
     "@distri/core": "workspace:*",
+    "@distri/state": "workspace:*",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },

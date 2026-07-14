@@ -41,7 +41,7 @@ export function DeveloperModeComponent({
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const externalTools = useChatStateStore(state => state.externalTools);
-  const safeExternalTools: DistriAnyTool[] = externalTools ?? [];
+  const safeExternalTools: DistriAnyTool[] = (externalTools ?? []) as DistriAnyTool[];
 
   const traceEnabled = Boolean(developerMode.traces) && Boolean(onOpenTrace);
 
