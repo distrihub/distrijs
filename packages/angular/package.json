@@ -1,6 +1,6 @@
 {
   "name": "@distri/angular",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Angular SDK for Distri agents \u2014 Signal-based services and chat components, built on @distri/state",
   "keywords": [
     "distri",
@@ -25,6 +25,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "prepublishOnly": "node -e \"console.error('\\n[@distri/angular] Do NOT publish from the package root — it ships a package.json with no entry points (main/module/types), causing \\'cannot resolve @distri/angular\\'.\\nRun `pnpm release` instead, which builds and runs `npm publish ./dist`.\\n'); process.exit(1)\"",
     "release": "pnpm build && npm publish ./dist --access public"
   },
   "dependencies": {
