@@ -77,6 +77,9 @@ export {
   createDbClearTool,
   createDbCollectionsTool,
   createExecJsTool,
+  registerBrowserTools,
+  unregisterBrowserTools,
+  BROWSER_TOOLS_NAMESPACE,
 } from './browser-tools';
 export type {
   StoreRecord,
