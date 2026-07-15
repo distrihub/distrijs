@@ -1,6 +1,6 @@
 {
   "name": "@distri/state",
-  "version": "0.1.0",
+  "version": "0.4.5",
   "description": "Framework-agnostic reactive state layer for Distri agents (chat, tasks, workflow, resources)",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
