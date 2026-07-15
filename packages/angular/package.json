@@ -1,6 +1,6 @@
 {
   "name": "@distri/angular",
-  "version": "0.0.3",
+  "version": "0.4.5",
   "description": "Angular SDK for Distri agents \u2014 Signal-based services and chat components, built on @distri/state",
   "keywords": [
     "distri",
@@ -38,8 +38,8 @@
     "@angular/common": ">=17.0.0",
     "@angular/core": ">=17.0.0",
     "@angular/forms": ">=17.0.0",
-    "@distri/core": "^0.4.4",
-    "@distri/state": "^0.1.0"
+    "@distri/core": "^0.4.5",
+    "@distri/state": "^0.4.5"
   },
   "devDependencies": {
     "@angular/common": "^18.2.14",
