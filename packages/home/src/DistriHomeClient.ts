@@ -337,6 +337,20 @@ export class DistriHomeClient {
   }
 
   /**
+   * Reads the caller's own thread's current visibility — call on load so a
+   * "Make public" toggle reflects real state instead of assuming `false`.
+   */
+  async getThreadPublic(threadId: string): Promise<{ is_public: boolean }> {
+    const response = await this.client.fetch(`/threads/${threadId}/public`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to read thread visibility: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
    * Fetches the caller's own thread projected into `@distri/react/replay`'s
    * `Cassette` JSON shape — feed the result through `parseCassette` before
    * handing it to `useReplay`. Requires the caller to be the thread's owner
