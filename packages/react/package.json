@@ -12,6 +12,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./replay": {
+      "types": "./dist/replay/index.d.ts",
+      "import": "./dist/replay/index.js",
+      "require": "./dist/replay/index.cjs"
+    },
     "./globals.css": "./dist/globals.css",
     "./styles.css": "./dist/index.css"
   },
