@@ -422,6 +422,10 @@ importers:
         version: 5.9.3
 
   packages/core:
+    dependencies:
+      '@a2a-js/sdk':
+        specifier: ^0.3.13
+        version: 0.3.13(express@4.21.2)
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
