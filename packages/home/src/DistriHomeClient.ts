@@ -314,6 +314,47 @@ export class DistriHomeClient {
     };
   }
 
+  /**
+   * Toggles a thread's public visibility — a public thread's history can be
+   * read, unauthenticated, via `GET /v1/public/threads/{id}/cassette` (used
+   * for gallery/demo links). Owner-only; scoped server-side to the caller's
+   * own (user, workspace).
+   */
+  async setThreadPublic(threadId: string, isPublic: boolean): Promise<{ is_public: boolean }> {
+    const response = await this.client.fetch(`/threads/${threadId}/public`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ is_public: isPublic }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update thread visibility: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Fetches the caller's own thread projected into `@distri/react/replay`'s
+   * `Cassette` JSON shape — feed the result through `parseCassette` before
+   * handing it to `useReplay`. Requires the caller to be the thread's owner
+   * (same auth this client already carries); for an unauthenticated
+   * "public thread" read, fetch `GET /v1/public/threads/{id}/cassette`
+   * directly instead (no auth, so `useCassetteFromUrl` can point straight at
+   * it as a plain `dataUrl`).
+   */
+  async getThreadCassette(threadId: string): Promise<unknown> {
+    const response = await this.client.fetch(`/threads/${threadId}/cassette`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch thread cassette: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
   async listUsers(params: UserListParams = {}): Promise<UserListResponse> {
     const searchParams = new URLSearchParams();
     if (params.search) searchParams.set('search', params.search);
