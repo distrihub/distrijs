@@ -2,12 +2,7 @@
 
 A Google Maps integration sample for the Distri Framework using react-google-maps.
 
-> **Status: unmaintained — does not currently build.** It imports `Sidebar*`
-> from `@distri/components`, which no longer exports them (the implementation
-> now lives in `@distri/react`'s `components/ui/sidebar.tsx` but is not on its
-> public index). Its GitHub Pages deploy has failed on every run since Jan 2026.
-> Kept here as reference for the tool-calling + map-control wiring in
-> `src/Tools.tsx`; fix the sidebar imports before relying on it.
+> Build it with `pnpm --filter distri-maps-chat build` from the repo root.
 
 ## Quick Start with Distri Cloud
 
