@@ -13,6 +13,7 @@ import {
 import { Message, MessageSendParams } from '@a2a-js/sdk';
 import { decodeA2AStreamEvent } from './encoder';
 import { RunErrorEvent } from './events';
+import { clientToolRegistry } from './tool-registry';
 
 /**
  * Configuration for Agent invoke method
@@ -264,23 +265,46 @@ export class Agent {
    * they are forwarded so the server injects them into the prompt template.
    */
   private enhanceParamsWithTools(params: MessageSendParams, tools?: DistriBaseTool[]): MessageSendParams {
-    this.assertExternalTools(tools);
+    const mergedTools = this.mergeWithRegisteredTools(tools);
+    this.assertExternalTools(mergedTools);
     const existingMeta = (params.metadata ?? {}) as Partial<ExecutorContextMetadata>;
     const metadata: ExecutorContextMetadata = {
       ...existingMeta,
       runtime_mode: 'browser',
-      external_tools: tools?.map(tool => ({
+      external_tools: mergedTools.map(tool => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.parameters,
         is_final: tool.is_final,
-      })) ?? [],
+      })),
     };
 
     return {
       ...params,
       metadata: metadata as Record<string, unknown>,
     };
+  }
+
+  /**
+   * Merge caller-supplied tools with whatever's been registered process-wide
+   * in `clientToolRegistry` (e.g. browser IndexedDB tools registered once at
+   * app bootstrap). Explicit tools win on a name collision — a caller that
+   * passes its own `db_get` overrides the registered one.
+   */
+  private mergeWithRegisteredTools(tools?: DistriBaseTool[]): DistriBaseTool[] {
+    const registered = clientToolRegistry.getTools();
+    if (registered.length === 0) {
+      return tools ?? [];
+    }
+    const explicit = tools ?? [];
+    const explicitNames = new Set(explicit.map(tool => tool.name));
+    const merged = [...explicit];
+    for (const tool of registered) {
+      if (!explicitNames.has(tool.name)) {
+        merged.push(tool);
+      }
+    }
+    return merged;
   }
 
   private assertExternalTools(tools?: DistriBaseTool[]) {
