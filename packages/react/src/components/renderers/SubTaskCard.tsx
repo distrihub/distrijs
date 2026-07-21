@@ -331,6 +331,16 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
               debug={debug}
             />
           ))}
+          {/* Summary-only cards: a background fork tracked purely by
+              `GET /tasks` polling (or the summaries-only showcase) has a
+              `preview` but no streamed messages/tool calls. Without this the
+              expanded body was a blank box. Show its latest preview/gist so
+              expanding always reveals *something*. */}
+          {ownToolCalls.length === 0 && ownMessages.length === 0 && childTasks.length === 0 && !task.error && (
+            <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
+              {gist || (task.status === 'running' ? 'Working…' : 'No detail reported.')}
+            </div>
+          )}
           {task.error && (
             <div className="px-2 py-1 text-destructive text-xs rounded bg-destructive/10">
               {task.error}
