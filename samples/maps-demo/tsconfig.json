@@ -21,14 +21,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "paths": {
-      "@distri/react": [
-        "../../packages/react/src"
-      ],
-      "@distri/core": [
-        "../../packages/core/src"
-      ]
-    }
+    // No "paths" overrides for the @distri packages: they resolve through the
+    // workspace links to each built .d.ts, as the other samples do. Pointing
+    // them at the packages' src made tsc type-check SDK sources under this
+    // config, where the SDK internal "@" aliases are not mapped.
+    "types": [
+      "vite/client",
+      "google.maps"
+    ]
   },
   "include": [
     "src"
