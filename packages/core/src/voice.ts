@@ -84,6 +84,18 @@ export interface SttAdapter {
   onClose?: () => void;
 }
 
+/**
+ * Voice activity detection fed with the session's own PCM16 16 kHz frames
+ * (`processFrame`). `SileroVad` in `@distri/state` is the default; `FakeVad`
+ * is for tests. Used by auto mode and full duplex only.
+ */
+export interface Vad {
+  start(onSpeechStart: () => void, onSpeechEnd: () => void): Promise<void>;
+  /** Feed one mic frame. Optional for VADs that own their own capture. */
+  processFrame?(pcm16: Int16Array): void;
+  stop(): void;
+}
+
 export type SpeakFn = (sentence: string, opts: { signal: AbortSignal }) => Promise<void>;
 
 /**
@@ -123,6 +135,12 @@ export interface VoiceTtsOptions {
   /** Host-supplied synthesizer; awaited per sentence and aborted on interrupt. */
   speak?: SpeakFn;
   config?: TtsConfig;
+  /**
+   * Use `POST /audio/speech` with `stream: true` and play through MediaSource
+   * as chunks arrive, falling back to the buffered response on error or where
+   * MediaSource is unsupported. Default `true`. Ignored when `speak` is given.
+   */
+  stream?: boolean;
 }
 
 export interface VoiceTurnOptions {
@@ -153,8 +171,12 @@ export interface VoiceSessionOptions {
   review?: boolean;
   /** Receives the committed transcript when `review` is set. */
   onReview?: (text: string) => void;
-  /** Auto mode and full duplex only (phase 3). */
-  vad?: { assetsBaseUrl?: string };
+  /**
+   * Auto mode and full duplex only. `assetsBaseUrl` is where the host serves
+   * the Silero model (`silero_vad_legacy.onnx`) and the onnxruntime `.wasm`
+   * files; `onnxWASMBasePath` overrides the latter.
+   */
+  vad?: { assetsBaseUrl?: string; onnxWASMBasePath?: string };
   onError?: (error: Error) => void;
 }
 
