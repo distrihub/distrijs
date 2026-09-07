@@ -39,13 +39,21 @@
   },
   "peerDependencies": {
     "@distri/core": "workspace:*",
-    "microsoft-cognitiveservices-speech-sdk": ">=1.30.0"
+    "microsoft-cognitiveservices-speech-sdk": ">=1.30.0",
+    "@ricky0123/vad-web": ">=0.0.20",
+    "onnxruntime-web": ">=1.17.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "peerDependenciesMeta": {
     "microsoft-cognitiveservices-speech-sdk": {
+      "optional": true
+    },
+    "@ricky0123/vad-web": {
+      "optional": true
+    },
+    "onnxruntime-web": {
       "optional": true
     }
   }

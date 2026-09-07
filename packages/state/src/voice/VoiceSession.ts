@@ -4,6 +4,7 @@ import type {
   SttTokenRequest,
   SttTokenResponse,
   SttUsageReport,
+  Vad,
   VoiceSessionOptions,
   VoiceSnapshot,
   VoiceSpeaker,
@@ -15,6 +16,7 @@ import { SentenceChunker } from './SentenceChunker';
 import { SpeechQueue } from './SpeechQueue';
 import type { MicCaptureLike } from './MicCapture';
 import { createSttAdapter, type SttAdapterFactory } from './adapters';
+import { createVad, type VadFactory } from './vad';
 
 /** The slice of `ChatInstance` the session drives. */
 export interface VoiceChatLike {
@@ -47,6 +49,10 @@ export interface VoiceSessionDeps {
   speaker: VoiceSpeaker | null;
   /** Chooses an adapter from the token's `provider`. Default `createSttAdapter`. */
   adapterFactory?: SttAdapterFactory;
+  /** Injected VAD (tests: `FakeVad`). Used in auto mode and full duplex only. */
+  vad?: Vad;
+  /** Builds the VAD from `options.vad` when `vad` is not injected. Default: lazy Silero (`createVad`). */
+  vadFactory?: VadFactory;
   now?: () => number;
   setTimeout?: (fn: () => void, ms: number) => unknown;
   clearTimeout?: (handle: unknown) => void;
@@ -65,6 +71,8 @@ const DEFAULT_TURN: Required<Omit<VoiceTurnOptions, 'pushToTalkKey'>> = {
 };
 
 const CONJUNCTION_END = /\b(and|so|because|but|or|then|if|when|which|that)\s*[,.!?]*$/i;
+/** Full duplex: this much VAD speech during `speaking` interrupts (spec §2.4). */
+const BARGE_IN_MS = 300;
 
 /**
  * The voice state machine of spec §2.3–§2.6. Framework-agnostic: every
@@ -108,6 +116,12 @@ export class VoiceSession {
   private usageTimer: unknown = null;
   private tokenRefreshTimer: unknown = null;
   private autoCommitTimer: unknown = null;
+  private bargeTimer: unknown = null;
+
+  private vad: Vad | null = null;
+  private vadStarted = false;
+  private vadStarting: Promise<void> | null = null;
+  private speechActive = false;
 
   private readonly chunker = new SentenceChunker();
   private queue: SpeechQueue | null = null;
@@ -210,6 +224,7 @@ export class VoiceSession {
     try {
       await this.ensureMic();
       await this.ensureConnected();
+      await this.ensureVad();
       if (this.snap.state === 'idle' || this.snap.state === 'error') {
         this.clearError();
         this.setState('ready');
@@ -257,6 +272,7 @@ export class VoiceSession {
     this.forwarding = false;
     this.clearTimer('finalizeTimer');
     this.clearTimer('autoCommitTimer');
+    this.clearTimer('bargeTimer');
     this.finals = [];
     this.interim = '';
     if (this.snap.state === 'listening' || this.snap.state === 'finalizing') {
@@ -290,6 +306,7 @@ export class VoiceSession {
     this.turnActive = false;
     this.runFinished = false;
     this.clearTimer('autoCommitTimer');
+    this.clearTimer('bargeTimer');
     this.deps.chat?.stopStreaming();
     if (this.snap.state === 'speaking' || this.snap.state === 'thinking') {
       this.setState('ready');
@@ -309,6 +326,7 @@ export class VoiceSession {
     this.clearAllTimers();
     this.queue?.abortAll();
     this.closeSocket();
+    this.stopVad();
     if (this.micOpen) {
       this.micOpen = false;
       this.deps.mic.stop();
@@ -335,12 +353,14 @@ export class VoiceSession {
     try {
       await this.ensureMic();
       await this.ensureConnected();
+      await this.ensureVad();
     } catch (err) {
       this.fail(err);
       return;
     }
     if (this.snap.state !== 'listening') return; // cancelled/stopped while connecting
-    this.forwarding = true;
+    // Auto mode with a VAD forwards only from speech start (spec §2.4).
+    this.forwarding = !this.vadGated() || this.speechActive;
     this.publish();
     if (this.pendingRelease) {
       const { isTap } = this.pendingRelease;
@@ -403,15 +423,26 @@ export class VoiceSession {
 
   private afterTurnWithoutReply(): void {
     if (this.continuousListening) {
-      this.forwarding = true;
-      this.setState('listening');
+      this.resumeListening();
       return;
     }
     this.setState('ready');
     this.scheduleIdleClose();
   }
 
+  /** Continuous modes: back to listening after a turn; auto mode waits for VAD speech before forwarding. */
+  private resumeListening(): void {
+    this.forwarding = !this.vadGated() || this.speechActive;
+    this.setState('listening');
+  }
+
+  /** True when mic frames reach STT only during VAD speech (auto mode with a running VAD). */
+  private vadGated(): boolean {
+    return this.turn.mode === 'auto' && this.vadStarted;
+  }
+
   private handleFrame(frame: Int16Array): void {
+    if (this.vadStarted && this.vad?.processFrame) this.vad.processFrame(frame);
     if (!this.forwarding || !this.adapter || !this.adapterConnected) return;
     if ((this.options.duplex ?? 'half') === 'half' && this.snap.state === 'speaking') return;
     this.adapter.pushFrame(frame);
@@ -419,14 +450,89 @@ export class VoiceSession {
     this.capturedMs += (frame.length * 1000) / sampleRate;
   }
 
+  /**
+   * Auto mode end-of-turn: `silenceMs` after the last final (or `maxSilenceMs`
+   * when the text ends in a conjunction) commits the turn. With nothing heard
+   * it just stops forwarding until the next VAD speech start.
+   */
   private scheduleAutoCommit(): void {
     if (this.turn.mode !== 'auto' || !this.continuousListening || this.tapListening) return;
     this.clearTimer('autoCommitTimer');
     const text = [...this.finals, this.interim].join(' ').trim();
     const wait = CONJUNCTION_END.test(text) ? this.turn.maxSilenceMs : this.turn.silenceMs;
     this.autoCommitTimer = this.setTimeout(() => {
-      if (this.snap.state === 'listening' && this.finals.length > 0) this.beginFinalize();
+      this.autoCommitTimer = null;
+      if (this.snap.state !== 'listening') return;
+      if (this.speechActive) return; // still talking: the next speech end reschedules
+      if (this.finals.length > 0 || this.interim.trim()) {
+        this.beginFinalize();
+      } else if (this.vadGated()) {
+        this.forwarding = false;
+        this.publish();
+      }
     }, wait);
+  }
+
+  // ── VAD (auto mode, full duplex) ───────────────────────────────────────
+
+  private needsVad(): boolean {
+    return this.turn.mode === 'auto' || (this.options.duplex ?? 'half') === 'full';
+  }
+
+  private async ensureVad(): Promise<void> {
+    if (!this.needsVad() || this.vadStarted) return;
+    if (!this.vadStarting) {
+      this.vadStarting = (async () => {
+        const vad = this.vad ?? this.deps.vad ?? (this.deps.vadFactory ?? createVad)(this.options.vad ?? {});
+        this.vad = vad;
+        await vad.start(() => this.handleSpeechStart(vad), () => this.handleSpeechEnd(vad));
+        if (this.vad === vad) this.vadStarted = true;
+        else vad.stop();
+      })().finally(() => {
+        this.vadStarting = null;
+      });
+    }
+    await this.vadStarting;
+  }
+
+  private stopVad(): void {
+    const vad = this.vad;
+    this.vad = null;
+    this.vadStarted = false;
+    this.speechActive = false;
+    this.clearTimer('bargeTimer');
+    vad?.stop();
+  }
+
+  private handleSpeechStart(vad: Vad): void {
+    if (this.vad !== vad) return;
+    this.speechActive = true;
+    const state = this.snap.state;
+    if (state === 'speaking' || state === 'thinking') {
+      // Full duplex: sustained speech during playback barges in. Half duplex ignores the mic.
+      if ((this.options.duplex ?? 'half') !== 'full' || this.bargeTimer) return;
+      this.bargeTimer = this.setTimeout(() => {
+        this.bargeTimer = null;
+        if (!this.speechActive || this.vad !== vad) return;
+        this.interrupt();
+        if (this.continuousListening) this.resumeListening();
+      }, BARGE_IN_MS);
+      return;
+    }
+    if (state === 'listening' && this.vadGated()) {
+      this.clearTimer('autoCommitTimer');
+      if (!this.forwarding) {
+        this.forwarding = true;
+        this.publish();
+      }
+    }
+  }
+
+  private handleSpeechEnd(vad: Vad): void {
+    if (this.vad !== vad) return;
+    this.speechActive = false;
+    this.clearTimer('bargeTimer');
+    if (this.snap.state === 'listening' && this.turn.mode === 'auto') this.scheduleAutoCommit();
   }
 
   // ── mic / socket / token ───────────────────────────────────────────────
@@ -689,8 +795,7 @@ export class VoiceSession {
       return;
     }
     if (this.continuousListening) {
-      this.forwarding = true;
-      this.setState('listening');
+      this.resumeListening();
       return;
     }
     this.setState('ready');
@@ -706,6 +811,7 @@ export class VoiceSession {
     this.pendingRelease = null;
     this.clearTimer('finalizeTimer');
     this.clearTimer('autoCommitTimer');
+    this.clearTimer('bargeTimer');
     this.snap = { ...this.snap, error, state: 'error' };
     this.publish();
     this.options.onError?.(error);
@@ -743,7 +849,7 @@ export class VoiceSession {
   }
 
   private clearTimer(
-    key: 'finalizeTimer' | 'idleTimer' | 'keepAliveTimer' | 'usageTimer' | 'tokenRefreshTimer' | 'autoCommitTimer',
+    key: 'finalizeTimer' | 'idleTimer' | 'keepAliveTimer' | 'usageTimer' | 'tokenRefreshTimer' | 'autoCommitTimer' | 'bargeTimer',
   ): void {
     const handle = this[key];
     if (handle === null || handle === undefined) return;
@@ -759,6 +865,7 @@ export class VoiceSession {
     this.clearTimer('usageTimer');
     this.clearTimer('tokenRefreshTimer');
     this.clearTimer('autoCommitTimer');
+    this.clearTimer('bargeTimer');
   }
 }
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { DistriChatMessage, SttTokenResponse, VoiceSessionOptions, VoiceSpeaker } from '@distri/core'
 import { VoiceSession } from '../voice/VoiceSession'
 import { FakeSttAdapter } from '../voice/adapters/FakeSttAdapter'
+import { FakeVad } from '../voice/vad/FakeVad'
 import type { VoiceTiming } from '../voice/VoiceSession'
 
 function makeToken(overrides: Partial<SttTokenResponse> = {}): SttTokenResponse {
@@ -29,7 +30,7 @@ function deferred(): Deferred {
 
 const tick = () => vi.advanceTimersByTimeAsync(0)
 
-function harness(opts: { options?: VoiceSessionOptions; speaker?: VoiceSpeaker | null; singleUse?: boolean; timing?: VoiceTiming; micError?: Error } = {}) {
+function harness(opts: { options?: VoiceSessionOptions; speaker?: VoiceSpeaker | null; singleUse?: boolean; timing?: VoiceTiming; micError?: Error; vad?: FakeVad } = {}) {
   const adapter = new FakeSttAdapter()
   const sttToken = vi.fn(async () => makeToken({ single_use: opts.singleUse ?? false }))
   const sttUsage = vi.fn(async () => undefined)
@@ -66,7 +67,7 @@ function harness(opts: { options?: VoiceSessionOptions; speaker?: VoiceSpeaker |
   }
   const speaker = opts.speaker === undefined ? defaultSpeaker : opts.speaker
   const session = new VoiceSession(
-    { client: { sttToken, sttUsage }, chat, mic, speaker, adapterFactory: () => adapter, timing: opts.timing },
+    { client: { sttToken, sttUsage }, chat, mic, speaker, adapterFactory: () => adapter, timing: opts.timing, vad: opts.vad },
     opts.options,
   )
   const emit = (e: DistriChatMessage) => listeners.forEach((l) => l(e))
@@ -480,12 +481,15 @@ describe('VoiceSession — auto and manual modes', () => {
   })
 
   it('auto: commits silenceMs after the last final, waits maxSilenceMs after a conjunction, resumes listening after the reply', async () => {
-    const h = harness({ speaker: null, options: { turn: { mode: 'auto', silenceMs: 900, maxSilenceMs: 2500 } } })
+    const vad = new FakeVad()
+    const h = harness({ speaker: null, vad, options: { turn: { mode: 'auto', silenceMs: 900, maxSilenceMs: 2500 } } })
     await h.session.start()
+    vad.emitSpeechStart()
     h.adapter.emitFinal('I want to go home and')
     await vi.advanceTimersByTimeAsync(900)
     expect(h.session.snapshot.state).toBe('listening') // conjunction → longer wait
     h.adapter.emitFinal('then sleep')
+    vad.emitSpeechEnd()
     await vi.advanceTimersByTimeAsync(899)
     expect(h.session.snapshot.state).toBe('listening')
     await vi.advanceTimersByTimeAsync(1)
@@ -498,6 +502,9 @@ describe('VoiceSession — auto and manual modes', () => {
     h.finishRun()
     await tick()
     expect(h.session.snapshot.state).toBe('listening')
+    h.frame()
+    expect(h.adapter.frames).toHaveLength(0) // gated until the next speech start
+    vad.emitSpeechStart()
     h.frame()
     expect(h.adapter.frames).toHaveLength(1)
   })
