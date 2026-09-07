@@ -39,7 +39,21 @@ import {
   ListTasksParams,
 } from './types';
 import { DistriEvent } from './events';
+import { SttTokenRequest, SttTokenResponse, SttUsageReport } from './voice';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
+
+/**
+ * Base64-encode a byte array without spreading it into `String.fromCharCode`
+ * (which overflows the call stack on clips over ~100 KB).
+ */
+export function bytesToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+  }
+  return btoa(binary);
+}
 
 export type ChatCompletionRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -559,8 +573,7 @@ export class DistriClient {
     try {
       // Convert blob to base64
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const base64String = btoa(String.fromCharCode(...uint8Array));
+      const base64String = bytesToBase64(new Uint8Array(arrayBuffer));
 
       const requestBody = {
         audio: base64String,
@@ -600,6 +613,57 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to transcribe audio', 'TRANSCRIPTION_ERROR', error);
+    }
+  }
+
+  /**
+   * Mint a short-lived streaming STT provider token (`POST /v1/audio/stt/token`).
+   *
+   * The browser hands `token` straight to the provider socket; distri never
+   * sees the audio. `token_id` keys the usage report (`sttUsage`).
+   */
+  async sttToken(request: SttTokenRequest = {}): Promise<SttTokenResponse> {
+    const body: SttTokenRequest = {};
+    if (request.model) body.model = request.model;
+    if (request.language) body.language = request.language;
+
+    const response = await this.fetch(`/audio/stt/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || `STT token mint failed: ${response.status}`, response.status);
+    }
+
+    return (await response.json()) as SttTokenResponse;
+  }
+
+  /**
+   * Report cumulative captured audio for an STT token (`POST /v1/audio/stt/usage`).
+   *
+   * Sent with `keepalive: true` so a report fired from `pagehide` survives the
+   * tab closing. Idempotent server-side (the server keeps the max `audio_ms`).
+   */
+  async sttUsage(report: SttUsageReport): Promise<void> {
+    const response = await this.fetch(`/audio/stt/usage`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify({ token_id: report.token_id, audio_ms: Math.max(0, Math.round(report.audio_ms)) }),
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || `STT usage report failed: ${response.status}`, response.status);
     }
   }
 
