@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TtsSpeechRequest, TtsSpeechResponse, TtsConfig, VoiceSpeaker } from '@distri/core';
+import type { TtsSpeechRequest, TtsSpeechResponse, TtsSpeechStreamResponse, TtsConfig, VoiceSpeaker } from '@distri/core';
 import { AudioElementPlayer, SpeechQueue } from '@distri/state';
 import { useDistri } from '../DistriProvider';
 
@@ -11,6 +11,15 @@ function abortError(): Error {
   err.name = 'AbortError';
   return err;
 }
+
+function isAbort(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError';
+}
+
+/** What the streaming speaker's `synthesize` hands to `play`. */
+type StreamSpeakerItem =
+  | { kind: 'stream'; sentence: string; response: TtsSpeechStreamResponse }
+  | { kind: 'buffer'; sentence: string; audio: TtsSpeechResponse };
 
 /**
  * Text-to-speech through the Distri server (`POST /audio/speech`) or the
@@ -192,6 +201,61 @@ export const useTts = (config: TtsConfig = {}) => {
     };
   }, [mode, synthesizeBrowser, synthesizeDistri, buildRequest, getPlayer]);
 
+  /**
+   * Streaming synthesis (phase 4): `POST /audio/speech` with `stream: true`,
+   * played through MediaSource as chunks arrive; buffered where MediaSource
+   * cannot play the type. Rejects with an AbortError when `signal` aborts.
+   */
+  const speakStream = useCallback(async (sentence: string, opts?: { signal?: AbortSignal }): Promise<void> => {
+    const c = clientRef.current;
+    if (!c) throw new Error('DistriClient not initialized. Wrap your app in <DistriProvider>.');
+    const response = await c.ttsSpeechStream(buildRequest(sentence));
+    if (opts?.signal?.aborted) {
+      response.body.cancel().catch(() => undefined);
+      throw abortError();
+    }
+    await getPlayer().playStream(response.body, response.contentType, opts);
+  }, [buildRequest, getPlayer]);
+
+  /**
+   * Like `speaker`, but streams. `synthesize` opens the streaming request
+   * (so sentence N+1's bytes start flowing while N plays) and `play` pipes it
+   * through MediaSource; either step falls back to the buffered endpoint on a
+   * non-abort error. Browser mode has nothing to stream and reuses `speaker`.
+   */
+  const streamSpeaker = useMemo<VoiceSpeaker>(() => {
+    if (mode === 'browser') return speaker;
+    const synthesize = async (sentence: string): Promise<StreamSpeakerItem> => {
+      const c = clientRef.current;
+      if (!c) throw new Error('DistriClient not initialized. Wrap your app in <DistriProvider>.');
+      try {
+        return { kind: 'stream', sentence, response: await c.ttsSpeechStream(buildRequest(sentence)) };
+      } catch {
+        return { kind: 'buffer', sentence, audio: await synthesizeDistri(buildRequest(sentence)) };
+      }
+    };
+    const play = async (item: unknown, { signal }: { signal: AbortSignal }): Promise<void> => {
+      const it = item as StreamSpeakerItem;
+      if (it.kind === 'buffer') {
+        await getPlayer().play(it.audio, { signal });
+        return;
+      }
+      try {
+        await getPlayer().playStream(it.response.body, it.response.contentType, { signal });
+      } catch (err) {
+        if (signal.aborted || isAbort(err)) throw err;
+        const audio = await synthesizeDistri(buildRequest(it.sentence));
+        if (signal.aborted) throw abortError();
+        await getPlayer().play(audio, { signal });
+      }
+    };
+    return {
+      speak: async (sentence, { signal }) => play(await synthesize(sentence), { signal }),
+      synthesize,
+      play,
+    };
+  }, [mode, speaker, buildRequest, synthesizeDistri, getPlayer]);
+
   const queueRef = useRef<SpeechQueue | null>(null);
   const getQueue = useCallback((): SpeechQueue => {
     if (!queueRef.current) {
@@ -297,12 +361,16 @@ export const useTts = (config: TtsConfig = {}) => {
     speak,
     /** Queue one sentence; resolves when spoken. */
     speakQueued,
+    /** Stream one sentence through MediaSource (buffered fallback). Not queued. */
+    speakStream,
     /** Play audio from a TtsSpeechResponse or Blob through the owned element. */
     playAudio,
     /** Stop the queue and any active playback (browser or server). */
     stop,
-    /** `VoiceSpeaker` for `useVoiceSession` / `SpeechQueue`. */
+    /** Buffered `VoiceSpeaker` for `useVoiceSession` / `SpeechQueue`. */
     speaker,
+    /** Streaming `VoiceSpeaker` (the default for `useVoiceSession` unless `tts.stream === false`). */
+    streamSpeaker,
     /** Fetch available TTS models (distri mode only). */
     fetchModels,
     /** Fetch TTS provider definitions (distri mode only). */

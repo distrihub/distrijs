@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, type VoiceSnapshot } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
 import { ChatMessageList } from './ChatMessageList';
@@ -12,7 +12,7 @@ import { useStore } from 'zustand';
 import { ChatState, TaskState, ChatStore, ChatStoreContext, createChatStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
-import { useVoiceSession, type UseVoiceSessionOptions } from '../hooks/useVoiceSession';
+import { useVoiceSession, type UseVoiceSessionOptions, type UseVoiceSessionReturn } from '../hooks/useVoiceSession';
 import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode } from '@/types';
 import { createHttpToolRenderer } from '../utils/createHttpToolRenderer';
 import { DeveloperModeComponent } from './developer/DeveloperModeComponent';
@@ -41,6 +41,13 @@ export interface ChatInstance {
    * safe to subscribe once per `ChatInstance` identity (e.g. from `useVoiceSession`).
    */
   subscribe: (listener: (event: DistriChatMessage) => void) => () => void;
+  /**
+   * The voice session when the `voice` prop is set (the same object
+   * `useVoiceSession` returns), so a host can drive hold-to-talk from outside:
+   * `chatRef.current.voice?.press()` / `.release()` / `.cancel()` / `.interrupt()`.
+   * `null` when `voice` is not set.
+   */
+  voice: UseVoiceSessionReturn | null;
 }
 
 /** `<Chat voice>` options — everything `useVoiceSession` takes except `chat`, which `<Chat>` supplies. */
@@ -106,6 +113,12 @@ export interface ChatProps {
    * Mutually exclusive with `voiceEnabled`.
    */
   voice?: boolean | ChatVoiceOptions;
+  /**
+   * Fires with the voice snapshot (`state`, `transcript`, `playback`, `error`,
+   * `mode`) whenever it changes, so a host (e.g. the embed) can forward
+   * `voice_state` / `transcript` events. Only when `voice` is set.
+   */
+  onVoiceStateChange?: (snapshot: VoiceSnapshot) => void;
   /** @deprecated Whole-clip recording via `/tts/transcribe`. Use `voice` instead. Ignored when `voice` is set. */
   voiceEnabled?: boolean;
   /** @deprecated Browser SpeechRecognition input. Use `voice` instead. */
@@ -243,6 +256,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   starterCommands,
   loadingAnimation,
   voice,
+  onVoiceStateChange,
   voiceEnabled: voiceEnabledProp = false,
   useSpeechRecognition = false,
   ttsConfig,
@@ -797,6 +811,14 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     onError: handleVoiceError,
   });
   const voiceTurnMode = voiceOptions.turn?.mode ?? 'hold';
+  // Subscribe to the session directly (not via render) so every transition
+  // reaches the host, including ones React would batch into one commit.
+  const voiceSessionObject = voiceSession.session;
+  useEffect(() => {
+    if (!voice || !onVoiceStateChange) return;
+    onVoiceStateChange(voiceSessionObject.snapshot);
+    return voiceSessionObject.subscribe(onVoiceStateChange);
+  }, [voice, onVoiceStateChange, voiceSessionObject]);
   const composerVoice = useMemo(() => (voice
     ? { session: voiceSession, mode: voiceTurnMode, pushToTalkKey: voiceOptions.turn?.pushToTalkKey }
     : undefined), [voice, voiceSession, voiceTurnMode, voiceOptions.turn?.pushToTalkKey]);
@@ -934,7 +956,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     isStreaming,
     isLoading,
     subscribe: subscribeToEvents,
-  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, subscribeToEvents]);
+    voice: voice ? voiceSession : null,
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, subscribeToEvents, voice, voiceSession]);
 
   // Expose ChatInstance via ref
   useImperativeHandle(ref, () => chatInstance, [chatInstance]);

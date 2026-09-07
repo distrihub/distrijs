@@ -22,7 +22,7 @@ export interface UseVoiceSessionOptions extends VoiceSessionOptions {
    * Dependency overrides — a fake mic / client / adapter factory for tests and
    * stories. Read once, when the session is created.
    */
-  deps?: Partial<Pick<VoiceSessionDeps, 'mic' | 'client' | 'speaker' | 'adapterFactory' | 'timing'>>;
+  deps?: Partial<Pick<VoiceSessionDeps, 'mic' | 'client' | 'speaker' | 'adapterFactory' | 'timing' | 'vad' | 'vadFactory'>>;
 }
 
 export interface UseVoiceSessionReturn extends VoiceSnapshot {
@@ -49,9 +49,10 @@ export interface UseVoiceSessionReturn extends VoiceSnapshot {
 
 /**
  * React binding for `VoiceSession` (spec §2.2). Wires the browser deps —
- * `DistriClient` from `useDistri()`, `MicCapture`, and a speaker from `useTts`
- * unless `tts.speak` is supplied or `tts === false` — and mirrors the session
- * snapshot into React state.
+ * `DistriClient` from `useDistri()`, `MicCapture`, Silero VAD (auto mode /
+ * full duplex, lazy), and a speaker from `useTts` (streaming unless
+ * `tts.stream === false`) unless `tts.speak` is supplied or `tts === false` —
+ * and mirrors the session snapshot into React state.
  */
 export function useVoiceSession(options: UseVoiceSessionOptions): UseVoiceSessionReturn {
   const { chat, deps, tts: ttsOption, ...sessionOptions } = options;
@@ -63,12 +64,13 @@ export function useVoiceSession(options: UseVoiceSessionOptions): UseVoiceSessio
   const clientRef = useRef(client);
   clientRef.current = client;
 
+  const streamTts = ttsOption !== false && ttsOption?.stream !== false;
   const speaker = useMemo<VoiceSpeaker | null>(() => {
     if (ttsOption === false) return null;
     if (ttsOption?.speak) return { speak: ttsOption.speak };
     if (deps?.speaker !== undefined) return deps.speaker;
-    return ttsHook.speaker;
-  }, [ttsOption, deps?.speaker, ttsHook.speaker]);
+    return streamTts ? ttsHook.streamSpeaker : ttsHook.speaker;
+  }, [ttsOption, deps?.speaker, streamTts, ttsHook.streamSpeaker, ttsHook.speaker]);
 
   const [session] = useState(() => {
     const sttClient: VoiceSttClient = deps?.client ?? {
@@ -92,6 +94,8 @@ export function useVoiceSession(options: UseVoiceSessionOptions): UseVoiceSessio
         speaker,
         adapterFactory: deps?.adapterFactory,
         timing: deps?.timing,
+        vad: deps?.vad,
+        vadFactory: deps?.vadFactory,
       },
       {
         ...sessionOptions,
