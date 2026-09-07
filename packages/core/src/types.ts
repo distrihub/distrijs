@@ -1357,6 +1357,21 @@ export interface TtsSpeechRequest {
   voice_id?: string;
   /** ElevenLabs model ID override. */
   elevenlabs_model_id?: string;
+  /** Chunked transfer of audio bytes as the provider produces them (spec §1.2). Set by `ttsSpeechStream`. */
+  stream?: boolean;
+}
+
+/**
+ * Response from `ttsSpeechStream`: the audio bytes as they arrive.
+ */
+export interface TtsSpeechStreamResponse {
+  /** MIME content type (e.g. "audio/mpeg"). */
+  contentType: string;
+  provider?: string;
+  model?: string;
+  voice?: string;
+  /** The response body; consume it once. */
+  body: ReadableStream<Uint8Array>;
 }
 
 /**

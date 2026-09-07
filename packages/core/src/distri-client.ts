@@ -33,6 +33,7 @@ import {
   ProviderModelsStatus,
   ModelWithProvider,
   TtsSpeechRequest,
+  TtsSpeechStreamResponse,
   TtsSpeechResponse,
   CompactTaskResult,
   TaskSummary,
@@ -957,6 +958,42 @@ export class DistriClient {
     const audio = await response.arrayBuffer();
     return {
       audio,
+      contentType: response.headers.get('content-type') || 'audio/mpeg',
+      provider: response.headers.get('x-tts-provider') || undefined,
+      model: response.headers.get('x-tts-model') || undefined,
+      voice: response.headers.get('x-tts-voice') || undefined,
+    };
+  }
+
+  /**
+   * Generate speech and stream the audio bytes as the provider produces them
+   * (`POST /audio/speech` with `stream: true`, spec §1.2). The caller owns the
+   * returned `body`; `AudioElementPlayer.playStream` plays it through
+   * MediaSource. Throws `ApiError` on a non-2xx response.
+   */
+  async ttsSpeechStream(request: TtsSpeechRequest): Promise<TtsSpeechStreamResponse> {
+    const response = await this.fetch(`/audio/speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.config.headers,
+      },
+      body: JSON.stringify({ ...request, stream: true }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      throw new ApiError(
+        `TTS speech stream failed: ${errorBody || response.statusText}`,
+        response.status,
+      );
+    }
+    if (!response.body) {
+      throw new ApiError('TTS speech stream returned no body', response.status);
+    }
+
+    return {
+      body: response.body,
       contentType: response.headers.get('content-type') || 'audio/mpeg',
       provider: response.headers.get('x-tts-provider') || undefined,
       model: response.headers.get('x-tts-model') || undefined,
