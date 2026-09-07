@@ -89,6 +89,8 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "jsdom": "^29.0.1",
     "postcss": "^8.4.35",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "storybook": "^8.6.18",
     "tailwindcss": "^3.4.0",
     "tsup": "^8.0.0",
