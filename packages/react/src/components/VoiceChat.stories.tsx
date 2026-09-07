@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import type { DistriChatMessage, SttTokenResponse } from '@distri/core';
-import { FakeSttAdapter, type MicCaptureLike } from '@distri/state';
+import { FakeSttAdapter, FakeVad, type MicCaptureLike } from '@distri/state';
 import { ChatInner, type ChatVoiceOptions } from './Chat';
 import { DistriContext } from '../DistriProvider';
 
@@ -76,6 +76,17 @@ function makeAdapter(): FakeSttAdapter {
   });
 }
 
+/** Auto mode needs a VAD: this one reports one speech segment — frames 1..20 (about two seconds) — then silence. */
+class StoryVad extends FakeVad {
+  private count = 0;
+  processFrame(pcm16: Int16Array): void {
+    super.processFrame(pcm16);
+    this.count += 1;
+    if (this.count === 1) this.emitSpeechStart();
+    if (this.count === 20) this.emitSpeechEnd();
+  }
+}
+
 async function* replyStream(): AsyncGenerator<DistriChatMessage> {
   yield { type: 'run_started', data: { runId: 'r1', taskId: 't1' } };
   await wait(600);
@@ -130,7 +141,7 @@ function VoiceChatStory({ voice }: { voice: ChatVoiceOptions }) {
     ...voice,
     stt: { adapter: makeAdapter(), ...voice.stt },
     tts: voice.tts === false ? false : { speak: fakeSpeak, ...voice.tts },
-    deps: { mic: makeMic(), ...voice.deps },
+    deps: { mic: makeMic(), vad: new StoryVad(), ...voice.deps },
   }), [voice]);
 
   return (
@@ -176,7 +187,7 @@ export const ManualMode: Story = {
   render: (args) => <VoiceChatStory voice={args.voice} />,
 };
 
-/** Auto mode: commits `silenceMs` after the last final, resumes listening after the reply. */
+/** Auto mode: a scripted VAD reports ~2 s of speech after Start; the turn commits `silenceMs` later and listening resumes after the reply. */
 export const AutoMode: Story = {
   args: { voice: { turn: { mode: 'auto', silenceMs: 900 } } },
   render: (args) => <VoiceChatStory voice={args.voice} />,

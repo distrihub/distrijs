@@ -39,6 +39,27 @@ export * from './types';
 export * from './hooks/useChatMessages';
 export * from './hooks/useTts';
 export * from './hooks/useVoiceSession';
+// Voice types hosts (e.g. distri-embed) need without importing @distri/core directly.
+export type {
+  VoiceState,
+  VoiceSnapshot,
+  VoiceTranscript,
+  VoicePlayback,
+  VoiceTurnMode,
+  VoiceDuplex,
+  VoiceSessionOptions,
+  VoiceSttOptions,
+  VoiceTtsOptions,
+  VoiceTurnOptions,
+  VoiceSpeaker,
+  SpeakFn,
+  Vad,
+  SttAdapter,
+  SttTokenRequest,
+  SttTokenResponse,
+  SttUsageReport,
+  TtsSpeechStreamResponse,
+} from '@distri/core';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
 export * from './hooks/useMessageFeedback';

@@ -9,7 +9,7 @@ import { render, cleanup, waitFor, act, fireEvent } from '@testing-library/react
 import React from 'react'
 import type { SttTokenResponse } from '@distri/core'
 import { FakeSttAdapter } from '@distri/state'
-import { ChatInner } from '../components/Chat'
+import { ChatInner, type ChatInstance } from '../components/Chat'
 import { DistriContext } from '../DistriProvider'
 
 beforeAll(() => {
@@ -136,5 +136,52 @@ describe('<Chat voice>', () => {
     // The empty-state (hero) composer unmounts once the first message lands and
     // the footer composer takes over, so re-query the button.
     await waitFor(() => expect(getByTestId('push-to-talk')).toHaveAttribute('data-voice-state', 'ready'))
+  })
+
+  it('exposes the voice session on ChatInstance so a host can drive hold-to-talk and observe state', async () => {
+    const invokeStream = vi.fn(async () => emptyStream())
+    const agent = makeMockAgent(invokeStream)
+    const adapter = new FakeSttAdapter({
+      onFinalize: (a) => {
+        a.emitFinal('driven from outside')
+        a.emitFinalized()
+      },
+    })
+    const states: string[] = []
+    let instance: ChatInstance | undefined
+    render(
+      <DistriContext.Provider value={{ client: makeMockDistriClient(), error: null, isLoading: false }}>
+        <ChatInner
+          agent={agent as never}
+          threadId="t-handle"
+          voice={{ tts: false, turn: { tapMs: 0 }, stt: { adapter }, deps: { mic: fakeMic } }}
+          onChatInstanceReady={(i) => { instance = i }}
+          onVoiceStateChange={(snapshot) => { states.push(snapshot.state) }}
+        />
+      </DistriContext.Provider>,
+    )
+    await waitFor(() => expect(instance?.voice).toBeTruthy())
+    expect(instance!.voice!.state).toBe('idle')
+
+    await act(async () => { instance!.voice!.press() })
+    await waitFor(() => expect(adapter.connected).toBe(true))
+    await act(async () => { instance!.voice!.release() })
+    await waitFor(() => expect(invokeStream).toHaveBeenCalled())
+    const params = invokeStream.mock.calls[0][0] as { message: { parts: Array<{ text?: string }> } }
+    expect(params.message.parts[0].text).toBe('driven from outside')
+    await waitFor(() => expect(states).toContain('ready'))
+    expect(states).toEqual(expect.arrayContaining(['idle', 'listening', 'finalizing', 'thinking', 'ready']))
+  })
+
+  it('ChatInstance.voice is null without the voice prop', async () => {
+    const agent = makeMockAgent(vi.fn(async () => emptyStream()))
+    let instance: ChatInstance | undefined
+    render(
+      <DistriContext.Provider value={{ client: makeMockDistriClient(), error: null, isLoading: false }}>
+        <ChatInner agent={agent as never} threadId="t-novoice" onChatInstanceReady={(i) => { instance = i }} />
+      </DistriContext.Provider>,
+    )
+    await waitFor(() => expect(instance).toBeDefined())
+    expect(instance!.voice).toBeNull()
   })
 })
