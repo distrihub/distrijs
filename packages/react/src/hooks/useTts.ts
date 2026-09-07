@@ -1,27 +1,41 @@
-import { useCallback, useRef, useState } from 'react';
-import { TtsSpeechRequest, TtsSpeechResponse } from '@distri/core';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { TtsSpeechRequest, TtsSpeechResponse, TtsConfig, VoiceSpeaker } from '@distri/core';
+import { AudioElementPlayer, SpeechQueue } from '@distri/state';
 import { useDistri } from '../DistriProvider';
 
 export type TtsMode = 'distri' | 'browser';
+export type { TtsConfig } from '@distri/core';
 
-export interface TtsConfig {
-  /** Use Distri server-side TTS ('distri') or browser SpeechSynthesis ('browser'). Defaults to 'distri'. */
-  mode?: TtsMode;
-  /** Default voice to use when not specified per-request. */
-  defaultVoice?: string;
-  /** Default speed multiplier (0.25–4.0 for Distri, 0.1–10 for browser). */
-  defaultSpeed?: number;
-  /** Default provider (only used in 'distri' mode). */
-  defaultProvider?: string;
-  /** Default model (only used in 'distri' mode). */
-  defaultModel?: string;
+function abortError(): Error {
+  const err = new Error('Speech aborted');
+  err.name = 'AbortError';
+  return err;
 }
 
+/**
+ * Text-to-speech through the Distri server (`POST /audio/speech`) or the
+ * browser's `speechSynthesis`.
+ *
+ * Playback goes through ONE owned `<audio>` element (so `stop()` really stops
+ * server-side audio) and `speak()`/`speakQueued()` are serialized through a
+ * `SpeechQueue` that synthesizes the next sentence while the current one plays.
+ */
 export const useTts = (config: TtsConfig = {}) => {
   const { client } = useDistri();
   const mode = config.mode ?? 'distri';
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const playerRef = useRef<AudioElementPlayer | null>(null);
+  const configRef = useRef(config);
+  configRef.current = config;
+  const clientRef = useRef(client);
+  clientRef.current = client;
+
+  const getPlayer = useCallback((): AudioElementPlayer => {
+    if (!playerRef.current) playerRef.current = new AudioElementPlayer();
+    return playerRef.current;
+  }, []);
 
   // ── Distri server-side TTS ─────────────────────────────────────────────
 
@@ -30,16 +44,17 @@ export const useTts = (config: TtsConfig = {}) => {
    * Returns a Blob containing audio data.
    */
   const synthesizeDistri = useCallback(async (request: TtsSpeechRequest): Promise<TtsSpeechResponse> => {
-    if (!client) {
+    const c = clientRef.current;
+    if (!c) {
       throw new Error('DistriClient not initialized. Wrap your app in <DistriProvider>.');
     }
     setIsSynthesizing(true);
     try {
-      return await client.ttsSpeech(request);
+      return await c.ttsSpeech(request);
     } finally {
       setIsSynthesizing(false);
     }
-  }, [client]);
+  }, []);
 
   // ── Browser SpeechSynthesis TTS ────────────────────────────────────────
 
@@ -47,21 +62,29 @@ export const useTts = (config: TtsConfig = {}) => {
    * Synthesize speech using the browser's built-in SpeechSynthesis API.
    * Returns a promise that resolves when speech finishes.
    */
-  const synthesizeBrowser = useCallback((text: string, options?: { voice?: string; speed?: number }): Promise<void> => {
+  const synthesizeBrowser = useCallback((
+    text: string,
+    options?: { voice?: string; speed?: number; signal?: AbortSignal },
+  ): Promise<void> => {
     return new Promise((resolve, reject) => {
-      if (!('speechSynthesis' in window)) {
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
         reject(new Error('Browser SpeechSynthesis not supported'));
+        return;
+      }
+      if (options?.signal?.aborted) {
+        reject(abortError());
         return;
       }
 
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
 
+      const cfg = configRef.current;
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = options?.speed ?? config.defaultSpeed ?? 1.0;
+      utterance.rate = options?.speed ?? cfg.defaultSpeed ?? 1.0;
 
       // Find requested voice
-      const voiceName = options?.voice ?? config.defaultVoice;
+      const voiceName = options?.voice ?? cfg.defaultVoice;
       if (voiceName) {
         const voices = window.speechSynthesis.getVoices();
         const match = voices.find(v => v.name === voiceName || v.voiceURI === voiceName || v.lang === voiceName);
@@ -71,22 +94,55 @@ export const useTts = (config: TtsConfig = {}) => {
       utteranceRef.current = utterance;
       setIsSynthesizing(true);
 
+      const onAbort = () => {
+        window.speechSynthesis.cancel();
+        utteranceRef.current = null;
+        setIsSynthesizing(false);
+        reject(abortError());
+      };
+      options?.signal?.addEventListener('abort', onAbort, { once: true });
+
       utterance.onend = () => {
+        options?.signal?.removeEventListener('abort', onAbort);
         setIsSynthesizing(false);
         utteranceRef.current = null;
         resolve();
       };
       utterance.onerror = (event) => {
+        options?.signal?.removeEventListener('abort', onAbort);
         setIsSynthesizing(false);
         utteranceRef.current = null;
+        if (event.error === 'interrupted' || event.error === 'canceled') {
+          reject(abortError());
+          return;
+        }
         reject(new Error(`SpeechSynthesis error: ${event.error}`));
       };
 
       window.speechSynthesis.speak(utterance);
     });
-  }, [config.defaultVoice, config.defaultSpeed]);
+  }, []);
 
   // ── Unified synthesize ─────────────────────────────────────────────────
+
+  const buildRequest = useCallback((input: string | TtsSpeechRequest): TtsSpeechRequest => {
+    const cfg = configRef.current;
+    return typeof input === 'string'
+      ? {
+        input,
+        model: cfg.defaultModel,
+        voice: cfg.defaultVoice,
+        provider: cfg.defaultProvider,
+        speed: cfg.defaultSpeed,
+      }
+      : {
+        ...input,
+        model: input.model ?? cfg.defaultModel,
+        voice: input.voice ?? cfg.defaultVoice,
+        provider: input.provider ?? cfg.defaultProvider,
+        speed: input.speed ?? cfg.defaultSpeed,
+      };
+  }, []);
 
   /**
    * Synthesize speech. In 'distri' mode, calls the server API and returns a Blob.
@@ -100,51 +156,72 @@ export const useTts = (config: TtsConfig = {}) => {
       const opts = typeof input === 'string' ? undefined : { voice: input.voice, speed: input.speed };
       return synthesizeBrowser(text, opts);
     }
-
-    // Distri mode
-    const request: TtsSpeechRequest = typeof input === 'string'
-      ? {
-        input,
-        model: config.defaultModel,
-        voice: config.defaultVoice,
-        provider: config.defaultProvider,
-        speed: config.defaultSpeed,
-      }
-      : {
-        ...input,
-        model: input.model ?? config.defaultModel,
-        voice: input.voice ?? config.defaultVoice,
-        provider: input.provider ?? config.defaultProvider,
-        speed: input.speed ?? config.defaultSpeed,
-      };
-
-    return synthesizeDistri(request);
-  }, [mode, config.defaultModel, config.defaultVoice, config.defaultProvider, config.defaultSpeed, synthesizeDistri, synthesizeBrowser]);
+    return synthesizeDistri(buildRequest(input));
+  }, [mode, synthesizeDistri, synthesizeBrowser, buildRequest]);
 
   // ── Audio playback utilities ───────────────────────────────────────────
 
   /**
-   * Play audio from a TtsSpeechResponse (Distri mode) or raw Blob.
+   * Play audio from a TtsSpeechResponse (Distri mode) or raw Blob through the
+   * owned `<audio>` element. A clip already playing is superseded.
    */
-  const playAudio = useCallback((audio: TtsSpeechResponse | Blob): Promise<void> => {
-    const blob = audio instanceof Blob
-      ? audio
-      : new Blob([audio.audio], { type: audio.contentType });
-    const audioUrl = URL.createObjectURL(blob);
-    const audioEl = new Audio(audioUrl);
+  const playAudio = useCallback((audio: TtsSpeechResponse | Blob, opts?: { signal?: AbortSignal }): Promise<void> => {
+    return getPlayer().play(audio, opts);
+  }, [getPlayer]);
 
-    return new Promise<void>((resolve, reject) => {
-      audioEl.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        resolve();
+  // ── Speaker + queue ────────────────────────────────────────────────────
+
+  /**
+   * A `VoiceSpeaker` for `VoiceSession`/`SpeechQueue`. Stable per mode. In
+   * distri mode it exposes `synthesize` + `play` so the queue can pipeline.
+   */
+  const speaker = useMemo<VoiceSpeaker>(() => {
+    if (mode === 'browser') {
+      return {
+        speak: (sentence, { signal }) => synthesizeBrowser(sentence, { signal }),
       };
-      audioEl.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        reject(new Error('Audio playback failed'));
-      };
-      audioEl.play().catch(reject);
-    });
-  }, []);
+    }
+    return {
+      speak: async (sentence, { signal }) => {
+        const audio = await synthesizeDistri(buildRequest(sentence));
+        if (signal.aborted) throw abortError();
+        await getPlayer().play(audio, { signal });
+      },
+      synthesize: (sentence) => synthesizeDistri(buildRequest(sentence)),
+      play: (item, { signal }) => getPlayer().play(item as TtsSpeechResponse, { signal }),
+    };
+  }, [mode, synthesizeBrowser, synthesizeDistri, buildRequest, getPlayer]);
+
+  const queueRef = useRef<SpeechQueue | null>(null);
+  const getQueue = useCallback((): SpeechQueue => {
+    if (!queueRef.current) {
+      queueRef.current = new SpeechQueue(speaker, {
+        onSentenceStart: () => setIsSpeaking(true),
+        onDrained: () => setIsSpeaking(false),
+      });
+    }
+    return queueRef.current;
+  }, [speaker]);
+
+  useEffect(() => {
+    queueRef.current?.setSpeaker(speaker);
+  }, [speaker]);
+
+  /**
+   * Queue one sentence. Resolves when it has been spoken (or was aborted).
+   * Aborting `signal` interrupts the whole queue (the sentence's turn is over).
+   */
+  const speakQueued = useCallback((sentence: string, opts?: { signal?: AbortSignal }): Promise<void> => {
+    const queue = getQueue();
+    if (opts?.signal?.aborted) return Promise.reject(abortError());
+    const done = queue.enqueue(sentence);
+    if (opts?.signal) {
+      const onAbort = () => queue.abortAll();
+      opts.signal.addEventListener('abort', onAbort, { once: true });
+      done.finally(() => opts.signal?.removeEventListener('abort', onAbort)).catch(() => undefined);
+    }
+    return done;
+  }, [getQueue]);
 
   // ── Model/provider queries ─────────────────────────────────────────────
 
@@ -168,49 +245,64 @@ export const useTts = (config: TtsConfig = {}) => {
    * Get browser SpeechSynthesis voices.
    */
   const getBrowserVoices = useCallback((): SpeechSynthesisVoice[] => {
-    if (!('speechSynthesis' in window)) return [];
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
     return window.speechSynthesis.getVoices();
   }, []);
 
   // ── Stop ────────────────────────────────────────────────────────────────
 
+  /** Stop everything: the queue, the owned `<audio>` element and browser speech. */
   const stop = useCallback(() => {
-    if (utteranceRef.current) {
+    queueRef.current?.abortAll();
+    playerRef.current?.stop();
+    if (utteranceRef.current && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       utteranceRef.current = null;
     }
+    setIsSpeaking(false);
     setIsSynthesizing(false);
   }, []);
 
   /**
-   * Synthesize and immediately play audio. Convenience method.
+   * Synthesize and play. Strings are queued (serialized, never overlapping);
+   * a full `TtsSpeechRequest` with per-request options plays immediately and
+   * supersedes whatever the element was playing.
    */
   const speak = useCallback(async (input: string | TtsSpeechRequest): Promise<void> => {
+    if (typeof input === 'string') {
+      return speakQueued(input);
+    }
     if (mode === 'browser') {
-      const text = typeof input === 'string' ? input : input.input;
-      const opts = typeof input === 'string' ? undefined : { voice: input.voice, speed: input.speed };
-      return synthesizeBrowser(text, opts);
+      return synthesizeBrowser(input.input, { voice: input.voice, speed: input.speed });
     }
+    const result = await synthesizeDistri(buildRequest(input));
+    await playAudio(result);
+  }, [mode, speakQueued, synthesizeBrowser, synthesizeDistri, buildRequest, playAudio]);
 
-    const result = await synthesize(input);
-    if (result && 'audio' in result) {
-      await playAudio(result);
-    }
-  }, [mode, synthesize, playAudio, synthesizeBrowser]);
+  useEffect(() => () => {
+    queueRef.current?.abortAll();
+    playerRef.current?.dispose();
+  }, []);
 
   return {
     /** Current TTS mode ('distri' or 'browser'). */
     mode,
-    /** Whether speech is currently being synthesized or played. */
+    /** Whether speech is currently being synthesized. */
     isSynthesizing,
+    /** Whether the queue is playing. */
+    isSpeaking,
     /** Synthesize speech. Returns TtsSpeechResponse in distri mode, void in browser mode. */
     synthesize,
-    /** Synthesize and immediately play. Works in both modes. */
+    /** Synthesize and play. Strings go through the queue. */
     speak,
-    /** Play audio from a TtsSpeechResponse or Blob. */
+    /** Queue one sentence; resolves when spoken. */
+    speakQueued,
+    /** Play audio from a TtsSpeechResponse or Blob through the owned element. */
     playAudio,
-    /** Stop any active TTS (browser or server). */
+    /** Stop the queue and any active playback (browser or server). */
     stop,
+    /** `VoiceSpeaker` for `useVoiceSession` / `SpeechQueue`. */
+    speaker,
     /** Fetch available TTS models (distri mode only). */
     fetchModels,
     /** Fetch TTS provider definitions (distri mode only). */

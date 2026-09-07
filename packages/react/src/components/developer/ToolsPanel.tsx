@@ -18,7 +18,7 @@ interface ToolsPanelProps {
 
 export function ToolsPanel({ open, onClose, threadId = 'developer-tools', agentDefinition }: ToolsPanelProps) {
   const externalTools = useChatStateStore(state => state.externalTools);
-  const safeExternalTools: DistriAnyTool[] = externalTools ?? [];
+  const safeExternalTools = (externalTools ?? []) as DistriAnyTool[];
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
 
   const toggleExpand = (name: string) => {

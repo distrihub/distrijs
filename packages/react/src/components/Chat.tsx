@@ -12,6 +12,7 @@ import { useStore } from 'zustand';
 import { ChatState, TaskState, ChatStore, ChatStoreContext, createChatStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
+import { useVoiceSession, type UseVoiceSessionOptions } from '../hooks/useVoiceSession';
 import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode } from '@/types';
 import { createHttpToolRenderer } from '../utils/createHttpToolRenderer';
 import { DeveloperModeComponent } from './developer/DeveloperModeComponent';
@@ -34,7 +35,16 @@ export interface ChatInstance {
   triggerTool: (toolName: string, input: any) => Promise<void>;
   isStreaming: boolean;
   isLoading: boolean;
+  /**
+   * Observe raw stream events (`text_message_content` deltas, `run_finished`, …)
+   * as they arrive. The function identity is stable across renders, so it is
+   * safe to subscribe once per `ChatInstance` identity (e.g. from `useVoiceSession`).
+   */
+  subscribe: (listener: (event: DistriChatMessage) => void) => () => void;
 }
+
+/** `<Chat voice>` options — everything `useVoiceSession` takes except `chat`, which `<Chat>` supplies. */
+export type ChatVoiceOptions = Omit<UseVoiceSessionOptions, 'chat'>;
 
 export interface ChatEmptyStateController {
   input: string;
@@ -87,11 +97,22 @@ export interface ChatProps {
    * If provided, overrides loadingAnimation config.
    */
   renderLoadingAnimation?: () => React.ReactNode;
-  // Voice support
+  /**
+   * Streaming voice (spec §2.7): `true` for hold-to-talk with the workspace's
+   * default streaming STT and TTS, or an options object
+   * (`{ turn: { mode: 'auto' }, duplex: 'full' }`, `{ tts: false, review: true }`, …).
+   * Mounts `useVoiceSession` inside Chat and swaps the composer's mic for
+   * `<PushToTalkButton>` (hold) or a start/stop toggle (auto, manual).
+   * Mutually exclusive with `voiceEnabled`.
+   */
+  voice?: boolean | ChatVoiceOptions;
+  /** @deprecated Whole-clip recording via `/tts/transcribe`. Use `voice` instead. Ignored when `voice` is set. */
   voiceEnabled?: boolean;
+  /** @deprecated Browser SpeechRecognition input. Use `voice` instead. */
   useSpeechRecognition?: boolean;
+  /** @deprecated TTS defaults for the whole-clip handsfree path. Use `voice={{ tts: { config } }}` instead. */
   ttsConfig?: TtsConfig;
-  /** Handsfree mode: auto-send after transcription and auto-play TTS responses. */
+  /** @deprecated Handsfree mode: auto-send after transcription and auto-play TTS responses. Use `voice` instead. */
   handsfree?: boolean;
   initialInput?: string;
   allowBrowserPreview?: boolean;
@@ -221,7 +242,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   emptyState: emptyStateProp,
   starterCommands,
   loadingAnimation,
-  voiceEnabled = false,
+  voice,
+  voiceEnabled: voiceEnabledProp = false,
   useSpeechRecognition = false,
   ttsConfig,
   handsfree = false,
@@ -283,6 +305,34 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
 
+
+  // `voice` (streaming) and `voiceEnabled` (legacy whole-clip) are mutually
+  // exclusive; the streaming path wins and the legacy prop is ignored.
+  const voiceConflict = Boolean(voice) && voiceEnabledProp;
+  useEffect(() => {
+    if (voiceConflict) {
+      console.error('[Chat] `voice` and `voiceEnabled` are mutually exclusive; ignoring `voiceEnabled`. Use `voice` for streaming hold-to-talk.');
+    }
+  }, [voiceConflict]);
+  const voiceEnabled = voiceEnabledProp && !voice;
+
+  // Raw stream events fan-out for `ChatInstance.subscribe` (stable identity).
+  const eventListenersRef = useRef<Set<(event: DistriChatMessage) => void>>(new Set());
+  const subscribeToEvents = useCallback((listener: (event: DistriChatMessage) => void) => {
+    eventListenersRef.current.add(listener);
+    return () => {
+      eventListenersRef.current.delete(listener);
+    };
+  }, []);
+  const handleStreamEvent = useCallback((event: DistriChatMessage) => {
+    eventListenersRef.current.forEach((listener) => {
+      try {
+        listener(event);
+      } catch (err) {
+        console.error('[Chat] event listener threw:', err);
+      }
+    });
+  }, []);
 
   // Voice functionality hooks - need DistriClient for API calls
   const speechToText = useSpeechToText();
@@ -355,6 +405,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     executionOptions,
     initialMessages,
     beforeSendMessage,
+    onEvent: handleStreamEvent,
     store: chatStore,
   });
 
@@ -717,6 +768,39 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     chatStore.getState().resetStreamingStates();
   }, [stopStreaming]);
 
+  // Streaming voice (spec §2.7). The session drives the chat through a
+  // ref-backed object so its identity never changes across renders.
+  const handleSendMessageRef = useRef(handleSendMessage);
+  handleSendMessageRef.current = handleSendMessage;
+  const handleStopStreamingRef = useRef(handleStopStreaming);
+  handleStopStreamingRef.current = handleStopStreaming;
+  const voiceChat = useMemo(() => ({
+    sendMessage: (text: string) => handleSendMessageRef.current(text),
+    stopStreaming: () => handleStopStreamingRef.current(),
+    subscribe: subscribeToEvents,
+  }), [subscribeToEvents]);
+  const voiceOptions = useMemo<ChatVoiceOptions>(() => (typeof voice === 'object' && voice !== null ? voice : {}), [voice]);
+  const voiceOptionsRef = useRef(voiceOptions);
+  voiceOptionsRef.current = voiceOptions;
+  const handleVoiceReview = useCallback((text: string) => {
+    setInput(text);
+    voiceOptionsRef.current.onReview?.(text);
+  }, []);
+  const handleVoiceError = useCallback((err: Error) => {
+    voiceOptionsRef.current.onError?.(err);
+    onError?.(err);
+  }, [onError]);
+  const voiceSession = useVoiceSession({
+    ...voiceOptions,
+    chat: voice ? voiceChat : null,
+    onReview: handleVoiceReview,
+    onError: handleVoiceError,
+  });
+  const voiceTurnMode = voiceOptions.turn?.mode ?? 'hold';
+  const composerVoice = useMemo(() => (voice
+    ? { session: voiceSession, mode: voiceTurnMode, pushToTalkKey: voiceOptions.turn?.pushToTalkKey }
+    : undefined), [voice, voiceSession, voiceTurnMode, voiceOptions.turn?.pushToTalkKey]);
+
   // Built-in slash commands
   const builtInCommands: ChatCommand[] = useMemo(() => [
     { id: 'verbose', label: 'Verbose', description: 'Toggle rich tool rendering & detailed output', icon: '📊', type: 'toggle', currentValue: verbose },
@@ -849,7 +933,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     triggerTool: handleTriggerTool,
     isStreaming,
     isLoading,
-  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading]);
+    subscribe: subscribeToEvents,
+  }), [handleSendMessage, handleStopStreaming, handleTriggerTool, isStreaming, isLoading, subscribeToEvents]);
 
   // Expose ChatInstance via ref
   useImperativeHandle(ref, () => chatInstance, [chatInstance]);
@@ -947,6 +1032,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         attachedImages={attachedImages}
         onRemoveImage={removeImage}
         onAddImages={addImages}
+        voice={composerVoice}
         voiceEnabled={voiceEnabled && !!speechToText}
         onVoiceRecord={handleVoiceRecord}
         useSpeechRecognition={useSpeechRecognition}
@@ -997,6 +1083,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     verbose,
     handleToggleVerbose,
     developerMode,
+    composerVoice,
     voiceEnabled,
     speechToText,
     handleVoiceRecord,
@@ -1048,6 +1135,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const footerHasContent = shouldRenderFooterComposer
     || Boolean(developerMode)
     || (models && models.length > 0)
+    || Boolean(voice)
     || (voiceEnabled && !!speechToText);
   const showBrowserPreview = supportsBrowserStreaming && browserEnabled && Boolean(browserViewerUrl);
 
@@ -1246,7 +1334,7 @@ export interface ChatContainerProps extends ChatProps { }
 /**
  * The main Chat component that handles authentication via AuthLoading guardian.
  */
-export const Chat = forwardRef<ChatInstance, ChatProps>((props, ref) => {
+export const Chat = forwardRef<ChatInstance, ChatProps>(function Chat(props, ref) {
   return (
     <AuthLoading>
       <ChatContainer ref={ref} {...props} />

@@ -20,6 +20,11 @@ export interface UseChatOptions {
   initialMessages?: (DistriChatMessage)[];
   beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
   /**
+   * Called with every raw stream event as it is consumed (before the store
+   * reduces it). `<Chat>` fans this out through `ChatInstance.subscribe`.
+   */
+  onEvent?: (event: DistriChatMessage) => void;
+  /**
    * Optional externally-owned store. `<Chat>` creates the store itself (it
    * needs `browser_session_id` from store state to build request metadata
    * before this hook runs) and passes it in. When omitted, `useChat` creates
@@ -64,6 +69,7 @@ export function useChat({
   agent,
   externalTools,
   beforeSendMessage,
+  onEvent,
   initialMessages,
   store: providedStore,
 }: UseChatOptions): UseChatReturn {
@@ -93,8 +99,8 @@ export function useChat({
   }, [controller, externalTools]);
 
   useEffect(() => {
-    controller.setCallbacks({ onError, getMetadata, beforeSendMessage });
-  }, [controller, onError, getMetadata, beforeSendMessage]);
+    controller.setCallbacks({ onError, getMetadata, beforeSendMessage, onEvent });
+  }, [controller, onError, getMetadata, beforeSendMessage, onEvent]);
 
   const processMessage = useStore(store, state => state.processMessage);
   const clearAllStates = useStore(store, state => state.clearAllStates);

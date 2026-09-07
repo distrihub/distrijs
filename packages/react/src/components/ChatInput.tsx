@@ -2,10 +2,12 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
-import { Send, Square, X, Mic, Globe, Plus, Braces, Headphones } from 'lucide-react';
+import { Send, Square, X, Mic, Globe, Plus, Braces, Headphones, Check, Loader2 } from 'lucide-react';
 
-import { DistriPart } from '@distri/core';
+import { DistriPart, VoiceTurnMode } from '@distri/core';
 import { VoiceInput } from './VoiceInput';
+import { PushToTalkButton } from './PushToTalkButton';
+import type { UseVoiceSessionReturn } from '../hooks/useVoiceSession';
 import { cn } from '../lib/utils';
 import { SlashCommandExtension } from '../extensions/SlashCommandExtension';
 import { CommandPalette } from './CommandPalette';
@@ -16,6 +18,14 @@ export interface AttachedImage {
   file: File;
   preview: string;
   name: string;
+}
+
+/** Streaming voice controls rendered in place of the legacy mic (spec §2.7). */
+export interface ChatInputVoiceProps {
+  session: UseVoiceSessionReturn;
+  /** The configured turn mode: `hold` renders `<PushToTalkButton>`, `auto`/`manual` a start/stop toggle. */
+  mode: VoiceTurnMode;
+  pushToTalkKey?: string;
 }
 
 export interface ChatInputProps {
@@ -33,11 +43,19 @@ export interface ChatInputProps {
   attachedImages?: AttachedImage[];
   onRemoveImage?: (id: string) => void;
   onAddImages?: (files: FileList | File[]) => void;
+  /** Streaming voice (hold to talk). When set, the legacy whole-clip mic is not rendered. */
+  voice?: ChatInputVoiceProps;
+  /** @deprecated Whole-clip recording. Use `voice` (streaming, hold to talk) instead. */
   voiceEnabled?: boolean;
+  /** @deprecated Whole-clip recording callback; pairs with `voiceEnabled`. */
   onVoiceRecord?: (audioBlob: Blob) => void;
+  /** @deprecated Browser SpeechRecognition path. Use `voice` instead. */
   useSpeechRecognition?: boolean;
+  /** @deprecated Pairs with `useSpeechRecognition`. */
   onSpeechTranscript?: (text: string) => void;
+  /** @deprecated Whole-clip handsfree. Use `voice` (auto-sends on release) instead. */
   handsfree?: boolean;
+  /** @deprecated Pairs with `handsfree`. */
   onToggleHandsfree?: () => void;
   verbose?: boolean;
   onToggleVerbose?: () => void;
@@ -65,6 +83,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   attachedImages,
   onRemoveImage,
   onAddImages,
+  voice,
   voiceEnabled = false,
   onVoiceRecord,
   useSpeechRecognition = false,
@@ -315,6 +334,120 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     handleSendRef.current = handleSend;
   }, [handleSend]);
 
+  const voiceState = voice?.session.state;
+  const voiceTranscript = voice?.session.transcript;
+  const voiceHasTranscript = Boolean(voiceTranscript && (voiceTranscript.interim || voiceTranscript.finals.length > 0));
+
+  const renderVoiceControls = () => {
+    if (!voice) return null;
+    const { session, mode } = voice;
+    if (mode === 'hold') {
+      return (
+        <PushToTalkButton
+          voice={session}
+          pushToTalkKey={voice.pushToTalkKey}
+          disabled={disabled}
+          className="h-10 w-10 sm:h-10 sm:w-10"
+        />
+      );
+    }
+    const listening = session.state === 'listening' || session.state === 'finalizing';
+    const busy = session.state === 'thinking' || session.state === 'speaking';
+    return (
+      <>
+        <button
+          type="button"
+          data-testid="voice-toggle"
+          data-voice-state={session.state}
+          onClick={() => {
+            if (busy) session.interrupt();
+            else if (listening) session.stop();
+            else void session.start();
+          }}
+          className={cn(
+            'flex h-10 w-10 items-center justify-center rounded-full transition-colors',
+            listening
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : session.state === 'error'
+                ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+          )}
+          disabled={disabled}
+          aria-pressed={listening}
+          title={busy ? 'Interrupt' : listening ? 'Stop listening' : mode === 'auto' ? 'Start voice conversation' : 'Start listening'}
+        >
+          {busy ? <Square className="h-4 w-4 fill-current" /> : listening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </button>
+        {mode === 'manual' && session.state === 'listening' && (
+          <button
+            type="button"
+            data-testid="voice-commit"
+            onClick={() => session.commitTurn()}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            disabled={disabled || !voiceHasTranscript}
+            title="Send what was heard"
+          >
+            <Check className="h-4 w-4" />
+          </button>
+        )}
+      </>
+    );
+  };
+
+  const renderVoiceStatus = () => {
+    if (!voice || !voiceState) return null;
+    const { session } = voice;
+    const showTranscript = (voiceState === 'listening' || voiceState === 'finalizing') && voiceHasTranscript;
+    const showThinking = voiceState === 'thinking';
+    const showSpeaking = voiceState === 'speaking';
+    const showError = voiceState === 'error' && session.error;
+    if (!showTranscript && !showThinking && !showSpeaking && !showError) return null;
+    return (
+      <div
+        data-testid="voice-status"
+        className="flex items-center gap-2 px-3 py-2 mx-3 mb-2 rounded-lg bg-muted/60 text-xs sm:text-sm"
+        aria-live="polite"
+      >
+        {showTranscript && (
+          <>
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+            <span className="flex-1 min-w-0 text-foreground break-words">
+              {voiceTranscript!.finals.join(' ')}
+              {voiceTranscript!.interim && (
+                <span className="text-muted-foreground italic">{voiceTranscript!.finals.length > 0 ? ' ' : ''}{voiceTranscript!.interim}</span>
+              )}
+            </span>
+          </>
+        )}
+        {showThinking && (
+          <>
+            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-muted-foreground shrink-0" />
+            <span className="flex-1 text-muted-foreground">Thinking…</span>
+          </>
+        )}
+        {showSpeaking && (
+          <>
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+            <span className="flex-1 text-muted-foreground">
+              Speaking… {session.playback.spokenSentences}/{session.playback.totalSentences}
+            </span>
+            <button
+              type="button"
+              onClick={() => session.interrupt()}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition"
+              title="Stop speaking"
+            >
+              <Square className="h-3 w-3 fill-current" />
+            </button>
+          </>
+        )}
+        {showError && (
+          <span className="flex-1 text-destructive">{session.error?.message}</span>
+        )}
+      </div>
+    );
+  };
+
   const hasContent = value.trim().length > 0 || imageAttachments.length > 0;
   const isDisabled = disabled;
 
@@ -472,6 +605,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               </div>
             )}
 
+            {/* Streaming voice status: live transcript while listening, progress while speaking */}
+            {voice && renderVoiceStatus()}
+
             {/* Toolbar */}
             <div className={cn(
               'flex items-center justify-between px-3 pb-3',
@@ -501,7 +637,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   </button>
                 )}
 
-                {voiceEnabled && !useSpeechRecognition && !isRecording && !recordedBlob && !isTranscribing && (
+                {voice && renderVoiceControls()}
+
+                {!voice && voiceEnabled && !useSpeechRecognition && !isRecording && !recordedBlob && !isTranscribing && (
                   <button
                     type="button"
                     onClick={startRecording}
@@ -513,7 +651,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   </button>
                 )}
 
-                {voiceEnabled && onToggleHandsfree && (
+                {!voice && voiceEnabled && onToggleHandsfree && (
                   <button
                     type="button"
                     onClick={onToggleHandsfree}
@@ -525,7 +663,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   </button>
                 )}
 
-                {useSpeechRecognition && (
+                {!voice && useSpeechRecognition && (
                   <VoiceInput
                     onTranscript={handleSpeechTranscript}
                     disabled={isDisabled || isStreaming}
