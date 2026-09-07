@@ -1,6 +1,7 @@
 import {
   Agent,
   DistriBaseTool,
+  DistriChatMessage,
   DistriClient,
   DistriMessage,
   DistriPart,
@@ -36,6 +37,13 @@ export interface ChatControllerCallbacks {
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<Record<string, unknown>>;
   beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
+  /**
+   * Called with every raw stream event (`DistriEvent | DistriMessage`) as it
+   * is consumed, before the store reduces it. This is how observers that need
+   * text deltas (e.g. `VoiceSession`'s sentence chunker) see them; the store
+   * only exposes reduced messages.
+   */
+  onEvent?: (event: DistriChatMessage) => void;
 }
 
 /**
@@ -148,6 +156,7 @@ export class ChatController {
         if (this.abortController?.signal.aborted) {
           break;
         }
+        this.callbacks.onEvent?.(event);
         processMessage(event, true);
       }
     } catch (err) {
@@ -224,6 +233,7 @@ export class ChatController {
         if (this.abortController?.signal.aborted) {
           break;
         }
+        this.callbacks.onEvent?.(event);
         processMessage(event, true);
       }
     } catch (err) {
