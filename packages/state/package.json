@@ -38,9 +38,15 @@
     "vitest": "^4.1.1"
   },
   "peerDependencies": {
-    "@distri/core": "workspace:*"
+    "@distri/core": "workspace:*",
+    "microsoft-cognitiveservices-speech-sdk": ">=1.30.0"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependenciesMeta": {
+    "microsoft-cognitiveservices-speech-sdk": {
+      "optional": true
+    }
   }
 }
