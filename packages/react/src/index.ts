@@ -15,6 +15,7 @@ export * from './components/AgentList';
 export * from './components/AgentSelect';
 export * from './components/ChatInput';
 export * from './components/VoiceInput';
+export * from './components/PushToTalkButton';
 export * from './components/BrowserPreviewPanel';
 export * from './components/BrowserViewport';
 export * from './components/ConfigurationPanel';
@@ -37,6 +38,7 @@ export * from './types';
 // Hook exports
 export * from './hooks/useChatMessages';
 export * from './hooks/useTts';
+export * from './hooks/useVoiceSession';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
 export * from './hooks/useMessageFeedback';

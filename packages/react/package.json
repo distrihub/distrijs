@@ -23,8 +23,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "lint": "eslint src --ext ts,tsx",
-    "lint:fix": "eslint src --ext ts,tsx --fix",
+    "lint": "eslint --resolve-plugins-relative-to ../.. src --ext ts,tsx",
+    "lint:fix": "eslint --resolve-plugins-relative-to ../.. src --ext ts,tsx --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
