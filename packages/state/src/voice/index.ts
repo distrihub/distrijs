@@ -10,3 +10,4 @@ export type { PlayableAudio } from './AudioElementPlayer';
 export { MicCapture, Pcm16Downsampler } from './MicCapture';
 export type { MicCaptureLike, MicCaptureOptions } from './MicCapture';
 export * from './adapters';
+export * from './vad';
