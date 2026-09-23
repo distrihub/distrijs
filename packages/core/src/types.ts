@@ -1031,6 +1031,13 @@ export interface DistriClientConfig {
   baseUrl: string;
 
   /**
+   * Fetch-compatible transport used for every API and A2A request. Defaults to
+   * the platform's global `fetch`; React Native apps may inject a transport
+   * that supports their runtime's networking and streaming implementation.
+   */
+  fetchImpl?: typeof fetch;
+
+  /**
    * API version (currently unused)
    */
   apiVersion?: string;

@@ -142,7 +142,7 @@ export class ChatController {
       const stream = await agent.invokeStream({
         message: a2aMessage,
         metadata: requestMetadata,
-      }, this.externalTools);
+      }, this.externalTools, undefined, { signal: this.abortController.signal });
 
       for await (const event of stream) {
         if (this.abortController?.signal.aborted) {
@@ -218,7 +218,7 @@ export class ChatController {
           ...contextMetadata,
           task_id: this.store.getState().currentTaskId,
         },
-      });
+      }, undefined, undefined, { signal: this.abortController.signal });
 
       for await (const event of stream) {
         if (this.abortController?.signal.aborted) {

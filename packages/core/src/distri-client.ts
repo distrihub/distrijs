@@ -232,6 +232,7 @@ export class DistriClient {
       retryAttempts: config.retryAttempts ?? 3,
       retryDelay: config.retryDelay ?? 1000,
       debug: config.debug ?? false,
+      fetchImpl: config.fetchImpl ?? globalThis.fetch.bind(globalThis),
       headers,
       interceptor: config.interceptor ?? (async (init?: RequestInit) => Promise.resolve(init)),
       onTokenRefresh: config.onTokenRefresh,
@@ -970,10 +971,23 @@ export class DistriClient {
   /**
    * Get or create A2AClient for an agent
    */
-  private getA2AClient(agentId: string): A2AClient {
+  private getA2AClient(agentId: string, signal?: AbortSignal): A2AClient {
     // Compute the current expected URL for this agent
     const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
     const existing = this.agentClients.get(agentId);
+
+    // The pinned A2AClient streaming methods don't expose RequestOptions.signal.
+    // Bind a per-stream signal into the fetch adapter instead of sharing this
+    // client with concurrent requests.
+    if (signal) {
+      const fetchFn = (input: RequestInfo | URL, init?: RequestInit) => (
+        this.fetchAbsolute(input, init, { signal })
+      );
+      return new A2AClient(agentUrl, {
+        fetchImpl: fetchFn,
+        agentCardPath: '/.well-known/agent.json',
+      });
+    }
 
     if (!existing || existing.url !== agentUrl) {
       const fetchFn = this.fetchAbsolute.bind(this);
@@ -1054,10 +1068,14 @@ export class DistriClient {
   /**
    * Send a streaming message to an agent
    */
-  async * sendMessageStream(agentId: string, params: MessageSendParams): AsyncGenerator<A2AStreamEventData> {
+  async * sendMessageStream(
+    agentId: string,
+    params: MessageSendParams,
+    options?: { signal?: AbortSignal },
+  ): AsyncGenerator<A2AStreamEventData> {
     console.log('sendMessageStream', agentId, params);
     try {
-      const client = this.getA2AClient(agentId);
+      const client = this.getA2AClient(agentId, options?.signal);
       params = this.mergeRegisteredTools(params);
       yield* await client.sendMessageStream(params);
     } catch (error) {
@@ -1164,9 +1182,9 @@ export class DistriClient {
    * `agentId` is required because A2A clients are per-agent-URL; the caller
    * following a task always holds the owning agent.
    */
-  async *resubscribeTask(agentId: string, taskId: string, _opts?: { signal?: AbortSignal }): AsyncGenerator<A2AStreamEventData> {
+  async *resubscribeTask(agentId: string, taskId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<A2AStreamEventData> {
     try {
-      const client = this.getA2AClient(agentId);
+      const client = opts?.signal ? this.getA2AClient(agentId, opts.signal) : this.getA2AClient(agentId);
       yield* await client.resubscribeTask({ id: taskId });
     } catch (error) {
       const errorMessage = this.extractErrorMessage(error);
@@ -1855,7 +1873,7 @@ export class DistriClient {
   private async fetchAbsolute(
     url: RequestInfo | URL,
     initialInit?: RequestInit,
-    options?: { skipAuth?: boolean; retryOnAuth?: boolean }
+    options?: { skipAuth?: boolean; retryOnAuth?: boolean; signal?: AbortSignal }
   ): Promise<Response> {
     const { skipAuth = false, retryOnAuth = true } = options ?? {};
     const init = await this.config.interceptor(initialInit);
@@ -1899,24 +1917,35 @@ export class DistriClient {
     for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
       try {
         const controller = new AbortController();
+        const signal = options?.signal ?? init?.signal ?? undefined;
+        if (signal?.aborted) {
+          controller.abort(signal.reason);
+        } else {
+          signal?.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+        }
         const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
-        const response = await fetch(url, {
-          ...init,
-          signal: controller.signal,
-          headers,
-        });
-
-        clearTimeout(timeoutId);
+        let response: Response;
+        try {
+          response = await this.config.fetchImpl(url, {
+            ...init,
+            signal: controller.signal,
+            headers,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
         if (!skipAuth && retryOnAuth && response.status === 401 && (this.refreshToken || this.onTokenRefresh)) {
           const refreshed = await this.refreshTokens().then(() => true).catch(() => false);
           if (refreshed) {
-            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false });
+            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false, signal });
           }
         }
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+
+        if ((options?.signal ?? init?.signal)?.aborted) throw lastError;
 
         if (attempt < this.config.retryAttempts) {
           this.debug(`Request failed (attempt ${attempt + 1}), retrying in ${this.config.retryDelay}ms...`);
@@ -2109,12 +2138,20 @@ export class DistriClient {
   }
 }
 export function uuidv4(): string {
-  if (typeof crypto?.randomUUID === 'function') {
-    return crypto.randomUUID();
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === 'function') {
+    return webCrypto.randomUUID();
   }
-  // Fallback for older browsers
+  // Use Web Crypto when present, but keep IDs working in React Native runtimes
+  // that do not expose it globally. These UUIDs are identifiers, not secrets.
   const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
+  if (webCrypto?.getRandomValues) {
+    webCrypto.getRandomValues(array);
+  } else {
+    for (let i = 0; i < array.length; i += 1) {
+      array[i] = Math.floor(Math.random() * 256);
+    }
+  }
   // Per RFC4122 v4
   array[6] = (array[6] & 0x0f) | 0x40;
   array[8] = (array[8] & 0x3f) | 0x80;
