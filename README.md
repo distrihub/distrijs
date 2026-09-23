@@ -91,6 +91,7 @@ in your own shell, or `useTaskStreaming` alone for a fully custom view.
 
 - **`@distri/core`** - Core client, agent management, and tool system
 - **`@distri/react`** - React hooks and components for UI integration
+- **`@distri/react-native`** - Native React hooks and chat UI (Expo sample: [`samples/react-native-chat`](samples/react-native-chat))
 - **`@distri/widgets`** - 🆕 Reusable UI widgets (ChartWidget, etc.)
 
 ## 🚀 Quick Start
@@ -446,4 +447,3 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ---
 
 **DistriJS** - Build intelligent AI agents with external tool integration 🚀
-
