@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   createFailedToolResult,
@@ -10,6 +10,7 @@ import {
 import type { DistriBaseTool } from '@distri/core';
 import type { ChatStore, ToolCallState } from '@distri/state';
 import type { NativeToolRendererMap, NativeUiTool, RenderingMode } from '../types';
+import { DistriNativeTheme, useDistriTheme } from '../theme';
 
 interface ToolExecutionRendererProps {
   toolCalls: ToolCall[];
@@ -32,6 +33,8 @@ function ToolCard({ call, state, tool, store, rendering }: {
   store: ChatStore;
   rendering: RenderingMode;
 }) {
+  const theme = useDistriTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [busy, setBusy] = useState(false);
   const status = state?.status ?? 'pending';
   const handler = tool?.type === 'function' ? (tool as DistriBaseTool & { handler?: ToolHandler }).handler : undefined;
@@ -62,7 +65,7 @@ function ToolCard({ call, state, tool, store, rendering }: {
   const result = state?.result;
 
   return (
-    <View style={styles.card} accessibilityLabel={`Tool ${call.tool_name} ${status}`}>
+    <View style={[styles.card, theme.styles.toolCard]} accessibilityLabel={`Tool ${call.tool_name} ${status}`}>
       <View style={styles.header}>
         <Text style={styles.title}>{call.tool_name}</Text>
         <Text style={styles.status}>{status.replace(/_/g, ' ')}</Text>
@@ -85,6 +88,8 @@ function ToolCard({ call, state, tool, store, rendering }: {
 }
 
 export function ToolExecutionRenderer({ toolCalls, states, tools, store, renderers, rendering }: ToolExecutionRendererProps) {
+  const theme = useDistriTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.list}>
       {toolCalls.map(call => {
@@ -104,17 +109,19 @@ export function ToolExecutionRenderer({ toolCalls, states, tools, store, rendere
   );
 }
 
-const styles = StyleSheet.create({
-  list: { gap: 8 },
-  card: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, backgroundColor: '#ffffff', padding: 12, gap: 8 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  title: { color: '#0f172a', fontWeight: '700', fontSize: 14 },
-  status: { color: '#475569', fontSize: 12, textTransform: 'capitalize' },
-  detail: { color: '#334155', fontSize: 12, lineHeight: 18 },
-  error: { color: '#b91c1c', fontSize: 13 },
-  actions: { flexDirection: 'row', gap: 8 },
-  approve: { backgroundColor: '#0f766e', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  approveText: { color: '#ffffff', fontWeight: '600' },
-  deny: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  denyText: { color: '#334155', fontWeight: '600' },
-});
+function makeStyles(theme: DistriNativeTheme) {
+  return StyleSheet.create({
+    list: { gap: 8 },
+    card: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.card, backgroundColor: theme.colors.surface, padding: 12, gap: 8 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+    title: { color: theme.colors.text, fontWeight: '700', fontSize: 14, fontFamily: theme.fonts.body },
+    status: { color: theme.colors.mutedText, fontSize: theme.fontSizes.small, textTransform: 'capitalize', fontFamily: theme.fonts.body },
+    detail: { color: theme.colors.mutedText, fontSize: theme.fontSizes.small, lineHeight: 18, fontFamily: theme.fonts.body },
+    error: { color: theme.colors.danger, fontSize: 13 },
+    actions: { flexDirection: 'row', gap: 8 },
+    approve: { backgroundColor: theme.colors.primary, borderRadius: theme.radii.button, paddingHorizontal: 12, paddingVertical: 8 },
+    approveText: { color: theme.colors.onPrimary, fontWeight: '600' },
+    deny: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.button, paddingHorizontal: 12, paddingVertical: 8 },
+    denyText: { color: theme.colors.text, fontWeight: '600' },
+  });
+}

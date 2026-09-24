@@ -1503,7 +1503,11 @@ export class DistriClient {
    */
   async getThreadMessagesAsDistri(threadId: string): Promise<DistriMessage[]> {
     const messages = await this.getThreadMessages(threadId);
-    return messages.map(convertA2AMessageToDistri);
+    // History also holds status updates and task records, which have no
+    // `parts`; converting those threw and lost the whole thread.
+    return messages
+      .filter((item) => (item as { kind?: string }).kind === 'message' && Array.isArray((item as { parts?: unknown }).parts))
+      .map(convertA2AMessageToDistri);
   }
 
   // ========== Message Read Status Methods ==========

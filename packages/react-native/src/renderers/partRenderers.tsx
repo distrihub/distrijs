@@ -1,8 +1,12 @@
+import { useMemo } from 'react';
 import { Image, StyleSheet, Text } from 'react-native';
 import type { DistriPart } from '@distri/core';
 import type { ChatStore, ToolCallState } from '@distri/state';
 import type { NativeToolRendererMap, RenderingMode } from '../types';
 import { ToolExecutionRenderer } from './ToolExecutionRenderer';
+import { Markdown } from '../Markdown';
+import { isVisiblePart } from '../messageVisibility';
+import { DistriNativeTheme, useDistriTheme } from '../theme';
 
 export interface DistriPartRendererProps {
   part: DistriPart;
@@ -26,7 +30,14 @@ function imageUri(data: { type?: string; mime_type?: string; bytes?: string; url
 }
 
 export function DistriPartRenderer({ part, isUser, toolCalls, externalTools, store, rendering, toolRenderers }: DistriPartRendererProps) {
-  if (part.part_type === 'text') return <Text style={[styles.text, isUser && styles.userText]}>{part.data}</Text>;
+  const theme = useDistriTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  if (!isVisiblePart(part)) return null;
+  if (part.part_type === 'text') {
+    return isUser
+      ? <Text style={[styles.text, styles.userText, theme.styles.userText]}>{part.data}</Text>
+      : <Markdown textStyle={[styles.assistantText, theme.styles.assistantText]}>{part.data}</Markdown>;
+  }
   if (part.part_type === 'image') {
     const data = part.data as { type?: string; mime_type?: string; bytes?: string; url?: string; name?: string };
     const uri = imageUri(data);
@@ -47,10 +58,13 @@ export function DistriPartRenderer({ part, isUser, toolCalls, externalTools, sto
   return <Text style={styles.detail}>{stringify(part)}</Text>;
 }
 
-const styles = StyleSheet.create({
-  text: { color: '#111827', fontSize: 15, lineHeight: 21 },
-  userText: { color: '#ffffff' },
-  image: { width: 240, height: 180, borderRadius: 10, backgroundColor: '#e2e8f0' },
-  detail: { color: '#334155', fontSize: 12 },
-  fallback: { color: '#475569', fontSize: 13, padding: 8 },
-});
+function makeStyles(theme: DistriNativeTheme) {
+  return StyleSheet.create({
+    text: { fontSize: theme.fontSizes.body, lineHeight: theme.lineHeight, fontFamily: theme.fonts.body },
+    userText: { color: theme.colors.userText },
+    assistantText: { color: theme.colors.assistantText },
+    image: { width: 240, height: 180, borderRadius: 10, backgroundColor: theme.colors.codeBackground },
+    detail: { color: theme.colors.mutedText, fontSize: theme.fontSizes.small, fontFamily: theme.fonts.body },
+    fallback: { color: theme.colors.mutedText, fontSize: 13, padding: 8 },
+  });
+}

@@ -69,7 +69,7 @@ describe('native chat renderers', () => {
     expect(screen.getByText('Run')).toBeTruthy();
   });
 
-  it('renders tool result payloads for successful and failed calls', () => {
+  it('leaves standalone tool_results events out of the transcript, as the web chat does', () => {
     const resultEvent: DistriEvent = {
       type: 'tool_results',
       data: { results: [
@@ -79,8 +79,8 @@ describe('native chat renderers', () => {
     };
     render(<Chat agent={idleAgent} threadId="tool-results" initialMessages={[resultEvent]} />);
 
-    expect(screen.getByText(/Oats found/)).toBeTruthy();
-    expect(screen.getByText(/Catalog unavailable/)).toBeTruthy();
+    expect(screen.queryByText(/Oats found/)).toBeNull();
+    expect(screen.queryByText(/Catalog unavailable/)).toBeNull();
   });
 
   it('renders native-safe live view and context compaction summaries', () => {

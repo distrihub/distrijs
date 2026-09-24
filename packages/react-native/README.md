@@ -30,9 +30,36 @@ The app owns authentication and secure persistence. Keep API keys and refresh to
 
 Streaming responses are required for agent chat. Inject a Fetch implementation that returns a readable response body (`body.getReader()`) and provides `TextDecoder`; Expo apps should use `expo/fetch`. Bare React Native apps should confirm their networking implementation supports streamed POST responses before enabling chat.
 
+## Theming
+
+Every renderer reads tokens from `DistriNativeProvider`'s `theme` prop. Pass only what differs; the rest keeps the defaults. `styles` overrides individual slots after the tokens are applied.
+
+```tsx
+<DistriNativeProvider
+  config={config}
+  theme={{
+    colors: { primary: '#6a3ad5', userBubble: '#f1ebff', userText: '#39266c', assistantBubble: '#fffdf9' },
+    fonts: { body: 'Quicksand', heading: 'Outfit' },
+    radii: { bubble: 14, input: 15 },
+    styles: { sendButton: { width: 44 } },
+  }}
+>
+```
+
+Slots: `list`, `userBubble`, `assistantBubble`, `userText`, `assistantText`, `composer`, `input`, `sendButton`, `sendButtonText`, `toolCard`, `loadingStrip`. `useDistriTheme()` gives custom components the same tokens.
+
+## Markdown, images, threads
+
+- Assistant text renders through `Markdown` (headings, lists, quotes, fenced code, rules, bold, italic, inline code, links). It is exported for app screens too.
+- `onPickImage` on `Chat`/`ChatInput` adds an attach button. Return `{ uri, base64, mimeType, name }` from your picker (e.g. expo-image-picker with `base64: true`); images are sent as `image` parts in the same shape `@distri/react` sends.
+- `ThreadPicker` lists the user's threads (`useThreads`) with a "New conversation" entry; the app chooses the new thread id. `useThreadHistory(threadId)` loads a stored thread the way `@distri/react` does; pass its `messages` as `initialMessages`.
+- Inside a bottom sheet, pass the sheet's list and input as `ListComponent` / `InputComponent` (e.g. `BottomSheetFlatList`, `BottomSheetTextInput`). `renderHeader({ sendMessage, isEmpty })` renders a welcome or suggestion chips above the transcript.
+
+As on the web, the transcript leaves out the `final` tool call, tool results and run bookkeeping events, and shows `LoadingStrip` until the first visible reply arrives.
+
 ## Native parity surface
 
-`Chat` uses a native `FlatList`, multiline composer, stop-streaming control, optimistic user messages, and incremental assistant text. Its default message renderer supports text, images (URL and base64), files, artifacts, data/resource parts, tool calls/results, handovers, errors, todo updates, context-budget/compaction events, and live-view links. Unsupported parts render a safe readable fallback. `rendering="rich"` adds tool input/result detail and action controls; the default `minimal` mode keeps tool summaries compact.
+`Chat` uses a native `FlatList` (or the list you pass), a multiline composer, a stop control, optimistic user messages, and incremental assistant text. Its default message renderer supports text, images (URL and base64), files, artifacts, data/resource parts, tool calls/results, handovers, errors, todo updates, context-budget/compaction events, and live-view links. Unsupported parts render a safe readable fallback. `rendering="rich"` adds tool input/result detail and action controls; the default `minimal` mode keeps tool summaries compact.
 
 Client functions and native custom renderers use the same shared chat controller as `@distri/react`:
 
