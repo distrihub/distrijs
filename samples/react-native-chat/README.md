@@ -36,8 +36,6 @@ The on-device catalog uses deterministic fixtures and covers:
 
 These are working sample integrations, not static mockups. The fixtures are offline and deterministic; they don't need credentials. For the real local-cloud chat, use the regular sample app and the URL/token settings above.
 
-Android emulator captures from the working stories are saved in [`screenshots/`](./screenshots/): form fill, approval pending/continued, reconciliation before/after/custom renderer, rich content, runtime events, and nested task progress.
-
 The package's other exports (`DistriNativeProvider`, `useAgent`, `useChat`, and `createChatStore`) are integration APIs rather than visual components. `Chat` stories exercise `useChat`; the regular sample demonstrates the provider and `useAgent` against Distri Cloud. Native `ChatMessageList`, `TaskView`, tool renderers and the task progress components are also shown in the workflow stories.
 
 Run the component behavior tests and sample type-check with:
