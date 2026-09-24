@@ -1,0 +1,9 @@
+# Expo local state
+.expo/
+
+# Generated Storybook story index
+.rnstorybook/storybook.requires.ts
+
+# Native projects are generated from app.json
+android/
+ios/

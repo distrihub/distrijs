@@ -22,6 +22,11 @@
       "import": "./packages/react/dist/index.js",
       "require": "./packages/react/dist/index.cjs"
     },
+    "./react-native": {
+      "types": "./packages/react-native/dist/index.d.ts",
+      "import": "./packages/react-native/dist/index.js",
+      "require": "./packages/react-native/dist/index.cjs"
+    },
     "./angular": {
       "types": "./packages/angular/dist/index.d.ts",
       "import": "./packages/angular/dist/index.mjs",
@@ -44,6 +49,7 @@
     "packages/state/dist/",
     "packages/fs/dist/",
     "packages/react/dist/",
+    "packages/react-native/dist/",
     "packages/angular/dist/",
     "packages/components/dist/",
     "README.md"
@@ -80,7 +86,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@types/react": "^19.0.0",
+      "@types/react": "~19.2.10",
       "@types/react-dom": "^19.0.0"
     }
   }
