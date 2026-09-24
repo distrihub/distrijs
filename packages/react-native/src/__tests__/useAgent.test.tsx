@@ -1,8 +1,10 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DistriNativeProvider } from '../DistriNativeProvider';
 import { useAgent } from '../useAgent';
+
+vi.mock('react-native', async () => import('./react-native.mock'));
 
 const agentResponse = (name: string) => new Response(JSON.stringify({ name }), {
   status: 200,

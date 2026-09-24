@@ -286,6 +286,11 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       } as any);
     }
 
+    case 'diagnostic_log':
+      // Server-side diagnostics (LLM token counts, planner cycles) are for
+      // traces, not the chat transcript.
+      return null;
+
     default: {
       // For unrecognized metadata types, create a generic run_started event
       console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);

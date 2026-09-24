@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useMemo } from 'react';
 import { DistriClient, DistriClientConfig } from '@distri/core';
+import { DistriNativeThemeInput, DistriThemeProvider } from './theme';
 
 export interface DistriNativeContextValue {
   client: DistriClient | null;
@@ -11,11 +12,13 @@ const DistriNativeContext = createContext<DistriNativeContextValue | null>(null)
 
 export interface DistriNativeProviderProps {
   config: DistriClientConfig;
+  /** Colours, fonts, radii and per-slot style overrides for every native renderer. */
+  theme?: DistriNativeThemeInput;
   children: ReactNode;
 }
 
 /** Creates the shared API client. Pass access tokens from secure app storage. */
-export function DistriNativeProvider({ config, children }: DistriNativeProviderProps) {
+export function DistriNativeProvider({ config, theme, children }: DistriNativeProviderProps) {
   const value = useMemo<DistriNativeContextValue>(() => {
     try {
       return { client: new DistriClient(config), error: null, isLoading: false };
@@ -28,7 +31,11 @@ export function DistriNativeProvider({ config, children }: DistriNativeProviderP
     }
   }, [config]);
 
-  return <DistriNativeContext.Provider value={value}>{children}</DistriNativeContext.Provider>;
+  return (
+    <DistriNativeContext.Provider value={value}>
+      <DistriThemeProvider theme={theme}>{children}</DistriThemeProvider>
+    </DistriNativeContext.Provider>
+  );
 }
 
 export function useDistriNative(): DistriNativeContextValue {
