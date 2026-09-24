@@ -209,7 +209,7 @@ export class DistriClient {
   private tokenRefreshSkewMs: number;
   private onTokenRefresh?: () => Promise<string | null>;
   private refreshPromise?: Promise<void>;
-  private agentClients = new Map<string, { url: string; client: A2AClient }>();
+  private agentClients = new Map<string, { url: string; card: Promise<AgentCard>; client: Promise<A2AClient> }>();
   private registeredTools: DynamicToolFactory[] = [];
 
   constructor(config: DistriClientConfig) {
@@ -969,39 +969,46 @@ export class DistriClient {
   }
 
   /**
-   * Get or create A2AClient for an agent
+   * Get or create A2AClient for an agent.
+   *
+   * The A2A SDK sends JSON-RPC to the agent card's `url`, which is whatever the
+   * server believes its public address is. When this client reaches the server
+   * through a different base URL (proxy, tunnel, custom domain) that address may
+   * be unreachable, so the card's `url` is always replaced with
+   * `${baseUrl}/agents/{agentId}` before handing it to the SDK.
    */
-  private getA2AClient(agentId: string, signal?: AbortSignal): A2AClient {
+  private async getA2AClient(agentId: string, signal?: AbortSignal): Promise<A2AClient> {
     // Compute the current expected URL for this agent
     const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-    const existing = this.agentClients.get(agentId);
-
-    // The pinned A2AClient streaming methods don't expose RequestOptions.signal.
-    // Bind a per-stream signal into the fetch adapter instead of sharing this
-    // client with concurrent requests.
-    if (signal) {
-      const fetchFn = (input: RequestInfo | URL, init?: RequestInit) => (
-        this.fetchAbsolute(input, init, { signal })
-      );
-      return new A2AClient(agentUrl, {
-        fetchImpl: fetchFn,
-        agentCardPath: '/.well-known/agent.json',
-      });
-    }
+    let existing = this.agentClients.get(agentId);
 
     if (!existing || existing.url !== agentUrl) {
-      const fetchFn = this.fetchAbsolute.bind(this);
-      const client = new A2AClient(agentUrl, {
-        fetchImpl: fetchFn,
-        agentCardPath: '/.well-known/agent.json',
+      const card = this.getAgentCard(agentId).then((c) => ({ ...c, url: agentUrl }));
+      // Don't cache a failed card fetch; the next call retries.
+      card.catch(() => {
+        if (this.agentClients.get(agentId)?.card === card) this.agentClients.delete(agentId);
       });
-      this.agentClients.set(agentId, { url: agentUrl, client });
       this.debug(
         existing
           ? `Recreated A2AClient for agent ${agentId} with new URL ${agentUrl}`
           : `Created A2AClient for agent ${agentId} at ${agentUrl}`
       );
-      return client;
+      const client = card.then((c) => new A2AClient(c, { fetchImpl: this.fetchAbsolute.bind(this) }));
+      // Callers on the signal path only await `card`; the error surfaces there.
+      client.catch(() => {});
+      existing = { url: agentUrl, card, client };
+      this.agentClients.set(agentId, existing);
+    }
+
+    // The pinned A2AClient streaming methods don't expose RequestOptions.signal.
+    // Bind a per-stream signal into the fetch adapter instead of sharing this
+    // client with concurrent requests.
+    if (signal) {
+      const card = await existing.card;
+      const fetchFn = (input: RequestInfo | URL, init?: RequestInit) => (
+        this.fetchAbsolute(input, init, { signal })
+      );
+      return new A2AClient(card, { fetchImpl: fetchFn });
     }
 
     return existing.client;
@@ -1043,7 +1050,7 @@ export class DistriClient {
    */
   async sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task> {
     try {
-      const client = this.getA2AClient(agentId);
+      const client = await this.getA2AClient(agentId);
       params = this.mergeRegisteredTools(params);
 
       const response: SendMessageResponse = await client.sendMessage(params);
@@ -1075,7 +1082,7 @@ export class DistriClient {
   ): AsyncGenerator<A2AStreamEventData> {
     console.log('sendMessageStream', agentId, params);
     try {
-      const client = this.getA2AClient(agentId, options?.signal);
+      const client = await this.getA2AClient(agentId, options?.signal);
       params = this.mergeRegisteredTools(params);
       yield* await client.sendMessageStream(params);
     } catch (error) {
@@ -1150,7 +1157,7 @@ export class DistriClient {
    */
   async getTask(agentId: string, taskId: string): Promise<Task> {
     try {
-      const client = this.getA2AClient(agentId);
+      const client = await this.getA2AClient(agentId);
       const response: GetTaskResponse = await client.getTask({ id: taskId });
 
       if ('error' in response && response.error) {
@@ -1184,7 +1191,7 @@ export class DistriClient {
    */
   async *resubscribeTask(agentId: string, taskId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<A2AStreamEventData> {
     try {
-      const client = opts?.signal ? this.getA2AClient(agentId, opts.signal) : this.getA2AClient(agentId);
+      const client = opts?.signal ? await this.getA2AClient(agentId, opts.signal) : await this.getA2AClient(agentId);
       yield* await client.resubscribeTask({ id: taskId });
     } catch (error) {
       const errorMessage = this.extractErrorMessage(error);
@@ -1197,7 +1204,7 @@ export class DistriClient {
    */
   async cancelTask(agentId: string, taskId: string): Promise<void> {
     try {
-      const client = this.getA2AClient(agentId);
+      const client = await this.getA2AClient(agentId);
       await client.cancelTask({ id: taskId });
       this.debug(`Cancelled task ${taskId} on agent ${agentId}`);
     } catch (error) {
