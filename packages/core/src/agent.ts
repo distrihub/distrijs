@@ -141,13 +141,18 @@ export class Agent {
   /**
    * Streaming invoke
    */
-  public async invokeStream(params: MessageSendParams, tools?: DistriBaseTool[], hooks?: Record<string, HookHandler>): Promise<AsyncGenerator<DistriChatMessage>> {
+  public async invokeStream(
+    params: MessageSendParams,
+    tools?: DistriBaseTool[],
+    hooks?: Record<string, HookHandler>,
+    options?: { signal?: AbortSignal },
+  ): Promise<AsyncGenerator<DistriChatMessage>> {
     if (hooks) {
       this.registerHooks(hooks);
     }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
-    const a2aStream = this.client.sendMessageStream(this.agentDefinition.name, enhancedParams);
+    const a2aStream = this.client.sendMessageStream(this.agentDefinition.name, enhancedParams, options);
 
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias

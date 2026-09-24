@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Distri Native Chat",
+    "slug": "distri-native-chat",
+    "scheme": "distrinativechat",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.vivekzippy.distrinativechat"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
