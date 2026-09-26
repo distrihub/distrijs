@@ -1,6 +1,6 @@
 {
   "name": "@distri/core",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "Core API client for Distri Framework",
   "exports": {
     ".": {
@@ -36,7 +36,6 @@
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
   },
-  "peerDependencies": {},
   "publishConfig": {
     "access": "public"
   }
