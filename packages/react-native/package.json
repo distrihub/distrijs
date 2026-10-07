@@ -1,6 +1,6 @@
 {
   "name": "@distri/react-native",
-  "version": "0.1.0",
+  "version": "0.4.7",
   "description": "React Native hooks and chat UI for Distri Framework",
   "type": "module",
   "main": "dist/index.cjs",
@@ -19,7 +19,10 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
     "@distri/core": "workspace:*",
     "@distri/state": "workspace:*",
@@ -39,5 +42,7 @@
     "typescript": "^5.0.0",
     "vitest": "^4.1.1"
   },
-  "publishConfig": {"access": "public"}
+  "publishConfig": {
+    "access": "public"
+  }
 }
