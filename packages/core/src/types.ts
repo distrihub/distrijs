@@ -1263,13 +1263,102 @@ export interface MessageVoteSummary {
 
 // ========== Models API Types ==========
 
-export type ModelCapability = 'completion' | 'tts' | 'stt' | 'image';
+export type ModelCapability = 'completion' | 'tts' | 'stt' | 'image' | 'decision';
 
 export type ModelPricing =
   | { type: 'completion'; input: number; output: number; cached_input?: number }
   | { type: 'tts'; per_1m_chars: number }
   | { type: 'stt'; per_minute: number }
-  | { type: 'image'; per_image: number; per_quality?: Record<string, number> };
+  | { type: 'image'; per_image: number; per_quality?: Record<string, number> }
+  /** Decision models — per 1M input tokens (USD); they generate no output. */
+  | { type: 'decision'; input: number };
+
+// ========== Typed Decisions (System One) ==========
+//
+// `POST /v1/decisions` speaks TypeSafe's `/v1/systemone` wire format
+// (https://docs.typesafe.ai/api). `model` is Distri's "provider/model":
+// `typesafe/jev-latest`, `workers_ai/clef-flash`, or a workspace `custom_*`
+// provider pointing at a llama-server (Kev, Laya, Clef).
+// Mirrors `distri_types::decision`.
+
+/** Plain text, or structured data the model renders as key/value lines. */
+export type DecisionContent = string | Record<string, unknown> | unknown[];
+
+/** Pick one option. `criteria` maps option key → optional description. */
+export interface DecisionChoiceQuestion<K extends string = string> {
+  type: 'choice';
+  instructions: DecisionContent;
+  criteria: Record<K, string | null>;
+}
+
+/** Place on an ordered scale of 2–10 levels, lowest first. */
+export interface DecisionScoreQuestion {
+  type: 'score';
+  instructions: DecisionContent;
+  criteria: string[];
+}
+
+/** Yes/no. The answer is the probability of yes. */
+export interface DecisionNoulQuestion {
+  type: 'noul';
+  instructions: DecisionContent;
+  criteria?: { true?: string; false?: string };
+}
+
+export type DecisionQuestion = DecisionChoiceQuestion | DecisionScoreQuestion | DecisionNoulQuestion;
+
+export type DecisionQuestions = Record<string, DecisionQuestion>;
+
+export interface DecisionRequest<Q extends DecisionQuestions = DecisionQuestions> {
+  /** "provider/model", e.g. "typesafe/jev-latest" or "custom_llama/kev". */
+  model: string;
+  state: DecisionContent;
+  questions: Q;
+}
+
+export interface DecisionChoiceAnswer<K extends string = string> {
+  type: 'choice';
+  choice: K;
+  probabilities: Record<K, number>;
+  confidence: number;
+}
+
+export interface DecisionScoreAnswer {
+  type: 'score';
+  /** Probability-weighted level index (0 = lowest level). */
+  score: number;
+  /** Level index → level description. */
+  legend: Record<string, string>;
+  probabilities: Record<string, number>;
+  confidence: number;
+}
+
+export interface DecisionNoulAnswer {
+  type: 'noul';
+  /** Probability of yes, 0..1. */
+  noul: number;
+}
+
+export type DecisionAnswer = DecisionChoiceAnswer | DecisionScoreAnswer | DecisionNoulAnswer;
+
+/** The answer type a question produces. */
+export type DecisionAnswerOf<Q extends DecisionQuestion> = Q extends DecisionChoiceQuestion<infer K>
+  ? DecisionChoiceAnswer<K>
+  : Q extends DecisionScoreQuestion
+    ? DecisionScoreAnswer
+    : DecisionNoulAnswer;
+
+export interface DecisionUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface DecisionResponse<Q extends DecisionQuestions = DecisionQuestions> {
+  /** The model that answered, as the provider reports it. */
+  model: string;
+  answers: { [Id in keyof Q]: DecisionAnswerOf<Q[Id]> };
+  usage: DecisionUsage;
+}
 
 /**
  * A model with its capability, pricing, and metadata.
