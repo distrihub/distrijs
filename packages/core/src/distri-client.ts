@@ -37,6 +37,9 @@ import {
   CompactTaskResult,
   TaskSummary,
   ListTasksParams,
+  DecisionQuestions,
+  DecisionRequest,
+  DecisionResponse,
 } from './types';
 import { DistriEvent } from './events';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
@@ -653,6 +656,28 @@ export class DistriClient {
       const errorData = await response.json().catch(() => ({}));
       const message = errorData?.error || response.statusText || 'LLM request failed';
       throw new ApiError(`LLM request failed: ${message}`, response.status);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Answer typed questions about a state with a decision model
+   * (`POST /v1/decisions`, TypeSafe System One wire format). With a literal
+   * request the answers are typed per question: a choice answer's `choice`
+   * is one of that question's option keys.
+   */
+  async decide<const Q extends DecisionQuestions>(request: DecisionRequest<Q>): Promise<DecisionResponse<Q>> {
+    const response = await this.fetch(`/decisions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.error || response.statusText || 'Decision request failed';
+      throw new ApiError(`Decision request failed: ${message}`, response.status);
     }
 
     return response.json();
