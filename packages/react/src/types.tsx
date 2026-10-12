@@ -1,9 +1,10 @@
 import React from "react";
-import { DistriFnTool, DistriBaseTool, ToolCall, ToolResult } from "@distri/core";
-import type { ToolSummary, SummaryFn } from "@distri/state";
+import type { Components as ReactMarkdownComponents } from "react-markdown";
+import { DistriFnTool, DistriBaseTool, DistriMessage, ToolCall, ToolResult } from "@distri/core";
+import type { ToolSummary, SummaryFn, HidePartFn, PartVisibilityContext, ToolCallGrouping } from "@distri/state";
 import { ToolCallState } from "./stores/chatStateStore";
 
-export type { ToolSummary, SummaryFn };
+export type { ToolSummary, SummaryFn, HidePartFn, PartVisibilityContext, ToolCallGrouping };
 
 
 export type ToolCallStatus = 'pending' | 'running' | 'completed' | 'error' | 'user_action_required';
@@ -38,6 +39,65 @@ export type RenderingMode = 'minimal' | 'rich';
 export interface RendererConfig {
   rendering?: RenderingMode;
   toolSummaryOverrides?: Record<string, SummaryFn>;
+}
+
+// --- Transcript slots ---
+
+/** react-markdown `components` overrides, merged over Distri's defaults. */
+export type MarkdownComponentMap = ReactMarkdownComponents;
+
+export interface UserMessageSlotProps {
+  /** The user message with hidden parts already removed. */
+  message: DistriMessage;
+}
+
+export interface AssistantTextSlotProps {
+  /** The assistant message with hidden parts and superseded draft text already removed. */
+  message: DistriMessage;
+  /** Visible text of the message (text parts joined). */
+  text: string;
+  /** True for the server-marked final answer of the turn. */
+  isFinal: boolean;
+  /** True while the message's step is still streaming. */
+  isStreaming: boolean;
+}
+
+export interface ToolStepsSlotProps {
+  /** Tool calls in this block, in order (`final` excluded). */
+  toolCalls: ToolCall[];
+  /** Live state per tool call id. */
+  toolCallStates: Map<string, ToolCallState>;
+  /** One label per tool call (`toolLabels`, else the tool summary). */
+  labels: string[];
+  /** "N steps · label, label…" */
+  summary: string;
+  /** True when `groupToolCalls="run"` folded these calls together. */
+  grouped: boolean;
+  /** Distri's default rendering of the calls (rows or cards), for hosts that wrap rather than replace. */
+  children: React.ReactNode;
+}
+
+/** Replace any transcript block, or override markdown elements in message text. */
+export interface ChatMessageComponents {
+  UserMessage?: React.ComponentType<UserMessageSlotProps>;
+  AssistantText?: React.ComponentType<AssistantTextSlotProps>;
+  ToolSteps?: React.ComponentType<ToolStepsSlotProps>;
+  /** react-markdown overrides, e.g. `{ a: MyLink }` to turn `[x](stop:id)` into an in-app action. */
+  markdown?: MarkdownComponentMap;
+}
+
+/** Transcript presentation props shared by `<ChatMessageList>`, `<Chat>` and `<TaskView>`. */
+export interface TranscriptRenderingProps {
+  /** Per-tool summary overrides for tool rows and step labels. */
+  toolSummaryOverrides?: Record<string, SummaryFn>;
+  /** `'none'` (default): a row per tool call. `'run'`: fold consecutive tool calls into one expandable "N steps" row. */
+  groupToolCalls?: ToolCallGrouping;
+  /** Host labels per tool name, used in folded step summaries. */
+  toolLabels?: Record<string, string>;
+  /** Block and markdown overrides. */
+  components?: ChatMessageComponents;
+  /** Hide individual message parts. Defaults to parts flagged `developer: true` in `metadata.parts`. */
+  hideParts?: HidePartFn;
 }
 
 // --- Developer mode ---

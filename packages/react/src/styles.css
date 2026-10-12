@@ -1,0 +1,9 @@
+/**
+ * @distri/react — complete stylesheet: the default theme (theme.css) plus
+ * utilities and scoped resets (globals.css). Everything is scoped to the
+ * Distri roots; see globals.css for the `--distri-*` design tokens.
+ *
+ *   import '@distri/react/styles.css';
+ */
+@import './theme.css';
+@import './globals.css';

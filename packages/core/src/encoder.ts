@@ -1,5 +1,5 @@
 import { Message, Part, FileWithBytes, FileWithUri } from '@a2a-js/sdk';
-import { DistriMessage, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
+import { DistriMessage, DistriMessageMetadata, PartMetadata, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus, LiveViewEvent } from './events';
 
 /**
@@ -26,16 +26,51 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
     }
   }
 
+  // `metadata.is_final` marks the turn's final answer and `metadata.parts`
+  // carries per-part flags (`developer`, `save`). Both arrive on the live
+  // trailing message frame AND on persisted history, so carrying them here is
+  // what lets live and reload render the same transcript.
+  const metadata = a2aMessage.metadata
+    ? normalizeMessageMetadata(a2aMessage.metadata as Record<string, unknown>)
+    : undefined;
+  const isFinal = metadata?.is_final === true;
+
   return {
     id: a2aMessage.messageId,
     role,
     parts: a2aMessage.parts.map(convertA2APartToDistri),
     created_at: (a2aMessage as any).createdAt,
+    ...(isFinal ? { is_final: true } : {}),
+    ...(metadata ? { metadata } : {}),
     agent_id,
     agent_name,
     taskId: a2aMessage.taskId,
     parentTaskId,
   };
+}
+
+/**
+ * Copies wire message metadata into {@link DistriMessageMetadata}, re-keying
+ * `parts` by numeric index (JSON object keys arrive as strings) and dropping
+ * entries that are not part-metadata objects.
+ */
+function normalizeMessageMetadata(raw: Record<string, unknown>): DistriMessageMetadata {
+  const { parts, ...rest } = raw;
+  const out: DistriMessageMetadata = { ...rest };
+  if (parts && typeof parts === 'object') {
+    const normalized: Record<number, PartMetadata> = {};
+    for (const [key, value] of Object.entries(parts as Record<string, unknown>)) {
+      const index = Number(key);
+      if (!Number.isInteger(index) || index < 0 || !value || typeof value !== 'object') continue;
+      const { save, developer } = value as PartMetadata;
+      normalized[index] = {
+        ...(typeof save === 'boolean' ? { save } : {}),
+        ...(typeof developer === 'boolean' ? { developer } : {}),
+      };
+    }
+    out.parts = normalized;
+  }
+  return out;
 }
 
 /**

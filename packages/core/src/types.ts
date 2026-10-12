@@ -140,6 +140,7 @@ export interface DistriMessage {
   parts: DistriPart[];
   created_at: number;
   step_id?: string;
+  /** The turn's final answer (server `metadata.is_final`); earlier same-turn assistant text is a draft. */
   is_final?: boolean;
   /** The ID of the agent that generated this message (for assistant messages) */
   agent_id?: string;

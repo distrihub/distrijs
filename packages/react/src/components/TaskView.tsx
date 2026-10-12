@@ -4,9 +4,9 @@ import { ChatStore, ChatStoreContext, useChatStateStore } from '../stores/chatSt
 import { useTaskStreaming } from '../useTaskStreaming';
 import { ChatMessageList } from './ChatMessageList';
 import { ContextRow } from './ContextRow';
-import { ToolRendererMap, RenderingMode } from '@/types';
+import { ToolRendererMap, RenderingMode, TranscriptRenderingProps } from '@/types';
 
-export interface TaskViewProps {
+export interface TaskViewProps extends TranscriptRenderingProps {
   /** The agent that owns the task (needed to open the resubscribe stream). */
   agent: Agent | null;
   /** The task to follow read-only. `null` renders empty. */
@@ -68,6 +68,11 @@ export const TaskView: React.FC<TaskViewProps> = ({
   emptyState,
   onError,
   store: providedStore,
+  toolSummaryOverrides,
+  groupToolCalls,
+  toolLabels,
+  components,
+  hideParts,
 }) => {
   const { store, messages, isStreaming } = useTaskStreaming({
     agent,
@@ -83,12 +88,12 @@ export const TaskView: React.FC<TaskViewProps> = ({
   return (
     <ChatStoreContext.Provider value={store}>
       <div
-        className={`flex flex-col h-full bg-background text-foreground font-sans overflow-hidden ${className}`}
+        className={`distri-chat flex flex-col h-full bg-background text-foreground overflow-hidden ${className}`}
         style={{ maxWidth }}
       >
         <div className="flex-1 overflow-y-auto">
           <div
-            className="mx-auto w-full px-2 py-4 text-sm space-y-4"
+            className="distri-transcript mx-auto w-full px-2 py-4 space-y-4"
             style={{ maxWidth: maxWidth || '768px', width: '100%', boxSizing: 'border-box' }}
           >
             {!hasContent && emptyState}
@@ -101,6 +106,11 @@ export const TaskView: React.FC<TaskViewProps> = ({
               threadId={threadId}
               enableFeedback={enableFeedback}
               onShowTrace={onShowTrace}
+              toolSummaryOverrides={toolSummaryOverrides}
+              groupToolCalls={groupToolCalls}
+              toolLabels={toolLabels}
+              components={components}
+              hideParts={hideParts}
             />
           </div>
         </div>

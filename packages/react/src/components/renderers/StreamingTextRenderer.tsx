@@ -4,27 +4,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
-import type { Options as RehypeSanitizeOptions } from 'rehype-sanitize';
+import rehypeSanitize from 'rehype-sanitize';
+import { markdownSanitizeOptions, markdownUrlTransform } from './markdownConfig';
+import { useRendererContext } from './RendererContext';
 
-const markdownSanitizeOptions: RehypeSanitizeOptions = {
-  ...defaultSchema,
-  attributes: {
-    ...defaultSchema.attributes,
-    code: [
-      ...(defaultSchema.attributes?.code ?? []),
-      ['className']
-    ],
-    span: [
-      ...(defaultSchema.attributes?.span ?? []),
-      ['className']
-    ],
-    div: [
-      ...(defaultSchema.attributes?.div ?? []),
-      ['className']
-    ]
-  }
-};
 
 /**
  * Process <agent_response> blocks to extract only <thought> content
@@ -84,6 +67,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
   isStreaming = false,
   className = ""
 }) => {
+  const { markdownComponents } = useRendererContext();
   // Optimize rendering by memoizing the markdown result
   const renderedContent = useMemo(() => {
     // Process agent_response blocks to extract only thought content
@@ -102,6 +86,7 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
             passThrough: ['link'],
             allowDangerousHtml: true
           }}
+          urlTransform={markdownUrlTransform}
           components={
             {
               // Handle custom AI tags - cast to any to bypass TypeScript component restrictions
@@ -224,13 +209,14 @@ export const StreamingTextRenderer: React.FC<StreamingTextRendererProps> = ({
                   {children}
                 </a>
               ),
+              ...markdownComponents,
             } as any}
         >
           {cleanedText}
         </ReactMarkdown>
       </div>
     );
-  }, [text, className]);
+  }, [text, className, markdownComponents]);
 
   if (!renderedContent) {
     return null;
