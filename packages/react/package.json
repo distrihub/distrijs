@@ -18,7 +18,8 @@
       "require": "./dist/replay/index.cjs"
     },
     "./globals.css": "./dist/globals.css",
-    "./styles.css": "./dist/index.css"
+    "./theme.css": "./dist/theme.css",
+    "./styles.css": "./dist/styles.css"
   },
   "scripts": {
     "build": "tsup",

@@ -5,27 +5,10 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ExtractedContent } from './utils';
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import type { Options as RehypeSanitizeOptions } from 'rehype-sanitize'
+import rehypeSanitize from 'rehype-sanitize'
+import { markdownSanitizeOptions, markdownUrlTransform } from './markdownConfig'
+import { useRendererContext } from './RendererContext'
 
-const markdownSanitizeOptions: RehypeSanitizeOptions = {
-  ...defaultSchema,
-  attributes: {
-    ...defaultSchema.attributes,
-    code: [
-      ...(defaultSchema.attributes?.code ?? []),
-      ['className']
-    ],
-    span: [
-      ...(defaultSchema.attributes?.span ?? []),
-      ['className']
-    ],
-    div: [
-      ...(defaultSchema.attributes?.div ?? []),
-      ['className']
-    ]
-  }
-}
 
 interface TextRendererProps {
   content: ExtractedContent;
@@ -34,6 +17,7 @@ interface TextRendererProps {
 
 const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) => {
   const { text } = content;
+  const { markdownComponents } = useRendererContext();
   // Render as markdown with syntax highlighting
   return (
     <div className={`prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words ${className}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
@@ -41,6 +25,7 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeOptions]]}
         remarkPlugins={[remarkGfm]}
         remarkRehypeOptions={{ passThrough: ['link'] }}
+        urlTransform={markdownUrlTransform}
         components={{
           code: ({ className: codeClassName, children }) => {
             const match = /language-(\w+)/.exec(codeClassName || '');
@@ -115,6 +100,7 @@ const TextRenderer: React.FC<TextRendererProps> = ({ content, className = "" }) 
           h6: ({ children }) => (
             <h6 className="text-xs font-semibold mb-1">{children}</h6>
           ),
+          ...markdownComponents,
         }}
       >
         {text}

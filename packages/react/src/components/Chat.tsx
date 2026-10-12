@@ -12,7 +12,7 @@ import { useStore } from 'zustand';
 import { ChatState, TaskState, ChatStore, ChatStoreContext, createChatStore } from '../stores/chatStateStore';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useTts, TtsConfig } from '../hooks/useTts';
-import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode } from '@/types';
+import { DistriAnyTool, ToolRendererMap, ChatCommand, ChatSessionSettings, ChatCommandEvent, DeveloperMode, TranscriptRenderingProps } from '@/types';
 import { createHttpToolRenderer } from '../utils/createHttpToolRenderer';
 import { DeveloperModeComponent } from './developer/DeveloperModeComponent';
 import { DefaultChatEmptyState, type ChatEmptyStateOptions, type ChatEmptyStateStarter } from './ChatEmptyState';
@@ -45,7 +45,12 @@ export interface ChatEmptyStateController {
   composer?: React.ReactNode;
 }
 
-export interface ChatProps {
+/**
+ * Transcript presentation (`components`, `groupToolCalls`, `toolLabels`,
+ * `toolSummaryOverrides`, `hideParts`) comes from {@link TranscriptRenderingProps}
+ * and is forwarded to `<ChatMessageList>`.
+ */
+export interface ChatProps extends TranscriptRenderingProps {
   threadId: string;
   agent?: Agent | null;
   onMessage?: (message: DistriChatMessage) => void;
@@ -235,6 +240,11 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   sessionSettings,
   onCommand,
   developerMode,
+  toolSummaryOverrides,
+  groupToolCalls,
+  toolLabels,
+  components,
+  hideParts,
 }, ref) {
   // This Chat instance owns its chat-state store. Created once per mount, so a
   // keyed remount (`<Chat key={threadId}>`) gets a fresh, empty store — the old
@@ -1109,7 +1119,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   return (
     <ChatStoreContext.Provider value={chatStore}>
     <div
-      className={`flex flex-col h-full bg-background font-sans overflow-hidden relative ${getThemeClasses(theme)} ${className}`}
+      className={`distri-chat flex flex-col h-full bg-background overflow-hidden relative ${getThemeClasses(theme)} ${className}`}
       style={{ maxWidth }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1124,7 +1134,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
       <div className="flex-1 overflow-y-auto bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground dark:selection:bg-primary/40">
         <div
-          className="mx-auto w-full px-2 py-4 text-sm space-y-4"
+          className="distri-transcript mx-auto w-full px-2 py-4 space-y-4"
           style={{ maxWidth: maxWidth || '768px', width: '100%', boxSizing: 'border-box' }}
         >
           {error && (
@@ -1156,6 +1166,11 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                   threadId={threadId}
                   enableFeedback={enableFeedback}
                   onShowTrace={traceOpener}
+                  toolSummaryOverrides={toolSummaryOverrides}
+                  groupToolCalls={groupToolCalls}
+                  toolLabels={toolLabels}
+                  components={components}
+                  hideParts={hideParts}
                 />
 
                 {renderExternalToolCalls()}
@@ -1280,9 +1295,9 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   // Loading state - client, agent or history is initializing
   if (clientLoading || agentLoading || (enableHistory && historyLoading)) {
     return (
-      <div className={`flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
+      <div className={`distri-chat flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-sans text-sm">Initializing...</p>
+        <p className="text-muted-foreground text-sm">Initializing...</p>
       </div>
     );
   }
@@ -1290,13 +1305,13 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   // Agent not provided
   if (!agent) {
     return (
-      <div className={`flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
+      <div className={`distri-chat flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
         <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
         <h2 className="text-lg font-semibold text-foreground mb-2">Agent Not Available</h2>
-        <p className="text-muted-foreground font-sans text-sm mb-4">
+        <p className="text-muted-foreground text-sm mb-4">
           No agent has been configured or the backend is not responding.
         </p>
-        <p className="text-muted-foreground font-sans text-xs">
+        <p className="text-muted-foreground text-xs">
           Make sure your Distri backend is running and accessible.
         </p>
       </div>

@@ -36,7 +36,7 @@ const ImageDialog: React.FC<ImageDialogProps> = ({ src, alt, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="distri-root fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       {/* Close button */}

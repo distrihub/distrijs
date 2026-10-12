@@ -36,6 +36,7 @@ export * from './types';
 
 // Hook exports
 export * from './hooks/useChatMessages';
+export * from './hooks/useTranscript';
 export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
@@ -117,5 +118,6 @@ export { CommandPill } from './components/CommandPill';
 export { DeveloperModeComponent } from './components/developer/DeveloperModeComponent';
 
 // Styles are NOT imported here - consumers must explicitly import them:
-//   import '@distri/react/globals.css';  // Required utilities
+//   import '@distri/react/styles.css';   // Default theme + utilities, or:
+//   import '@distri/react/globals.css';  // Required utilities (scoped to Distri roots)
 //   import '@distri/react/theme.css';    // Optional default theme

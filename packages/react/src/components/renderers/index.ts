@@ -30,3 +30,4 @@ export type { ThinkingRendererProps } from './ThinkingRenderer';
 export type { TodosDisplayProps } from './TodosDisplay';
 export type { LoadingAnimationConfig, LoadingAnimationPreset, LoadingAnimationProps } from './LoadingAnimation';export * from './taskGrouping';
 
+export * from './ToolStepsRenderer';

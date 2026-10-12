@@ -38,7 +38,7 @@ describe('Chat', () => {
     async function* incrementalStream() {
       yield asEvent({
         type: 'text_message_start',
-        data: { message_id: 'assistant-live', step_id: 'step-live', role: 'assistant', is_final: true },
+        data: { message_id: 'assistant-live', step_id: 'step-live', role: 'assistant' },
       });
       yield asEvent({
         type: 'text_message_content',

@@ -5,27 +5,79 @@ This guide explains how to customize the visual theme for applications using `@d
 ## Quick Start
 
 ```tsx
-// Import both files for default theme
-import '@distri/react/theme.css';    // Default color variables
-import '@distri/react/globals.css';  // Tailwind utilities (required)
+import '@distri/react/styles.css';   // default theme + utilities in one file
 ```
 
-The `theme.css` provides default light/dark mode colors. The `globals.css` provides Tailwind utilities and component styles.
+or, separately:
+
+```tsx
+import '@distri/react/theme.css';    // Default color variables (optional)
+import '@distri/react/globals.css';  // Tailwind utilities + scoped resets (required)
+```
+
+## Scoping
+
+The stylesheets never touch the host app. Tailwind's preflight is disabled;
+the resets Distri needs (box sizing, borders, button/heading/list resets,
+fonts) apply only inside a Distri root, with zero-specificity `:where()` so
+utility classes still win:
+
+| Root | Where |
+|------|-------|
+| `.distri-chat` | `<Chat>`, `<TaskView>` (added automatically) |
+| `.distri-root` | Any other Distri component you mount standalone; portalled dropdowns/selects/sheets carry it |
+| `[data-distri]` | Same as `.distri-root`, as an attribute |
+
+`theme.css` sets its variables on these roots too, not on `:root`. The build
+fails if any selector could match bare host elements.
+
+## Design Tokens
+
+Set any of these on `.distri-chat` (or any ancestor). Colour tokens take any
+CSS colour; each falls back to the shadcn variable shown.
+
+| Token | Falls back to | Used for |
+|-------|---------------|----------|
+| `--distri-font` | system UI stack | Font family |
+| `--distri-font-size` | `0.875rem` transcript, `1rem` elsewhere | Text size |
+| `--distri-line-height` | `1.5` | Line height |
+| `--distri-fg` | `--foreground` | Text (`text-foreground`) |
+| `--distri-bg` | `--background` | Background (`bg-background`) |
+| `--distri-muted` | `--muted-foreground` | Secondary text (`text-muted-foreground`) |
+| `--distri-surface` | `--muted` | Subtle fills (`bg-muted`) |
+| `--distri-border` | `--border` | Borders |
+| `--distri-accent` | `--primary` | Links, primary buttons (`*-primary`) |
+| `--distri-accent-fg` | `--primary-foreground` | Text on accent |
+| `--distri-radius` | `--radius` | Corner radius (`rounded-lg/md/sm`) |
+| `--distri-bubble-user-bg` | `--muted` at 60% | User message bubble |
+| `--distri-bubble-user-fg` | `--distri-fg` | User bubble text |
+| `--distri-bubble-radius` | `1rem` | User bubble radius |
+
+```css
+.distri-chat {
+  --distri-font: "Inter", sans-serif;
+  --distri-font-size: 15px;
+  --distri-accent: #e0603c;
+  --distri-bubble-user-bg: #fff4ee;
+  --distri-radius: 12px;
+}
+```
 
 ## Custom Theme
 
-**Option 1: Override specific variables** (recommended)
+**Option 1: Design tokens** (recommended) — see above.
+
+**Option 2: Override shadcn variables** on the Distri root:
 
 ```css
 /* your-app.css */
 @import '@distri/react/globals.css';
 
-/* Override specific variables */
-:root {
+.distri-chat, .distri-root {
   --primary: 220 90% 50%;  /* Custom blue primary */
 }
 
-.dark {
+.dark .distri-chat, .dark .distri-root {
   --primary: 220 80% 60%;  /* Lighter blue for dark mode */
 }
 ```
@@ -124,5 +176,6 @@ document.documentElement.classList.toggle('dark');
 
 ## Files
 
-- `globals.css` - Tailwind utilities + component styles (required)
-- `theme.css` - Default color variables (imported by globals.css)
+- `styles.css` - `theme.css` + `globals.css` in one file
+- `globals.css` - Tailwind utilities, scoped resets, component styles (required)
+- `theme.css` - Default color variables, scoped to the Distri roots (optional)

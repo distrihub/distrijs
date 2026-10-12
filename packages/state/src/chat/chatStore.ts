@@ -466,7 +466,6 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           const messageId = event.data.message_id;
           const stepId = event.data.step_id;
           const role = event.data.role;
-          const isFinal = event.data.is_final;
 
           const newDistriMessage: DistriMessage = {
             id: messageId,
@@ -474,7 +473,6 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
             parts: [{ part_type: 'text', data: '' }],
             created_at: new Date().getTime(),
             step_id: stepId,
-            is_final: isFinal,
             metadata: (event.data as { metadata?: Record<string, unknown> }).metadata,
             // Route by the envelope's task: without this, a sub-task's streamed
             // text was unstamped — SubTaskCard (filters m.taskId === task.id)
@@ -582,7 +580,35 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           return state; // No change needed for state-only events
         }
       } else {
-        // For DistriMessage or DistriArtifact, just add directly
+        // A message whose id is already in the transcript is the same message
+        // arriving again — e.g. the final answer (`metadata.is_final`, an id
+        // derived from the task) delivered by the live trailing frame and again
+        // by history. Merge it in place so live and reload converge by id
+        // instead of rendering the answer twice.
+        if (isDistriMessage(message) && message.id) {
+          const incoming = message as DistriMessage;
+          const existingIndex = state.messages.findIndex(
+            m => isDistriMessage(m) && (m as DistriMessage).id === incoming.id
+          );
+          if (existingIndex >= 0) {
+            const existing = state.messages[existingIndex] as DistriMessage;
+            const merged: DistriMessage = {
+              ...existing,
+              ...incoming,
+              parts: incoming.parts.length > 0 ? incoming.parts : existing.parts,
+              created_at: incoming.created_at ?? existing.created_at,
+              step_id: incoming.step_id ?? existing.step_id,
+              is_final: incoming.is_final ?? existing.is_final,
+              metadata: existing.metadata || incoming.metadata
+                ? { ...existing.metadata, ...incoming.metadata }
+                : undefined,
+              taskId: incoming.taskId ?? existing.taskId,
+              parentTaskId: incoming.parentTaskId ?? existing.parentTaskId,
+            };
+            const messages = state.messages.map((msg, idx) => (idx === existingIndex ? merged : msg));
+            return { ...state, messages };
+          }
+        }
         const messages = [...state.messages, message];
         return { ...state, messages };
       }

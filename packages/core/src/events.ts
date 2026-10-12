@@ -55,7 +55,6 @@ export interface TextMessageStartEvent {
     message_id: string;
     step_id: string;
     role: Role;
-    is_final?: boolean;
   };
 }
 

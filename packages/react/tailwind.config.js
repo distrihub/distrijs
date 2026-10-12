@@ -1,21 +1,35 @@
 import tailwindcssAnimate from 'tailwindcss-animate'
 
+/**
+ * A colour that a host can override with a `--distri-*` design token (any CSS
+ * colour) and that otherwise falls back to the shadcn HSL variable. Opacity
+ * modifiers (`bg-muted/60`) keep working through `color-mix`.
+ */
+const token = (distriVar, shadcnVar) =>
+  `color-mix(in srgb, var(${distriVar}, hsl(var(${shadcnVar}))) calc(<alpha-value> * 100%), transparent)`
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // Tailwind's preflight is global (`*`, `html`, `body`, `button`, …) and
+  // restyles the host app. globals.css re-applies the resets Distri needs,
+  // scoped under the Distri root classes.
+  corePlugins: {
+    preflight: false,
+  },
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
+        border: token('--distri-border', '--border'),
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        background: token('--distri-bg', '--background'),
+        foreground: token('--distri-fg', '--foreground'),
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: token('--distri-accent', '--primary'),
+          foreground: token('--distri-accent-fg', '--primary-foreground'),
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -26,8 +40,8 @@ export default {
           foreground: "hsl(var(--destructive-foreground))",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: token('--distri-surface', '--muted'),
+          foreground: token('--distri-muted', '--muted-foreground'),
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",
@@ -43,9 +57,9 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--distri-radius, var(--radius))",
+        md: "calc(var(--distri-radius, var(--radius)) - 2px)",
+        sm: "calc(var(--distri-radius, var(--radius)) - 4px)",
       },
       keyframes: {
         "accordion-down": {

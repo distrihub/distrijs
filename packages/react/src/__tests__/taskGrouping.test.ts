@@ -44,7 +44,7 @@ describe('streamed text carries its task (regression: empty SubTaskCards)', () =
       type: 'text_message_start',
       taskId: 'fork-1',
       parentTaskId: 'root',
-      data: { message_id: 'mm1', role: 'assistant', is_final: false },
+      data: { message_id: 'mm1', role: 'assistant' },
     } as never);
     const msg = store.getState().messages.find((m) => (m as { id?: string }).id === 'mm1') as {
       taskId?: string;

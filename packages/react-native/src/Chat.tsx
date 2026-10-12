@@ -5,8 +5,9 @@ import { ChatInput, NativeImageAttachment } from './ChatInput';
 import { UseChatOptions, useChat } from './useChat';
 import { ChatMessageList } from './ChatMessageList';
 import { LoadingStrip } from './renderers/LoadingStrip';
-import { isAwaitingReply, isVisibleMessage } from './messageVisibility';
+import { isAwaitingReply, resolveVisibleMessages } from './messageVisibility';
 import { DistriNativeTheme, useDistriTheme } from './theme';
+import type { HidePartFn } from '@distri/state';
 import type { NativeToolRendererMap, RenderingMode } from './types';
 
 export interface ChatHeaderHelpers {
@@ -32,6 +33,8 @@ export interface ChatProps extends UseChatOptions {
   InputComponent?: ComponentType<any>;
   sendLabel?: ReactNode;
   errorMessage?: (error: Error) => string;
+  /** Hide individual message parts; defaults to parts flagged `developer: true`. */
+  hideParts?: HidePartFn;
 }
 
 export function Chat({
@@ -46,14 +49,15 @@ export function Chat({
   InputComponent,
   sendLabel,
   errorMessage,
+  hideParts,
   ...chatOptions
 }: ChatProps) {
   const theme = useDistriTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const chat = useChat(chatOptions);
   const running = chat.isLoading || chat.isStreaming;
-  const awaiting = isAwaitingReply(chat.messages, running);
-  const isEmpty = !chat.messages.some(isVisibleMessage);
+  const awaiting = isAwaitingReply(chat.messages, running, hideParts);
+  const isEmpty = resolveVisibleMessages(chat.messages, hideParts).length === 0;
   const send = (content: string | DistriPart[]) => { void chat.sendMessage(content); };
 
   return (
@@ -64,6 +68,7 @@ export function Chat({
         rendering={rendering}
         renderMessage={renderMessage}
         toolRenderers={toolRenderers}
+        hideParts={hideParts}
         ListComponent={ListComponent}
         ListHeaderComponent={renderHeader ? <View>{renderHeader({ sendMessage: send, isEmpty })}</View> : null}
         ListFooterComponent={
