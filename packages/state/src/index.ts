@@ -14,3 +14,4 @@ export * from './chat/chatStore';
 export * from './chat/ChatController';
 export * from './chat/taskStreamingController';
 export * from './chat/taskGrouping';
+export * from './chat/transcript';

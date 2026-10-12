@@ -1,11 +1,39 @@
 /**
- * Distri React Globals
- * 
- * This file provides Tailwind utilities and component-specific styles.
- * 
+ * Distri React styles
+ *
+ * Utilities and component styles for @distri/react. Safe to load into any
+ * host app: there is no global reset. Tailwind's preflight is disabled and
+ * the resets Distri needs are re-applied only inside a Distri root:
+ *
+ *   .distri-chat   <Chat>, <TaskView>
+ *   .distri-root   any other Distri component you mount on its own
+ *   [data-distri]  same, as an attribute
+ *
  * Usage:
- *   import '@distri/react/theme.css';   // Default theme (optional, or use your own)
- *   import '@distri/react/globals.css'; // Required utilities
+ *   import '@distri/react/styles.css';  // theme.css + globals.css in one file
+ *   // or, with your own shadcn variables:
+ *   import '@distri/react/globals.css';
+ *   import '@distri/react/theme.css';   // optional default palette
+ *
+ * Design tokens. Set any of these on `.distri-chat` or an ancestor; each
+ * falls back to the shadcn variable in brackets:
+ *
+ *   --distri-font               font family          (system UI stack)
+ *   --distri-font-size          transcript size      (0.875rem; 1rem for chrome)
+ *   --distri-line-height        line height          (1.5)
+ *   --distri-fg                 text colour          (--foreground)
+ *   --distri-bg                 background           (--background)
+ *   --distri-muted              secondary text       (--muted-foreground)
+ *   --distri-surface            subtle fills         (--muted)
+ *   --distri-border             borders              (--border)
+ *   --distri-accent             links, primary       (--primary)
+ *   --distri-accent-fg          text on accent       (--primary-foreground)
+ *   --distri-radius             corner radius        (--radius)
+ *   --distri-bubble-user-bg     user bubble fill     (--muted at 60%)
+ *   --distri-bubble-user-fg     user bubble text     (--distri-fg)
+ *   --distri-bubble-radius      user bubble radius   (1rem)
+ *
+ * Colour tokens take any CSS colour (`#0a7`, `rgb()`, `oklch()`).
  */
 
 @tailwind base;
@@ -13,14 +41,125 @@
 @tailwind utilities;
 
 @layer base {
-  .distri-root *,
-  [data-distri] * {
-    @apply border-border;
+  /* Scoped subset of Tailwind's preflight. `:where()` keeps the specificity
+     of the root at zero, so these never outrank a utility class. */
+  :where(.distri-chat, .distri-root, [data-distri]),
+  :where(.distri-chat, .distri-root, [data-distri]) *,
+  :where(.distri-chat, .distri-root, [data-distri]) ::before,
+  :where(.distri-chat, .distri-root, [data-distri]) ::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--distri-border, hsl(var(--border)));
   }
 
-  .distri-root,
-  [data-distri] {
-    @apply bg-background text-foreground;
+  :where(.distri-chat, .distri-root, [data-distri]) {
+    font-family: var(--distri-font, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    font-size: var(--distri-font-size, 1rem);
+    line-height: var(--distri-line-height, 1.5);
+    color: var(--distri-fg, hsl(var(--foreground)));
+    background-color: var(--distri-bg, hsl(var(--background)));
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(blockquote, dl, dd, h1, h2, h3, h4, h5, h6, hr, figure, p, pre) {
+    margin: 0;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(ol, ul, menu) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(a) {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(b, strong) {
+    font-weight: bolder;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(code, kbd, samp, pre) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 1em;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(small) {
+    font-size: 80%;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(table) {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(hr) {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(button, input, optgroup, select, textarea) {
+    font-family: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    font-size: 100%;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(button, select) {
+    text-transform: none;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(button, input[type='button'], input[type='reset'], input[type='submit']) {
+    -webkit-appearance: button;
+    background-color: transparent;
+    background-image: none;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(button, [role='button']) {
+    cursor: pointer;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(:disabled) {
+    cursor: default;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(textarea) {
+    resize: vertical;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(input, textarea)::placeholder {
+    opacity: 1;
+    color: var(--distri-muted, hsl(var(--muted-foreground)));
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(img, svg, video, canvas, audio, iframe, embed, object) {
+    display: block;
+    vertical-align: middle;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where(img, video) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  :where(.distri-chat, .distri-root, [data-distri]) :where([hidden]) {
+    display: none;
   }
 }
 
@@ -56,10 +195,21 @@
     flex-direction: column;
   }
 
+  /* The message column: transcript text size is a token. */
+  .distri-transcript {
+    font-size: var(--distri-font-size, 0.875rem);
+  }
+
   /* Prevent content from being hidden behind the input */
   .distri-chat .distri-scroll {
     padding-bottom: 100px;
     /* Space for the absolutely positioned input */
+  }
+
+  .distri-bubble-user {
+    background-color: var(--distri-bubble-user-bg, hsl(var(--muted) / 0.6));
+    color: var(--distri-bubble-user-fg, var(--distri-fg, hsl(var(--foreground))));
+    border-radius: var(--distri-bubble-radius, 1rem);
   }
 
   /* ChatInput: Override theme background only - keep all other CM styles intact */

@@ -21,7 +21,7 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({
   return (
     <div className={`py-3 ${className}`}>
       <div className="flex justify-end">
-        <div className="max-w-[80%] bg-muted/60 text-foreground rounded-2xl px-4 py-3 border">
+        <div className="distri-bubble-user max-w-[80%] px-4 py-3 border">
           {isDiagnose && (
             <div className="mb-2">
               <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">

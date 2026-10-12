@@ -4,7 +4,7 @@ import { UserMessageRenderer } from './UserMessageRenderer';
 import { StepBasedRenderer } from './StepBasedRenderer';
 import { ToolExecutionRenderer } from './ToolExecutionRenderer';
 import { MessageReadTracker } from './MessageReadTracker';
-import { RendererContext } from './RendererContext';
+import { RendererContext, useRendererContext } from './RendererContext';
 import { useChatStateStore } from '@/stores/chatStateStore';
 import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
 export interface MessageRendererProps {
@@ -29,7 +29,8 @@ export interface MessageRendererProps {
   onShowTrace?: (threadId: string) => void;
 }
 
-// Wrapper component to ensure full width with max constraint for readability
+// Wrapper component to ensure full width with max constraint for readability.
+// Exported as `MessageRow` so transcript slots render inside the same frame.
 const RendererWrapper: React.FC<{ children: React.ReactNode; className?: string; isUserMessage?: boolean }> = ({
   children,
   className = '',
@@ -59,6 +60,9 @@ export function MessageRenderer({
   inSubTaskCard = false,
 }: MessageRendererProps): React.ReactNode {
   const toolCallsState = useChatStateStore(state => state.toolCalls);
+  // Inherit what the enclosing list provided (markdown overrides, summary
+  // overrides) unless this renderer was given its own.
+  const parentContext = useRendererContext();
 
   // Sub-agent activity is always rendered by <SubTaskTree /> under the
   // parent run, never inline. Bail before the switch so the same content
@@ -68,10 +72,11 @@ export function MessageRenderer({
 
   const rendererContextValue = useMemo(() => ({
     rendering: rendering ?? 'minimal',
-    toolSummaryOverrides: toolSummaryOverrides ?? {},
+    toolSummaryOverrides: toolSummaryOverrides ?? parentContext.toolSummaryOverrides,
     onShowTrace,
     threadId,
-  }), [rendering, toolSummaryOverrides, onShowTrace, threadId]);
+    markdownComponents: parentContext.markdownComponents,
+  }), [rendering, toolSummaryOverrides, onShowTrace, threadId, parentContext.toolSummaryOverrides, parentContext.markdownComponents]);
 
   const innerContent = (() => {
     // Don't render messages whose only parts are developer-flagged (hidden) or empty.
@@ -282,3 +287,5 @@ export function MessageRenderer({
     </RendererContext.Provider>
   );
 }
+
+export { RendererWrapper as MessageRow };

@@ -29,7 +29,7 @@ export { DistriThemeProvider, useDistriTheme, createNativeTheme, defaultNativeTh
 export type { DistriNativeTheme, DistriNativeThemeInput, DistriNativeStyleOverrides } from './theme';
 export { LoadingStrip, DEFAULT_LOADING_WORDS } from './renderers/LoadingStrip';
 export type { LoadingStripProps } from './renderers/LoadingStrip';
-export { isVisibleMessage, isVisiblePart, isAwaitingReply, HIDDEN_TOOL_NAMES } from './messageVisibility';
+export { isVisibleMessage, isVisiblePart, isAwaitingReply, resolveVisibleMessages, HIDDEN_TOOL_NAMES } from './messageVisibility';
 export { useThreads } from './useThreads';
 export type { UseThreadsOptions, UseThreadsResult } from './useThreads';
 export { ThreadPicker } from './ThreadPicker';

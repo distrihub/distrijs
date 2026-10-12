@@ -31,6 +31,35 @@ describe('web parity', () => {
     expect(screen.queryByText(/\*\*/)).toBeNull();
   });
 
+  it('shows one answer per turn: a draft that called final gives way to the is_final answer', () => {
+    const draft = { ...DistriClient.initDistriMessage('assistant', [{ part_type: 'text', data: 'Leaves look green, roughly.' }]), taskId: 'turn-1' };
+    const finalTool: DistriEvent = { ...finalCall, taskId: 'turn-1' };
+    const final = { ...DistriClient.initDistriMessage('assistant', [{ part_type: 'text', data: answer }]), taskId: 'turn-1', is_final: true };
+    render(<Chat agent={idleAgent} threadId="one-answer" initialMessages={[user, draft, finalTool, final]} />);
+
+    expect(screen.queryByText(/roughly/)).toBeNull();
+    expect(screen.getAllByText('chlorophyll')).toHaveLength(1);
+  });
+
+  it('hides developer parts, live or reloaded, unless hideParts says otherwise', () => {
+    const withContext = {
+      ...DistriClient.initDistriMessage('user', [
+        { part_type: 'text', data: '[app context] secret itinerary' },
+        { part_type: 'text', data: 'What is next?' },
+      ]),
+      metadata: { parts: { 0: { developer: true, save: false } } },
+    };
+    const contextOnly = { ...DistriClient.initDistriMessage('user', [{ part_type: 'text', data: '[app context] only' }]), metadata: { parts: { 0: { developer: true } } } };
+    const { unmount } = render(<Chat agent={idleAgent} threadId="dev" initialMessages={[withContext, contextOnly]} />);
+    expect(screen.queryByText(/secret itinerary/)).toBeNull();
+    expect(screen.queryByText(/\[app context\] only/)).toBeNull();
+    expect(screen.getByText('What is next?')).toBeTruthy();
+    unmount();
+
+    render(<Chat agent={idleAgent} threadId="dev-shown" initialMessages={[withContext]} hideParts={() => false} />);
+    expect(screen.getByText(/secret itinerary/)).toBeTruthy();
+  });
+
   it('waits for a reply until the first visible assistant output after the user message', () => {
     const budget = { type: 'context_budget_update', data: {} } as unknown as DistriEvent;
     expect(isAwaitingReply([user], true)).toBe(true);

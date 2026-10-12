@@ -582,7 +582,35 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           return state; // No change needed for state-only events
         }
       } else {
-        // For DistriMessage or DistriArtifact, just add directly
+        // A message whose id is already in the transcript is the same message
+        // arriving again — e.g. the trailing `message` frame that closes a
+        // streamed final answer (`metadata.is_final`) carries the streamed
+        // message's id. Merge it in place so live and reload converge by id
+        // instead of rendering the answer twice.
+        if (isDistriMessage(message) && message.id) {
+          const incoming = message as DistriMessage;
+          const existingIndex = state.messages.findIndex(
+            m => isDistriMessage(m) && (m as DistriMessage).id === incoming.id
+          );
+          if (existingIndex >= 0) {
+            const existing = state.messages[existingIndex] as DistriMessage;
+            const merged: DistriMessage = {
+              ...existing,
+              ...incoming,
+              parts: incoming.parts.length > 0 ? incoming.parts : existing.parts,
+              created_at: incoming.created_at ?? existing.created_at,
+              step_id: incoming.step_id ?? existing.step_id,
+              is_final: incoming.is_final ?? existing.is_final,
+              metadata: existing.metadata || incoming.metadata
+                ? { ...existing.metadata, ...incoming.metadata }
+                : undefined,
+              taskId: incoming.taskId ?? existing.taskId,
+              parentTaskId: incoming.parentTaskId ?? existing.parentTaskId,
+            };
+            const messages = state.messages.map((msg, idx) => (idx === existingIndex ? merged : msg));
+            return { ...state, messages };
+          }
+        }
         const messages = [...state.messages, message];
         return { ...state, messages };
       }

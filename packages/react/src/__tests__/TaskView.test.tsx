@@ -42,6 +42,13 @@ describe('<TaskView>', () => {
     await waitFor(() => expect(screen.getByText(/read-only streamed answer/)).toBeInTheDocument())
   })
 
+  it('carries the .distri-chat root class the scoped stylesheet keys on', async () => {
+    const agent = makeAgent(textStream('scoped root'))
+    const { container } = render(<TaskView agent={agent} taskId={TASK} />)
+    await waitFor(() => expect(screen.getByText(/scoped root/)).toBeInTheDocument())
+    expect(container.firstElementChild).toHaveClass('distri-chat')
+  })
+
   it('renders no composer / text input (read-only)', async () => {
     const agent = makeAgent(textStream('no composer here'))
 
