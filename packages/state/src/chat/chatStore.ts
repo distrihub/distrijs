@@ -466,7 +466,6 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           const messageId = event.data.message_id;
           const stepId = event.data.step_id;
           const role = event.data.role;
-          const isFinal = event.data.is_final;
 
           const newDistriMessage: DistriMessage = {
             id: messageId,
@@ -474,7 +473,6 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
             parts: [{ part_type: 'text', data: '' }],
             created_at: new Date().getTime(),
             step_id: stepId,
-            is_final: isFinal,
             metadata: (event.data as { metadata?: Record<string, unknown> }).metadata,
             // Route by the envelope's task: without this, a sub-task's streamed
             // text was unstamped — SubTaskCard (filters m.taskId === task.id)
@@ -583,9 +581,9 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
         }
       } else {
         // A message whose id is already in the transcript is the same message
-        // arriving again — e.g. the trailing `message` frame that closes a
-        // streamed final answer (`metadata.is_final`) carries the streamed
-        // message's id. Merge it in place so live and reload converge by id
+        // arriving again — e.g. the final answer (`metadata.is_final`, an id
+        // derived from the task) delivered by the live trailing frame and again
+        // by history. Merge it in place so live and reload converge by id
         // instead of rendering the answer twice.
         if (isDistriMessage(message) && message.id) {
           const incoming = message as DistriMessage;

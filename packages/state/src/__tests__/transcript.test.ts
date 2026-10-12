@@ -241,15 +241,21 @@ describe('tool step labels', () => {
 });
 
 describe('chatStore converges a repeated message id', () => {
-  it('merges the trailing final frame into the streamed message instead of appending', () => {
+  it('keeps streamed text non-final and merges the final answer delivered twice', () => {
     const store = createChatStore();
-    store.getState().addMessage({ type: 'text_message_start', taskId: 't1', data: { message_id: 'ans', step_id: 's1', role: 'assistant' } } as DistriEvent);
-    store.getState().addMessage({ type: 'text_message_content', data: { message_id: 'ans', step_id: 's1', delta: 'The answer.' } } as DistriEvent);
-    store.getState().addMessage(msg('assistant', 'The answer.', { id: 'ans', is_final: true, taskId: 't1', metadata: { is_final: true } }));
+    // Streamed draft: text_message_start never marks a message final.
+    store.getState().addMessage({ type: 'text_message_start', taskId: 't1', data: { message_id: 'draft', step_id: 's1', role: 'assistant' } } as DistriEvent);
+    store.getState().addMessage({ type: 'text_message_content', data: { message_id: 'draft', step_id: 's1', delta: 'Thinking it over.' } } as DistriEvent);
+    // Final answer: its own id (derived from the task), live trailing frame then history replay.
+    const final = msg('assistant', 'The answer.', { id: 'final-t1', is_final: true, taskId: 't1', metadata: { is_final: true } });
+    store.getState().addMessage(final);
+    store.getState().addMessage({ ...final });
 
     const messages = store.getState().messages as DistriMessage[];
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatchObject({ id: 'ans', is_final: true, step_id: 's1', taskId: 't1' });
-    expect(texts(messages)).toEqual(['The answer.']);
+    expect(messages).toHaveLength(2);
+    expect(messages[0].id).toBe('draft');
+    expect(messages[0].is_final).toBeUndefined();
+    expect(messages[1]).toMatchObject({ id: 'final-t1', is_final: true, taskId: 't1' });
+    expect(texts(messages)).toEqual(['Thinking it over.', 'The answer.']);
   });
 });
