@@ -3,6 +3,8 @@
 export { IndexedDbStore } from '@distri/state'
 export type { StoreRecord, StoreChangeOp, StoreChangeEvent } from '@distri/state'
 
+export { registerBrowserTools, unregisterBrowserTools, BROWSER_TOOLS_NAMESPACE } from './register'
+
 export {
   createDbTools,
   dbToolsPrompt,
