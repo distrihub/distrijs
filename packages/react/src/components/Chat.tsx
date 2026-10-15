@@ -121,6 +121,9 @@ export interface ChatProps extends TranscriptRenderingProps {
   onCommand?: (event: ChatCommandEvent) => void;
   /** Developer mode options: traces, verbosity, tools panel, and parallel diagnose mode */
   developerMode?: DeveloperMode;
+  /** Show the context-usage dial above the composer. Default true; embeds
+   *  shown to end users turn it off. */
+  showContextUsage?: boolean;
 }
 
 /**
@@ -221,6 +224,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   onModelChange,
   onChatInstanceReady,
   onChatStateChange,
+  showContextUsage = true,
   onTaskFinish,
   renderEmptyState,
   emptyState: emptyStateProp,
@@ -1219,7 +1223,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               isStreaming={isStreaming}
               pendingToolCallCount={pendingToolCallCount}
               loadingWords={loadingAnimation?.cycleWords}
-              contextBudget={contextBudget ?? undefined}
+              contextBudget={showContextUsage ? contextBudget ?? undefined : undefined}
               compactions={compactionEvents}
               isCompacting={storeIsCompacting}
             />
