@@ -124,6 +124,9 @@ export interface ChatProps extends TranscriptRenderingProps {
   /** Show the context-usage dial above the composer. Default true; embeds
    *  shown to end users turn it off. */
   showContextUsage?: boolean;
+  /** Show "Waiting for N tool responses…" above the composer. Default true;
+   *  embeds shown to end users turn it off. */
+  showToolWaitStatus?: boolean;
 }
 
 /**
@@ -225,6 +228,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   onChatInstanceReady,
   onChatStateChange,
   showContextUsage = true,
+  showToolWaitStatus = true,
   onTaskFinish,
   renderEmptyState,
   emptyState: emptyStateProp,
@@ -1221,7 +1225,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               todos={todos}
               todoChanges={lastTodoChanges}
               isStreaming={isStreaming}
-              pendingToolCallCount={pendingToolCallCount}
+              pendingToolCallCount={showToolWaitStatus ? pendingToolCallCount : 0}
               loadingWords={loadingAnimation?.cycleWords}
               contextBudget={showContextUsage ? contextBudget ?? undefined : undefined}
               compactions={compactionEvents}
