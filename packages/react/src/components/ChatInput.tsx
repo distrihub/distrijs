@@ -95,6 +95,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const isDarkMode = theme === 'dark';
 
+  // TipTap draws the placeholder as a decoration that is only recomputed on an
+  // editor transaction. Read it from a ref, and redraw when it changes below —
+  // otherwise "Message will be queued…" sticks after a run ends.
+  const placeholderRef = useRef(placeholder);
+  placeholderRef.current = placeholder;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -106,7 +112,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         horizontalRule: false,
       }),
       Placeholder.configure({
-        placeholder,
+        placeholder: () => placeholderRef.current,
         emptyEditorClass: 'is-editor-empty',
       }),
       SlashCommandExtension.configure({}),
@@ -140,6 +146,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   });
 
   // Sync editable state when disabled prop changes
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      editor.view.dispatch(editor.state.tr.setMeta('distri:placeholder', placeholder));
+    }
+  }, [editor, placeholder]);
+
   useEffect(() => {
     if (editor) {
       editor.setEditable(!disabled);
