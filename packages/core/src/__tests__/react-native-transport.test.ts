@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DistriClient, uuidv4 } from '../distri-client';
+import { DistriClient } from '../distri-client';
+import { uuid } from '../uuid';
 
 describe('DistriClient fetch transport', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -87,12 +88,12 @@ describe('DistriClient fetch transport', () => {
   });
 });
 
-describe('uuidv4 in runtimes without Web Crypto', () => {
+describe('uuid in runtimes without Web Crypto', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('still creates an RFC 4122 v4 identifier when crypto is unavailable', () => {
     vi.stubGlobal('crypto', undefined);
 
-    expect(uuidv4()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(uuid()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 });

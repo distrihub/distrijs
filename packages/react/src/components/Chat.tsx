@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
 import { ChatMessageList } from './ChatMessageList';
@@ -459,7 +459,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     const existing = diagnoseThreadIdsRef.current.get(sourceThreadId);
     if (existing) return existing;
 
-    const next = crypto.randomUUID();
+    const next = uuid();
     diagnoseThreadIdsRef.current.set(sourceThreadId, next);
     return next;
   }, [diagnoseConfig]);
