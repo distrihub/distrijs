@@ -20,6 +20,7 @@
  * `validateInvocation` for client-side preflight.
  */
 
+import { uuid } from './uuid';
 import type { DistriMessage } from './types';
 
 // ── Top-level invocation ───────────────────────────────────────────
@@ -183,7 +184,7 @@ export function targetNamed(agent_id: string, text: string): Target {
   return {
     agent: { type: 'named', agent_id },
     message: {
-      id: cryptoRandomUUID(),
+      id: uuid(),
       role: 'user',
       parts: [{ part_type: 'text', data: text }],
       created_at: Date.now(),
@@ -196,7 +197,7 @@ export function targetAdHoc(system_prompt: string, text: string, tools?: unknown
   return {
     agent: { type: 'ad_hoc', system_prompt, tools },
     message: {
-      id: cryptoRandomUUID(),
+      id: uuid(),
       role: 'user',
       parts: [{ part_type: 'text', data: text }],
       created_at: Date.now(),
@@ -204,15 +205,3 @@ export function targetAdHoc(system_prompt: string, text: string, tools?: unknown
   };
 }
 
-function cryptoRandomUUID(): string {
-  // Browsers + recent Node have crypto.randomUUID; fall back to a manual
-  // RFC4122 v4 if not (e.g. older Node test runners).
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return (crypto as Crypto).randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
