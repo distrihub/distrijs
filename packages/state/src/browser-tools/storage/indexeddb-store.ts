@@ -6,6 +6,8 @@
  * Records have shape `{ id, data, createdAt, updatedAt }`; `id` is the IDB key.
  */
 
+import { uuid } from '@distri/core'
+
 const DB_PREFIX = 'browser-tools-store-'
 const STORE_NAME = 'records'
 
@@ -31,12 +33,6 @@ function requestAsPromise<T>(request: IDBRequest<T>): Promise<T> {
   })
 }
 
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-}
 
 class MemoryAdapter<T> {
   private records = new Map<string, StoreRecord<T>>()
@@ -110,7 +106,7 @@ export class IndexedDbStore<T = Record<string, unknown>> {
   }
 
   async put(input: { id?: string; data: T }): Promise<StoreRecord<T>> {
-    const id = input.id ?? generateId()
+    const id = input.id ?? uuid()
     const existing = await this.get(id)
     const now = Date.now()
     const record: StoreRecord<T> = {
