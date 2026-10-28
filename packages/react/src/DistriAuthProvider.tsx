@@ -29,6 +29,7 @@ interface DistriAuthContextValue {
     baseUrl: string;
     debug: boolean;
     workspaceId?: string;
+    embedUrl: string;
   };
 }
 
@@ -41,7 +42,11 @@ interface DistriAuthProviderProps {
   debug?: boolean;
   baseUrl?: string;
   workspaceId?: string;
+  /** Embed host whose provisioner mints the token. */
+  embedUrl?: string;
 }
+
+const DEFAULT_EMBED_URL = 'https://embed.distri.dev';
 
 export function DistriAuthProvider({
   clientId,
@@ -50,6 +55,7 @@ export function DistriAuthProvider({
   debug = false,
   baseUrl = 'https://api.distri.dev/v1',
   workspaceId,
+  embedUrl = DEFAULT_EMBED_URL,
 }: DistriAuthProviderProps) {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +95,8 @@ export function DistriAuthProvider({
     baseUrl,
     debug,
     workspaceId,
-  }), [clientId, theme, baseUrl, debug, workspaceId]);
+    embedUrl: embedUrl.replace(/\/+$/, ''),
+  }), [clientId, theme, baseUrl, debug, workspaceId, embedUrl]);
 
   const contextValue = useMemo(() => ({
     token,
@@ -122,7 +129,7 @@ export function useDistriAuth() {
       setStatus: () => { },
       setError: () => { },
       resolveAuth: () => { },
-      config: { clientId: '', theme: 'dark' as const, baseUrl: '', debug: false, workspaceId: undefined }
+      config: { clientId: '', theme: 'dark' as const, baseUrl: '', debug: false, workspaceId: undefined, embedUrl: DEFAULT_EMBED_URL }
     };
   }
   return context;

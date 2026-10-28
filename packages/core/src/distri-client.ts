@@ -1,3 +1,4 @@
+import { uuid } from './uuid';
 import { A2AClient } from '@a2a-js/sdk/client';
 import { Message, MessageSendParams, Task, SendMessageResponse, GetTaskResponse, Part } from '@a2a-js/sdk';
 import {
@@ -2093,8 +2094,8 @@ export class DistriClient {
     message: Omit<Partial<Message>, 'parts' | 'role' | 'kind'>
   ): Message {
     return {
-      messageId: message.messageId || uuidv4(),
-      taskId: message.taskId || uuidv4(),
+      messageId: message.messageId || uuid(),
+      taskId: message.taskId || uuid(),
       contextId: message.contextId,
       role,
       parts: Array.isArray(parts) ? parts : [{ kind: 'text', text: parts.trim() }],
@@ -2113,7 +2114,7 @@ export class DistriClient {
     created_at?: number,
   ): DistriMessage {
     return {
-      id: id || uuidv4(),
+      id: id || uuid(),
       role,
       parts,
       created_at: created_at || new Date().getTime(),
@@ -2172,26 +2173,4 @@ export class DistriClient {
       metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : contextMetadata,
     };
   }
-}
-export function uuidv4(): string {
-  const webCrypto = globalThis.crypto;
-  if (typeof webCrypto?.randomUUID === 'function') {
-    return webCrypto.randomUUID();
-  }
-  // Use Web Crypto when present, but keep IDs working in React Native runtimes
-  // that do not expose it globally. These UUIDs are identifiers, not secrets.
-  const array = new Uint8Array(16);
-  if (webCrypto?.getRandomValues) {
-    webCrypto.getRandomValues(array);
-  } else {
-    for (let i = 0; i < array.length; i += 1) {
-      array[i] = Math.floor(Math.random() * 256);
-    }
-  }
-  // Per RFC4122 v4
-  array[6] = (array[6] & 0x0f) | 0x40;
-  array[8] = (array[8] & 0x3f) | 0x80;
-  return [...array].map((b, i) =>
-    ([4, 6, 8, 10].includes(i) ? '-' : '') + b.toString(16).padStart(2, '0')
-  ).join('');
 }

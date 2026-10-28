@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A } from '@distri/core';
+import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
 import { ChatMessageList } from './ChatMessageList';
@@ -51,7 +51,11 @@ export interface ChatEmptyStateController {
  * and is forwarded to `<ChatMessageList>`.
  */
 export interface ChatProps extends TranscriptRenderingProps {
-  threadId: string;
+  /**
+   * The conversation to continue. Omit (or pass '') to start a new one: this
+   * mount gets its own id, so separate visitors never share a thread.
+   */
+  threadId?: string;
   agent?: Agent | null;
   onMessage?: (message: DistriChatMessage) => void;
   beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
@@ -121,6 +125,12 @@ export interface ChatProps extends TranscriptRenderingProps {
   onCommand?: (event: ChatCommandEvent) => void;
   /** Developer mode options: traces, verbosity, tools panel, and parallel diagnose mode */
   developerMode?: DeveloperMode;
+  /** Show the context-usage dial above the composer. Default true; embeds
+   *  shown to end users turn it off. */
+  showContextUsage?: boolean;
+  /** Show "Waiting for N tool responses…" above the composer. Default true;
+   *  embeds shown to end users turn it off. */
+  showToolWaitStatus?: boolean;
 }
 
 /**
@@ -206,7 +216,7 @@ const ThreadTokensBanner: React.FC<{ thread: DistriThread | null }> = ({ thread 
 };
 
 export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner({
-  threadId,
+  threadId: threadIdProp,
   agent,
   onMessage,
   onError,
@@ -221,6 +231,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   onModelChange,
   onChatInstanceReady,
   onChatStateChange,
+  showContextUsage = true,
+  showToolWaitStatus = true,
   onTaskFinish,
   renderEmptyState,
   emptyState: emptyStateProp,
@@ -251,6 +263,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // thread's messages and streaming flags cannot leak in. Published to renderer
   // descendants via ChatStoreContext and handed to useChat below.
   const [chatStore] = useState<ChatStore>(() => createChatStore());
+  const [newThreadId] = useState(uuid);
+  const threadId = threadIdProp || newThreadId;
 
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
@@ -455,7 +469,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     const existing = diagnoseThreadIdsRef.current.get(sourceThreadId);
     if (existing) return existing;
 
-    const next = crypto.randomUUID();
+    const next = uuid();
     diagnoseThreadIdsRef.current.set(sourceThreadId, next);
     return next;
   }, [diagnoseConfig]);
@@ -1217,9 +1231,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               todos={todos}
               todoChanges={lastTodoChanges}
               isStreaming={isStreaming}
-              pendingToolCallCount={pendingToolCallCount}
+              pendingToolCallCount={showToolWaitStatus ? pendingToolCallCount : 0}
               loadingWords={loadingAnimation?.cycleWords}
-              contextBudget={contextBudget ?? undefined}
+              contextBudget={showContextUsage ? contextBudget ?? undefined : undefined}
               compactions={compactionEvents}
               isCompacting={storeIsCompacting}
             />

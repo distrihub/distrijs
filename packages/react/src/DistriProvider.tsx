@@ -17,6 +17,19 @@ export const DistriContext = createContext<DistriContextValue>({
   isLoading: true,
 });
 
+export type DistriProviderConfig = DistriClientConfig & {
+  authReady?: boolean;
+  /**
+   * Embed host that mints a short-lived token for `clientId`
+   * (default `https://embed.distri.dev`). Set it only when `baseUrl` points
+   * at a distri deployment other than distri.dev, e.g. local development.
+   */
+  embedUrl?: string;
+};
+
+/** Sent with every request from a `clientId` app; integration health shows it. */
+const CLIENT_HEADER = '@distri/react';
+
 interface DistriProviderProps {
   /**
    * Distri client config. Include `authReady: false` while waiting for auth token.
@@ -33,7 +46,7 @@ interface DistriProviderProps {
    *   authReady: token !== null
    * }} />
    */
-  config: DistriClientConfig & { authReady?: boolean };
+  config: DistriProviderConfig;
   children: ReactNode;
   /** @deprecated Theme is no longer managed by DistriProvider. Use ThemeProvider at app level instead. */
   defaultTheme?: 'dark' | 'light' | 'system';
@@ -55,6 +68,7 @@ function DistriProviderInner({ config, children }: Omit<DistriProviderProps, 'au
       if (!client && authReady) {
         const currentClient = new DistriClient({
           ...config,
+          headers: config.clientId ? { 'X-Distri-Client': CLIENT_HEADER, ...config.headers } : config.headers,
           accessToken: token || config.accessToken,
           workspaceId: workspaceId || config.workspaceId,
           // If clientId is provided, we use the requestAuth logic from our provider
@@ -130,6 +144,7 @@ export function DistriProvider(props: DistriProviderProps) {
         debug={config.debug}
         baseUrl={config.baseUrl}
         workspaceId={config.workspaceId}
+        embedUrl={config.embedUrl}
       >
         {content}
       </DistriAuthProvider>
