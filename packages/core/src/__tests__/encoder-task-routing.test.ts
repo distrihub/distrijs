@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { convertA2AMessageToDistri, convertA2AStatusUpdateToDistri } from '../encoder';
 import type { Message } from '@a2a-js/sdk';
 
@@ -78,5 +78,27 @@ describe('encoder routing fields (taskId + parentTaskId)', () => {
     expect(ev).not.toBeNull();
     expect((ev as any).taskId).toBe('task-top-1');
     expect((ev as any).parentTaskId).toBeUndefined();
+  });
+
+  it('convertA2AStatusUpdateToDistri stamps parentToolCallId (the call that started a sub-agent)', () => {
+    const ev = convertA2AStatusUpdateToDistri({
+      kind: 'status-update',
+      taskId: 'sub-1',
+      metadata: { type: 'tool_calls', parent_task_id: 't1', parent_tool_call_id: 'call-9', tool_calls: [] },
+    });
+    expect((ev as any).parentTaskId).toBe('t1');
+    expect((ev as any).parentToolCallId).toBe('call-9');
+  });
+
+  it('skips an event type it does not know instead of inventing a run_started', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ev = convertA2AStatusUpdateToDistri({
+      kind: 'status-update',
+      taskId: 't1',
+      metadata: { type: 'iteration', commit: 'abc1234' },
+    });
+    expect(ev).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

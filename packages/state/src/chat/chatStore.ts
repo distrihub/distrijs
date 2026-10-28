@@ -42,6 +42,11 @@ export interface TaskState {
    */
   parentTaskId?: string;
   /**
+   * The tool call in the parent task that started this task, when the server
+   * says so (`event.parentToolCallId`). UIs nest the task under that call.
+   */
+  parentToolCallId?: string;
+  /**
    * Direct children in the dispatch tree, keyed by taskId. Maintained
    * idempotently: each new child task pushes itself in the first time it
    * appears. Used by selectors that need to walk the tree (collapsed
@@ -639,20 +644,28 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
       // same shape.
       const eventTaskId = event.taskId;
       const eventParentTaskId = event.parentTaskId;
+      const eventParentToolCallId = event.parentToolCallId;
       if (eventTaskId) {
         const existingTask = get().tasks.get(eventTaskId);
         if (!existingTask) {
           get().updateTask(eventTaskId, {
             id: eventTaskId,
             parentTaskId: eventParentTaskId,
+            parentToolCallId: eventParentToolCallId,
             childTaskIds: [],
             title: 'Agent Run',
             status: 'running',
             startTime: timestamp,
           });
-        } else if (eventParentTaskId && !existingTask.parentTaskId) {
+        } else if (
+          (eventParentTaskId && !existingTask.parentTaskId) ||
+          (eventParentToolCallId && !existingTask.parentToolCallId)
+        ) {
           // Backfill linkage if first event seen lacked parent info.
-          get().updateTask(eventTaskId, { parentTaskId: eventParentTaskId });
+          get().updateTask(eventTaskId, {
+            parentTaskId: existingTask.parentTaskId ?? eventParentTaskId,
+            parentToolCallId: existingTask.parentToolCallId ?? eventParentToolCallId,
+          });
         }
         if (eventParentTaskId) {
           const parent = get().tasks.get(eventParentTaskId);
@@ -694,9 +707,10 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           const shouldUpdateTaskId = isRootRunStart && !get().currentTaskId;
 
           set({
-            currentRunId: runId,
+            currentRunId: isRootRunStart ? runId : get().currentRunId,
             currentTaskId: shouldUpdateTaskId ? taskId : get().currentTaskId,
-            currentAgentId: runStartedEvent.data.agentId || get().currentAgentId,
+            // A sub-agent's start names the sub-agent, not the agent the chat talks to.
+            currentAgentId: (isRootRunStart && runStartedEvent.data.agentId) || get().currentAgentId,
           });
           get().setStreamingIndicator('typing');
           set({ isStreaming: true });
@@ -774,7 +788,11 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
 
         case 'run_error':
           const runErrorEvent = event as RunErrorEvent;
-          const errorTaskId = runErrorEvent.data.code ? 'subtask' : get().currentTaskId; // Basic heuristic for now
+          // A sub-agent's error (the envelope names its parent) fails that
+          // task only; the parent runs on. Otherwise the old heuristic.
+          const errorTaskId = eventParentTaskId && eventTaskId
+            ? eventTaskId
+            : runErrorEvent.data.code ? 'subtask' : get().currentTaskId;
           const currentMainTaskIdForError = get().currentTaskId;
 
           if (errorTaskId) {
@@ -848,15 +866,20 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
               startTime: timestamp,
             });
           } else {
-            get().toolCalls.set(toolExecutionStartEvent.data.tool_call_id, {
-              tool_call_id: toolExecutionStartEvent.data.tool_call_id,
-              taskId: eventTaskId,
-              tool_name: toolExecutionStartEvent.data.tool_call_name,
-              input: toolExecutionStartEvent.data.input,
-              status: 'running',
-              startTime: timestamp,
-              isExternal: false,
-              isLiveStream: isFromStream,
+            // Copy-on-write: an in-place Map.set never re-renders selectors.
+            set((state) => {
+              const toolCalls = new Map(state.toolCalls);
+              toolCalls.set(toolExecutionStartEvent.data.tool_call_id, {
+                tool_call_id: toolExecutionStartEvent.data.tool_call_id,
+                taskId: eventTaskId,
+                tool_name: toolExecutionStartEvent.data.tool_call_name,
+                input: toolExecutionStartEvent.data.input,
+                status: 'running',
+                startTime: timestamp,
+                isExternal: false,
+                isLiveStream: isFromStream,
+              });
+              return { ...state, toolCalls };
             });
           }
           break;
@@ -912,7 +935,7 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
             const callsTaskId = eventTaskId;
             message.data.tool_calls.forEach(async (toolCall: ToolCall) => {
               if (get().toolCalls.has(toolCall.tool_call_id)) {
-                console.log('🔁 Ignoring duplicate tool_call event', toolCall.tool_call_id);
+                if (isDebugEnabled) console.log('🔁 Ignoring duplicate tool_call event', toolCall.tool_call_id);
                 return;
               }
               get().initToolCall({
@@ -925,12 +948,16 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           break;
 
         case 'tool_results':
-          // Handle direct tool results event
+          // A result that says the tool failed (`success: false` or an
+          // `error`) marks the call failed; it used to be `completed` either way.
           if (message.data.results && Array.isArray(message.data.results)) {
             message.data.results.forEach((result: ToolResult) => {
+              const data = extractToolResultData(result);
+              const failed = data?.success === false || Boolean(data?.error);
               get().updateToolCallStatus(result.tool_call_id, {
-                status: 'completed',
+                status: failed ? 'error' : 'completed',
                 result,
+                error: failed ? String(data?.error ?? 'Tool execution failed') : undefined,
                 endTime: timestamp,
               });
             });
@@ -1036,8 +1063,9 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
     const externalTools = get().externalTools || [];
     const externalTool = externalTools.find(t => t.name === toolCall.tool_name);
     const existingToolCall = get().toolCalls.get(toolCall.tool_call_id);
+    const debug = get().debug;
     if (existingToolCall) {
-      console.log('🔁 initToolCall skipped duplicate', toolCall.tool_call_id);
+      if (debug) console.log('🔁 initToolCall skipped duplicate', toolCall.tool_call_id);
       return;
     }
 
@@ -1050,7 +1078,10 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
         taskId,
         tool_name: toolCall.tool_name || 'Unknown Tool',
         input: toolCall.input || {},
-        status: 'pending',
+        // An external tool waits for this client to run it. Any other tool is
+        // *reported*: it runs on the server (or wherever the agent runs) and
+        // this client only shows it, so it is running until its result comes.
+        status: externalTool ? 'pending' : 'running',
         startTime: timestamp || Date.now(),
         isExternal: !!externalTool,
         isLiveStream: isFromStream,
@@ -1058,15 +1089,10 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
       return { ...state, toolCalls };
     });
     if (externalTool) {
-      console.log('🔧 Tool found:', {
-        externalTool,
-        toolName: toolCall.tool_name
-      });
+      if (debug) console.log('🔧 Tool found:', { externalTool, toolName: toolCall.tool_name });
       get().executeTool(toolCall, externalTool);
-    } else {
-      console.log('🔧 Tool not external:', {
-        toolName: toolCall.tool_name
-      });
+    } else if (debug) {
+      console.log('🔧 Reported tool (not external):', { toolName: toolCall.tool_name });
     }
   },
 
