@@ -75,17 +75,19 @@ export const AuthLoading: React.FC<AuthLoadingProps> = ({
   }, [status, config, setStatus, setToken, setError, resolveAuth]);
 
   const provisionerUrl = useMemo(() => {
-    const embedBase = 'https://embed.distri.dev';
     const params = new URLSearchParams({
       clientId: config.clientId,
       mode: 'token',
       theme: config.theme,
       baseUrl: config.baseUrl,
+      // The token is checked against the client's allowed origins: name this
+      // page, since the provisioner's own origin is the embed host.
+      hostOrigin: window.location.origin,
     });
     if (config.workspaceId) {
       params.set('workspaceId', config.workspaceId);
     }
-    return `${embedBase}?${params.toString()}`;
+    return `${config.embedUrl}?${params.toString()}`;
   }, [config]);
 
   // Container style that fills the parent but stays within it
