@@ -51,7 +51,11 @@ export interface ChatEmptyStateController {
  * and is forwarded to `<ChatMessageList>`.
  */
 export interface ChatProps extends TranscriptRenderingProps {
-  threadId: string;
+  /**
+   * The conversation to continue. Omit (or pass '') to start a new one: this
+   * mount gets its own id, so separate visitors never share a thread.
+   */
+  threadId?: string;
   agent?: Agent | null;
   onMessage?: (message: DistriChatMessage) => void;
   beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
@@ -212,7 +216,7 @@ const ThreadTokensBanner: React.FC<{ thread: DistriThread | null }> = ({ thread 
 };
 
 export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner({
-  threadId,
+  threadId: threadIdProp,
   agent,
   onMessage,
   onError,
@@ -259,6 +263,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   // thread's messages and streaming flags cannot leak in. Published to renderer
   // descendants via ChatStoreContext and handed to useChat below.
   const [chatStore] = useState<ChatStore>(() => createChatStore());
+  const [newThreadId] = useState(uuid);
+  const threadId = threadIdProp || newThreadId;
 
   const [input, setInput] = useState(initialInput ?? '');
   const initialInputRef = useRef(initialInput ?? '');
