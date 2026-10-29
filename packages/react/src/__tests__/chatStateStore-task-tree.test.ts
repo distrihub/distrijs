@@ -124,9 +124,9 @@ describe('chatStateStore — task-tree event routing', () => {
       data: { tool_calls: [{ tool_call_id: 'call_fork2', tool_name: 'db_get', input: {} }] },
     } as any);
 
-    // Sanity: both pending.
-    expect(store.getState().toolCalls.get('call_fork1')!.status).toBe('pending');
-    expect(store.getState().toolCalls.get('call_fork2')!.status).toBe('pending');
+    // Sanity: both in flight (db_get is not registered here, so it is a reported tool: running).
+    expect(store.getState().toolCalls.get('call_fork1')!.status).toBe('running');
+    expect(store.getState().toolCalls.get('call_fork2')!.status).toBe('running');
 
     // Fork 1 finishes (sub-agent — has a parent).
     send({ type: 'run_finished', taskId: FORK1, parentTaskId: ROOT, data: { taskId: FORK1 } } as any);
@@ -134,7 +134,7 @@ describe('chatStateStore — task-tree event routing', () => {
     const f1 = store.getState().toolCalls.get('call_fork1')!;
     const f2 = store.getState().toolCalls.get('call_fork2')!;
     expect(f1.status).toBe('completed'); // scoped cleanup
-    expect(f2.status).toBe('pending');   // untouched — different task
+    expect(f2.status).toBe('running');   // untouched — different task
   });
 
   it("only the root run's finish flips isStreaming=false", () => {
@@ -183,7 +183,7 @@ describe('chatStateStore — task-tree event routing', () => {
 
     const callB = store.getState().toolCalls.get('call_b');
     expect(callB).toBeTruthy();
-    expect(callB!.status).toBe('pending');
+    expect(callB!.status).toBe('running');
     expect(callB!.taskId).toBe(FORK2);
     expect(store.getState().isStreaming).toBe(true);
   });

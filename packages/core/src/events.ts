@@ -284,10 +284,15 @@ export interface ContextCompactionStreamEvent {
  * subscribed to the parent.
  *
  * `parentTaskId` is `undefined` for events from the root run.
+ *
+ * `parentToolCallId` is the tool call that started the sub-agent, when the
+ * server knows it (`metadata.parent_tool_call_id`): UIs nest the child task
+ * under that call instead of after the turn.
  */
 export interface DistriEventEnvelope {
   taskId?: string;
   parentTaskId?: string;
+  parentToolCallId?: string;
 }
 
 // Each concrete event interface gets the envelope merged in via

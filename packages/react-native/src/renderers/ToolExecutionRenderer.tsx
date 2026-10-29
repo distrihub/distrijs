@@ -9,8 +9,10 @@ import {
 } from '@distri/core';
 import type { DistriBaseTool } from '@distri/core';
 import type { ChatStore, ToolCallState } from '@distri/state';
+import { useStore } from 'zustand';
 import type { NativeToolRendererMap, NativeUiTool, RenderingMode } from '../types';
 import { DistriNativeTheme, useDistriTheme } from '../theme';
+import { SubTaskCard, tasksOfCall } from './SubTaskCard';
 
 interface ToolExecutionRendererProps {
   toolCalls: ToolCall[];
@@ -90,21 +92,34 @@ function ToolCard({ call, state, tool, store, rendering }: {
 export function ToolExecutionRenderer({ toolCalls, states, tools, store, renderers, rendering }: ToolExecutionRendererProps) {
   const theme = useDistriTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const tasks = useStore(store, s => s.tasks);
+  const nestedUnder = (call: ToolCall) => tasksOfCall(tasks, call.tool_call_id).map(task => (
+    <SubTaskCard key={task.id} task={task} store={store} rendering={rendering} toolRenderers={renderers} />
+  ));
+  const draw = (call: ToolCall) => {
+    const state = states.get(call.tool_call_id);
+    const tool = tools.find(candidate => candidate.name === call.tool_name);
+    const completeTool = (result: ToolResult) => { void store.getState().completeTool(call, result); };
+    const custom = renderers?.[call.tool_name];
+    if (custom) return custom({ toolCall: call, state, completeTool });
+    if (state?.component) return state.component as React.ReactNode;
+    if (tool?.type === 'ui') {
+      const UiComponent = (tool as NativeUiTool).component;
+      return <UiComponent tool={tool} toolCall={call} toolCallState={state} completeTool={completeTool} />;
+    }
+    return <ToolCard call={call} state={state} tool={tool} store={store} rendering={rendering} />;
+  };
+  // A sub-agent the call started (a child task with `parentToolCallId`) is
+  // nested under the call. A custom renderer owns its whole row, sub-agent
+  // included (it can draw `SubTaskCard` itself).
   return (
     <View style={styles.list}>
-      {toolCalls.map(call => {
-        const state = states.get(call.tool_call_id);
-        const tool = tools.find(candidate => candidate.name === call.tool_name);
-        const completeTool = (result: ToolResult) => { void store.getState().completeTool(call, result); };
-        const custom = renderers?.[call.tool_name];
-        if (custom) return <View key={call.tool_call_id}>{custom({ toolCall: call, state, completeTool })}</View>;
-        if (state?.component) return <View key={call.tool_call_id}>{state.component as React.ReactNode}</View>;
-        if (tool?.type === 'ui') {
-          const UiComponent = (tool as NativeUiTool).component;
-          return <UiComponent key={call.tool_call_id} tool={tool} toolCall={call} toolCallState={state} completeTool={completeTool} />;
-        }
-        return <ToolCard key={call.tool_call_id} call={call} state={state} tool={tool} store={store} rendering={rendering} />;
-      })}
+      {toolCalls.map(call => (
+        <View key={call.tool_call_id}>
+          {draw(call)}
+          {renderers?.[call.tool_name] ? null : nestedUnder(call)}
+        </View>
+      ))}
     </View>
   );
 }

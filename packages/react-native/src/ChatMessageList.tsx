@@ -2,9 +2,10 @@ import { ComponentType, ReactElement, ReactNode, useMemo, useRef } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useStore } from 'zustand';
 import { DistriChatMessage } from '@distri/core';
-import type { ChatStore, HidePartFn, ToolCallState } from '@distri/state';
+import type { ChatStore, HidePartFn, TaskState, ToolCallState } from '@distri/state';
 import type { NativeToolRendererMap, RenderingMode } from './types';
 import { MessageRenderer } from './renderers/MessageRenderer';
+import { nestedTaskIds, SubTaskContext } from './renderers/SubTaskCard';
 import { resolveVisibleMessages } from './messageVisibility';
 import { useDistriTheme } from './theme';
 
@@ -48,7 +49,15 @@ export function ChatMessageList({
   const theme = useDistriTheme();
   const toolCalls = useStore(store, state => state.toolCalls) as Map<string, ToolCallState>;
   const externalTools = useStore(store, state => state.externalTools ?? NO_EXTERNAL_TOOLS);
-  const visible = useMemo(() => resolveVisibleMessages(messages, hideParts), [messages, hideParts]);
+  const tasks = useStore(store, state => state.tasks) as Map<string, TaskState>;
+  // A sub-agent started by a tool call in this list is drawn under that call
+  // (SubTaskCard); its own messages stay out of the flat list.
+  const nested = useMemo(() => nestedTaskIds(messages, tasks), [messages, tasks]);
+  const visible = useMemo(
+    () => resolveVisibleMessages(messages, hideParts).filter(m => !nested.has((m as { taskId?: string }).taskId ?? '')),
+    [messages, hideParts, nested],
+  );
+  const scope = useMemo(() => ({ messages, tasks }), [messages, tasks]);
   const listRef = useRef<{ scrollToEnd?: (options?: { animated?: boolean }) => void } | null>(null);
   // Jump to the newest message when a thread first renders; animate after that.
   const scrolledOnce = useRef(false);
@@ -65,18 +74,20 @@ export function ChatMessageList({
     </View>
   );
   return (
-    <ListComponent
-      ref={listRef}
-      accessibilityLabel="Chat messages"
-      data={visible}
-      keyExtractor={(item: DistriChatMessage, index: number) => (item as { id?: string }).id || `${(item as { type?: string }).type || 'message'}-${index}`}
-      renderItem={renderItem}
-      ListHeaderComponent={ListHeaderComponent}
-      ListFooterComponent={ListFooterComponent}
-      contentContainerStyle={[styles.content, theme.styles.list]}
-      keyboardShouldPersistTaps="handled"
-      onContentSizeChange={autoScroll ? scrollToEnd : undefined}
-    />
+    <SubTaskContext.Provider value={scope}>
+      <ListComponent
+        ref={listRef}
+        accessibilityLabel="Chat messages"
+        data={visible}
+        keyExtractor={(item: DistriChatMessage, index: number) => (item as { id?: string }).id || `${(item as { type?: string }).type || 'message'}-${index}`}
+        renderItem={renderItem}
+        ListHeaderComponent={ListHeaderComponent}
+        ListFooterComponent={ListFooterComponent}
+        contentContainerStyle={[styles.content, theme.styles.list]}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={autoScroll ? scrollToEnd : undefined}
+      />
+    </SubTaskContext.Provider>
   );
 }
 

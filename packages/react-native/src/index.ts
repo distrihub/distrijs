@@ -22,6 +22,8 @@ export { ToolExecutionRenderer } from './renderers/ToolExecutionRenderer';
 export { ContextRow } from './renderers/ContextRow';
 export type { ContextRowProps } from './renderers/ContextRow';
 export { SubTaskTree } from './renderers/SubTaskTree';
+export { SubTaskCard, SubTaskContext, nestedTaskIds, tasksOfCall } from './renderers/SubTaskCard';
+export type { SubTaskCardProps, SubTaskScope } from './renderers/SubTaskCard';
 export type { SubTaskTreeProps } from './renderers/SubTaskTree';
 export { Markdown, parseMarkdown } from './Markdown';
 export type { MarkdownProps, MarkdownBlock } from './Markdown';
