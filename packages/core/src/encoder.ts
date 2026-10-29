@@ -88,10 +88,12 @@ function normalizeMessageMetadata(raw: Record<string, unknown>): DistriMessageMe
 function stampEnvelope<T extends DistriEvent>(event: T, statusUpdate: any): T {
   const metadata = statusUpdate?.metadata;
   const parentTaskId = metadata?.parent_task_id;
+  const parentToolCallId = metadata?.parent_tool_call_id;
   return {
     ...event,
     taskId: statusUpdate?.taskId,
     parentTaskId: parentTaskId || undefined,
+    ...(parentToolCallId ? { parentToolCallId } : {}),
   };
 }
 
@@ -326,14 +328,12 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
       // traces, not the chat transcript.
       return null;
 
-    default: {
-      // For unrecognized metadata types, create a generic run_started event
-      console.warn(`Unhandled status update metadata type: ${metadata.type}`, metadata);
-      return out({
-        type: 'run_started',
-        data: { runId: statusUpdate.runId, taskId: statusUpdate.taskId },
-      } as RunStartedEvent);
-    }
+    default:
+      // An event type this client does not know (a newer server, or a
+      // server's own extension) is skipped. Turning it into a `run_started`
+      // made a run appear that never started: the store flipped
+      // `isStreaming` on and created a task for it.
+      return null;
   }
 }
 
