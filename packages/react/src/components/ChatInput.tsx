@@ -43,6 +43,8 @@ export interface ChatInputProps {
   onToggleVerbose?: () => void;
   developerModeControl?: React.ReactNode;
   developerModeStatus?: React.ReactNode;
+  /** Hide the attach-image button. */
+  hideAttach?: boolean;
   variant?: 'default' | 'hero';
   theme?: 'light' | 'dark' | 'auto';
   allowCommands?: boolean;
@@ -75,6 +77,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onToggleVerbose,
   developerModeControl,
   developerModeStatus,
+  hideAttach = false,
   variant = 'default',
   theme = 'auto',
   allowCommands = false,
@@ -491,7 +494,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             )}>
               <div className="flex items-center gap-1">
                 {/* Add/Plus button */}
-                <button
+                {!hideAttach && <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={toolbarButton}
@@ -499,7 +502,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   title="Attach image"
                 >
                   <Plus className="h-5 w-5" />
-                </button>
+                </button>}
 
                 {onToggleBrowser && (
                   <button
