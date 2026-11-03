@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import type { ToolStepsSlotProps, UserMessageSlotProps } from '../types'
 import { useAssistantRuntime } from './context'
-import { describeArguments, stepText, summarizeResult, humanizeToolName, type StepStatus } from './humanize'
+import { describeArguments, stepText, summarizeResult, humanizeToolName, isInternalTool, type StepStatus } from './humanize'
 
 type CallState = ToolStepsSlotProps['toolCallStates'] extends Map<string, infer S> ? S : never
 
@@ -76,11 +76,13 @@ const StepRow: React.FC<{
 export const ToolSteps: React.FC<ToolStepsSlotProps> = ({ toolCalls, toolCallStates, children }) => {
   const { toolActivity, toolLabels } = useAssistantRuntime()
   if (toolActivity === 'hidden') return null
+  const visible = toolActivity === 'detailed' ? toolCalls : toolCalls.filter((c) => !isInternalTool(c.tool_name))
+  if (visible.length === 0) return null
   const needsUser = toolCalls.some((c) => toolCallStates.get(c.tool_call_id)?.status === 'user_action_required')
   return (
     <div className="dui-steps-wrap">
       <ul className="dui-steps">
-        {toolCalls.map((call) => (
+        {visible.map((call) => (
           <StepRow
             key={call.tool_call_id}
             name={call.tool_name}

@@ -134,3 +134,11 @@ describe('readableOn', () => {
     expect(readableOn('rebeccapurple')).toBeUndefined()
   })
 })
+
+import { isInternalTool as __isInternal } from '../assistant/humanize'
+describe('internal tools', () => {
+  it('hides Distri plumbing but not the app functions', () => {
+    expect(__isInternal('tool_search')).toBe(true)
+    expect(__isInternal('book_table')).toBe(false)
+  })
+})

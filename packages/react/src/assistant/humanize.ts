@@ -139,3 +139,7 @@ export function describeArguments(input: unknown, maxValue = 80): Array<[string,
       return [k.replace(/_/g, ' '), value] as [string, string]
     })
 }
+
+/** Distri's own plumbing tools. A guest never needs to see them; `toolActivity: 'detailed'` still does. */
+const INTERNAL_TOOLS = new Set(['tool_search', 'final', 'load_skill', 'invoke_agent', 'get_task', 'wait_task', 'cancel_task', 'write_todos', 'todos', 'transfer_to_agent'])
+export const isInternalTool = (name: string): boolean => INTERNAL_TOOLS.has(name)
