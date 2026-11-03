@@ -131,6 +131,18 @@ export interface ChatProps extends TranscriptRenderingProps {
   /** Show "Waiting for N tool responses…" above the composer. Default true;
    *  embeds shown to end users turn it off. */
   showToolWaitStatus?: boolean;
+  /** Show the in/out token banner for the thread. Default true; embeds shown to end users turn it off. */
+  showThreadTokens?: boolean;
+  /** Composer placeholder, in every state. Default: the empty-state prompt placeholder, else "Type your message…". */
+  placeholder?: string;
+  /** Show "Message will be queued…" hints while a run streams. Default true. */
+  showQueueHint?: boolean;
+  /** Show the attach-image button in the composer. Default true. */
+  showAttach?: boolean;
+  /** Render forked sub-agent cards (`subtask …`). Default true. */
+  showSubTasks?: boolean;
+  /** Replace the default error banner. */
+  renderError?: (error: Error) => React.ReactNode;
 }
 
 /**
@@ -233,6 +245,12 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   onChatStateChange,
   showContextUsage = true,
   showToolWaitStatus = true,
+  placeholder: placeholderProp,
+  showThreadTokens = true,
+  showQueueHint = true,
+  showAttach = true,
+  showSubTasks = true,
+  renderError,
   onTaskFinish,
   renderEmptyState,
   emptyState: emptyStateProp,
@@ -948,9 +966,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   }), [input, setComposerInput, submitFromEmptyState, isLoading, isStreaming]);
 
   const renderComposer = useCallback((variant: 'default' | 'hero', className?: string) => {
-    const basePlaceholder = showEmptyState && emptyState?.promptPlaceholder
+    const basePlaceholder = placeholderProp ?? (showEmptyState && emptyState?.promptPlaceholder
       ? emptyState.promptPlaceholder
-      : 'Type your message…';
+      : 'Type your message…');
 
     return (
       <ChatInput
@@ -962,7 +980,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
         browserHasSession={Boolean(browserSessionId)}
         onToggleBrowser={supportsBrowserStreaming ? handleToggleBrowser : undefined}
         placeholder={
-          isStreaming
+          isStreaming && showQueueHint
             ? 'Message will be queued…'
             : basePlaceholder
         }
@@ -995,6 +1013,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           />
         ) : undefined}
         developerModeStatus={undefined}
+        hideAttach={!showAttach}
         allowCommands={allowCommands}
         commands={builtInCommands}
         onCommand={handleCommand}
@@ -1034,6 +1053,9 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     allowCommands,
     builtInCommands,
     handleCommand,
+    showAttach,
+    showQueueHint,
+    placeholderProp,
   ]);
 
   const emptyStateComposer = useMemo(() => {
@@ -1078,7 +1100,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Render pending message
   const renderPendingMessage = () => {
-    if (!pendingMessage || pendingMessage.length === 0) return null;
+    if (!showQueueHint || !pendingMessage || pendingMessage.length === 0) return null;
 
     const partCount = pendingMessage.length;
 
@@ -1151,7 +1173,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           className="distri-transcript mx-auto w-full px-2 py-4 space-y-4"
           style={{ maxWidth: maxWidth || '768px', width: '100%', boxSizing: 'border-box' }}
         >
-          {error && (
+          {error && !renderError && (
             <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
               <div className="text-destructive text-xs">
                 <strong>Error:</strong> {error.message}
@@ -1160,7 +1182,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
           )}
 
           {/* Thread token usage */}
-          <ThreadTokensBanner thread={threadDetails} />
+          {showThreadTokens && <ThreadTokensBanner thread={threadDetails} />}
           <TaskHydrator threadId={threadId} />
 
           <div
@@ -1185,9 +1207,11 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
                   toolLabels={toolLabels}
                   components={components}
                   hideParts={hideParts}
+                  showSubTasks={showSubTasks}
                 />
 
                 {renderExternalToolCalls()}
+                {error && renderError ? renderError(error) : null}
                 {/* Render pending message */}
                 {renderPendingMessage()}
 

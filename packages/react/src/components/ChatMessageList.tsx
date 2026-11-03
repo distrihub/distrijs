@@ -25,6 +25,8 @@ export interface ChatMessageListProps extends TranscriptRenderingProps {
   threadId?: string;
   enableFeedback?: boolean;
   onShowTrace?: (threadId: string) => void;
+  /** Render forked sub-agent cards. Default true. */
+  showSubTasks?: boolean;
 }
 
 /** Events the web transcript renders as their own row; everything else is bookkeeping. */
@@ -70,6 +72,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   toolLabels,
   components,
   hideParts,
+  showSubTasks = true,
 }) => {
   const store = useChatStoreApi();
   const toolCalls = useChatStateStore((s) => s.toolCalls);
@@ -110,9 +113,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   // Anchor each turn's fork cards right AFTER that turn's last message — one
   // global tree at the bottom mixed every turn's forks into a single pile
   // detached from the conversation.
-  const rootsWithChildren = Array.from(tasksSnapshot.values()).filter(
-    (t) => !t.parentTaskId && t.childTaskIds.length > 0,
-  );
+  const rootsWithChildren = showSubTasks
+    ? Array.from(tasksSnapshot.values()).filter(
+        (t) => !t.parentTaskId && t.childTaskIds.length > 0,
+      )
+    : [];
   const lastIndexByRoot = new Map<string, number>();
   messages.forEach((m, i) => {
     const tid = (m as { taskId?: string }).taskId;
@@ -228,7 +233,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
       {elements}
       {/* Catch-all for roots that never got anchored inline (no message carried
           their taskId this render). */}
-      <SubTaskTree
+      {showSubTasks && <SubTaskTree
         excludeRootIds={anchoredRoots}
         messages={messages}
         toolRenderers={toolRenderers}
@@ -238,7 +243,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
         onShowTrace={onShowTrace}
         verbose={verbose}
         debug={debug}
-      />
+      />}
     </RendererContext.Provider>
   );
 };

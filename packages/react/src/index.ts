@@ -124,3 +124,6 @@ export { DeveloperModeComponent } from './components/developer/DeveloperModeComp
 //   import '@distri/react/styles.css';   // Default theme + utilities, or:
 //   import '@distri/react/globals.css';  // Required utilities (scoped to Distri roots)
 //   import '@distri/react/theme.css';    // Optional default theme
+
+// Assistant: the opinionated, themed, developer-chrome-free chat for host apps.
+export * from './assistant/index'

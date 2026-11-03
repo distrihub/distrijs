@@ -1,6 +1,6 @@
 {
   "name": "@distri/react",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "description": "React hooks and components for Distri Framework",
   "type": "module",
   "main": "dist/index.cjs",
@@ -19,7 +19,8 @@
     },
     "./globals.css": "./dist/globals.css",
     "./theme.css": "./dist/theme.css",
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./assistant.css": "./dist/assistant.css"
   },
   "scripts": {
     "build": "tsup",
