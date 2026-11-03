@@ -30,6 +30,8 @@ export interface AssistantProps {
   /** Launcher layout: controlled open state. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Sent once, as the first user message, when the conversation is ready (e.g. a prompt typed on a start screen). */
+  initialMessage?: string
   /** Extra metadata merged under the experience's prompt section. */
   getMetadata?: () => Promise<Record<string, unknown>>
   toolRenderers?: ToolRendererMap
@@ -122,6 +124,7 @@ export const Assistant: React.FC<AssistantProps> = ({
   open: openProp,
   onOpenChange,
   getMetadata,
+  initialMessage,
   toolRenderers,
   onError,
   onMessage,
@@ -147,6 +150,8 @@ export const Assistant: React.FC<AssistantProps> = ({
 
   const [conversation, setConversation] = useState(0)
   const chatRef = useRef<ChatInstance | null>(null)
+  const initialSent = useRef<string | null>(null)
+  const [chatReady, setChatReady] = useState(false)
   const lastSent = useRef<DistriMessage['parts'] | null>(null)
   const [failed, setFailed] = useState<Error | null>(null)
 
@@ -171,6 +176,15 @@ export const Assistant: React.FC<AssistantProps> = ({
     (controller: ChatEmptyStateController) => <Welcome exp={exp} controller={controller} />,
     [exp],
   )
+
+  // A message handed in after the conversation is already live (e.g. a trace action) goes out once.
+  useEffect(() => {
+    const chat = chatRef.current
+    if (initialMessage && chat && initialSent.current !== initialMessage) {
+      initialSent.current = initialMessage
+      void chat.sendMessage(initialMessage)
+    }
+  }, [initialMessage, chatReady])
 
   const retry = useCallback(() => {
     const parts = lastSent.current
@@ -243,6 +257,7 @@ export const Assistant: React.FC<AssistantProps> = ({
           }}
           onChatInstanceReady={(i) => {
             chatRef.current = i
+            setChatReady(true)
           }}
           onError={(e) => {
             setFailed(e)
