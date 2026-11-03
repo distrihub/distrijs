@@ -1,0 +1,608 @@
+/*
+ * @distri/react Assistant: structure and components. Tokens live in themes.css.
+ * Scoped under `.dui-assistant`; it restyles the Chat inside it and nothing outside.
+ */
+
+.dui-assistant {
+  font-family: var(--dui-font);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--dui-fg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.dui-assistant *,
+.dui-assistant *::before,
+.dui-assistant *::after {
+  box-sizing: border-box;
+}
+.dui-assistant ::selection {
+  background: color-mix(in srgb, var(--dui-accent) 24%, transparent);
+}
+.dui-assistant :focus-visible {
+  outline: 2px solid var(--dui-accent);
+  outline-offset: 2px;
+}
+
+/* ---- layouts ------------------------------------------------------------ */
+.dui-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--dui-bg);
+  color: var(--dui-fg);
+  overflow: hidden;
+}
+.dui-shell[hidden] {
+  display: none;
+}
+.dui-assistant[data-layout="inline"] {
+  height: 100%;
+  min-height: 0;
+}
+.dui-assistant[data-layout="inline"] .dui-shell {
+  height: 100%;
+}
+
+.dui-assistant[data-layout="launcher"] .dui-launcher {
+  position: fixed;
+  z-index: 2147482000;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dui-accent);
+  color: var(--dui-accent-fg);
+  box-shadow: 0 8px 24px -6px rgba(20, 14, 6, 0.4), 0 2px 6px rgba(20, 14, 6, 0.15);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.dui-assistant[data-layout="launcher"] .dui-launcher:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+.dui-launcher svg {
+  width: 24px;
+  height: 24px;
+}
+.dui-assistant[data-layout="launcher"][data-side="left"] .dui-launcher {
+  right: auto;
+  left: 20px;
+}
+
+.dui-assistant[data-layout="launcher"] .dui-shell {
+  position: fixed;
+  z-index: 2147482000;
+  bottom: 88px;
+  right: 20px;
+  width: min(420px, calc(100vw - 24px));
+  height: min(680px, calc(100vh - 108px));
+  border: 1px solid var(--dui-border);
+  border-radius: var(--dui-r-panel);
+  box-shadow: var(--dui-shadow-lg);
+  animation: dui-pop 170ms ease-out;
+}
+.dui-assistant[data-layout="launcher"][data-side="left"] .dui-shell {
+  right: auto;
+  left: 20px;
+}
+
+.dui-assistant[data-layout="panel"] .dui-shell {
+  position: fixed;
+  z-index: 2147482000;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: min(420px, 100vw);
+  border-left: 1px solid var(--dui-border);
+  box-shadow: var(--dui-shadow-lg);
+  animation: dui-slide-right 180ms ease-out;
+}
+.dui-assistant[data-layout="panel"][data-side="left"] .dui-shell {
+  right: auto;
+  left: 0;
+  border-left: 0;
+  border-right: 1px solid var(--dui-border);
+  animation-name: dui-slide-left;
+}
+
+@media (max-width: 480px) {
+  .dui-assistant[data-layout="launcher"] .dui-shell {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    bottom: 84px;
+    height: calc(100vh - 100px);
+  }
+}
+
+@keyframes dui-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dui-slide-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dui-slide-left {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dui-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+@keyframes dui-fade {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- header ------------------------------------------------------------- */
+.dui-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 10px 0 18px;
+  border-bottom: 1px solid var(--dui-border);
+}
+.dui-header-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dui-header-actions {
+  display: flex;
+  gap: 2px;
+}
+.dui-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dui-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.dui-icon-btn:hover {
+  background: color-mix(in srgb, var(--dui-fg) 8%, transparent);
+  color: var(--dui-fg);
+}
+.dui-icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.dui-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dui-accent) 14%, transparent);
+  color: var(--dui-accent);
+  font-family: var(--dui-font-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+.dui-mark-sm {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  background: var(--dui-accent);
+  color: var(--dui-accent-fg);
+}
+
+.dui-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- the Chat inside ---------------------------------------------------- */
+.dui-assistant .distri-chat {
+  --distri-font-size: 15px;
+  --distri-line-height: 1.55;
+  background: transparent;
+  color: var(--dui-fg);
+  font-family: var(--dui-font);
+  height: 100%;
+}
+.dui-assistant .distri-chat > div {
+  background: transparent;
+  color: inherit;
+}
+.dui-assistant .distri-chat .text-foreground { color: var(--dui-fg); }
+.dui-assistant .distri-chat .text-muted-foreground { color: var(--dui-muted); }
+.dui-assistant .distri-transcript {
+  padding: 18px 6px 28px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.dui-assistant .distri-transcript > .flex > .flex-1 > * + * {
+  margin-top: 0;
+}
+.dui-assistant .distri-transcript .space-y-4 > * {
+  animation: dui-fade 160ms ease-out;
+}
+.dui-assistant .distri-chat > div:first-of-type {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dui-fg) 22%, transparent) transparent;
+}
+
+/* assistant text sits on the surface, no bubble */
+.dui-assistant .distri-assistant-message {
+  color: var(--dui-fg);
+}
+.dui-assistant .prose {
+  max-width: none;
+  font-size: 1em;
+  line-height: 1.6;
+  color: var(--dui-fg);
+  --tw-prose-body: var(--dui-fg);
+  --tw-prose-headings: var(--dui-fg);
+  --tw-prose-bold: var(--dui-fg);
+  --tw-prose-links: var(--dui-accent);
+  --tw-prose-bullets: var(--dui-faint);
+  --tw-prose-counters: var(--dui-muted);
+  --tw-prose-quotes: var(--dui-muted);
+  --tw-prose-hr: var(--dui-border);
+  --tw-prose-th-borders: var(--dui-border);
+  --tw-prose-td-borders: var(--dui-border);
+  --tw-prose-code: var(--dui-fg);
+}
+.dui-assistant .prose :where(p, ul, ol, blockquote, pre, table) {
+  margin-top: 0;
+  margin-bottom: 0.8em;
+}
+.dui-assistant .prose :where(p, li, td, th, span, strong, em) { color: var(--dui-fg); }
+.dui-assistant .prose :where(p:last-child, ul:last-child, ol:last-child) { margin-bottom: 0; }
+.dui-assistant .prose :where(ul, ol) { padding-left: 1.3em; }
+.dui-assistant .prose :where(ul) { list-style: disc; }
+.dui-assistant .prose :where(ol) { list-style: decimal; }
+.dui-assistant .prose :where(li) { margin: 0.2em 0; }
+.dui-assistant .prose :where(h1, h2, h3, h4) {
+  margin: 1.1em 0 0.4em;
+  font-family: var(--dui-font-display);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--dui-fg);
+}
+.dui-assistant .prose :where(h1) { font-size: 1.25em; }
+.dui-assistant .prose :where(h2) { font-size: 1.15em; }
+.dui-assistant .prose :where(h3, h4) { font-size: 1.05em; }
+.dui-assistant .prose :where(a) {
+  color: var(--dui-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--dui-accent) 40%, transparent);
+}
+.dui-assistant .prose :where(code) {
+  font-family: var(--dui-mono);
+  font-size: 0.88em;
+  background: color-mix(in srgb, var(--dui-fg) 7%, transparent);
+  border-radius: 6px;
+}
+.dui-assistant .prose :where(table) {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.94em;
+}
+.dui-assistant .prose :where(th, td) { padding: 6px 10px; border-bottom: 1px solid var(--dui-border); text-align: left; }
+.dui-assistant .prose :where(blockquote) {
+  border-left: 2px solid var(--dui-border);
+  padding-left: 12px;
+  color: var(--dui-muted);
+  font-style: normal;
+}
+
+/* user turn: accent-tinted pill */
+.dui-user {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 0 2px;
+}
+.dui-user-pill {
+  max-width: 86%;
+  padding: 8px 15px;
+  border-radius: var(--dui-r-pill);
+  background: color-mix(in srgb, var(--dui-accent) var(--dui-tint), transparent);
+  color: var(--dui-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* tool activity: quiet single-line steps */
+.dui-steps-wrap {
+  padding: 2px 0;
+}
+.dui-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dui-step-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dui-muted);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.4;
+  text-align: left;
+}
+button.dui-step-row {
+  cursor: pointer;
+}
+button.dui-step-row:hover {
+  color: var(--dui-fg);
+}
+.dui-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  border-radius: 999px;
+  background: var(--dui-faint);
+  transition: background 160ms ease;
+}
+.dui-step[data-status="running"] .dui-dot {
+  background: var(--dui-accent);
+  animation: dui-pulse 1.1s ease-in-out infinite;
+}
+.dui-step[data-status="error"] .dui-dot { background: var(--dui-danger); }
+.dui-step[data-status="error"] .dui-step-text { color: var(--dui-danger); }
+.dui-step[data-status="running"] .dui-step-text { color: var(--dui-fg); }
+.dui-step-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dui-step-meta {
+  flex: none;
+  color: var(--dui-faint);
+  font-size: 12.5px;
+}
+.dui-step-meta::before {
+  content: "\00b7";
+  margin-right: 8px;
+}
+.dui-step-chevron {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-left: auto;
+  color: var(--dui-faint);
+  transition: transform 140ms ease;
+}
+.dui-step[data-open] .dui-step-chevron { transform: rotate(90deg); }
+.dui-step-detail {
+  margin: 2px 0 8px 5px;
+  padding: 2px 0 2px 16px;
+  border-left: 1.5px solid var(--dui-border);
+  font-size: 12.5px;
+  color: var(--dui-muted);
+  animation: dui-fade 140ms ease-out;
+}
+.dui-step-detail dl { margin: 0; display: grid; gap: 2px; }
+.dui-step-detail dl > div { display: flex; gap: 10px; }
+.dui-step-detail dt { flex: none; min-width: 72px; color: var(--dui-faint); text-transform: capitalize; }
+.dui-step-detail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--dui-fg); }
+.dui-step-detail pre {
+  margin: 6px 0 0;
+  max-height: 160px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dui-fg) 5%, transparent);
+  font-family: var(--dui-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--dui-muted);
+}
+.dui-step-action { margin-top: 6px; }
+
+/* welcome and suggestions */
+.dui-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 14px 8px;
+  text-align: center;
+  animation: dui-fade 180ms ease-out;
+}
+.dui-welcome-title {
+  margin: 16px 0 0;
+  font-family: var(--dui-font-display);
+  font-size: 21px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dui-fg);
+}
+.dui-welcome-text {
+  margin: 6px 0 0;
+  max-width: 34ch;
+  color: var(--dui-muted);
+}
+.dui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.dui-chip {
+  padding: 8px 14px;
+  border: 1px solid var(--dui-border);
+  border-radius: var(--dui-r-chip);
+  background: var(--dui-surface);
+  color: var(--dui-fg);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.dui-chip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--dui-accent) 55%, var(--dui-border));
+  background: color-mix(in srgb, var(--dui-accent) 7%, var(--dui-surface));
+}
+.dui-chip:disabled { opacity: 0.5; cursor: default; }
+
+/* inline error with retry */
+.dui-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 10px;
+  padding: 10px 14px;
+  border-radius: calc(var(--dui-r-pill) * 0.7);
+  background: color-mix(in srgb, var(--dui-danger) 9%, transparent);
+  color: var(--dui-danger);
+  font-size: 14px;
+}
+.dui-error button {
+  flex: none;
+  padding: 3px 12px;
+  border: 1px solid color-mix(in srgb, var(--dui-danger) 40%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dui-error button:hover { background: color-mix(in srgb, var(--dui-danger) 12%, transparent); }
+.dui-assistant .distri-run-error button { display: none; }
+
+/* thinking strip */
+.dui-assistant .distri-chat footer .text-muted-foreground,
+.dui-assistant .distri-chat footer [class*="text-xs"] {
+  color: var(--dui-muted);
+  font-size: 13px;
+}
+
+/* ---- composer: one rounded row, circular send --------------------------- */
+.dui-assistant .distri-chat > footer {
+  border: 0;
+  padding: 0;
+  background: linear-gradient(to top, var(--dui-bg) 72%, transparent);
+  backdrop-filter: none;
+}
+.dui-assistant .distri-chat > footer > div {
+  padding: 4px 14px 14px;
+}
+.dui-assistant .distri-chat-input-wrapper {
+  padding: 0;
+  background: var(--dui-surface);
+  border: 1px solid var(--dui-border);
+  border-radius: var(--dui-r-composer);
+  box-shadow: var(--dui-shadow);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.dui-assistant .distri-chat-input-wrapper:focus-within {
+  border-color: color-mix(in srgb, var(--dui-accent) 60%, var(--dui-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dui-accent) 16%, transparent);
+}
+.dui-assistant .distri-chat-input {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 5px 5px 5px 18px;
+  background: transparent;
+  border-radius: inherit;
+}
+.dui-assistant .distri-chat-input > div:first-child {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 7px 0;
+  justify-content: center;
+}
+.dui-assistant .distri-chat-input > div:last-child {
+  flex: none;
+  gap: 4px;
+  padding: 0;
+  align-items: center;
+}
+.dui-assistant .distri-editor {
+  color: var(--dui-fg);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.dui-assistant .distri-editor .ProseMirror {
+  min-height: 24px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.dui-assistant .distri-editor .is-editor-empty:first-child::before {
+  color: var(--dui-faint);
+}
+.dui-assistant .distri-chat-input > div:last-child > button:last-child {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--dui-accent);
+  color: var(--dui-accent-fg);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.dui-assistant .distri-chat-input > div:last-child > button:last-child:hover:not(:disabled) {
+  background: var(--dui-accent);
+  transform: scale(1.06);
+}
+.dui-assistant .distri-chat-input > div:last-child > button:last-child:disabled {
+  background: color-mix(in srgb, var(--dui-fg) 9%, transparent);
+  color: var(--dui-faint);
+}
+.dui-assistant .distri-chat-input > div:last-child > button:last-child svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dui-assistant *,
+  .dui-assistant *::before,
+  .dui-assistant *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* inline: a centred reading column inside whatever container hosts it */
+.dui-assistant[data-layout="inline"] .dui-header {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  border-bottom: 0;
+}
+.dui-assistant[data-layout="inline"] .dui-body .distri-chat {
+  margin: 0 auto;
+}

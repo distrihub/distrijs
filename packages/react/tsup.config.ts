@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/replay/index.ts', 'src/globals.css', 'src/theme.css', 'src/styles.css'],
+  entry: ['src/index.ts', 'src/replay/index.ts', 'src/globals.css', 'src/theme.css', 'src/styles.css', 'src/assistant.css'],
   format: ['esm', 'cjs'],
   // CSS entries have no types; declarations come from the TS entries only.
   dts: { entry: ['src/index.ts', 'src/replay/index.ts'] },
