@@ -5,7 +5,6 @@ import {
   Marker,
   InfoWindow,
   useMap,
-  useMapsLibrary,
   useApiIsLoaded
 } from '@vis.gl/react-google-maps';
 
@@ -28,12 +27,11 @@ interface MapControllerProps {
   mapRef: React.MutableRefObject<GoogleMapsManagerRef | null>;
   markers: MapMarker[];
   setMarkers: React.Dispatch<React.SetStateAction<MapMarker[]>>;
-  directionsRenderer: google.maps.DirectionsRenderer | null;
-  setDirectionsRenderer: React.Dispatch<React.SetStateAction<google.maps.DirectionsRenderer | null>>;
   center: google.maps.LatLngLiteral;
   setCenter: React.Dispatch<React.SetStateAction<google.maps.LatLngLiteral>>;
   zoom: number;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
+  onReady?: (mapRef: GoogleMapsManagerRef) => void;
 }
 
 // Separate component to handle map interactions
@@ -41,33 +39,16 @@ const MapController: React.FC<MapControllerProps> = ({
   mapRef,
   markers: _markers, // Used for marker state management
   setMarkers,
-  directionsRenderer,
-  setDirectionsRenderer,
   center: _center, // Used for map center state
   setCenter,
   zoom,
   setZoom,
+  onReady,
 }) => {
   const map = useMap();
-  const placesLibrary = useMapsLibrary('places');
-  const directionsLibrary = useMapsLibrary('routes');
-
-  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
-  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
-
-  useEffect(() => {
-    if (!placesLibrary || !map) return;
-
-    // when placesLibrary is loaded, the library can be accessed via the
-    // placesLibrary API object
-    setPlacesService(new placesLibrary.PlacesService(map));
-  }, [placesLibrary, map]);
-
-  useEffect(() => {
-    if (!directionsLibrary || !map) return;
-
-    setDirectionsService(new directionsLibrary.DirectionsService());
-  }, [directionsLibrary, map]);
+  // The route is drawn as a polyline. Kept in a ref because the functions below are exposed once,
+  // when the map appears, and must still see the latest line.
+  const routeLine = useRef<google.maps.Polyline | null>(null);
 
   const setMapCenter = useCallback(async (params: { latitude: number; longitude: number; zoom?: number }) => {
     try {
@@ -124,54 +105,33 @@ const MapController: React.FC<MapControllerProps> = ({
 
   const getDirections = useCallback(async (params: { origin: string; destination: string; travel_mode?: string }) => {
     try {
-      if (!directionsService) {
-        return {
-          success: false,
-          message: 'Directions service not available'
-        };
-      }
-
-      const travelMode = (params.travel_mode as google.maps.TravelMode) || google.maps.TravelMode.DRIVING;
-
-      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
-        directionsService.route(
-          {
-            origin: params.origin,
-            destination: params.destination,
-            travelMode: travelMode,
-          },
-          (result, status) => {
-            if (status === google.maps.DirectionsStatus.OK && result) {
-              resolve(result);
-            } else {
-              reject(new Error(`Directions request failed: ${status}`));
-            }
-          }
-        );
+      // Routes API: Route.computeRoutes replaces the deprecated DirectionsService.
+      const { Route } = (await google.maps.importLibrary('routes')) as google.maps.RoutesLibrary;
+      const { routes } = await Route.computeRoutes({
+        origin: params.origin,
+        destination: params.destination,
+        travelMode: ((params.travel_mode || 'DRIVING').toUpperCase() as google.maps.TravelMode),
+        fields: ['path', 'distanceMeters', 'durationMillis', 'localizedValues', 'legs'],
       });
+      const route = routes?.[0];
+      if (!route?.path) throw new Error('No route found');
 
-      // Clear existing directions
-      if (directionsRenderer) {
-        directionsRenderer.setMap(null);
-      }
+      routeLine.current?.setMap(null);
+      routeLine.current = new google.maps.Polyline({ path: route.path, strokeColor: '#2563eb', strokeWeight: 5, map: map ?? undefined });
+      const bounds = new google.maps.LatLngBounds();
+      route.path.forEach((point) => bounds.extend(point));
+      map?.fitBounds(bounds);
 
-      // Create new directions renderer
-      const newRenderer = new google.maps.DirectionsRenderer();
-      newRenderer.setMap(map);
-      newRenderer.setDirections(result);
-      setDirectionsRenderer(newRenderer);
-
-      const route = result.routes[0];
-      const leg = route.legs[0];
-
+      const distance = route.localizedValues?.distance ?? `${route.distanceMeters} m`;
+      const duration = route.localizedValues?.duration ?? `${Math.round((route.durationMillis ?? 0) / 60000)} min`;
       return {
         success: true,
-        message: `Directions from ${leg.start_address} to ${leg.end_address}: ${leg.distance?.text}, ${leg.duration?.text}`,
+        message: `Directions from ${params.origin} to ${params.destination}: ${distance}, ${duration}`,
         directions: {
-          distance: leg.distance?.text,
-          duration: leg.duration?.text,
-          start_address: leg.start_address,
-          end_address: leg.end_address
+          distance,
+          duration,
+          start_address: params.origin,
+          end_address: params.destination
         }
       };
     } catch (error) {
@@ -181,56 +141,38 @@ const MapController: React.FC<MapControllerProps> = ({
         message: `Failed to get directions: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
-  }, [directionsLibrary, map, directionsRenderer, setDirectionsRenderer]);
+  }, [map]);
 
   const searchPlaces = useCallback(async (params: { query: string; latitude: number; longitude: number; radius?: number }) => {
     try {
-      if (!placesService) {
-        return {
-          success: false,
-          message: 'Places service not available'
-        };
-      }
-      const request = {
-        location: { lat: params.latitude, lng: params.longitude },
-        radius: params.radius || 5000,
-        keyword: params.query
-      };
-
-      const results = await new Promise<google.maps.places.PlaceResult[]>((resolve, reject) => {
-        placesService.nearbySearch(request, (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            resolve(results);
-          } else {
-            reject(new Error(`Places search failed: ${status}`));
-          }
-        });
+      // Places API (New): Place.searchByText replaces the deprecated PlacesService.nearbySearch.
+      const { Place } = (await google.maps.importLibrary('places')) as google.maps.PlacesLibrary;
+      const { places } = await Place.searchByText({
+        textQuery: params.query,
+        fields: ['displayName', 'location', 'formattedAddress', 'rating'],
+        locationBias: { center: { lat: params.latitude, lng: params.longitude }, radius: params.radius || 5000 },
+        maxResultCount: 10,
       });
 
-      // Add markers for found places
-      const placeMarkers: MapMarker[] = results.slice(0, 10).map((place, index) => ({
+      const placeMarkers: MapMarker[] = places.flatMap((place, index) => place.location ? [{
         id: `place-${Date.now()}-${index}`,
-        position: {
-          lat: place.geometry?.location?.lat() || params.latitude,
-          lng: place.geometry?.location?.lng() || params.longitude
-        },
-        title: place.name || 'Unknown Place',
-        description: `${place.vicinity || ''} • Rating: ${place.rating || 'N/A'}`
-      }));
+        position: { lat: place.location.lat(), lng: place.location.lng() },
+        title: place.displayName || 'Unknown Place',
+        description: `${place.formattedAddress || ''} • Rating: ${place.rating ?? 'N/A'}`
+      }] : []);
 
       setMarkers(prev => [...prev, ...placeMarkers]);
 
-      const placesInfo = results.slice(0, 5).map(place => ({
-        name: place.name,
-        address: place.vicinity,
-        rating: place.rating,
-        priceLevel: place.price_level
-      }));
-
       return {
         success: true,
-        message: `Found ${results.length} places for "${params.query}". Added ${placeMarkers.length} markers.`,
-        places: placesInfo
+        message: `Found ${places.length} places for "${params.query}". Added ${placeMarkers.length} markers.`,
+        places: places.slice(0, 5).map(place => ({
+          name: place.displayName,
+          address: place.formattedAddress,
+          rating: place.rating,
+          latitude: place.location?.lat(),
+          longitude: place.location?.lng()
+        }))
       };
     } catch (error) {
       console.error('Error searching places:', error);
@@ -239,16 +181,14 @@ const MapController: React.FC<MapControllerProps> = ({
         message: `Failed to search places: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
-  }, [placesLibrary, map, setMarkers]);
+  }, [setMarkers]);
 
   const clearMap = useCallback(async () => {
     try {
       setMarkers([]);
 
-      if (directionsRenderer) {
-        directionsRenderer.setMap(null);
-        setDirectionsRenderer(null);
-      }
+      routeLine.current?.setMap(null);
+      routeLine.current = null;
 
       return {
         success: true,
@@ -261,7 +201,7 @@ const MapController: React.FC<MapControllerProps> = ({
         message: `Failed to clear map: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
-  }, [setMarkers, directionsRenderer, setDirectionsRenderer]);
+  }, [setMarkers]);
 
   // Expose methods via ref and notify when ready
   useEffect(() => {
@@ -275,6 +215,7 @@ const MapController: React.FC<MapControllerProps> = ({
         clearMap
       };
       console.log('mapRef.current set:', mapRef.current);
+      onReady?.(mapRef.current);
     }
   }, [map]); // Only depend on map availability
 
@@ -292,7 +233,6 @@ const GoogleMapsManager = forwardRef<GoogleMapsManagerRef, GoogleMapsManagerProp
   ({ className = '', defaultCenter = { lat: 37.7749, lng: -122.4194 }, defaultZoom = 13, onReady }, ref) => {
     const [markers, setMarkers] = useState<MapMarker[]>([]);
     const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
-    const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
     const [center, setCenter] = useState<google.maps.LatLngLiteral>(defaultCenter);
     const [zoom, setZoom] = useState<number>(defaultZoom);
     const mapRef = useRef<GoogleMapsManagerRef | null>(null);
@@ -306,14 +246,6 @@ const GoogleMapsManager = forwardRef<GoogleMapsManagerRef, GoogleMapsManagerProp
       }
       return mapRef.current;
     });
-
-    // Call onReady when mapRef is available
-    useEffect(() => {
-      if (mapRef.current && onReady) {
-        console.log('Map manager ready, calling onReady');
-        onReady(mapRef.current);
-      }
-    }, [mapRef.current, onReady]);
 
     if (!apiIsLoaded) {
       return (
@@ -342,12 +274,11 @@ const GoogleMapsManager = forwardRef<GoogleMapsManagerRef, GoogleMapsManagerProp
           mapRef={mapRef}
           markers={markers}
           setMarkers={setMarkers}
-          directionsRenderer={directionsRenderer}
-          setDirectionsRenderer={setDirectionsRenderer}
           center={center}
           setCenter={setCenter}
           zoom={zoom}
           setZoom={setZoom}
+          onReady={onReady}
         />
 
         {/* Render markers */}
