@@ -141,6 +141,7 @@ export function useChat({
       }))
       .filter((l) => Boolean(l.taskId));
     if (links.length > 0) store.getState().hydrateTaskTree(links);
+    store.getState().hydrateToolCalls(initialMessages);
   }, [initialMessages, store]);
 
   // Direct message processing
