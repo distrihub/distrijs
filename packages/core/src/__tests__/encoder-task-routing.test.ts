@@ -90,6 +90,41 @@ describe('encoder routing fields (taskId + parentTaskId)', () => {
     expect((ev as any).parentToolCallId).toBe('call-9');
   });
 
+  it('keeps agent_id, title and the server time of a frame', () => {
+    const ev = convertA2AStatusUpdateToDistri({
+      kind: 'status-update',
+      taskId: 'sub-1',
+      status: { state: 'working', timestamp: '2026-11-05T10:00:06.250Z' },
+      metadata: { type: 'run_started', parent_task_id: 't1', agent_id: 'zippy_lesson', title: 'Newton\'s first law' },
+    });
+    expect(ev).toMatchObject({
+      agentId: 'zippy_lesson',
+      title: 'Newton\'s first law',
+      timestamp: Date.parse('2026-11-05T10:00:06.250Z'),
+    });
+  });
+
+  it('leaves agentId, title and timestamp out when the frame has none', () => {
+    const ev = convertA2AStatusUpdateToDistri({
+      kind: 'status-update', taskId: 't1', metadata: { type: 'run_started' },
+    }) as any;
+    expect('agentId' in ev).toBe(false);
+    expect('title' in ev).toBe(false);
+    expect('timestamp' in ev).toBe(false);
+  });
+
+  it('keeps success and failed_steps on run_finished', () => {
+    const ev = convertA2AStatusUpdateToDistri({
+      kind: 'status-update', taskId: 't1',
+      metadata: { type: 'run_finished', success: false, failed_steps: 2 },
+    }) as any;
+    expect(ev.data).toMatchObject({ success: false, failedSteps: 2 });
+    const ok = convertA2AStatusUpdateToDistri({
+      kind: 'status-update', taskId: 't1', metadata: { type: 'run_finished' },
+    }) as any;
+    expect(ok.data.success).toBeUndefined();
+  });
+
   it('skips an event type it does not know instead of inventing a run_started', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const ev = convertA2AStatusUpdateToDistri({
