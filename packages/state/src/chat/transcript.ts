@@ -347,19 +347,65 @@ export function buildTranscript(
     }
   });
 
+  const resolved = resolveTranscriptEntries(kept, options);
+  // Live streams deliver tool calls as `tool_calls` events; a reloaded thread
+  // delivers them only as `tool_call` parts of stored messages. Calls that no
+  // event covers become steps blocks too, or a reload loses every step.
+  const eventCallIds = new Set<string>();
+  for (const entry of resolved) {
+    if (isDistriEvent(entry.message) && (entry.message as DistriEvent).type === 'tool_calls') {
+      for (const call of (entry.message as Extract<DistriEvent, { type: 'tool_calls' }>).data.tool_calls) {
+        eventCallIds.add(call.tool_call_id);
+      }
+    }
+  }
+
+  const pushSteps = (blocks: TranscriptBlock[], toolCalls: ToolCall[], event: DistriEvent, index: number) => {
+    const previous = blocks[blocks.length - 1];
+    if (groupToolCalls === 'run' && previous?.kind === 'steps') {
+      previous.toolCalls = [...previous.toolCalls, ...toolCalls];
+      previous.events = [...previous.events, event];
+      previous.index = index;
+      return;
+    }
+    blocks.push({
+      kind: 'steps',
+      key: `steps-${toolCalls[0].tool_call_id || index}`,
+      toolCalls,
+      events: [event],
+      startIndex: index,
+      index,
+    });
+  };
+
   const blocks: TranscriptBlock[] = [];
-  for (const entry of resolveTranscriptEntries(kept, options)) {
+  for (const entry of resolved) {
     const index = keptIndex[entry.index];
     const message = entry.message;
 
     if (isDistriMessage(message)) {
       const msg = message as DistriMessage;
       if (msg.role === 'user' || msg.role === 'assistant') {
-        if (!hasDisplayableContent(msg)) continue;
-        const key = msg.id || `message-${index}`;
-        blocks.push(msg.role === 'user'
-          ? { kind: 'user', key, message: msg, index }
-          : { kind: 'assistant', key, message: msg, index, isFinal: isFinalAnswerMessage(msg) });
+        if (hasDisplayableContent(msg)) {
+          const key = msg.id || `message-${index}`;
+          blocks.push(msg.role === 'user'
+            ? { kind: 'user', key, message: msg, index }
+            : { kind: 'assistant', key, message: msg, index, isFinal: isFinalAnswerMessage(msg) });
+        }
+        if (msg.role === 'assistant') {
+          const stored = msg.parts
+            .filter((part): part is Extract<DistriPart, { part_type: 'tool_call' }> => part.part_type === 'tool_call')
+            .map(part => part.data)
+            .filter(call => call.tool_call_id && !eventCallIds.has(call.tool_call_id) && !HIDDEN_TOOL_NAMES.has(call.tool_name));
+          if (stored.length > 0) {
+            pushSteps(blocks, stored, {
+              type: 'tool_calls',
+              taskId: msg.taskId,
+              parentTaskId: msg.parentTaskId,
+              data: { tool_calls: stored },
+            } as DistriEvent, index);
+          }
+        }
       } else if (msg.role === 'developer' && includeDeveloperMessages) {
         blocks.push({ kind: 'event', key: msg.id || `message-${index}`, message: msg, index });
       }
@@ -371,21 +417,7 @@ export function buildTranscript(
     if (event.type === 'tool_calls') {
       const toolCalls = event.data.tool_calls.filter(call => !HIDDEN_TOOL_NAMES.has(call.tool_name));
       if (toolCalls.length === 0) continue;
-      const previous = blocks[blocks.length - 1];
-      if (groupToolCalls === 'run' && previous?.kind === 'steps') {
-        previous.toolCalls = [...previous.toolCalls, ...toolCalls];
-        previous.events = [...previous.events, event];
-        previous.index = index;
-        continue;
-      }
-      blocks.push({
-        kind: 'steps',
-        key: `steps-${toolCalls[0].tool_call_id || index}`,
-        toolCalls,
-        events: [event],
-        startIndex: index,
-        index,
-      });
+      pushSteps(blocks, toolCalls, event, index);
       continue;
     }
 
