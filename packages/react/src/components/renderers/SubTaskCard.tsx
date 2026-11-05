@@ -9,9 +9,11 @@ import {
 } from 'lucide-react';
 import { isDistriEvent, isDistriMessage, DistriChatMessage } from '@distri/core';
 import { useChatStateStore, TaskState } from '@/stores/chatStateStore';
-import { MessageRenderer } from './MessageRenderer';
+import { useTranscript } from '../../hooks/useTranscript';
+import { blockStart, isRenderedEvent, renderTranscriptBlock } from './TranscriptBlocks';
+import { childrenByCall, visibleCallIds } from './childrenByCall';
 import { ContextChip, budgetRatio } from '../ContextChip';
-import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
+import { ToolRendererMap, RenderingMode, SummaryFn, ToolCallGrouping, ChatMessageComponents, HidePartFn } from '@/types';
 
 export interface SubTaskCardProps {
   /** Message source override (display array incl. history); defaults to the store's live messages. */
@@ -21,6 +23,11 @@ export interface SubTaskCardProps {
   toolRenderers?: ToolRendererMap;
   rendering?: RenderingMode;
   toolSummaryOverrides?: Record<string, SummaryFn>;
+  /** Same as the chat's: the card draws its tool calls the way the chat does. */
+  groupToolCalls?: ToolCallGrouping;
+  toolLabels?: Record<string, string>;
+  components?: ChatMessageComponents;
+  hideParts?: HidePartFn;
   threadId?: string;
   onShowTrace?: (threadId: string) => void;
   verbose?: boolean;
@@ -120,6 +127,7 @@ function deriveTitle(messages: DistriChatMessage[], task: TaskState): string {
       if (text) return text.slice(0, 80);
     }
   }
+  if (task.agentId) return task.agentId;
   return `subtask ${task.id.slice(0, 8)}`;
 }
 
@@ -130,6 +138,10 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
   toolRenderers,
   rendering,
   toolSummaryOverrides,
+  groupToolCalls,
+  toolLabels,
+  components,
+  hideParts,
   threadId,
   onShowTrace,
   verbose,
@@ -181,6 +193,23 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     }
     return out;
   }, [messages, task.id]);
+  const stepsMap = useChatStateStore((s) => s.steps);
+  // The card's body is the chat's own transcript for this task, so tool calls
+  // get the same labels, grouping and slots, and each call is drawn once.
+  const blocks = useTranscript(ownMessages, {
+    hidePart: hideParts,
+    groupToolCalls,
+    isVisibleEvent: isRenderedEvent,
+    includeDeveloperMessages: debug,
+  });
+  const nestedByCall = useMemo(
+    () => childrenByCall([task], tasks, visibleCallIds(blocks)),
+    [task, tasks, blocks],
+  );
+  const placedChildIds = useMemo(
+    () => new Set(Array.from(nestedByCall.values()).flat().map((t) => t.id)),
+    [nestedByCall],
+  );
   // Per-child context usage — a tiny capacity dial in the header when the
   // fork has reported a budget. Subtle by design: dial only, no label.
   const childBudget = useChatStateStore((s) => s.contextBudgets.get(task.id));
@@ -233,6 +262,25 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
     return (task.metadata?.preview as string | undefined) ?? '';
   }, [ownMessages, ownToolCalls, task.metadata]);
   const indent = depth * 12;
+  const renderChild = (child: TaskState) => (
+    <SubTaskCard
+      key={child.id}
+      messages={messagesProp}
+      task={child}
+      depth={depth + 1}
+      toolRenderers={toolRenderers}
+      rendering={rendering}
+      toolSummaryOverrides={toolSummaryOverrides}
+      groupToolCalls={groupToolCalls}
+      toolLabels={toolLabels}
+      components={components}
+      hideParts={hideParts}
+      threadId={threadId}
+      onShowTrace={onShowTrace}
+      verbose={verbose}
+      debug={debug}
+    />
+  );
 
   return (
     <div
@@ -287,56 +335,40 @@ export const SubTaskCard: React.FC<SubTaskCardProps> = ({
 
       {expanded && (
         <div className="border-t border-border bg-background/40 px-2 py-2 space-y-1">
-          {ownToolCalls.map((tc) => (
-            <div key={tc.tool_call_id} className="flex items-center gap-2 px-1 py-0.5 text-[11px]">
-              <StatusIcon status={tc.status === 'completed' ? 'completed' : tc.status === 'error' ? 'failed' : 'running'} />
-              <span className="font-medium text-foreground flex-shrink-0">{tc.tool_name}</span>
-              <span className="text-muted-foreground truncate flex-1">
-                {typeof ((tc.input as { input?: unknown })?.input ?? '') === 'string' && ((tc.input as { input?: string }).input ?? '').trim()
-                  ? ((tc.input as { input?: string }).input as string).slice(0, 100)
-                  : JSON.stringify(tc.input ?? {}).slice(0, 100)}
-              </span>
-              {tc.startTime && tc.endTime && (
-                <span className="text-[10px] text-muted-foreground flex-shrink-0">{((tc.endTime - tc.startTime) / 1000).toFixed(1)}s</span>
-              )}
-            </div>
-          ))}
-          {ownMessages.map((message, index) => (
-            <MessageRenderer
-              key={`${task.id}-${index}`}
-              inSubTaskCard
-              message={message}
-              index={index}
-              toolRenderers={toolRenderers}
-              rendering={rendering}
-              toolSummaryOverrides={toolSummaryOverrides}
-              threadId={threadId}
-              onShowTrace={onShowTrace}
-              verbose={verbose}
-              debug={debug}
-            />
-          ))}
-          {childTasks.map((child) => (
-            <SubTaskCard
-              key={child.id}
-              messages={messagesProp}
-              task={child}
-              depth={depth + 1}
-              toolRenderers={toolRenderers}
-              rendering={rendering}
-              toolSummaryOverrides={toolSummaryOverrides}
-              threadId={threadId}
-              onShowTrace={onShowTrace}
-              verbose={verbose}
-              debug={debug}
-            />
-          ))}
+          {blocks.map((block) => {
+            const nodes: React.ReactNode[] = [
+              renderTranscriptBlock(block, {
+                toolCalls: toolCallsMap,
+                stepStatus: (id) => stepsMap.get(id)?.status,
+                toolRenderers,
+                rendering,
+                verbose,
+                debug,
+                threadId,
+                onShowTrace,
+                toolSummaryOverrides,
+                groupToolCalls,
+                toolLabels,
+                components,
+                inSubTaskCard: true,
+              }),
+            ];
+            if (block.kind === 'steps') {
+              for (const call of block.toolCalls) {
+                for (const nested of nestedByCall.get(call.tool_call_id) ?? []) {
+                  nodes.push(renderChild(nested));
+                }
+              }
+            }
+            return <React.Fragment key={`${task.id}-${blockStart(block)}-${block.key}`}>{nodes}</React.Fragment>;
+          })}
+          {childTasks.filter((child) => !placedChildIds.has(child.id)).map(renderChild)}
           {/* Summary-only cards: a background fork tracked purely by
               `GET /tasks` polling (or the summaries-only showcase) has a
               `preview` but no streamed messages/tool calls. Without this the
               expanded body was a blank box. Show its latest preview/gist so
               expanding always reveals *something*. */}
-          {ownToolCalls.length === 0 && ownMessages.length === 0 && childTasks.length === 0 && !task.error && (
+          {blocks.length === 0 && childTasks.length === 0 && !task.error && (
             <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
               {gist || (task.status === 'running' ? 'Working…' : 'No detail reported.')}
             </div>
