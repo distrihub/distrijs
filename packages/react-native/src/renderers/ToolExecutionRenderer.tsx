@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   createFailedToolResult,
@@ -12,7 +12,7 @@ import type { ChatStore, ToolCallState } from '@distri/state';
 import { useStore } from 'zustand';
 import type { NativeToolRendererMap, NativeUiTool, RenderingMode } from '../types';
 import { DistriNativeTheme, useDistriTheme } from '../theme';
-import { SubTaskCard, tasksOfCall } from './SubTaskCard';
+import { SubTaskCard, SubTaskContext, tasksOfCall } from './SubTaskCard';
 
 interface ToolExecutionRendererProps {
   toolCalls: ToolCall[];
@@ -21,6 +21,8 @@ interface ToolExecutionRendererProps {
   store: ChatStore;
   renderers?: NativeToolRendererMap;
   rendering: RenderingMode;
+  /** Draw the sub-agents the calls started under each call. Default true; a folded run draws them itself, outside the fold. */
+  nested?: boolean;
 }
 
 function displayValue(value: unknown): string {
@@ -37,6 +39,7 @@ function ToolCard({ call, state, tool, store, rendering }: {
 }) {
   const theme = useDistriTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const label = useContext(SubTaskContext)?.toolLabels?.[call.tool_name];
   const [busy, setBusy] = useState(false);
   const status = state?.status ?? 'pending';
   const handler = tool?.type === 'function' ? (tool as DistriBaseTool & { handler?: ToolHandler }).handler : undefined;
@@ -69,7 +72,7 @@ function ToolCard({ call, state, tool, store, rendering }: {
   return (
     <View style={[styles.card, theme.styles.toolCard]} accessibilityLabel={`Tool ${call.tool_name} ${status}`}>
       <View style={styles.header}>
-        <Text style={styles.title}>{call.tool_name}</Text>
+        <Text style={styles.title}>{label ?? call.tool_name}</Text>
         <Text style={styles.status}>{status.replace(/_/g, ' ')}</Text>
       </View>
       {rendering === 'rich' && <Text style={styles.detail}>{displayValue(call.input)}</Text>}
@@ -89,7 +92,19 @@ function ToolCard({ call, state, tool, store, rendering }: {
   );
 }
 
-export function ToolExecutionRenderer({ toolCalls, states, tools, store, renderers, rendering }: ToolExecutionRendererProps) {
+/** The sub-agents the calls started, as cards. A custom renderer owns its call's whole row, sub-agent included. */
+export function NestedTasks({ toolCalls, store, renderers, rendering }: Pick<ToolExecutionRendererProps, 'toolCalls' | 'store' | 'renderers' | 'rendering'>) {
+  const tasks = useStore(store, s => s.tasks);
+  return (
+    <>
+      {toolCalls.filter(call => !renderers?.[call.tool_name]).flatMap(call => tasksOfCall(tasks, call.tool_call_id)).map(task => (
+        <SubTaskCard key={task.id} task={task} store={store} rendering={rendering} toolRenderers={renderers} />
+      ))}
+    </>
+  );
+}
+
+export function ToolExecutionRenderer({ toolCalls, states, tools, store, renderers, rendering, nested = true }: ToolExecutionRendererProps) {
   const theme = useDistriTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const tasks = useStore(store, s => s.tasks);
@@ -117,7 +132,7 @@ export function ToolExecutionRenderer({ toolCalls, states, tools, store, rendere
       {toolCalls.map(call => (
         <View key={call.tool_call_id}>
           {draw(call)}
-          {renderers?.[call.tool_name] ? null : nestedUnder(call)}
+          {nested && !renderers?.[call.tool_name] ? nestedUnder(call) : null}
         </View>
       ))}
     </View>

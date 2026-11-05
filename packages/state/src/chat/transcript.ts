@@ -314,6 +314,12 @@ export interface BuildTranscriptOptions extends ResolveTranscriptOptions {
   excludeMessage?: (message: DistriChatMessage) => boolean;
   /** Emit `developer`-role messages as `event` blocks. Default false. */
   includeDeveloperMessages?: boolean;
+  /**
+   * Whether a user/assistant message has anything to draw. Default: non-blank
+   * text, an image or a file. A renderer that also draws data, artifact or
+   * link parts (native does) widens it.
+   */
+  isDisplayable?: (message: DistriMessage) => boolean;
 }
 
 const defaultIsVisibleEvent = (event: DistriEvent) => !TRANSCRIPT_HIDDEN_EVENTS.has(event.type);
@@ -335,7 +341,7 @@ export function buildTranscript(
   messages: DistriChatMessage[],
   options: BuildTranscriptOptions = {},
 ): TranscriptBlock[] {
-  const { groupToolCalls = 'none', isVisibleEvent = defaultIsVisibleEvent, excludeMessage, includeDeveloperMessages = false } = options;
+  const { groupToolCalls = 'none', isVisibleEvent = defaultIsVisibleEvent, excludeMessage, includeDeveloperMessages = false, isDisplayable = hasDisplayableContent } = options;
   const source = excludeMessage ? messages.map(m => (excludeMessage(m) ? null : m)) : messages;
   // Keep source indices aligned with the caller's array while skipping excluded messages.
   const kept: DistriChatMessage[] = [];
@@ -386,7 +392,7 @@ export function buildTranscript(
     if (isDistriMessage(message)) {
       const msg = message as DistriMessage;
       if (msg.role === 'user' || msg.role === 'assistant') {
-        if (hasDisplayableContent(msg)) {
+        if (isDisplayable(msg)) {
           const key = msg.id || `message-${index}`;
           blocks.push(msg.role === 'user'
             ? { kind: 'user', key, message: msg, index }
