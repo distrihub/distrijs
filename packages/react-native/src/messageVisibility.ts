@@ -56,3 +56,10 @@ export function isAwaitingReply(messages: DistriChatMessage[], isRunning: boolea
   }
   return true;
 }
+
+/**
+ * Native draws data, artifact and link parts too, so a message with only
+ * those still has a row. Tool calls are the steps block's, not the message's.
+ */
+export const hasNativeContent = (message: DistriMessage): boolean =>
+  message.parts.some(part => part.part_type !== 'tool_call' && isVisiblePart(part));

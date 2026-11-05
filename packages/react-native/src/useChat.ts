@@ -98,6 +98,7 @@ export function useChat({
       }))
       .filter(link => Boolean(link.taskId)) as { taskId: string; parentTaskId?: string }[];
     if (links.length) store.getState().hydrateTaskTree(links);
+    store.getState().hydrateToolCalls(initialMessages);
   }, [initialMessages, store]);
 
   useEffect(() => () => {
