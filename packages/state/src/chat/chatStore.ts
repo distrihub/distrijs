@@ -46,6 +46,8 @@ export interface TaskState {
    * says so (`event.parentToolCallId`). UIs nest the task under that call.
    */
   parentToolCallId?: string;
+  /** The agent running this task, from the first frame that names it. */
+  agentId?: string;
   /**
    * Direct children in the dispatch tree, keyed by taskId. Maintained
    * idempotently: each new child task pushes itself in the first time it
@@ -622,7 +624,7 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
 
   // State actions
   processMessage: (message: DistriChatMessage, isFromStream: boolean = false) => {
-    const timestamp = Date.now(); // Default fallback
+    const arrivedAt = Date.now(); // Fallback for frames without a server time
     const isDebugEnabled = get().debug;
 
     if (isDebugEnabled) {
@@ -633,6 +635,9 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
 
     if (isDistriEvent(message)) {
       const event = message as DistriEvent;
+      // The server's time for the frame, else arrival. A burst of frames that
+      // arrive together would otherwise make a 6 s helper read 0.1 s.
+      const timestamp = event.timestamp ?? arrivedAt;
       if (isDebugEnabled && message.type !== 'text_message_content') {
         console.log('🏪 EVENT:', message);
       }
@@ -645,6 +650,8 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
       const eventTaskId = event.taskId;
       const eventParentTaskId = event.parentTaskId;
       const eventParentToolCallId = event.parentToolCallId;
+      const eventAgentId = event.agentId;
+      const eventTitle = event.title;
       if (eventTaskId) {
         const existingTask = get().tasks.get(eventTaskId);
         if (!existingTask) {
@@ -652,19 +659,24 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
             id: eventTaskId,
             parentTaskId: eventParentTaskId,
             parentToolCallId: eventParentToolCallId,
+            agentId: eventAgentId,
             childTaskIds: [],
-            title: 'Agent Run',
+            title: eventTitle ?? 'Agent Run',
             status: 'running',
             startTime: timestamp,
           });
         } else if (
           (eventParentTaskId && !existingTask.parentTaskId) ||
-          (eventParentToolCallId && !existingTask.parentToolCallId)
+          (eventParentToolCallId && !existingTask.parentToolCallId) ||
+          (eventAgentId && !existingTask.agentId) ||
+          (eventTitle && existingTask.title === 'Agent Run')
         ) {
-          // Backfill linkage if first event seen lacked parent info.
+          // Backfill linkage and naming if the first event seen lacked them.
           get().updateTask(eventTaskId, {
             parentTaskId: existingTask.parentTaskId ?? eventParentTaskId,
             parentToolCallId: existingTask.parentToolCallId ?? eventParentToolCallId,
+            agentId: existingTask.agentId ?? eventAgentId,
+            title: existingTask.title === 'Agent Run' && eventTitle ? eventTitle : existingTask.title,
           });
         }
         if (eventParentTaskId) {
@@ -692,7 +704,7 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
               id: taskId,
               runId: runId,
               parentTaskId: eventParentTaskId ?? get().tasks.get(taskId)?.parentTaskId,
-              title: 'Agent Run',
+              title: eventTitle ?? get().tasks.get(taskId)?.title ?? 'Agent Run',
               status: 'running',
               startTime: timestamp,
               metadata: event.data,
@@ -724,7 +736,7 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           // Update the specific task that finished
           if (finishedTaskId) {
             get().updateTask(finishedTaskId, {
-              status: 'completed',
+              status: runFinishedEvent.data.success === false ? 'failed' : 'completed',
               endTime: timestamp,
             });
           }

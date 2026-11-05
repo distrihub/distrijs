@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useChatStateStore, TaskState } from '@/stores/chatStateStore';
 import { SubTaskCard } from './SubTaskCard';
-import { ToolRendererMap, RenderingMode, SummaryFn } from '@/types';
+import { ToolRendererMap, RenderingMode, SummaryFn, ToolCallGrouping, ChatMessageComponents, HidePartFn } from '@/types';
 
 export interface SubTaskTreeProps {
   /** Message source override — pass the DISPLAYED array (history + live) so
@@ -10,6 +10,12 @@ export interface SubTaskTreeProps {
   /** Roots already rendered inline (anchored after their turn) — the trailing
    *  catch-all tree skips them so cards never appear twice. */
   excludeRootIds?: Set<string>;
+  /** Children already drawn under the call that started them. */
+  excludeTaskIds?: Set<string>;
+  groupToolCalls?: ToolCallGrouping;
+  toolLabels?: Record<string, string>;
+  components?: ChatMessageComponents;
+  hideParts?: HidePartFn;
   /**
    * Optional explicit root. When omitted, picks every task in the store
    * that has no parent — typically just one per turn.
@@ -40,6 +46,7 @@ export const SubTaskTree: React.FC<SubTaskTreeProps> = ({
   rootTaskId,
   hideRoot = true,
   excludeRootIds,
+  excludeTaskIds,
   ...rest
 }) => {
   const tasks = useChatStateStore((s) => s.tasks);
@@ -60,7 +67,7 @@ export const SubTaskTree: React.FC<SubTaskTreeProps> = ({
       if (!hideRoot) out.push({ task: root, depth: 0 });
       for (const childId of root.childTaskIds) {
         const child = tasks.get(childId);
-        if (child) out.push({ task: child, depth: hideRoot ? 0 : 1 });
+        if (child && !excludeTaskIds?.has(childId)) out.push({ task: child, depth: hideRoot ? 0 : 1 });
       }
     }
     return out;
