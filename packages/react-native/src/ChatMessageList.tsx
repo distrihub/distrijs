@@ -2,11 +2,12 @@ import { ComponentType, ReactElement, ReactNode, useMemo, useRef } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useStore } from 'zustand';
 import { DistriChatMessage } from '@distri/core';
-import type { ChatStore, HidePartFn, TaskState, ToolCallState } from '@distri/state';
+import { buildTranscript } from '@distri/state';
+import type { ChatStore, HidePartFn, SummaryFn, TaskState, ToolCallState, TranscriptBlock } from '@distri/state';
 import type { NativeToolRendererMap, RenderingMode } from './types';
-import { MessageRenderer } from './renderers/MessageRenderer';
+import { TranscriptBlockView } from './renderers/TranscriptBlock';
 import { nestedTaskIds, SubTaskContext } from './renderers/SubTaskCard';
-import { resolveVisibleMessages } from './messageVisibility';
+import { hasNativeContent } from './messageVisibility';
 import { useDistriTheme } from './theme';
 
 const NO_EXTERNAL_TOOLS: NonNullable<ReturnType<ChatStore['getState']>['externalTools']> = [];
@@ -32,6 +33,12 @@ export interface ChatMessageListProps {
    * `developer: true` in `message.metadata.parts`.
    */
   hideParts?: HidePartFn;
+  /** `'none'` (default): a card per tool call. `'run'`: fold consecutive tool calls into one "N steps" row. */
+  groupToolCalls?: 'none' | 'run';
+  /** Teacher-facing label per tool name, used in the card title and the folded row. */
+  toolLabels?: Record<string, string>;
+  /** Per-tool summary overrides for step labels. */
+  toolSummaryOverrides?: Record<string, SummaryFn>;
 }
 
 export function ChatMessageList({
@@ -45,6 +52,9 @@ export function ChatMessageList({
   ListFooterComponent,
   autoScroll = true,
   hideParts,
+  groupToolCalls = 'none',
+  toolLabels,
+  toolSummaryOverrides,
 }: ChatMessageListProps) {
   const theme = useDistriTheme();
   const toolCalls = useStore(store, state => state.toolCalls) as Map<string, ToolCallState>;
@@ -53,11 +63,21 @@ export function ChatMessageList({
   // A sub-agent started by a tool call in this list is drawn under that call
   // (SubTaskCard); its own messages stay out of the flat list.
   const nested = useMemo(() => nestedTaskIds(messages, tasks), [messages, tasks]);
-  const visible = useMemo(
-    () => resolveVisibleMessages(messages, hideParts).filter(m => !nested.has((m as { taskId?: string }).taskId ?? '')),
-    [messages, hideParts, nested],
+  // Blocks, not raw messages: stored tool calls (a reloaded thread) become steps
+  // and runs fold, the same model @distri/react draws.
+  const blocks = useMemo(
+    () => buildTranscript(messages, {
+      hidePart: hideParts,
+      groupToolCalls,
+      isDisplayable: hasNativeContent,
+      excludeMessage: m => nested.has((m as { taskId?: string }).taskId ?? ''),
+    }),
+    [messages, hideParts, groupToolCalls, nested],
   );
-  const scope = useMemo(() => ({ messages, tasks }), [messages, tasks]);
+  const scope = useMemo(
+    () => ({ messages, tasks, groupToolCalls, toolLabels, toolSummaryOverrides, hideParts }),
+    [messages, tasks, groupToolCalls, toolLabels, toolSummaryOverrides, hideParts],
+  );
   const listRef = useRef<{ scrollToEnd?: (options?: { animated?: boolean }) => void } | null>(null);
   // Jump to the newest message when a thread first renders; animate after that.
   const scrolledOnce = useRef(false);
@@ -66,11 +86,12 @@ export function ChatMessageList({
     scrolledOnce.current = true;
   };
 
-  const renderItem = ({ item }: { item: DistriChatMessage; index: number }) => (
+  const ctx = { store, toolCalls, externalTools, rendering, toolRenderers, groupToolCalls, toolLabels, toolSummaryOverrides };
+  const renderItem = ({ item }: { item: TranscriptBlock; index: number }) => (
     <View style={styles.item}>
-      {renderMessage
-        ? renderMessage(item)
-        : <MessageRenderer message={item} store={store} toolCalls={toolCalls} externalTools={externalTools} rendering={rendering} toolRenderers={toolRenderers} />}
+      {renderMessage && item.kind !== 'steps'
+        ? renderMessage(item.message)
+        : <TranscriptBlockView block={item} ctx={ctx} />}
     </View>
   );
   return (
@@ -78,8 +99,8 @@ export function ChatMessageList({
       <ListComponent
         ref={listRef}
         accessibilityLabel="Chat messages"
-        data={visible}
-        keyExtractor={(item: DistriChatMessage, index: number) => (item as { id?: string }).id || `${(item as { type?: string }).type || 'message'}-${index}`}
+        data={blocks}
+        keyExtractor={(item: TranscriptBlock) => item.key}
         renderItem={renderItem}
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={ListFooterComponent}

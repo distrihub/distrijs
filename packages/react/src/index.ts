@@ -37,6 +37,7 @@ export * from './types';
 // Hook exports
 export * from './hooks/useChatMessages';
 export * from './hooks/useTranscript';
+export * from './hooks/useAgentList';
 export * from './hooks/useTts';
 export * from './hooks/useSpeechToText';
 export * from './hooks/useConfiguration';
