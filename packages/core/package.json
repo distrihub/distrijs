@@ -1,6 +1,6 @@
 {
   "name": "@distri/core",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "description": "Core API client for Distri Framework",
   "exports": {
     ".": {
