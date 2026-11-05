@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Agent, DistriChatMessage } from '@distri/core';
 import { useStore } from 'zustand';
-import type { ChatStore } from '@distri/state';
+import type { ChatStore, SummaryFn } from '@distri/state';
 import { childTaskIdSet } from '@distri/state';
 import { ChatMessageList } from './ChatMessageList';
 import { useTaskStreaming } from './useTaskStreaming';
@@ -22,6 +22,11 @@ export interface TaskViewProps {
   emptyState?: ReactNode;
   onError?: (error: Error) => void;
   store?: ChatStore;
+  /** `'run'` folds consecutive tool calls into one "N steps · …" row. Default `'none'`. */
+  groupToolCalls?: 'none' | 'run';
+  /** Teacher-facing label per tool name (card title and folded row). */
+  toolLabels?: Record<string, string>;
+  toolSummaryOverrides?: Record<string, SummaryFn>;
 }
 
 /** Follow an existing task in native UI without a message composer. */
@@ -36,6 +41,9 @@ export function TaskView({
   emptyState,
   onError,
   store: providedStore,
+  groupToolCalls,
+  toolLabels,
+  toolSummaryOverrides,
 }: TaskViewProps) {
   const task = useTaskStreaming({ agent, taskId, initialMessages, enabled, onError, store: providedStore });
   const tasks = useStore(task.store, state => state.tasks);
@@ -52,7 +60,7 @@ export function TaskView({
       {task.error && <Text accessibilityRole="alert" style={styles.error}>{task.error.message}</Text>}
       {task.isStreaming && <ActivityIndicator accessibilityLabel="Task is streaming" style={styles.spinner} />}
       {!hasContent && (emptyState ?? <Text style={styles.empty}>No task activity yet.</Text>)}
-      <ChatMessageList messages={task.messages.filter(message => !childIds.has((message as { taskId?: string }).taskId ?? ''))} store={task.store} rendering={rendering} toolRenderers={toolRenderers} />
+      <ChatMessageList messages={task.messages.filter(message => !childIds.has((message as { taskId?: string }).taskId ?? ''))} store={task.store} rendering={rendering} toolRenderers={toolRenderers} groupToolCalls={groupToolCalls} toolLabels={toolLabels} toolSummaryOverrides={toolSummaryOverrides} />
       <SubTaskTree tasks={tasks} rootTaskId={taskId} messages={task.messages} store={task.store} rendering={rendering} toolRenderers={toolRenderers} />
       {showContextRow && <ContextRow todos={todos} isStreaming={task.isStreaming} streamingIndicator={streamingIndicator} currentThought={currentThought} contextBudget={contextBudget} />}
     </View>

@@ -7,7 +7,7 @@ import { ChatMessageList } from './ChatMessageList';
 import { LoadingStrip } from './renderers/LoadingStrip';
 import { isAwaitingReply, resolveVisibleMessages } from './messageVisibility';
 import { DistriNativeTheme, useDistriTheme } from './theme';
-import type { HidePartFn } from '@distri/state';
+import type { HidePartFn, SummaryFn } from '@distri/state';
 import type { NativeToolRendererMap, RenderingMode } from './types';
 
 export interface ChatHeaderHelpers {
@@ -35,6 +35,11 @@ export interface ChatProps extends UseChatOptions {
   errorMessage?: (error: Error) => string;
   /** Hide individual message parts; defaults to parts flagged `developer: true`. */
   hideParts?: HidePartFn;
+  /** `'run'` folds consecutive tool calls into one "N steps · …" row. Default `'none'`. */
+  groupToolCalls?: 'none' | 'run';
+  /** Teacher-facing label per tool name (card title and folded row). */
+  toolLabels?: Record<string, string>;
+  toolSummaryOverrides?: Record<string, SummaryFn>;
 }
 
 export function Chat({
@@ -50,6 +55,9 @@ export function Chat({
   sendLabel,
   errorMessage,
   hideParts,
+  groupToolCalls,
+  toolLabels,
+  toolSummaryOverrides,
   ...chatOptions
 }: ChatProps) {
   const theme = useDistriTheme();
@@ -69,6 +77,9 @@ export function Chat({
         renderMessage={renderMessage}
         toolRenderers={toolRenderers}
         hideParts={hideParts}
+        groupToolCalls={groupToolCalls}
+        toolLabels={toolLabels}
+        toolSummaryOverrides={toolSummaryOverrides}
         ListComponent={ListComponent}
         ListHeaderComponent={renderHeader ? <View>{renderHeader({ sendMessage: send, isEmpty })}</View> : null}
         ListFooterComponent={

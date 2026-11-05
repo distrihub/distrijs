@@ -2,9 +2,11 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useStore } from 'zustand';
 import type { DistriChatMessage } from '@distri/core';
-import type { ChatStore, TaskState, ToolCallState } from '@distri/state';
+import { buildTranscript } from '@distri/state';
+import type { ChatStore, HidePartFn, SummaryFn, TaskState, ToolCallState } from '@distri/state';
 import type { NativeToolRendererMap, RenderingMode } from '../types';
-import { MessageRenderer } from './MessageRenderer';
+import { TranscriptBlockView } from './TranscriptBlock';
+import { hasNativeContent } from '../messageVisibility';
 import { DistriNativeTheme, useDistriTheme } from '../theme';
 
 /**
@@ -15,6 +17,11 @@ import { DistriNativeTheme, useDistriTheme } from '../theme';
 export interface SubTaskScope {
   messages: DistriChatMessage[];
   tasks: Map<string, TaskState>;
+  /** The list's transcript settings, so a helper draws its calls the way the lead does. */
+  groupToolCalls?: 'none' | 'run';
+  toolLabels?: Record<string, string>;
+  toolSummaryOverrides?: Record<string, SummaryFn>;
+  hideParts?: HidePartFn;
 }
 
 export const SubTaskContext = createContext<SubTaskScope | null>(null);
@@ -64,7 +71,15 @@ export function SubTaskCard({ task, store, rendering = 'minimal', toolRenderers 
   const [open, setOpen] = useState<boolean | null>(null);
   const running = task.status === 'running' || task.status === 'pending';
   const expanded = open ?? running;
-  const messages = (scope?.messages ?? store.getState().messages).filter(m => taskOf(m) === task.id);
+  const messages = useMemo(
+    () => (scope?.messages ?? store.getState().messages).filter(m => taskOf(m) === task.id),
+    [scope?.messages, store, task.id],
+  );
+  const blocks = useMemo(
+    () => buildTranscript(messages, { hidePart: scope?.hideParts, groupToolCalls: scope?.groupToolCalls, isDisplayable: hasNativeContent }),
+    [messages, scope?.hideParts, scope?.groupToolCalls],
+  );
+  const steps = blocks.reduce((n, b) => n + (b.kind === 'steps' ? b.toolCalls.length : 0), 0);
   const call = task.parentToolCallId ? toolCalls.get(task.parentToolCallId) : undefined;
   const about = call?.input?.description ?? call?.input?.title;
   const title = task.title && task.title !== 'Agent Run'
@@ -75,18 +90,23 @@ export function SubTaskCard({ task, store, rendering = 'minimal', toolRenderers 
     <View style={styles.card} accessibilityLabel={`Sub-agent ${task.id} ${task.status}`}>
       <Pressable accessibilityRole="button" onPress={() => setOpen(!expanded)} style={styles.heading}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.status}>{task.status}{messages.length ? ` · ${messages.length} steps` : ''} {expanded ? '▾' : '▸'}</Text>
+        <Text style={styles.status}>{task.status}{steps ? ` · ${steps} ${steps === 1 ? 'step' : 'steps'}` : messages.length ? ` · ${messages.length} steps` : ''} {expanded ? '▾' : '▸'}</Text>
       </Pressable>
       {task.error && <Text accessibilityRole="alert" style={styles.error}>{task.error}</Text>}
-      {expanded && messages.map((m, i) => (
-        <MessageRenderer
-          key={(m as { id?: string }).id ?? `${task.id}-${i}`}
-          message={m}
-          store={store}
-          toolCalls={toolCalls}
-          externalTools={externalTools}
-          rendering={rendering}
-          toolRenderers={toolRenderers}
+      {expanded && blocks.map(block => (
+        <TranscriptBlockView
+          key={block.key}
+          block={block}
+          ctx={{
+            store,
+            toolCalls,
+            externalTools,
+            rendering,
+            toolRenderers,
+            groupToolCalls: scope?.groupToolCalls,
+            toolLabels: scope?.toolLabels,
+            toolSummaryOverrides: scope?.toolSummaryOverrides,
+          }}
         />
       ))}
     </View>
