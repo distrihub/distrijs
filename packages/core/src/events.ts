@@ -17,6 +17,9 @@ export interface RunFinishedEvent {
   data: {
     runId?: string;
     taskId?: string;
+    /** `false` when the run ended with failed steps. Absent on older servers. */
+    success?: boolean;
+    failedSteps?: number;
   }
 }
 
@@ -293,6 +296,12 @@ export interface DistriEventEnvelope {
   taskId?: string;
   parentTaskId?: string;
   parentToolCallId?: string;
+  /** The agent that produced the event (`metadata.agent_id`). */
+  agentId?: string;
+  /** A name for the task, when the caller gave one (`metadata.title`). */
+  title?: string;
+  /** When the server emitted the frame, in epoch ms (`status.timestamp`). */
+  timestamp?: number;
 }
 
 // Each concrete event interface gets the envelope merged in via

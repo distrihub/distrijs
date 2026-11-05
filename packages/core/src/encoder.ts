@@ -89,11 +89,17 @@ function stampEnvelope<T extends DistriEvent>(event: T, statusUpdate: any): T {
   const metadata = statusUpdate?.metadata;
   const parentTaskId = metadata?.parent_task_id;
   const parentToolCallId = metadata?.parent_tool_call_id;
+  const agentId = metadata?.agent_id;
+  const title = metadata?.title;
+  const stamped = Date.parse(statusUpdate?.status?.timestamp ?? '');
   return {
     ...event,
     taskId: statusUpdate?.taskId,
     parentTaskId: parentTaskId || undefined,
     ...(parentToolCallId ? { parentToolCallId } : {}),
+    ...(typeof agentId === 'string' && agentId ? { agentId } : {}),
+    ...(typeof title === 'string' && title ? { title } : {}),
+    ...(Number.isFinite(stamped) ? { timestamp: stamped } : {}),
   };
 }
 
@@ -130,7 +136,12 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
     case 'run_finished': {
       return out({
         type: 'run_finished',
-        data: { runId: statusUpdate.runId, taskId: statusUpdate.taskId },
+        data: {
+          runId: statusUpdate.runId,
+          taskId: statusUpdate.taskId,
+          ...(typeof metadata.success === 'boolean' ? { success: metadata.success } : {}),
+          ...(typeof metadata.failed_steps === 'number' ? { failedSteps: metadata.failed_steps } : {}),
+        },
       } as RunFinishedEvent);
     }
 
