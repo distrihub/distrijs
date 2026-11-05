@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo } from 'react';
-import { DistriChatMessage, DistriEvent, DistriMessage } from '@distri/core';
-import type { TranscriptBlock } from '@distri/state';
-import { MessageRenderer, MessageRow } from './renderers/MessageRenderer';
+import { DistriChatMessage } from '@distri/core';
 import { RendererContext } from './renderers/RendererContext';
 import { SubTaskTree } from './renderers/SubTaskTree';
-import { ToolStepsRenderer } from './renderers/ToolStepsRenderer';
+import { SubTaskCard } from './renderers/SubTaskCard';
+import { blockStart, isRenderedEvent, renderTranscriptBlock } from './renderers/TranscriptBlocks';
+import { childrenByCall, visibleCallIds } from './renderers/childrenByCall';
 import { childTaskIdSet, isChildTaskMessage } from './renderers/taskGrouping';
 import { useTranscript } from '../hooks/useTranscript';
 import { useChatStateStore, useChatStoreApi } from '../stores/chatStateStore';
@@ -27,23 +27,6 @@ export interface ChatMessageListProps extends TranscriptRenderingProps {
   onShowTrace?: (threadId: string) => void;
   /** Render forked sub-agent cards. Default true. */
   showSubTasks?: boolean;
-}
-
-/** Events the web transcript renders as their own row; everything else is bookkeeping. */
-const RENDERED_EVENT_TYPES = new Set(['agent_handover', 'run_error', 'live_view']);
-const isRenderedEvent = (event: DistriEvent) => RENDERED_EVENT_TYPES.has(event.type);
-
-function textOf(message: DistriMessage): string {
-  return message.parts
-    .filter(part => part.part_type === 'text')
-    .map(part => (part as { data: string }).data)
-    .join('')
-    .trim();
-}
-
-/** First source index a block covers (steps blocks span several events). */
-function blockStart(block: TranscriptBlock): number {
-  return block.kind === 'steps' ? block.startIndex : block.index;
 }
 
 /**
@@ -141,6 +124,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
         <SubTaskTree
           key={`tree-${rootId}`}
           rootTaskId={rootId}
+          excludeTaskIds={placedChildIds}
           messages={messages}
           toolRenderers={toolRenderers}
           rendering={rendering}
@@ -155,75 +139,61 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     }
   };
 
-  const renderBlock = (block: TranscriptBlock): React.ReactNode => {
-    switch (block.kind) {
-      case 'steps':
-        return (
-          <MessageRow key={block.key} className="distri-tool-execution-start">
-            <ToolStepsRenderer
-              block={block}
-              toolCallStates={toolCalls}
-              toolRenderers={toolRenderers}
-              rendering={rendering}
-              debug={debug}
-              verbose={verbose}
-              grouped={groupToolCalls === 'run'}
-              toolLabels={toolLabels}
-              ToolSteps={components?.ToolSteps}
-            />
-          </MessageRow>
-        );
-      case 'user': {
-        const UserMessage = components?.UserMessage;
-        if (UserMessage) {
-          return (
-            <MessageRow key={block.key} className="distri-user-message" isUserMessage>
-              <UserMessage message={block.message} />
-            </MessageRow>
-          );
-        }
-        break;
-      }
-      case 'assistant': {
-        const AssistantText = components?.AssistantText;
-        if (AssistantText) {
-          const stepId = block.message.step_id;
-          return (
-            <MessageRow key={block.key} className="distri-assistant-message">
-              <AssistantText
-                message={block.message}
-                text={textOf(block.message)}
-                isFinal={block.isFinal}
-                isStreaming={stepId ? steps.get(stepId)?.status === 'running' : false}
-              />
-            </MessageRow>
-          );
-        }
-        break;
-      }
-      default:
-        break;
-    }
-    return (
-      <MessageRenderer
-        key={block.key}
-        message={block.message}
-        index={block.index}
-        toolRenderers={toolRenderers}
-        debug={debug}
-        verbose={verbose}
-        rendering={rendering}
-        toolSummaryOverrides={toolSummaryOverrides}
-        threadId={threadId}
-        enableFeedback={enableFeedback}
-        onShowTrace={onShowTrace}
-      />
-    );
+  const roots = Array.from(tasksSnapshot.values()).filter((t) => !t.parentTaskId);
+  const byCall = showSubTasks
+    ? childrenByCall(roots, tasksSnapshot, visibleCallIds(blocks))
+    : new Map<string, import('@/stores/chatStateStore').TaskState[]>();
+  const placedChildIds = new Set(Array.from(byCall.values()).flat().map((t) => t.id));
+
+  const viewProps = {
+    toolCalls,
+    stepStatus: (stepId: string) => steps.get(stepId)?.status,
+    toolRenderers,
+    rendering,
+    verbose,
+    debug,
+    threadId,
+    enableFeedback,
+    onShowTrace,
+    toolSummaryOverrides,
+    groupToolCalls,
+    toolLabels,
+    components,
+    hideParts,
   };
 
   for (const block of blocks) {
     flushTrees(blockStart(block) - 1);
-    elements.push(renderBlock(block));
+    elements.push(renderTranscriptBlock(block, viewProps));
+    // A helper's card sits right under the call that started it.
+    if (showSubTasks && block.kind === 'steps') {
+      for (const call of block.toolCalls) {
+        for (const child of byCall.get(call.tool_call_id) ?? []) {
+          elements.push(
+            <div key={`sub-${child.id}`} className="w-full px-4 my-1">
+              <div className="max-w-4xl mx-auto">
+                <SubTaskCard
+                  task={child}
+                  depth={0}
+                  messages={messages}
+                  toolRenderers={toolRenderers}
+                  rendering={rendering}
+                  toolSummaryOverrides={toolSummaryOverrides}
+                  groupToolCalls={groupToolCalls}
+                  toolLabels={toolLabels}
+                  components={components}
+                  hideParts={hideParts}
+                  threadId={threadId}
+                  onShowTrace={onShowTrace}
+                  verbose={verbose}
+                  debug={debug}
+                />
+              </div>
+            </div>,
+          );
+        }
+      }
+    }
     flushTrees(block.index);
   }
   flushTrees(Number.POSITIVE_INFINITY);
@@ -235,6 +205,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
           their taskId this render). */}
       {showSubTasks && <SubTaskTree
         excludeRootIds={anchoredRoots}
+        excludeTaskIds={placedChildIds}
         messages={messages}
         toolRenderers={toolRenderers}
         rendering={rendering}
