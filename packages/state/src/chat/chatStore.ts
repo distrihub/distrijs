@@ -259,6 +259,12 @@ export interface ChatStateStore extends ChatState {
   initToolCall: (toolCall: ToolCall, timestamp?: number, isFromStream?: boolean, taskId?: string) => void;
   updateToolCallStatus: (toolCallId: string, status: Partial<ToolCallState>) => void;
   getToolCallById: (toolCallId: string) => ToolCallState | null;
+  /**
+   * Seed tool call states from persisted history (`tool_call` parts and the
+   * `tool_result` parts that answer them), so a reloaded thread draws its
+   * steps with their outcome. Never touches a call the store already knows.
+   */
+  hydrateToolCalls: (messages: DistriChatMessage[]) => void;
   getPendingToolCalls: () => ToolCallState[];
   getCompletedToolCalls: () => ToolCallState[];
   completeTool: (toolCall: ToolCall, result: ToolResult) => Promise<void>;
@@ -1603,6 +1609,44 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
         }
       }
       return changed ? { ...state, tasks } : state;
+    });
+  },
+
+  hydrateToolCalls: (messages: DistriChatMessage[]) => {
+    const results = new Map<string, ToolResult>();
+    for (const m of messages) {
+      if (!isDistriMessage(m)) continue;
+      for (const part of (m as DistriMessage).parts) {
+        if (part.part_type === 'tool_result' && part.data?.tool_call_id) results.set(part.data.tool_call_id, part.data);
+      }
+    }
+    set((state: ChatState) => {
+      let toolCalls: Map<string, ToolCallState> | undefined;
+      for (const m of messages) {
+        if (!isDistriMessage(m)) continue;
+        const msg = m as DistriMessage;
+        for (const part of msg.parts) {
+          if (part.part_type !== 'tool_call' || !part.data?.tool_call_id) continue;
+          const call = part.data;
+          if (state.toolCalls.has(call.tool_call_id) || toolCalls?.has(call.tool_call_id)) continue;
+          const result = results.get(call.tool_call_id);
+          const data = result ? extractToolResultData(result) : undefined;
+          const failed = data?.success === false || Boolean(data?.error);
+          toolCalls ??= new Map(state.toolCalls);
+          toolCalls.set(call.tool_call_id, {
+            tool_call_id: call.tool_call_id,
+            tool_name: call.tool_name,
+            input: (call.input ?? {}) as Record<string, unknown>,
+            taskId: msg.taskId,
+            // History is settled: a call with no stored result ran to its end.
+            status: failed ? 'error' : 'completed',
+            ...(result ? { result } : {}),
+            ...(failed ? { error: String(data?.error ?? 'Tool execution failed') } : {}),
+            isExternal: false,
+          } as ToolCallState);
+        }
+      }
+      return toolCalls ? { ...state, toolCalls } : state;
     });
   },
 
