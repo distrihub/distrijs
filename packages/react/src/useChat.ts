@@ -165,14 +165,22 @@ export function useChat({
     setLoading(false);
   };
 
-  // Cleanup abort controller on unmount
+  // Abort the stream on unmount. React StrictMode runs this cleanup once right after mount and then the effect
+  // again; disposing then would abort a message the first mount already sent (a chat that sends from
+  // onChatInstanceReady, distri-cloud#203). So the dispose waits a tick, and an effect that comes back cancels it.
+  const pendingDisposeRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
+    if (pendingDisposeRef.current !== undefined) {
+      clearTimeout(pendingDisposeRef.current);
+      pendingDisposeRef.current = undefined;
+    }
     return () => {
-      controller.dispose();
-      // Clear any lingering streaming states on unmount
-      if (cleanupRef.current) {
-        setTimeout(cleanupRef.current, 0);
-      }
+      pendingDisposeRef.current = setTimeout(() => {
+        pendingDisposeRef.current = undefined;
+        controller.dispose();
+        // Clear any lingering streaming states on unmount
+        cleanupRef.current?.();
+      }, 0);
     };
   }, [controller]); // controller is stable for the lifetime of this hook instance
 
