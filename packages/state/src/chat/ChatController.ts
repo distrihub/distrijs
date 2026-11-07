@@ -95,11 +95,13 @@ export class ChatController {
     setError(null);
     setStreamingIndicator('typing');
 
-    // Cancel any existing stream
+    // Cancel any existing stream. This send keeps its own controller: a dispose() or a later send while it awaits
+    // replaces `this.abortController`, and must abort this stream rather than leave it reading a null.
     if (this.abortController) {
       this.abortController.abort();
     }
-    this.abortController = new AbortController();
+    const ac = new AbortController();
+    this.abortController = ac;
 
     try {
       // Ensure token is fresh before opening the stream
@@ -142,10 +144,10 @@ export class ChatController {
       const stream = await agent.invokeStream({
         message: a2aMessage,
         metadata: requestMetadata,
-      }, this.externalTools, undefined, { signal: this.abortController.signal });
+      }, this.externalTools, undefined, { signal: ac.signal });
 
       for await (const event of stream) {
-        if (this.abortController?.signal.aborted) {
+        if (ac.signal.aborted) {
           break;
         }
         processMessage(event, true);
@@ -173,7 +175,7 @@ export class ChatController {
       setStreamingIndicator(undefined);
       setLoading(false);
       setStreaming(false);
-      this.abortController = null;
+      if (this.abortController === ac) this.abortController = null;
     }
   }
 
@@ -188,11 +190,13 @@ export class ChatController {
     setError(null);
     setStreamingIndicator('typing');
 
-    // Cancel any existing stream
+    // Cancel any existing stream. This send keeps its own controller: a dispose() or a later send while it awaits
+    // replaces `this.abortController`, and must abort this stream rather than leave it reading a null.
     if (this.abortController) {
       this.abortController.abort();
     }
-    this.abortController = new AbortController();
+    const ac = new AbortController();
+    this.abortController = ac;
 
     try {
       // Ensure token is fresh before opening the stream
@@ -218,10 +222,10 @@ export class ChatController {
           ...contextMetadata,
           task_id: this.store.getState().currentTaskId,
         },
-      }, undefined, undefined, { signal: this.abortController.signal });
+      }, undefined, undefined, { signal: ac.signal });
 
       for await (const event of stream) {
-        if (this.abortController?.signal.aborted) {
+        if (ac.signal.aborted) {
           break;
         }
         processMessage(event, true);
@@ -249,7 +253,7 @@ export class ChatController {
       setStreamingIndicator(undefined);
       setLoading(false);
       setStreaming(false);
-      this.abortController = null;
+      if (this.abortController === ac) this.abortController = null;
     }
   }
 
