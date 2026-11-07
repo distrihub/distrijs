@@ -9,7 +9,9 @@ import { getTools } from './Tools.tsx';
 // Environment variables validation
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const DISTRI_API_URL = (import.meta.env.VITE_DISTRI_API_URL || 'https://localhost:8081/v1').replace(/\/+$/, '');
-const CLIENT_ID = import.meta.env.VITE_DISTRI_CLIENT_ID;
+// Dev mode: an API key from the Distri dashboard (Settings > API keys). Never ship a key to production browsers.
+const DISTRI_API_KEY = import.meta.env.VITE_DISTRI_API_KEY;
+const DISTRI_WORKSPACE_ID = import.meta.env.VITE_DISTRI_WORKSPACE_ID;
 
 function getThreadId() {
   const threadId = localStorage.getItem('MapsDemo:threadId');
@@ -167,7 +169,9 @@ function EnvironmentCheck() {
 function App() {
   const config = useMemo(() => ({
     baseUrl: DISTRI_API_URL,
-    clientId: CLIENT_ID,
+    apiVersion: 'v1' as const,
+    accessToken: DISTRI_API_KEY,
+    workspaceId: DISTRI_WORKSPACE_ID,
     debug: true
   }), []);
 
