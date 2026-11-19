@@ -13,6 +13,7 @@ export * from './chat/types';
 export * from './chat/chatStore';
 export * from './chat/ChatController';
 export * from './chat/taskStreamingController';
+export * from './chat/durable';
 export * from './chat/taskGrouping';
 export * from './chat/transcript';
 export * from './chat/agentList';
