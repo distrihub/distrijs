@@ -46,6 +46,17 @@ import {
 } from './types';
 import { DistriEvent } from './events';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
+import {
+  CAPABILITIES_HEADER,
+  DURABLE_RUNS_CAPABILITY,
+  ClaimPendingCallResult,
+  CompleteToolOutcome,
+  CompleteToolRetryOptions,
+  PendingCall,
+  ToolCallClosedError,
+  cardHasDurableRuns,
+  parseCapabilitiesHeader,
+} from './durable-runs';
 
 export type ChatCompletionRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -217,6 +228,10 @@ export class DistriClient {
   private refreshPromise?: Promise<void>;
   private agentClients = new Map<string, { url: string; card: Promise<AgentCard>; client: Promise<A2AClient> }>();
   private registeredTools: DynamicToolFactory[] = [];
+  /** Capabilities the server announced in the `x-distri-capabilities` header. */
+  private serverCapabilities = new Set<string>();
+  /** Per-agent durable-runs answer from the agent card. */
+  private durableRunsByAgent = new Map<string, Promise<boolean>>();
 
   constructor(config: DistriClientConfig) {
     const headers: Record<string, string> = { ...config.headers };
@@ -241,6 +256,11 @@ export class DistriClient {
       fetchImpl: config.fetchImpl ?? globalThis.fetch.bind(globalThis),
       headers,
       interceptor: config.interceptor ?? (async (init?: RequestInit) => Promise.resolve(init)),
+      completeToolRetry: {
+        attempts: config.completeToolRetry?.attempts ?? 5,
+        baseDelayMs: config.completeToolRetry?.baseDelayMs ?? 300,
+        maxDelayMs: config.completeToolRetry?.maxDelayMs ?? 5000,
+      },
       onTokenRefresh: config.onTokenRefresh,
       clientId: config.clientId,
       workspaceId: config.workspaceId
@@ -1735,36 +1755,169 @@ export class DistriClient {
   }
 
   /**
-   * Complete an external tool call
+   * Complete an external tool call.
+   *
+   * Durable runs make this the one write a client must not lose, so it:
+   *  - retries with exponential backoff on network errors and 5xx;
+   *  - treats `200 {status:"duplicate"}` (the same answer was already stored) as success;
+   *  - throws {@link ToolCallClosedError} on 409 (`expired` or `conflict`), so callers
+   *    can show the call as expired instead of failing the run;
+   *  - throws {@link ApiError} 400 when the server knows no such pending call (as before).
    */
-  async completeTool(agentId: string, result: ToolResult): Promise<void> {
-    try {
-      // Send parts in Distri format (part_type/data) - backend expects this format
-      const response = await this.fetch(`/agents/${agentId}/complete-tool`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.config.headers,
-        },
-        body: JSON.stringify({
-          tool_call_id: result.tool_call_id,
-          tool_response: {
-            tool_call_id: result.tool_call_id,
-            tool_name: result.tool_name,
-            parts: result.parts,
-            parts_metadata: result.parts_metadata
-          }
-        })
-      });
+  async completeTool(agentId: string, result: ToolResult): Promise<CompleteToolOutcome> {
+    const body = JSON.stringify({
+      tool_call_id: result.tool_call_id,
+      tool_response: {
+        tool_call_id: result.tool_call_id,
+        tool_name: result.tool_name,
+        parts: result.parts,
+        parts_metadata: result.parts_metadata
+      }
+    });
+    const { attempts, baseDelayMs, maxDelayMs } = this.config.completeToolRetry as Required<CompleteToolRetryOptions>;
+    const url = `${this.config.baseUrl}/agents/${agentId}/complete-tool`;
+    let lastError: unknown;
 
-      if (!response.ok) {
-        throw new ApiError(`Failed to complete tool: ${response.statusText}`, response.status);
+    for (let attempt = 1; attempt <= Math.max(1, attempts); attempt++) {
+      let response: Response;
+      try {
+        // Send parts in Distri format (part_type/data) - backend expects this format
+        response = await this.fetchAbsolute(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.config.headers,
+          },
+          body,
+        }, { retryAttempts: 0 });
+      } catch (error) {
+        lastError = new DistriError(
+          `Failed to complete tool ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`,
+          'COMPLETE_TOOL_ERROR',
+          error,
+        );
+        if (attempt < attempts) {
+          await this.delay(Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1)));
+          continue;
+        }
+        throw lastError;
       }
 
-      this.debug(`Tool completed: ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`);
-    } catch (error) {
-      if (error instanceof ApiError) throw error;
-      throw new DistriError(`Failed to complete tool ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`, 'COMPLETE_TOOL_ERROR', error);
+      if (response.ok) {
+        const payload = await this.readJson(response);
+        const duplicate = payload && typeof payload === 'object' && (payload as { status?: unknown }).status === 'duplicate';
+        this.debug(`Tool ${duplicate ? 'already completed' : 'completed'}: ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`);
+        return { status: duplicate ? 'duplicate' : 'completed' };
+      }
+
+      if (response.status === 409) {
+        const payload = await this.readJson(response);
+        const reason = (payload as { status?: unknown } | undefined)?.status === 'expired' ? 'expired' : 'conflict';
+        throw new ToolCallClosedError(result.tool_call_id, reason, payload);
+      }
+
+      lastError = new ApiError(`Failed to complete tool: ${response.statusText || response.status}`, response.status);
+      if (response.status >= 500 && attempt < attempts) {
+        await this.delay(Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1)));
+        continue;
+      }
+      throw lastError;
+    }
+    throw lastError;
+  }
+
+  // ========== Durable runs ==========
+
+  /**
+   * Whether the server announced `name` in the `x-distri-capabilities`
+   * response header on any response seen so far.
+   */
+  hasCapability(name: string): boolean {
+    return this.serverCapabilities.has(name.toLowerCase());
+  }
+
+  /**
+   * Whether the server runs this agent durably (`durable_runs`): from the
+   * capabilities header when seen, else from the agent card (`durable_runs:
+   * true`). Cached per client and agent; a failed card fetch is not cached.
+   */
+  async supportsDurableRuns(agentId?: string): Promise<boolean> {
+    if (this.hasCapability(DURABLE_RUNS_CAPABILITY)) return true;
+    if (!agentId) return false;
+    let answer = this.durableRunsByAgent.get(agentId);
+    if (!answer) {
+      const cached = this.agentClients.get(agentId)?.card;
+      const pending: Promise<boolean> = (cached ?? this.getAgentCard(agentId)).then(cardHasDurableRuns);
+      answer = pending;
+      this.durableRunsByAgent.set(agentId, pending);
+      pending.catch(() => {
+        if (this.durableRunsByAgent.get(agentId) === pending) this.durableRunsByAgent.delete(agentId);
+      });
+    }
+    try {
+      // The card fetch itself may have carried the header.
+      return (await answer) || this.hasCapability(DURABLE_RUNS_CAPABILITY);
+    } catch {
+      return this.hasCapability(DURABLE_RUNS_CAPABILITY);
+    }
+  }
+
+  /**
+   * List the pending calls (waits) of a thread's or a task's parked runs:
+   * `GET /threads/{id}/pending-calls` or `GET /tasks/{id}/pending-calls`.
+   * A server without durable runs (404) has none.
+   */
+  async listPendingCalls(target: { threadId: string } | { taskId: string }): Promise<PendingCall[]> {
+    const path = 'threadId' in target
+      ? `/threads/${encodeURIComponent(target.threadId)}/pending-calls`
+      : `/tasks/${encodeURIComponent(target.taskId)}/pending-calls`;
+    const response = await this.fetch(path);
+    if (response.status === 404) return [];
+    if (!response.ok) {
+      throw new ApiError(`Failed to list pending calls: ${response.statusText || response.status}`, response.status);
+    }
+    const payload = await this.readJson(response);
+    if (Array.isArray(payload)) return payload as PendingCall[];
+    const wrapped = (payload as { pending_calls?: unknown } | undefined)?.pending_calls;
+    return Array.isArray(wrapped) ? (wrapped as PendingCall[]) : [];
+  }
+
+  /**
+   * Claim a pending call before running it, so two windows never both run a
+   * tool: `POST /pending-calls/{id}/claim {instance_id}`. A 409 means another
+   * instance holds the claim (`claimed: false`).
+   */
+  async claimPendingCall(id: string, instanceId: string): Promise<ClaimPendingCallResult> {
+    const response = await this.fetch(`/pending-calls/${encodeURIComponent(id)}/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instance_id: instanceId }),
+    });
+    const payload = (await this.readJson(response)) as Record<string, unknown> | undefined;
+    if (response.status === 409) {
+      return {
+        claimed: false,
+        ...(typeof payload?.claimed_by === 'string' ? { claimed_by: payload.claimed_by } : {}),
+        ...(typeof payload?.until === 'string' ? { until: payload.until } : {}),
+      };
+    }
+    if (!response.ok) {
+      throw new ApiError(`Failed to claim pending call ${id}: ${response.statusText || response.status}`, response.status, payload);
+    }
+    return { claimed: true, ...(typeof payload?.until === 'string' ? { until: payload.until } : {}) };
+  }
+
+  private recordCapabilities(response: Response): void {
+    const value = response?.headers?.get?.(CAPABILITIES_HEADER);
+    for (const name of parseCapabilitiesHeader(value)) this.serverCapabilities.add(name);
+  }
+
+  private async readJson(response: Response): Promise<unknown> {
+    try {
+      const text = await response.text();
+      return text ? JSON.parse(text) : undefined;
+    } catch {
+      return undefined;
     }
   }
 
@@ -1954,9 +2107,10 @@ export class DistriClient {
   private async fetchAbsolute(
     url: RequestInfo | URL,
     initialInit?: RequestInit,
-    options?: { skipAuth?: boolean; retryOnAuth?: boolean; signal?: AbortSignal }
+    options?: { skipAuth?: boolean; retryOnAuth?: boolean; signal?: AbortSignal; retryAttempts?: number }
   ): Promise<Response> {
     const { skipAuth = false, retryOnAuth = true } = options ?? {};
+    const retryAttempts = options?.retryAttempts ?? this.config.retryAttempts;
     const init = await this.config.interceptor(initialInit);
     // Construct the full URL using baseUrl
     let lastError: Error | undefined;
@@ -1995,7 +2149,7 @@ export class DistriClient {
       this.applyAuthHeader(headers);
     }
 
-    for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
       try {
         const controller = new AbortController();
         const signal = options?.signal ?? init?.signal ?? undefined;
@@ -2019,16 +2173,17 @@ export class DistriClient {
         if (!skipAuth && retryOnAuth && response.status === 401 && (this.refreshToken || this.onTokenRefresh)) {
           const refreshed = await this.refreshTokens().then(() => true).catch(() => false);
           if (refreshed) {
-            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false, signal });
+            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false, signal, retryAttempts });
           }
         }
+        this.recordCapabilities(response);
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if ((options?.signal ?? init?.signal)?.aborted) throw lastError;
 
-        if (attempt < this.config.retryAttempts) {
+        if (attempt < retryAttempts) {
           this.debug(`Request failed (attempt ${attempt + 1}), retrying in ${this.config.retryDelay}ms...`);
           await this.delay(this.config.retryDelay);
         }
