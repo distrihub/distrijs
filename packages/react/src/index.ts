@@ -105,6 +105,29 @@ export * from './components/ui';
 
 // Renderer exports (for customization)
 export * from './components/renderers';
+// MCP Apps (SEP-1865) host: the app view, its bridge, and the host options
+// an embedding app uses to receive app messages, model context, logs and
+// tool calls.
+export { McpAppView, getHostMeta } from './mcp-apps/McpAppView';
+export type { McpAppViewProps } from './mcp-apps/McpAppView';
+export { McpAppsProvider, useMcpAppsHost, formatModelContext } from './mcp-apps/McpAppsContext';
+export type {
+  McpAppsOptions,
+  McpAppsHostValue,
+  McpAppsProviderProps,
+  McpAppSource,
+  McpAppEvent,
+  McpAppModelContext,
+} from './mcp-apps/McpAppsContext';
+export {
+  McpAppBridge,
+  buildCsp as buildMcpAppCsp,
+  injectCsp as injectMcpAppCsp,
+  buildAllowAttribute as buildMcpAppAllowAttribute,
+  MCP_APP_SANDBOX,
+  MCP_APPS_PROTOCOL_VERSION,
+} from './mcp-apps/bridge';
+export type { McpAppBridgeHandlers, McpAppLogEntry, HostContext as McpAppHostContext, DisplayMode as McpAppDisplayMode } from './mcp-apps/bridge';
 export { ContextChip, budgetRatio, budgetUsedTokens } from './components/ContextChip';
 export { ContextRow, type ContextRowProps } from './components/ContextRow';
 export { LoadingStrip } from './components/renderers/LoadingStrip';

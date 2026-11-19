@@ -20,6 +20,7 @@ import { useAgent } from '../useAgent';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { AuthLoading } from './AuthLoading';
 import { useDistri } from '../DistriProvider';
+import { McpAppsProvider, formatModelContext, type McpAppsOptions, type McpAppModelContext } from '../mcp-apps/McpAppsContext';
 export type { ChatEmptyStateOptions, ChatEmptyStateCategory, ChatEmptyStateStarter } from './ChatEmptyState';
 export type { LoadingAnimationConfig, LoadingAnimationPreset } from './renderers/LoadingAnimation';
 
@@ -59,6 +60,14 @@ export interface ChatProps extends TranscriptRenderingProps {
   agent?: Agent | null;
   onMessage?: (message: DistriChatMessage) => void;
   beforeSendMessage?: (content: DistriMessage) => Promise<DistriMessage>;
+  /**
+   * MCP Apps (SEP-1865) in this chat: turn them off, or receive what apps
+   * send (messages, model context, logs, tool calls) to log or save it in
+   * your own product. By default an app's `ui/message` is sent as a user
+   * message and its `ui/update-model-context` rides along (hidden) with the
+   * next message the user sends.
+   */
+  mcpApps?: McpAppsOptions;
   onError?: (error: Error) => void;
   getMetadata?: () => Promise<any>;
   externalTools?: DistriAnyTool[];
@@ -240,6 +249,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   models,
   selectedModelId,
   beforeSendMessage,
+  mcpApps,
   onModelChange,
   onChatInstanceReady,
   onChatStateChange,
@@ -614,9 +624,27 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     return content;
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string | DistriPart[], options?: SendMessageOptions) => {
-    if (typeof content === 'string' && !content.trim()) return;
-    if (Array.isArray(content) && content.length === 0) return;
+  // MCP Apps: the latest model context each app set (keyed by tool call),
+  // attached to the next message the user sends as developer parts — the
+  // model reads them, the transcript does not show them.
+  const appContextsRef = useRef<Map<string, McpAppModelContext>>(new Map());
+  const withAppContext = useCallback((content: string | DistriPart[], options?: SendMessageOptions): [string | DistriPart[], SendMessageOptions | undefined] => {
+    const contexts = Array.from(appContextsRef.current.values());
+    if (contexts.length === 0) return [content, options];
+    appContextsRef.current.clear();
+    const parts = typeof content === 'string' ? [{ part_type: 'text', data: content } as DistriPart] : [...content];
+    const partsMetadata = { ...(options?.partsMetadata ?? {}) };
+    for (const ctx of contexts) {
+      partsMetadata[parts.length] = { developer: true };
+      parts.push({ part_type: 'text', data: formatModelContext(ctx) } as DistriPart);
+    }
+    return [parts, { ...(options ?? {}), partsMetadata }];
+  }, []);
+
+  const handleSendMessage = useCallback(async (rawContent: string | DistriPart[], rawOptions?: SendMessageOptions) => {
+    if (typeof rawContent === 'string' && !rawContent.trim()) return;
+    if (Array.isArray(rawContent) && rawContent.length === 0) return;
+    const [content, options] = withAppContext(rawContent, rawOptions);
 
     setInput('');
     // Clear attached images when sending/queuing
@@ -749,7 +777,16 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     resolveDiagnoseAgent,
     sendMessage,
     threadId,
+    withAppContext,
   ]);
+
+  const mcpAppsHost = useMemo(() => ({
+    ...(mcpApps ?? {}),
+    defaultSendMessage: (text: string) => handleSendMessage(text),
+    defaultSetModelContext: (ctx: McpAppModelContext) => {
+      appContextsRef.current.set(ctx.source.toolCallId, ctx);
+    },
+  }), [mcpApps, handleSendMessage]);
 
   const handleStopStreaming = useCallback(() => {
     console.log('handleStopStreaming called, about to call stopStreaming()');
@@ -1154,6 +1191,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   return (
     <ChatStoreContext.Provider value={chatStore}>
+      <McpAppsProvider {...mcpAppsHost}>
     <div
       className={`distri-chat flex flex-col h-full bg-background overflow-hidden relative ${getThemeClasses(theme)} ${className}`}
       style={{ maxWidth }}
@@ -1287,6 +1325,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
 
     </div >
+      </McpAppsProvider>
     </ChatStoreContext.Provider>
   );
 });
