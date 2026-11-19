@@ -8,8 +8,9 @@ import {
   ToolCallClosedError,
 } from '@distri/core';
 import { ChatController } from '../chat/ChatController';
-import { createChatStore, ChatStore } from '../chat/chatStore';
+import { createChatStore, ChatStore, resetStartedInThisPage } from '../chat/chatStore';
 import { TaskStreamingController } from '../chat/taskStreamingController';
+import { windowInstanceId } from '../chat/durable';
 
 /**
  * Durable runs in the chat state layer (spec 2026-11-20-durable-runs-and-nodes
@@ -103,7 +104,10 @@ function text(store: ChatStore): string[] {
     .map((m) => ((m as DistriMessage).parts[0] as { data: string }).data);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  resetStartedInThisPage();
+});
 
 describe('replayed tool calls never run (S5)', () => {
   it('a history/replay tool_calls event shows the call without running it', () => {
@@ -217,7 +221,104 @@ describe('pending calls after a reload (S4, S28)', () => {
   });
 });
 
+describe('a live call on a durable server', () => {
+  it('runs once claimed even if tool_execution_start arrived while the claim was in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const server = fakeServer([pendingCall('c1')]);
+    const claim = server.agentFor().claimPendingCall as unknown as (id: string, i: string) => Promise<unknown>;
+    const agent = server.agentFor({
+      claimPendingCall: vi.fn(async (id: string, instanceId: string) => {
+        await gate;
+        return claim(id, instanceId);
+      }),
+    });
+    const { tool, handler } = bookTable();
+    const { store } = setup(agent, [tool]);
+    store.getState().setDurableRuns(true);
+    store.getState().processMessage(ev({
+      type: 'tool_calls', taskId: 'task-1',
+      data: { tool_calls: [{ tool_call_id: 'c1', tool_name: 'book_table', input: { party: 2 } }] },
+    }), true);
+    // The server announces the external call it is now waiting on.
+    store.getState().processMessage(ev({
+      type: 'tool_execution_start', taskId: 'task-1',
+      data: { tool_call_id: 'c1', tool_call_name: 'book_table', input: { party: 2 }, step_id: 's1' },
+    }), true);
+    release();
+    await vi.waitFor(() => expect(server.completed).toHaveLength(1));
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a call the server expired (S5)', () => {
+  it('marks the call expired when its timed-out result arrives', () => {
+    const { tool } = bookTable();
+    const store = createChatStore();
+    store.getState().setExternalTools([tool] as never);
+    store.getState().processMessage(ev({
+      type: 'tool_calls', taskId: 'task-1',
+      data: { tool_calls: [{ tool_call_id: 'c1', tool_name: 'book_table', input: {} }] },
+    }), false);
+    store.getState().processMessage(ev({
+      type: 'tool_results', taskId: 'task-1',
+      data: { results: [{ tool_call_id: 'c1', tool_name: 'book_table', parts: [{ part_type: 'data', data: { error: 'timed out', status: 'expired' } }] }] },
+    }), true);
+    expect(store.getState().toolCalls.get('c1')).toMatchObject({ status: 'error', remoteStatus: 'expired' });
+  });
+});
+
+describe('a reload is the same window (S4)', () => {
+  it('keeps the instance id in sessionStorage, so the reloaded tab takes back its own claim', async () => {
+    const kv = new Map<string, string>();
+    const storage = { getItem: (k: string) => kv.get(k) ?? null, setItem: (k: string, v: string) => void kv.set(k, v) };
+    let n = 0;
+    const make = () => `id-${++n}`;
+    expect(windowInstanceId(make, storage)).toBe('id-1');
+    expect(windowInstanceId(make, storage)).toBe('id-1');
+    expect(windowInstanceId(make, null)).toBe('id-2');
+
+    // Before the reload this window claimed c1 and showed the tool; after it, the same id claims again.
+    const server = fakeServer([pendingCall('c1')]);
+    server.claims.set('c1', 'tab-1');
+    const { tool, handler } = bookTable();
+    const { store, controller } = setup(server.agentFor(), [tool]);
+    store.setState({ instanceId: 'tab-1' });
+    await controller.recoverPendingCalls({ follow: false });
+    await vi.waitFor(() => expect(server.completed).toHaveLength(1));
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('two windows (S5)', () => {
+  it('takes the call over when the other window\'s claim lease ends without an answer', async () => {
+    vi.useFakeTimers();
+    try {
+      const server = fakeServer([pendingCall('c1')]);
+      server.claims.set('c1', 'gone-window');
+      const until = new Date(Date.now() + 60_000).toISOString();
+      const claim = vi.fn(async (id: string, instanceId: string) => {
+        const holder = server.claims.get(id);
+        if (holder && holder !== instanceId) return { claimed: false, claimed_by: holder, until };
+        server.claims.set(id, instanceId);
+        return { claimed: true, until: 'later' };
+      });
+      const { tool, handler } = bookTable();
+      const { store, controller } = setup(server.agentFor({ claimPendingCall: claim }), [tool]);
+      await controller.recoverPendingCalls({ follow: false });
+      expect(store.getState().toolCalls.get('c1')).toMatchObject({ remoteStatus: 'running_elsewhere' });
+      expect(handler).not.toHaveBeenCalled();
+
+      // The other window closed: its lease runs out.
+      server.claims.delete('c1');
+      await vi.advanceTimersByTimeAsync(61_500);
+      expect(handler).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(server.completed).toHaveLength(1));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('one claim wins; the other shows "running in another window"', async () => {
     const server = fakeServer([pendingCall('c1')]);
     const a = bookTable();
