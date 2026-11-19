@@ -157,6 +157,19 @@ export function useChat({
     }
   }, [agent, setAgent]);
 
+  // Durable runs: after a load (and whenever the agent, thread or tools
+  // change), find the thread's pending client-tool calls and answer the ones
+  // this chat has a tool for — claimed first, run once. A server without
+  // durable runs answers nothing and this is a no-op.
+  // Keyed on tool names, not the array: callers often pass a fresh array per render.
+  const externalToolNames = (externalTools ?? []).map((t) => t.name).join(',');
+  useEffect(() => {
+    if (!agent) return;
+    controller.recoverPendingCalls().catch((err) => {
+      console.warn('[useChat] could not recover pending tool calls', err);
+    });
+  }, [controller, agent, threadId, externalToolNames]);
+
   // Store cleanup functions in refs to avoid dependency changes
   const cleanupRef = useRef<(() => void) | undefined>(undefined);
   cleanupRef.current = () => {
