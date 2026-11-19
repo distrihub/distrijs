@@ -23,6 +23,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ResourceLinkPart, ToolCall, DistriPart } from '@distri/core';
 import type { ToolCallState } from '../../stores/chatStateStore';
+import { McpAppView, getHostMeta } from '../../mcp-apps/McpAppView';
+import { useMcpAppsHost } from '../../mcp-apps/McpAppsContext';
 
 export interface MCPAppRendererProps {
   toolCall: ToolCall;
@@ -49,17 +51,35 @@ export function isMcpAppResource(link: ResourceLinkPart): boolean {
   return mime.startsWith('text/html') && mime.includes('mcp-app');
 }
 
+/** Legacy mcp-ui embed: the server gave a direct page URL (`_meta.ui.iframeUrl`). */
+function legacyIframeUrl(link: ResourceLinkPart): string | undefined {
+  return (link.data.meta?.ui as { iframeUrl?: string } | undefined)?.iframeUrl;
+}
+
+/** Spec MCP App (SEP-1865): rendered by `McpAppView` with the JSON-RPC bridge. */
+export function isSpecMcpApp(link: ResourceLinkPart): boolean {
+  if (legacyIframeUrl(link)) return false;
+  return !!getHostMeta(link) || isMcpAppResource(link);
+}
+
 export const MCPAppRenderer: React.FC<MCPAppRendererProps> = ({
   toolCall,
   state,
   onAction,
   fetchResource,
 }) => {
+  const host = useMcpAppsHost();
   const links = useMemo(() => findResourceLinks(state.result), [state.result]);
   const primary = links.find(isMcpAppResource) ?? links[0];
 
-  if (!primary) {
+  if (!primary || host.enabled === false) {
     return null;
+  }
+
+  // Spec MCP Apps get the JSON-RPC host unless the caller overrides fetching
+  // (legacy hosts that pass `fetchResource` / `onAction` keep the old frame).
+  if (isSpecMcpApp(primary) && !fetchResource && !onAction) {
+    return <McpAppView key={primary.data.uri} link={primary} toolCall={toolCall} state={state} />;
   }
 
   return (
@@ -165,7 +185,7 @@ const MCPAppIframe: React.FC<IframeProps> = ({ link, toolName, onAction, fetchRe
   if (error) {
     return (
       <div className="my-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
-        Couldn't load Zippy view: {error}
+        Couldn't load the app view: {error}
       </div>
     );
   }

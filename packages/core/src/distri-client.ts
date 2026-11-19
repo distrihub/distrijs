@@ -41,6 +41,8 @@ import {
   DecisionQuestions,
   DecisionRequest,
   DecisionResponse,
+  McpAppReadResourceResult,
+  McpAppCallToolResult,
 } from './types';
 import { DistriEvent } from './events';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
@@ -681,6 +683,48 @@ export class DistriClient {
       throw new ApiError(`Decision request failed: ${message}`, response.status);
     }
 
+    return response.json();
+  }
+
+  /**
+   * MCP Apps: read a resource (a `ui://` app's HTML) from one of the
+   * workspace's MCP connections. `server` is the connection name carried in
+   * the resource link's `meta.distri.server`.
+   */
+  async readMcpAppResource(server: string, uri: string): Promise<McpAppReadResourceResult> {
+    const response = await this.fetch(`/mcp-apps/resources/read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server, uri }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.error || response.statusText || 'resources/read failed';
+      throw new ApiError(`MCP App resource ${uri}: ${message}`, response.status);
+    }
+    return response.json();
+  }
+
+  /**
+   * MCP Apps: call a tool on an app's MCP connection on behalf of the app
+   * (the app's `tools/call`). The server only allows tools whose
+   * `_meta.ui.visibility` includes `"app"`.
+   */
+  async callMcpAppTool(
+    server: string,
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<McpAppCallToolResult> {
+    const response = await this.fetch(`/mcp-apps/tools/call`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server, name, arguments: args ?? {} }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData?.error || response.statusText || 'tools/call failed';
+      throw new ApiError(`MCP App tool ${server}/${name}: ${message}`, response.status);
+    }
     return response.json();
   }
 

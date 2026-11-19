@@ -1,6 +1,6 @@
 export * from './AssistantMessageRenderer';
 export { ToolExecutionRenderer, formatStatusText } from './ToolExecutionRenderer';
-export { MCPAppRenderer, findResourceLinks, isMcpAppResource } from './MCPAppRenderer';
+export { MCPAppRenderer, findResourceLinks, isMcpAppResource, isSpecMcpApp } from './MCPAppRenderer';
 export type { MCPAppRendererProps } from './MCPAppRenderer';
 export * from './ImageRenderer';
 export * from './LoadingAnimation';
