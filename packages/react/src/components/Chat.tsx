@@ -444,6 +444,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const compactionEvents = useStore(chatStore, state => state.compactionEvents);
   const storeIsCompacting = useStore(chatStore, state => Boolean(state.isCompacting));
   const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
+  // Durable runs: the run is parked waiting on the person / this client.
+  const isParked = useStore(chatStore, state => Boolean(state.parkedRun));
   // Cosmetic only: how many external (frontend-handled) tool calls are still
   // awaiting a result. The backend already join_all's the batch with a timeout —
   // this just tells the user we're waiting on outstanding tool calls. If one
@@ -1294,6 +1296,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               todoChanges={lastTodoChanges}
               isStreaming={isStreaming}
               pendingToolCallCount={showToolWaitStatus ? pendingToolCallCount : 0}
+              waitingForYou={isParked}
               loadingWords={loadingAnimation?.cycleWords}
               contextBudget={showContextUsage ? contextBudget ?? undefined : undefined}
               compactions={compactionEvents}

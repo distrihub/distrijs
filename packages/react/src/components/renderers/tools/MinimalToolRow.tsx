@@ -156,7 +156,23 @@ export const MinimalToolRow: React.FC<MinimalToolRowProps> = ({ summary, state, 
             {summary.detail}
           </span>
         )}
-        <Timing state={state} />
+        {state.remoteStatus === 'expired' && (
+          <span
+            className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full flex-shrink-0"
+            data-testid="tool-row-expired"
+          >
+            expired
+          </span>
+        )}
+        {state.remoteStatus === 'running_elsewhere' && (
+          <span
+            className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full flex-shrink-0"
+            data-testid="tool-row-elsewhere"
+          >
+            running in another window
+          </span>
+        )}
+        {state.remoteStatus !== 'running_elsewhere' && <Timing state={state} />}
         {expandable && (
           expanded
             ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
