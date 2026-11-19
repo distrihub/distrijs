@@ -8,6 +8,8 @@ import React from 'react'
 import { render, screen, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { ContextRow } from '../components/ContextRow'
 import { MinimalToolRow } from '../components/renderers/tools/MinimalToolRow'
+import { HttpToolCard } from '../components/renderers/tools/HttpToolCard'
+import { RichToolCard } from '../components/renderers/tools/RichToolCard'
 import { useChat } from '../useChat'
 import type { ToolCallState } from '../stores/chatStateStore'
 
@@ -48,6 +50,20 @@ describe('tool row durable states', () => {
   it('a call claimed by another window says so', () => {
     render(<MinimalToolRow summary={{ verb: 'Book table' } as never} state={row({ remoteStatus: 'running_elsewhere' })} />)
     expect(screen.getByTestId('tool-row-elsewhere')).toHaveTextContent('running in another window')
+  })
+})
+
+describe('cards show the durable states too', () => {
+  // distri_request renders as an HTTP card, not a row: the tag must be there as well.
+  it('an HTTP card held by another window says so', () => {
+    const toolCall = { tool_call_id: 'c1', tool_name: 'distri_request', input: { method: 'POST', path: '/skills' } }
+    render(<HttpToolCard toolCall={toolCall as never} state={row({ remoteStatus: 'running_elsewhere' })} />)
+    expect(screen.getByTestId('tool-row-elsewhere').textContent).toBe('running in another window')
+  })
+
+  it('an expired rich card says so', () => {
+    render(<RichToolCard summary={{ verb: 'Book table' } as never} state={row({ status: 'error', remoteStatus: 'expired' })} />)
+    expect(screen.getByTestId('tool-row-expired').textContent).toBe('expired')
   })
 })
 
