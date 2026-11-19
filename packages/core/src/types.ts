@@ -518,6 +518,65 @@ export type ResourceLinkPart = {
     meta?: Record<string, unknown>;
   };
 }
+/** MCP Apps (SEP-1865) — what the distri runtime adds to a resource link's
+ * `meta` under `distri`: which connection served the app, which tool was
+ * called, and the call's result (text content + structuredContent) that the
+ * host sends the app as `ui/notifications/tool-result`. */
+export interface McpAppHostMeta {
+  /** Connection (MCP server) name the app belongs to. */
+  server: string;
+  /** Remote tool name (without the `<server>__` prefix). */
+  tool: string;
+  result?: McpAppCallToolResult;
+}
+
+/** MCP `CallToolResult` as sent to/returned from an MCP App. */
+export interface McpAppCallToolResult {
+  content?: Array<{ type: string; text?: string; [k: string]: unknown }>;
+  structuredContent?: unknown;
+  isError?: boolean;
+  _meta?: Record<string, unknown>;
+}
+
+/** `_meta.ui.csp` on a `ui://` resource. */
+export interface McpAppCsp {
+  connectDomains?: string[];
+  resourceDomains?: string[];
+  frameDomains?: string[];
+  baseUriDomains?: string[];
+}
+
+/** `_meta.ui.permissions` on a `ui://` resource. */
+export interface McpAppPermissions {
+  camera?: Record<string, never> | boolean;
+  microphone?: Record<string, never> | boolean;
+  geolocation?: Record<string, never> | boolean;
+  clipboardWrite?: Record<string, never> | boolean;
+}
+
+/** One entry of an MCP `ReadResourceResult`. */
+export interface McpAppResourceContent {
+  uri: string;
+  mimeType?: string;
+  text?: string;
+  blob?: string;
+  _meta?: {
+    ui?: {
+      csp?: McpAppCsp;
+      permissions?: McpAppPermissions;
+      prefersBorder?: boolean;
+      domain?: string;
+      [k: string]: unknown;
+    };
+    [k: string]: unknown;
+  };
+}
+
+/** MCP `ReadResourceResult`. */
+export interface McpAppReadResourceResult {
+  contents: McpAppResourceContent[];
+}
+
 export type DistriPart =
   | TextPart
   | ToolCallPart
