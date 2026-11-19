@@ -4,6 +4,7 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { ToolSummary } from '@/types';
 import { DistriPart, ToolResult } from '@distri/core';
+import { RemoteStatusTag } from './RemoteStatusTag';
 
 interface MinimalToolRowProps {
   summary: ToolSummary;
@@ -156,22 +157,7 @@ export const MinimalToolRow: React.FC<MinimalToolRowProps> = ({ summary, state, 
             {summary.detail}
           </span>
         )}
-        {state.remoteStatus === 'expired' && (
-          <span
-            className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full flex-shrink-0"
-            data-testid="tool-row-expired"
-          >
-            expired
-          </span>
-        )}
-        {state.remoteStatus === 'running_elsewhere' && (
-          <span
-            className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full flex-shrink-0"
-            data-testid="tool-row-elsewhere"
-          >
-            running in another window
-          </span>
-        )}
+        <RemoteStatusTag state={state} />
         {state.remoteStatus !== 'running_elsewhere' && <Timing state={state} />}
         {expandable && (
           expanded
