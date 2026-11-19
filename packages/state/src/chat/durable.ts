@@ -83,3 +83,32 @@ export class AttemptFilter {
     this.latest.clear();
   }
 }
+
+const INSTANCE_KEY = 'distri:chat-instance-id';
+
+/**
+ * The id this window claims pending calls with. Kept in sessionStorage, so a
+ * reload of the same tab is the same instance and can take back the call it
+ * claimed before reloading (its claim lease would otherwise make it "another
+ * window" for up to a minute). A new tab gets its own id. Without
+ * sessionStorage (server, tests, a locked-down iframe): a fresh id.
+ */
+export function windowInstanceId(make: () => string, storage?: Pick<Storage, 'getItem' | 'setItem'> | null): string {
+  let s = storage;
+  if (s === undefined) {
+    try {
+      s = typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+    } catch {
+      s = null;
+    }
+  }
+  try {
+    const existing = s?.getItem(INSTANCE_KEY);
+    if (existing) return existing;
+    const id = make();
+    s?.setItem(INSTANCE_KEY, id);
+    return id;
+  } catch {
+    return make();
+  }
+}

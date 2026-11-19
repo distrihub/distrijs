@@ -34,7 +34,7 @@ import {
   uuid,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiToolLike, ToolCallStatus, RenderingMode, ChatSessionSettings, StreamingIndicator } from './types';
-import { AttemptFilter } from './durable';
+import { AttemptFilter, windowInstanceId } from './durable';
 
 // State types
 export interface TaskState {
@@ -393,6 +393,17 @@ export interface CreateChatStoreOptions {
  * owning chat instance — construct a new store per conversation instead of
  * reusing/clearing a shared one.
  */
+/**
+ * Durable runs: client tool calls started by any chat store in this page (JS
+ * realm). A reload starts empty; see `claimAndRun`.
+ */
+const startedInThisPage = new Set<string>();
+
+/** Tests: forget the calls started in this page (a fresh page load). */
+export function resetStartedInThisPage(): void {
+  startedInThisPage.clear();
+}
+
 export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore {
   const { renderTool } = options;
 
@@ -413,16 +424,27 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
   const claimAndRun = async (get: () => ChatStateStore, toolCall: ToolCall, tool: DistriAnyTool): Promise<void> => {
     const id = toolCall.tool_call_id;
     if (startedToolCallIds.has(id)) return;
-    startedToolCallIds.add(id);
     const agent = get().agent;
-    if (get().isDurable() && agent && typeof agent.claimPendingCall === 'function') {
+    const durable = get().isDurable() && !!agent && typeof agent.claimPendingCall === 'function';
+    // The claim's instance id is the tab's (a reload takes its own claim
+    // back), so two chats in one tab would both win it: the first to start
+    // the call in this page runs it, the other shows it running elsewhere.
+    if (durable && startedInThisPage.has(id)) {
+      get().updateToolCallStatus(id, { status: 'running', remoteStatus: 'running_elsewhere' });
+      return;
+    }
+    startedToolCallIds.add(id);
+    if (durable) startedInThisPage.add(id);
+    if (durable && agent) {
       try {
         const claim = await agent.claimPendingCall(id, get().instanceId);
         if (!claim.claimed) {
           // Another window runs it. Forget it here so a later sync can take
           // over if that window goes away (its claim lease runs out).
           startedToolCallIds.delete(id);
+          startedInThisPage.delete(id);
           get().updateToolCallStatus(id, { status: 'running', remoteStatus: 'running_elsewhere' });
+          scheduleTakeOver(get, toolCall, tool, claim.until);
           return;
         }
       } catch (err) {
@@ -430,6 +452,7 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
         // arbitrate; run it. Anything else: do not risk a double run.
         if (!(err instanceof ApiError && err.statusCode === 404)) {
           startedToolCallIds.delete(id);
+          startedInThisPage.delete(id);
           get().updateToolCallStatus(id, {
             status: 'error',
             error: `Could not claim tool call: ${err instanceof Error ? err.message : String(err)}`,
@@ -438,8 +461,32 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
         }
       }
     }
-    get().updateToolCallStatus(id, { isLiveStream: true, remoteStatus: undefined });
+    // While the claim was in flight the server's `tool_execution_start` for
+    // this call may have marked it `running`, which executeTool reads as "the
+    // handler already started" and skips. The claim says this client runs
+    // it: put it back to pending. A call that settled meanwhile is left alone.
+    const status = get().toolCalls.get(id)?.status;
+    if (status === 'completed' || status === 'error') return;
+    get().updateToolCallStatus(id, { isLiveStream: true, remoteStatus: undefined, status: 'pending' });
     get().executeTool(toolCall, tool);
+  };
+
+  // When another window's claim lease ends, claim again: if that window went
+  // away (closed, crashed) the call is still pending and this one takes it
+  // over; otherwise the claim is refused again (held, or the call is closed)
+  // and nothing runs here.
+  const takeOverTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const scheduleTakeOver = (get: () => ChatStateStore, toolCall: ToolCall, tool: DistriAnyTool, until?: string) => {
+    const id = toolCall.tool_call_id;
+    const at = until ? Date.parse(until) : NaN;
+    if (!Number.isFinite(at) || takeOverTimers.has(id)) return;
+    const delay = Math.min(Math.max(at - Date.now(), 0) + 1000, 10 * 60_000);
+    takeOverTimers.set(id, setTimeout(() => {
+      takeOverTimers.delete(id);
+      const current = get().toolCalls.get(id);
+      if (current?.remoteStatus !== 'running_elsewhere' || current.status !== 'running') return;
+      void claimAndRun(get, toolCall, tool);
+    }, delay));
   };
 
   const isClosedCallError = (err: unknown): err is ToolCallClosedError =>
@@ -475,7 +522,7 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
   compactionEvents: [],
   isCompacting: false,
   durableRuns: false,
-  instanceId: uuid(),
+  instanceId: windowInstanceId(uuid),
   parkedRun: undefined,
   tools: {
     tools: [],
@@ -1119,12 +1166,20 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
           if (message.data.results && Array.isArray(message.data.results)) {
             message.data.results.forEach((result: ToolResult) => {
               const data = extractToolResultData(result);
-              const failed = data?.success === false || Boolean(data?.error);
+              // Durable runs: the server answered a client call nobody
+              // answered in time with `{error:"timed out", status:"expired"}`.
+              const expired = isExpiredCallResult(result);
+              const failed = expired || data?.success === false || Boolean(data?.error);
               get().updateToolCallStatus(result.tool_call_id, {
                 status: failed ? 'error' : 'completed',
                 result,
-                error: failed ? String(data?.error ?? 'Tool execution failed') : undefined,
+                error: failed
+                  ? expired
+                    ? 'Expired: the agent stopped waiting for this result'
+                    : String(data?.error ?? 'Tool execution failed')
+                  : undefined,
                 endTime: timestamp,
+                ...(expired ? { remoteStatus: 'expired' as const } : {}),
               });
             });
           }
@@ -1972,6 +2027,22 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
     set({ wrapOptions });
   },
   }));
+}
+
+/** The server's result for a pending call whose deadline passed: `{error:"timed out", status:"expired"}`. */
+function isExpiredCallResult(result: ToolResult): boolean {
+  for (const part of result.parts ?? []) {
+    let data: unknown = (part as { data?: unknown }).data;
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch {
+        continue;
+      }
+    }
+    if (data && typeof data === 'object' && (data as { status?: unknown }).status === 'expired') return true;
+  }
+  return false;
 }
 
 /** Events that show a task running again (its parked wait is over). */
