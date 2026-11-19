@@ -1,6 +1,7 @@
 import { Message, Part, FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 import { DistriMessage, DistriMessageMetadata, PartMetadata, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus, LiveViewEvent } from './events';
+import type { RunParkedEvent } from './durable-runs';
 
 /**
  * Converts an A2A Message to a DistriMessage
@@ -92,6 +93,8 @@ function stampEnvelope<T extends DistriEvent>(event: T, statusUpdate: any): T {
   const agentId = metadata?.agent_id;
   const title = metadata?.title;
   const stamped = Date.parse(statusUpdate?.status?.timestamp ?? '');
+  const attempt = metadata?.attempt;
+  const stepId = metadata?.step_id;
   return {
     ...event,
     taskId: statusUpdate?.taskId,
@@ -100,6 +103,8 @@ function stampEnvelope<T extends DistriEvent>(event: T, statusUpdate: any): T {
     ...(typeof agentId === 'string' && agentId ? { agentId } : {}),
     ...(typeof title === 'string' && title ? { title } : {}),
     ...(Number.isFinite(stamped) ? { timestamp: stamped } : {}),
+    ...(typeof attempt === 'number' && Number.isFinite(attempt) ? { attempt } : {}),
+    ...(typeof stepId === 'string' && stepId ? { stepId } : {}),
   };
 }
 
@@ -143,6 +148,21 @@ export function convertA2AStatusUpdateToDistri(statusUpdate: any): DistriEvent |
           ...(typeof metadata.failed_steps === 'number' ? { failedSteps: metadata.failed_steps } : {}),
         },
       } as RunFinishedEvent);
+    }
+
+    case 'run_parked': {
+      // Not terminal: the stream stays open and later segments continue on it.
+      const pending = Array.isArray(metadata.pending)
+        ? metadata.pending.filter((id: unknown): id is string => typeof id === 'string')
+        : [];
+      return out({
+        type: 'run_parked',
+        data: {
+          taskId: metadata.task_id ?? statusUpdate.taskId,
+          pending,
+          ...(typeof metadata.deadline === 'string' ? { deadline: metadata.deadline } : {}),
+        },
+      } as RunParkedEvent);
     }
 
     case 'plan_started': {

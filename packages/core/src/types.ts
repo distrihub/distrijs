@@ -1128,6 +1128,12 @@ export interface DistriClientConfig {
   headers?: Record<string, string>;
 
   /**
+   * Retry policy for `complete-tool` (network errors and 5xx). A tool result
+   * is the one write a durable run cannot lose, so it retries with backoff.
+   */
+  completeToolRetry?: import('./durable-runs').CompleteToolRetryOptions;
+
+  /**
    * Request interceptor for modifying requests before sending
    */
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;

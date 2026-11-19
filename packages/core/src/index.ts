@@ -2,6 +2,7 @@
 export * from './types';
 export type { LLMResponse } from './types';
 export * from './events';
+export * from './durable-runs';
 export * from './distri-client';
 export * from './agent';
 export * from './tool-registry';

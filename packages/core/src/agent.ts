@@ -14,6 +14,7 @@ import { Message, MessageSendParams } from '@a2a-js/sdk';
 import { decodeA2AStreamEvent } from './encoder';
 import { RunErrorEvent } from './events';
 import { clientToolRegistry } from './tool-registry';
+import { ClaimPendingCallResult, CompleteToolOutcome, PendingCall } from './durable-runs';
 
 /**
  * Configuration for Agent invoke method
@@ -387,8 +388,23 @@ export class Agent {
   /**
    * Complete an external tool call by sending the result back to the server
    */
-  async completeTool(result: ToolResult): Promise<void> {
-    await this.client.completeTool(this.agentDefinition.name, result);
+  async completeTool(result: ToolResult): Promise<CompleteToolOutcome> {
+    return this.client.completeTool(this.agentDefinition.name, result);
+  }
+
+  /** Whether the server runs this agent durably (`durable_runs`, see DistriClient). */
+  async supportsDurableRuns(): Promise<boolean> {
+    return this.client.supportsDurableRuns(this.agentDefinition.name);
+  }
+
+  /** Pending calls (waits) of a thread's or a task's parked runs. */
+  async listPendingCalls(target: { threadId: string } | { taskId: string }): Promise<PendingCall[]> {
+    return this.client.listPendingCalls(target);
+  }
+
+  /** Claim a pending call before running it; `claimed: false` means another window has it. */
+  async claimPendingCall(id: string, instanceId: string): Promise<ClaimPendingCallResult> {
+    return this.client.claimPendingCall(id, instanceId);
   }
 
   /**
