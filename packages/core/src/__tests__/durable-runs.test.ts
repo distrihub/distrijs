@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DistriClient } from '../distri-client'
-import { DURABLE_RUNS_EXTENSION_URI, ToolCallClosedError, cardHasDurableRuns, parseCapabilitiesHeader } from '../durable-runs'
+import { DURABLE_RUNS_EXTENSION_URI, ToolCallClosedError, cardHasDurableRuns } from '../durable-runs'
 import { decodeA2AStreamEvent } from '../encoder'
 import { ApiError, ToolResult } from '../types'
 
@@ -153,7 +153,7 @@ describe('durable runs capability', () => {
     expect(await client.supportsDurableRuns('a')).toBe(true)
     expect(await client.supportsDurableRuns('a')).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/agents/a/.well-known/agent.json`)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/agents/a/.well-known/agent-card.json`)
   })
 
   it('an old server\'s card says nothing: no durable runs', async () => {
@@ -161,14 +161,14 @@ describe('durable runs capability', () => {
     expect(await makeClient().supportsDurableRuns('a')).toBe(false)
   })
 
-  it('the response header announces it on any request', async () => {
-    fetchMock.mockResolvedValueOnce(json([], 200, { 'x-distri-capabilities': 'streaming, durable_runs' }))
+  it('comes from the card only: the removed x-distri-capabilities header is ignored', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json([], 200, { 'x-distri-capabilities': 'streaming, durable_runs' }))
+      .mockResolvedValueOnce(json({ name: 'a', capabilities: { streaming: true } }))
     const client = makeClient()
-    expect(client.hasCapability('durable_runs')).toBe(false)
     await client.listPendingCalls({ threadId: 'th-1' })
-    expect(client.hasCapability('durable_runs')).toBe(true)
-    expect(await client.supportsDurableRuns('a')).toBe(true)
-    expect(fetchMock).toHaveBeenCalledTimes(1) // no card fetch needed
+    expect(await client.supportsDurableRuns('a')).toBe(false)
+    expect(await client.supportsDurableRuns()).toBe(false)
   })
 
   it('a failed card fetch is not cached', async () => {
@@ -179,8 +179,6 @@ describe('durable runs capability', () => {
   })
 
   it('helpers', () => {
-    expect(parseCapabilitiesHeader(' Durable_Runs ,x')).toEqual(['durable_runs', 'x'])
-    expect(parseCapabilitiesHeader(null)).toEqual([])
     expect(cardHasDurableRuns(durableCard())).toBe(true)
     expect(cardHasDurableRuns({ capabilities: { extensions: [{ uri: 'https://example.com/other' }] } })).toBe(false)
     // A custom top-level field is not the standard way to advertise it.

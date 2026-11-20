@@ -11,7 +11,8 @@ import {
   TraceContext,
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk';
-import { decodeA2AStreamEvent } from './encoder';
+import { A2AStreamDecoder } from './encoder';
+import { AgentCard, AgentDescriptor, agentDescriptorFromCard, hasExtension } from './a2a';
 import { RunErrorEvent } from './events';
 import { clientToolRegistry } from './tool-registry';
 import { ClaimPendingCallResult, CompleteToolOutcome, PendingCall } from './durable-runs';
@@ -86,39 +87,107 @@ export class ExternalToolValidationError extends DistriError {
 }
 
 /**
- * Enhanced Agent class with simple tool system following AG-UI pattern
+ * What an Agent is built from: an A2A card (runtime clients — the public
+ * descriptor), or a definition a developer surface already holds.
+ */
+export type AgentSource = AgentConfigWithTools | { card: AgentCard; id?: string };
+
+function isCardSource(source: AgentSource): source is { card: AgentCard; id?: string } {
+  return !!source && typeof source === 'object' && 'card' in source && !!(source as { card?: unknown }).card;
+}
+
+/** The descriptor a definition implies (same rules as the server's `AgentDescriptor::of`). */
+function descriptorFromDefinition(def: AgentConfigWithTools): AgentDescriptor {
+  const root = def as any;
+  const toolConfig = [root, root?.agent, root?.definition]
+    .map((c) => c?.tools)
+    .find((t) => t && !Array.isArray(t) && typeof t === 'object');
+  const external: unknown[] = Array.isArray(toolConfig?.external) ? toolConfig.external : [];
+  return {
+    agent_type: typeof root?.agent_type === 'string' ? root.agent_type : 'standard_agent',
+    external_tools: external.filter((t): t is string => typeof t === 'string' && t.trim().length > 0 && t !== '*'),
+    any_tool: external.includes('*'),
+    ...(typeof root?.runtime === 'string' ? { runtime: root.runtime } : {}),
+    browser_streaming: Boolean(root?.browser_config?.enabled),
+  };
+}
+
+/**
+ * Enhanced Agent class with simple tool system following AG-UI pattern.
+ *
+ * Agents are *used*, not read: {@link Agent.create} builds one from the A2A
+ * card (`GET /agents/{id}/.well-known/agent-card.json`) and its `agent`
+ * extension (type, the client tools it expects, browser streaming), which an
+ * end-user token can read. The definition (instructions, tools, model) is a
+ * developer API: {@link getDefinition}.
  */
 export class Agent {
   readonly client: DistriClient;
-  private agentDefinition: AgentConfigWithTools;
+  /** The agent's id (its name), used to address it. */
+  readonly id: string;
+  /** The A2A card, when the agent was built from one. */
+  readonly card?: AgentCard;
+  /** How to use the agent: from the card's `agent` extension (or the definition). */
+  readonly descriptor: AgentDescriptor;
+  private definition?: AgentConfigWithTools;
+  private definitionRequest?: Promise<AgentConfigWithTools>;
   private hookHandlers: Map<string, HookHandler> = new Map();
   private defaultHookHandler: HookHandler | null = null;
 
-  constructor(agentDefinition: AgentConfigWithTools, client: DistriClient) {
-    this.agentDefinition = agentDefinition;
+  constructor(source: AgentSource, client: DistriClient) {
     this.client = client;
+    if (isCardSource(source)) {
+      this.card = source.card;
+      this.id = source.id ?? source.card.name;
+      this.descriptor = agentDescriptorFromCard(source.card) ?? {
+        agent_type: 'standard_agent',
+        external_tools: [],
+        any_tool: false,
+        browser_streaming: false,
+      };
+    } else {
+      this.definition = source;
+      this.id = source.name;
+      this.descriptor = descriptorFromDefinition(source);
+    }
   }
+
   get name(): string {
-    return this.agentDefinition.name;
+    return this.id;
   }
 
   get description(): string | undefined {
-    return this.agentDefinition.description;
+    return this.card ? this.card.description : this.definition?.description;
   }
 
   get agentType(): string | undefined {
-    return this.agentDefinition.agent_type;
+    return this.descriptor.agent_type;
   }
 
   get iconUrl(): string | undefined {
-    return this.agentDefinition.icon_url;
+    return this.card ? this.card.iconUrl : this.definition?.icon_url;
+  }
+
+  /** The agent streams a browser session (descriptor `browser_streaming`). */
+  get browserStreaming(): boolean {
+    return this.descriptor.browser_streaming;
   }
 
   /**
-   * Get the full agent definition (including backend tools)
+   * The agent's definition — a developer call (`GET /agents/{id}`, needs the
+   * developer permission; end-user tokens get 403). Returns the definition
+   * the agent was built from, if any. Runtime paths never call this.
    */
-  getDefinition(): AgentConfigWithTools {
-    return this.agentDefinition;
+  async getDefinition(): Promise<AgentConfigWithTools> {
+    if (this.definition) return this.definition;
+    if (!this.definitionRequest) {
+      this.definitionRequest = this.client.getAgent(this.id).then((def) => {
+        this.definition = def;
+        return def;
+      });
+      this.definitionRequest.catch(() => { this.definitionRequest = undefined; });
+    }
+    return this.definitionRequest;
   }
 
   /**
@@ -137,7 +206,7 @@ export class Agent {
     }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
-    return await this.client.sendMessage(this.agentDefinition.name, enhancedParams) as Message;
+    return await this.client.sendMessage(this.id, enhancedParams) as Message;
   }
 
   /**
@@ -154,33 +223,40 @@ export class Agent {
     }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
-    const a2aStream = this.client.sendMessageStream(this.agentDefinition.name, enhancedParams, options);
-
+    // The stream mode follows what the server activated: with `event-stream`
+    // the envelopes drive the events, without it the standard frames do.
+    let decoder: A2AStreamDecoder | undefined;
+    const a2aStream = this.client.sendMessageStream(this.id, enhancedParams, {
+      ...options,
+      onActivated: (uris) => { decoder = new A2AStreamDecoder({ eventStream: hasExtension(uris, 'event-stream') }); },
+    });
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return (async function* () {
       try {
         for await (const event of a2aStream) {
-          const converted = decodeA2AStreamEvent(event);
-          if (converted && (converted as any).type === 'inline_hook_requested') {
-            const hookReq: any = (converted as any).data;
-            const handler =
-              self.hookHandlers.get(hookReq.hook) ||
-              self.defaultHookHandler;
-            if (handler) {
-              try {
-                const mutation = await handler(hookReq);
-                await self.client.completeInlineHook(hookReq.hook_id, mutation);
-              } catch (err) {
+          decoder ??= new A2AStreamDecoder({ eventStream: true });
+          for (const converted of decoder.decode(event)) {
+            if ((converted as any).type === 'inline_hook_requested') {
+              const hookReq: any = (converted as any).data;
+              const handler =
+                self.hookHandlers.get(hookReq.hook) ||
+                self.defaultHookHandler;
+              if (handler) {
+                try {
+                  const mutation = await handler(hookReq);
+                  await self.client.completeInlineHook(hookReq.hook_id, mutation);
+                } catch (err) {
+                  await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+                }
+              } else {
                 await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
               }
+              yield converted;
             } else {
-              await self.client.completeInlineHook(hookReq.hook_id, { dynamic_values: {} });
+              yield converted;
             }
-            yield converted;
-          } else if (converted) {
-            yield converted;
           }
         }
       } catch (error) {
@@ -215,11 +291,15 @@ export class Agent {
    * `AbortSignal`) to return the generator and close the underlying stream.
    */
   public async *resubscribe(taskId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<DistriChatMessage> {
-    const a2aStream = this.client.resubscribeTask(this.agentDefinition.name, taskId, opts);
+    let decoder: A2AStreamDecoder | undefined;
+    const a2aStream = this.client.resubscribeTask(this.id, taskId, {
+      ...opts,
+      onActivated: (uris) => { decoder = new A2AStreamDecoder({ eventStream: hasExtension(uris, 'event-stream') }); },
+    });
     try {
       for await (const event of a2aStream) {
-        const converted = decodeA2AStreamEvent(event);
-        if (converted) yield converted;
+        decoder ??= new A2AStreamDecoder({ eventStream: true });
+        for (const converted of decoder.decode(event)) yield converted;
       }
     } catch (error) {
       // Mirror invokeStream: surface stream errors in-band so read-only UIs
@@ -316,38 +396,14 @@ export class Agent {
   private assertExternalTools(tools?: DistriBaseTool[]) {
     const result = this.validateExternalTools(tools ?? []);
     if (!result.isValid) {
-      throw new ExternalToolValidationError(this.agentDefinition.name || this.agentDefinition.name, result);
+      throw new ExternalToolValidationError(this.id, result);
     }
   }
 
+  /** Client tools the agent expects (descriptor); none when it accepts any. */
   private getRequiredExternalTools(): string[] {
-    const toolConfig = this.resolveToolConfig();
-    if (!toolConfig?.external || !Array.isArray(toolConfig.external)) {
-      return [];
-    }
-    // Wildcard "*" means accept any external tools - no specific tools required
-    if (toolConfig.external.includes('*')) {
-      return [];
-    }
-    return toolConfig.external.filter((tool) => typeof tool === 'string' && tool.trim().length > 0);
-  }
-
-  private resolveToolConfig(): { external?: string[] } | null {
-    const root = this.agentDefinition as any;
-    return (
-      this.extractToolConfig(root) ||
-      this.extractToolConfig(root?.agent) ||
-      this.extractToolConfig(root?.definition)
-    );
-  }
-
-  private extractToolConfig(candidate: any): { external?: string[] } | null {
-    if (!candidate) return null;
-    const tools = candidate.tools;
-    if (!tools || Array.isArray(tools) || typeof tools !== 'object') {
-      return null;
-    }
-    return tools;
+    if (this.descriptor.any_tool) return [];
+    return this.descriptor.external_tools;
   }
 
   private formatExternalToolValidationMessage(_requiredTools: string[], missingTools: string[]): string {
@@ -369,32 +425,32 @@ export class Agent {
 
 
   /**
-   * Create an agent instance from an agent ID
+   * Create an agent from its id — built from the A2A card
+   * (`GET /agents/{id}/.well-known/agent-card.json`), which an end-user token
+   * can read; `GET /agents/{id}` is never called. A definition passed in
+   * (developer surfaces) is used as is.
    */
   static async create(agentIdOrDef: string | AgentConfigWithTools, client: DistriClient): Promise<Agent> {
-    const agentDefinition = typeof agentIdOrDef === 'string' ? await client.getAgent(agentIdOrDef) : agentIdOrDef;
-    const tools = agentDefinition?.resolved_tools || [];
-    console.log('🤖 Agent definition loaded:', {
-      name: agentDefinition.name,
-      tools: tools.map(t => ({
-        name: t.name,
-        type: 'function'
-      })) || [],
-      toolCount: agentDefinition.tools?.length || 0
-    });
-    return new Agent(agentDefinition, client);
+    if (typeof agentIdOrDef !== 'string') return new Agent(agentIdOrDef, client);
+    const card = await client.getCachedAgentCard(agentIdOrDef);
+    return Agent.fromCard(card, client, agentIdOrDef);
+  }
+
+  /** An agent from its A2A card (`id` defaults to the card's name). */
+  static fromCard(card: AgentCard, client: DistriClient, id?: string): Agent {
+    return new Agent({ card, id }, client);
   }
 
   /**
    * Complete an external tool call by sending the result back to the server
    */
   async completeTool(result: ToolResult): Promise<CompleteToolOutcome> {
-    return this.client.completeTool(this.agentDefinition.name, result);
+    return this.client.completeTool(this.id, result);
   }
 
   /** Whether the server runs this agent durably (`durable_runs`, see DistriClient). */
   async supportsDurableRuns(): Promise<boolean> {
-    return this.client.supportsDurableRuns(this.agentDefinition.name);
+    return this.client.supportsDurableRuns(this.id);
   }
 
   /** Pending calls (waits) of a thread's or a task's parked runs. */
@@ -416,10 +472,10 @@ export class Agent {
   }
 
   /**
-   * List all available agents
+   * List the agents the caller can use, from their cards (`GET /agents/cards`).
    */
   static async list(client: DistriClient): Promise<Agent[]> {
-    const agentDefinitions = await client.getAgents();
-    return agentDefinitions.map(def => new Agent(def, client));
+    const cards = await client.getAgentCards();
+    return cards.map((card) => Agent.fromCard(card, client));
   }
 }

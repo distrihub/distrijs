@@ -6,10 +6,10 @@ import type { DistriChatMessage } from '../types'
 /**
  * Read-only task following (Phase 1).
  *   - Agent.resubscribe(taskId)        → decodes A2A frames into DistriChatMessages
- *   - DistriClient.resubscribeTask(..) → wraps A2AClient.resubscribeTask (tasks/resubscribe)
+ *   - DistriClient.resubscribeTask(..) → A2A `SubscribeToTask` (SSE)
  *
  * Agent.resubscribe is tested with an injected fake client so we exercise the
- * decode/error path directly, without the A2AClient's agent-card fetch.
+ * decode/error path directly.
  */
 
 function makeAgent(client: unknown): Agent {
@@ -35,7 +35,7 @@ describe('Agent.resubscribe', () => {
 
     const result = await collect(agent.resubscribe('t1'))
 
-    expect(resubscribeTask).toHaveBeenCalledWith('test-agent', 't1', undefined)
+    expect(resubscribeTask).toHaveBeenCalledWith('test-agent', 't1', expect.objectContaining({ onActivated: expect.any(Function) }))
     expect(result.map((r) => (r as { type?: string; role?: string }).type ?? (r as { role?: string }).role))
       .toEqual(['run_started', 'assistant', 'run_finished'])
     expect((result[0] as { taskId?: string }).taskId).toBe('t1')
@@ -71,22 +71,25 @@ describe('Agent.resubscribe', () => {
 })
 
 describe('DistriClient.resubscribeTask', () => {
-  it('delegates to the agent A2A client with { id } and yields raw frames', async () => {
+  it('calls SubscribeToTask with { id } and yields the frames normalized', async () => {
+    const frames = [{ statusUpdate: { taskId: 't1', contextId: 'c', status: { state: 'TASK_STATE_WORKING' }, metadata: { type: 'run_started' } } }]
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      expect(body).toMatchObject({ method: 'SubscribeToTask', params: { id: 't1' } })
+      const sse = frames.map((f) => `data: ${JSON.stringify({ jsonrpc: '2.0', id: body.id, result: f })}\n\n`).join('')
+      return new Response(sse, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+    })
     const client = new DistriClient({
       baseUrl: 'http://localhost:9999/v1',
       headers: { Authorization: 'Bearer test-token' },
+      fetchImpl,
       retryAttempts: 0,
     })
-    const frames = [{ kind: 'status-update', taskId: 't1', metadata: { type: 'run_started' } }]
-    const a2aResubscribe = vi.fn(async function* () { for (const f of frames) yield f })
-    vi.spyOn(client as unknown as { getA2AClient: (id: string) => unknown }, 'getA2AClient')
-      .mockReturnValue({ resubscribeTask: a2aResubscribe })
 
     const out: unknown[] = []
     for await (const f of client.resubscribeTask('agent-x', 't1')) out.push(f)
 
-    expect((client as unknown as { getA2AClient: unknown }).getA2AClient).toHaveBeenCalledWith('agent-x')
-    expect(a2aResubscribe).toHaveBeenCalledWith({ id: 't1' })
-    expect(out).toEqual(frames)
+    expect(String(fetchImpl.mock.calls[0][0])).toBe('http://localhost:9999/v1/agents/agent-x')
+    expect(out).toEqual([expect.objectContaining({ kind: 'status-update', taskId: 't1', status: { state: 'working' }, metadata: { type: 'run_started' } })])
   })
 })
