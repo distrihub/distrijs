@@ -2,12 +2,20 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
   Agent,
   AgentDefinition,
+  AgentVersion,
   DistriClient,
 } from '@distri/core';
 import { useDistri } from './DistriProvider';
 
 export interface UseAgentOptions {
   agentIdOrDef: string | AgentDefinition;
+  /**
+   * Run a saved version of the agent: its number, or `'latest'`. Omitted
+   * means the latest (or the version written in the id, `name@N`). Changing
+   * it reloads the card and the agent; the previous agent stays until the
+   * new one is ready, so a chat on it keeps its thread.
+   */
+  version?: AgentVersion;
   enabled?: boolean;
 }
 
@@ -26,6 +34,7 @@ export interface UseAgentResult {
  */
 export function useAgent({
   agentIdOrDef,
+  version,
   enabled = true,
 }: UseAgentOptions): UseAgentResult {
   const { client, error: clientError, isLoading: clientLoading } = useDistri();
@@ -35,6 +44,8 @@ export function useAgent({
   const agentRef = useRef<Agent | null>(null);
   const currentAgentIdRef = useRef<string | AgentDefinition | null>(null);
   const currentClientRef = useRef<DistriClient | null>(null);
+  const currentVersionRef = useRef<AgentVersion | undefined>(undefined);
+  const requestRef = useRef(0);
 
   // Initialize agent
   const initializeAgent = useCallback(async () => {
@@ -43,39 +54,46 @@ export function useAgent({
     // Check if we need to create a new agent
     if (
       currentAgentIdRef.current === agentIdOrDef &&
+      currentVersionRef.current === version &&
       agentRef.current &&
       currentClientRef.current === client
     ) {
       return; // Same agent, no need to recreate
     }
 
+    const request = ++requestRef.current;
     setLoading(true);
     setError(null);
 
     try {
       // An id is resolved from the agent's A2A card (readable with an
-      // end-user token); a definition passed in is used as is.
-      const newAgent = await Agent.create(agentIdOrDef, client);
+      // end-user token) — the pinned card when a version is given; a
+      // definition passed in is used as is.
+      const newAgent = await Agent.create(agentIdOrDef, client, { version });
+      if (request !== requestRef.current) return; // superseded by a newer id/version
 
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;
+      currentVersionRef.current = version;
       currentClientRef.current = client;
       setAgent(newAgent);
     } catch (err) {
+      if (request !== requestRef.current) return;
       console.error('Failed to initialize agent:', err);
       const initError = err instanceof Error ? err : new Error('Failed to initialize agent');
       setError(initError);
       agentRef.current = null;
+      setAgent(null);
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
-  }, [client, agentIdOrDef]);
+  }, [client, agentIdOrDef, version]);
 
   React.useEffect(() => {
     if (!clientLoading && !clientError && client && enabled) {
       initializeAgent();
     }
-  }, [clientLoading, clientError, client, agentIdOrDef, initializeAgent, enabled]);
+  }, [clientLoading, clientError, client, agentIdOrDef, version, initializeAgent, enabled]);
 
   // Reset agent ONLY on a true transition between two non-null values.
   // The initial-mount case (`currentXxxRef.current === null` vs. a real

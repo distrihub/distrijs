@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SquarePen, X } from 'lucide-react'
-import type { Agent, DistriMessage } from '@distri/core'
+import type { Agent, AgentVersion, DistriMessage } from '@distri/core'
 import { Chat, type ChatInstance, type ChatProps } from '../components/Chat'
 import type { ChatEmptyStateController } from '../components/Chat'
 import type { DistriAnyTool, ToolRendererMap } from '../types'
@@ -17,6 +17,8 @@ import { Launcher } from './Launcher'
 export interface AssistantProps {
   /** Which agent to talk to (fetched through the nearest DistriProvider). */
   agentId?: string
+  /** Run a saved version of `agentId` (a number, or `'latest'`, the default). Changing it keeps the conversation. */
+  version?: AgentVersion
   /** Or pass a loaded agent. */
   agent?: Agent | null
   /** Tools your app provides to the agent. */
@@ -118,6 +120,7 @@ const Welcome: React.FC<{ exp: ResolvedExperience; controller: ChatEmptyStateCon
  */
 export const Assistant: React.FC<AssistantProps> = ({
   agentId,
+  version,
   agent,
   externalTools,
   experience,
@@ -134,7 +137,7 @@ export const Assistant: React.FC<AssistantProps> = ({
   className,
   style,
 }) => {
-  const exp = useMemo(() => resolveExperience(experience, agentId ?? agent?.name), [experience, agentId, agent?.name])
+  const exp = useMemo(() => resolveExperience(experience, agentId?.split('@')[0] ?? agent?.name), [experience, agentId, agent?.name])
 
   const [openState, setOpenState] = useState(defaultOpen)
   const open = openProp ?? openState
@@ -247,6 +250,7 @@ export const Assistant: React.FC<AssistantProps> = ({
         <Chat
           key={conversation}
           agentId={agentId}
+          version={version}
           agent={agent}
           threadId={threadId}
           threadKnown={threadKnown}
