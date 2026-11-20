@@ -6,7 +6,8 @@ import { useAgent } from '../useAgent';
 
 vi.mock('react-native', async () => import('./react-native.mock'));
 
-const agentResponse = (name: string) => new Response(JSON.stringify({ name }), {
+// useAgent resolves an id from the agent's A2A card, never GET /agents/{id}.
+const agentResponse = (name: string) => new Response(JSON.stringify({ name, capabilities: { streaming: true } }), {
   status: 200,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -21,7 +22,8 @@ describe('useAgent', () => {
       accessToken: 'test-token',
       retryAttempts: 0,
       fetchImpl: (input: RequestInfo | URL) => {
-        if (String(input).endsWith('/agents/old-agent')) {
+        expect(String(input)).toMatch(/\/\.well-known\/agent-card\.json$/);
+        if (String(input).endsWith('/agents/old-agent/.well-known/agent-card.json')) {
           return new Promise<Response>(resolve => { releaseOldRequest = resolve; });
         }
         return Promise.resolve(agentResponse('new-agent'));

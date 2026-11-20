@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
+import { Agent, AgentDefinition, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
 import { ChatMessageList } from './ChatMessageList';
@@ -343,14 +343,14 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const toggleHandsfree = useCallback(() => setIsHandsfree(prev => !prev), []);
   const [browserEnabled, setBrowserEnabled] = useState(false);
   const browserViewerUrl = useStore(chatStore, state => state.browserViewerUrl);
-  const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
-  const supportsBrowserStreaming = allowBrowserPreview && Boolean(agentDefinition?.browser_config);
+  // Browser streaming comes from the agent card's descriptor (`browser_streaming`).
+  const supportsBrowserStreaming = allowBrowserPreview && Boolean(agent?.browserStreaming);
   const browserAgentIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const agentId = agentDefinition?.name;
+    const agentId = agent?.name;
 
-    if (!agentDefinition || !supportsBrowserStreaming) {
+    if (!agent || !supportsBrowserStreaming) {
       setBrowserEnabled(false);
       browserAgentIdRef.current = agentId;
       return;
@@ -358,11 +358,24 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
     if (browserAgentIdRef.current !== agentId) {
       browserAgentIdRef.current = agentId;
-      const defaultEnabled = agentDefinition.browser_config?.enabled ?? false;
-      setBrowserEnabled(defaultEnabled);
-
+      setBrowserEnabled(agent.browserStreaming);
     }
-  }, [agentDefinition, supportsBrowserStreaming]);
+  }, [agent, supportsBrowserStreaming]);
+
+  // The definition is a developer API (`GET /agents/{id}`): fetched only for
+  // developer mode, never on the runtime path (end users cannot read it).
+  const [agentDefinition, setAgentDefinition] = useState<AgentDefinition | null>(null);
+  useEffect(() => {
+    if (!developerMode || !agent) {
+      setAgentDefinition(null);
+      return;
+    }
+    let cancelled = false;
+    Promise.resolve(agent.getDefinition())
+      .then((def) => { if (!cancelled) setAgentDefinition(def); })
+      .catch(() => { if (!cancelled) setAgentDefinition(null); });
+    return () => { cancelled = true; };
+  }, [agent, developerMode]);
 
   useEffect(() => {
     if (typeof initialInput === 'string' && initialInput !== initialInputRef.current) {
