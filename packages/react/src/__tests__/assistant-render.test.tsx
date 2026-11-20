@@ -207,4 +207,17 @@ describe('composer placeholder', () => {
     await waitFor(() => expect(container.querySelector('.dui-welcome')).toBeNull())
     expect(container.querySelector('[data-placeholder="Ask Nook"]')).not.toBeNull()
   })
+
+  it('threadKnown={false} reaches Chat: no pending-call recovery for a minted thread', async () => {
+    const agent = { ...agentWith(), supportsDurableRuns: vi.fn(async () => true), listPendingCalls: vi.fn(async () => []) }
+    mount({ defaultOpen: true, threadKnown: false }, agent as never)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(agent.listPendingCalls).not.toHaveBeenCalled()
+  })
+
+  it('a known thread (default) is recovered', async () => {
+    const agent = { ...agentWith(), supportsDurableRuns: vi.fn(async () => true), listPendingCalls: vi.fn(async () => []) }
+    mount({ defaultOpen: true }, agent as never)
+    await waitFor(() => expect(agent.listPendingCalls).toHaveBeenCalledWith({ threadId: 't-1' }))
+  })
 })
