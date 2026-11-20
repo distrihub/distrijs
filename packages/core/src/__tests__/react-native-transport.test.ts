@@ -28,7 +28,7 @@ describe('DistriClient fetch transport', () => {
   it('uses the injected fetch implementation for A2A agent requests', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes('.well-known/agent.json')) {
+      if (url.includes('.well-known/agent-card.json')) {
         return new Response(JSON.stringify({ name: 'native-agent', url: 'http://localhost:1341/v1/agents/native-agent' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -46,13 +46,13 @@ describe('DistriClient fetch transport', () => {
     await client.getAgentCard('native-agent');
 
     expect(fetchImpl).toHaveBeenCalled();
-    expect(fetchImpl.mock.calls.some(([input]) => String(input).includes('.well-known/agent.json'))).toBe(true);
+    expect(fetchImpl.mock.calls.some(([input]) => String(input).includes('.well-known/agent-card.json'))).toBe(true);
   });
 
-  it('forwards an abort signal through the A2A streaming fetch adapter', async () => {
+  it('forwards an abort signal to the A2A streaming fetch (no card fetch first)', async () => {
     let transportSignal: AbortSignal | undefined;
     const fetchImpl = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      if (String(input).includes('.well-known/agent.json')) {
+      if (String(input).includes('.well-known/agent-card.json')) {
         return Promise.resolve(new Response(JSON.stringify({
           name: 'native-agent',
           url: 'http://localhost:1341/v1/agents/native-agent',
@@ -80,7 +80,7 @@ describe('DistriClient fetch transport', () => {
     } as never, { signal: abortController.signal });
 
     const firstEvent = stream.next();
-    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
     abortController.abort();
     await expect(firstEvent).rejects.toThrow();
 

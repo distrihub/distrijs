@@ -1,4 +1,5 @@
 import { ToolResult } from "./types";
+import type { RunParkedEvent } from "./durable-runs";
 
 export type Role = 'user' | 'system' | 'assistant';
 
@@ -302,6 +303,19 @@ export interface DistriEventEnvelope {
   title?: string;
   /** When the server emitted the frame, in epoch ms (`status.timestamp`). */
   timestamp?: number;
+  /**
+   * Durable runs: the segment attempt that produced this event
+   * (`metadata.attempt`). A crashed segment is re-run with a higher attempt;
+   * clients drop events of a superseded attempt for the same step.
+   */
+  attempt?: number;
+  /** The step the event belongs to (`metadata.step_id`), when the server says so. */
+  stepId?: string;
+  /**
+   * `true` on the root run's end (`run_finished` / `run_error`) only — the
+   * event-stream envelope's `final`, or a standard stream's terminal state.
+   */
+  final?: boolean;
 }
 
 // Each concrete event interface gets the envelope merged in via
@@ -313,6 +327,7 @@ export type DistriEvent =
   | WithEnvelope<RunStartedEvent>
   | WithEnvelope<RunFinishedEvent>
   | WithEnvelope<RunErrorEvent>
+  | WithEnvelope<RunParkedEvent>
   | WithEnvelope<PlanStartedEvent>
   | WithEnvelope<PlanFinishedEvent>
   | WithEnvelope<PlanPrunedEvent>
