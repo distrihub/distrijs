@@ -25,6 +25,8 @@ export interface AssistantProps {
   experience?: ExperienceConfig
   /** Continue an existing conversation. Omit to start a fresh one. */
   threadId?: string
+  /** Set false when `threadId` was just minted and nothing has been sent on it yet: no history or pending-call requests until the first send. */
+  threadKnown?: boolean
   /** Launcher layout: start open. */
   defaultOpen?: boolean
   /** Launcher layout: controlled open state. */
@@ -120,6 +122,7 @@ export const Assistant: React.FC<AssistantProps> = ({
   externalTools,
   experience,
   threadId,
+  threadKnown,
   defaultOpen = false,
   open: openProp,
   onOpenChange,
@@ -246,6 +249,7 @@ export const Assistant: React.FC<AssistantProps> = ({
           agentId={agentId}
           agent={agent}
           threadId={threadId}
+          threadKnown={threadKnown}
           externalTools={externalTools}
           toolRenderers={toolRenderers}
           theme={dark ? 'dark' : 'light'}
