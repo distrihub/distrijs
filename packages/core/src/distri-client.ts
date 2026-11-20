@@ -59,6 +59,7 @@ import {
   A2A_VERSION,
   A2A_VERSION_HEADER,
   A2AStreamFrame,
+  agentRefPath,
   DEFAULT_CLIENT_EXTENSIONS,
   fromWire,
   fromWireSendResult,
@@ -861,12 +862,13 @@ export class DistriClient {
    * include the full {@link AgentDefinition} (system prompt, tools, model
    * settings). The card's `agent` extension carries what a client needs to
    * run it (see `agentDescriptorFromCard`). Served at
-   * `GET /agents/{id}/.well-known/agent-card.json` (A2A 1.0); readable with
-   * an end-user token.
+   * `GET /agents/{ref}/.well-known/agent-card.json` (A2A 1.0); readable with
+   * an end-user token. `agentId` is a reference: `name` or `name@N` (a saved
+   * version, or `latest`) — the pinned card for `name@N`.
    */
   async getAgentCard(agentId: string): Promise<AgentCard> {
     try {
-      const response = await this.fetch(`/agents/${agentId}/.well-known/agent-card.json`, {
+      const response = await this.fetch(`/agents/${agentRefPath(agentId)}/.well-known/agent-card.json`, {
         headers: {
           ...this.config.headers,
         }
@@ -1110,9 +1112,9 @@ export class DistriClient {
   }
 
   /**
-   * The agent card, fetched once per agent and reused (the durable-runs
-   * answer and `Agent.create` read the same card). A failed fetch is not
-   * cached.
+   * The agent card, fetched once per agent reference (`name`, `name@3` and
+   * `name@latest` are separate cards) and reused (the durable-runs answer and
+   * `Agent.create` read the same card). A failed fetch is not cached.
    */
   async getCachedAgentCard(agentId: string): Promise<AgentCard> {
     let card = this.cardCache.get(agentId);
@@ -1141,11 +1143,12 @@ export class DistriClient {
   }
 
   /**
-   * JSON-RPC endpoint of an agent: always `${baseUrl}/agents/{id}`, never the
+   * JSON-RPC endpoint of an agent: always `${baseUrl}/agents/{ref}`, never the
    * card's advertised URL (the server may only know its internal address).
+   * `agentId` is a reference (`name` or `name@N`); see `agentRefPath`.
    */
   private a2aUrl(agentId: string): string {
-    return `${this.config.baseUrl}/agents/${agentId}`;
+    return `${this.config.baseUrl}/agents/${agentRefPath(agentId)}`;
   }
 
   /** `A2A-Version` and `A2A-Extensions` for one call. */
@@ -1977,7 +1980,7 @@ export class DistriClient {
       }
     });
     const { attempts, baseDelayMs, maxDelayMs } = this.config.completeToolRetry as Required<CompleteToolRetryOptions>;
-    const url = `${this.config.baseUrl}/agents/${agentId}/complete-tool`;
+    const url = `${this.config.baseUrl}/agents/${agentRefPath(agentId)}/complete-tool`;
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= Math.max(1, attempts); attempt++) {

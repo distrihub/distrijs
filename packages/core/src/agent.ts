@@ -12,7 +12,7 @@ import {
 } from './types';
 import { Message, MessageSendParams } from '@a2a-js/sdk';
 import { A2AStreamDecoder } from './encoder';
-import { AgentCard, AgentDescriptor, agentDescriptorFromCard, hasExtension } from './a2a';
+import { AgentCard, AgentDescriptor, AgentVersion, agentDescriptorFromCard, agentRef, hasExtension, parseAgentRef } from './a2a';
 import { RunErrorEvent } from './events';
 import { clientToolRegistry } from './tool-registry';
 import { ClaimPendingCallResult, CompleteToolOutcome, PendingCall } from './durable-runs';
@@ -90,9 +90,18 @@ export class ExternalToolValidationError extends DistriError {
  * What an Agent is built from: an A2A card (runtime clients — the public
  * descriptor), or a definition a developer surface already holds.
  */
-export type AgentSource = AgentConfigWithTools | { card: AgentCard; id?: string };
+export type AgentSource = AgentConfigWithTools | { card: AgentCard; id?: string; version?: AgentVersion };
 
-function isCardSource(source: AgentSource): source is { card: AgentCard; id?: string } {
+/** Options for {@link Agent.create}. */
+export interface AgentCreateOptions {
+  /**
+   * Run a saved version: its number, or `'latest'` (the current definition).
+   * Omitted means the latest. Overrides a version written in the id (`name@N`).
+   */
+  version?: AgentVersion;
+}
+
+function isCardSource(source: AgentSource): source is { card: AgentCard; id?: string; version?: AgentVersion } {
   return !!source && typeof source === 'object' && 'card' in source && !!(source as { card?: unknown }).card;
 }
 
@@ -123,8 +132,13 @@ function descriptorFromDefinition(def: AgentConfigWithTools): AgentDescriptor {
  */
 export class Agent {
   readonly client: DistriClient;
-  /** The agent's id (its name), used to address it. */
+  /** The agent's id: its bare name (never `name@N`). */
   readonly id: string;
+  /**
+   * The reference every per-agent call addresses: `name`, or `name@N` /
+   * `name@latest` when a version was asked for (see `agentRef`).
+   */
+  readonly ref: string;
   /** The A2A card, when the agent was built from one. */
   readonly card?: AgentCard;
   /** How to use the agent: from the card's `agent` extension (or the definition). */
@@ -138,7 +152,16 @@ export class Agent {
     this.client = client;
     if (isCardSource(source)) {
       this.card = source.card;
-      this.id = source.id ?? source.card.name;
+      const given = source.id ?? source.card.name;
+      let parsed: { name: string; version?: AgentVersion };
+      try {
+        parsed = parseAgentRef(given);
+      } catch {
+        parsed = { name: given }; // not a reference (e.g. an unnamed card): address it as given
+      }
+      this.id = parsed.name;
+      const version = source.version ?? parsed.version;
+      this.ref = version === undefined ? parsed.name : agentRef(parsed.name, version);
       this.descriptor = agentDescriptorFromCard(source.card) ?? {
         agent_type: 'standard_agent',
         external_tools: [],
@@ -148,12 +171,22 @@ export class Agent {
     } else {
       this.definition = source;
       this.id = source.name;
+      this.ref = source.name;
       this.descriptor = descriptorFromDefinition(source);
     }
   }
 
   get name(): string {
     return this.id;
+  }
+
+  /**
+   * The saved version this agent runs: the card's `agent` extension
+   * `version_no` (the pinned one for `name@N`, the latest otherwise).
+   * Undefined when the server does not version agents.
+   */
+  get version(): number | undefined {
+    return this.descriptor.version_no;
   }
 
   get description(): string | undefined {
@@ -206,7 +239,7 @@ export class Agent {
     }
     // Inject tool definitions into metadata
     const enhancedParams = this.enhanceParamsWithTools(params, tools);
-    return await this.client.sendMessage(this.id, enhancedParams) as Message;
+    return await this.client.sendMessage(this.ref, enhancedParams) as Message;
   }
 
   /**
@@ -226,7 +259,7 @@ export class Agent {
     // The stream mode follows what the server activated: with `event-stream`
     // the envelopes drive the events, without it the standard frames do.
     let decoder: A2AStreamDecoder | undefined;
-    const a2aStream = this.client.sendMessageStream(this.id, enhancedParams, {
+    const a2aStream = this.client.sendMessageStream(this.ref, enhancedParams, {
       ...options,
       onActivated: (uris) => { decoder = new A2AStreamDecoder({ eventStream: hasExtension(uris, 'event-stream') }); },
     });
@@ -292,7 +325,7 @@ export class Agent {
    */
   public async *resubscribe(taskId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<DistriChatMessage> {
     let decoder: A2AStreamDecoder | undefined;
-    const a2aStream = this.client.resubscribeTask(this.id, taskId, {
+    const a2aStream = this.client.resubscribeTask(this.ref, taskId, {
       ...opts,
       onActivated: (uris) => { decoder = new A2AStreamDecoder({ eventStream: hasExtension(uris, 'event-stream') }); },
     });
@@ -429,14 +462,24 @@ export class Agent {
    * (`GET /agents/{id}/.well-known/agent-card.json`), which an end-user token
    * can read; `GET /agents/{id}` is never called. A definition passed in
    * (developer surfaces) is used as is.
+   *
+   * A saved version is run with `{ version: N }` (or `'latest'`), or an id
+   * written as `name@N`: the pinned card and endpoint (`/agents/name@N`) are
+   * used for every call, and `agent.version` is the card's `version_no`.
    */
-  static async create(agentIdOrDef: string | AgentConfigWithTools, client: DistriClient): Promise<Agent> {
+  static async create(
+    agentIdOrDef: string | AgentConfigWithTools,
+    client: DistriClient,
+    options: AgentCreateOptions = {},
+  ): Promise<Agent> {
     if (typeof agentIdOrDef !== 'string') return new Agent(agentIdOrDef, client);
-    const card = await client.getCachedAgentCard(agentIdOrDef);
-    return Agent.fromCard(card, client, agentIdOrDef);
+    const parsed = parseAgentRef(agentIdOrDef);
+    const ref = agentRef(parsed.name, options.version ?? parsed.version);
+    const card = await client.getCachedAgentCard(ref);
+    return Agent.fromCard(card, client, ref);
   }
 
-  /** An agent from its A2A card (`id` defaults to the card's name). */
+  /** An agent from its A2A card (`id` defaults to the card's name; it may be a `name@N` reference). */
   static fromCard(card: AgentCard, client: DistriClient, id?: string): Agent {
     return new Agent({ card, id }, client);
   }
@@ -445,12 +488,12 @@ export class Agent {
    * Complete an external tool call by sending the result back to the server
    */
   async completeTool(result: ToolResult): Promise<CompleteToolOutcome> {
-    return this.client.completeTool(this.id, result);
+    return this.client.completeTool(this.ref, result);
   }
 
   /** Whether the server runs this agent durably (`durable_runs`, see DistriClient). */
   async supportsDurableRuns(): Promise<boolean> {
-    return this.client.supportsDurableRuns(this.id);
+    return this.client.supportsDurableRuns(this.ref);
   }
 
   /** Pending calls (waits) of a thread's or a task's parked runs. */

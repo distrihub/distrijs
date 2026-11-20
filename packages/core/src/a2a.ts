@@ -281,6 +281,68 @@ export function agentDescriptorFromCard(card: unknown): AgentDescriptor | null {
 }
 
 // ---------------------------------------------------------------------------
+// Agent references (spec 2026-11-20-agent-versions V1)
+// ---------------------------------------------------------------------------
+
+/** A saved version number (1, 2, …) or `'latest'` (the current definition). */
+export type AgentVersion = number | 'latest';
+
+/** A parsed agent reference: `name` or `name@N`. No `version` means the latest. */
+export interface ParsedAgentRef {
+  name: string;
+  version?: AgentVersion;
+}
+
+function checkVersion(version: AgentVersion): void {
+  if (version === 'latest') return;
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+    throw new Error(`Invalid agent version: ${String(version)} (a saved version number from 1, or 'latest')`);
+  }
+}
+
+/**
+ * Print an agent reference: `agentRef('a')` is `a`, `agentRef('a', 3)` is
+ * `a@3`, `agentRef('a', 'latest')` is `a@latest`. Throws on a version that
+ * is not a positive integer or `'latest'`, or a name that already has `@`.
+ */
+export function agentRef(name: string, version?: AgentVersion): string {
+  if (!name || name.includes('@')) throw new Error(`Invalid agent name: ${JSON.stringify(name)}`);
+  if (version === undefined || version === null) return name;
+  checkVersion(version);
+  return `${name}@${version}`;
+}
+
+/**
+ * Parse `name` or `name@N` (`N` a saved version from 1, or `latest`).
+ * Throws on `a@`, `a@x`, `a@0`, `@3`.
+ */
+export function parseAgentRef(ref: string): ParsedAgentRef {
+  const at = ref.indexOf('@');
+  if (at < 0) {
+    if (!ref) throw new Error('Invalid agent reference: empty');
+    return { name: ref };
+  }
+  const name = ref.slice(0, at);
+  const sel = ref.slice(at + 1);
+  if (!name) throw new Error(`Invalid agent reference: ${JSON.stringify(ref)} (no name)`);
+  if (sel === 'latest') return { name, version: 'latest' };
+  if (!/^[1-9][0-9]*$/.test(sel)) {
+    throw new Error(`Invalid agent reference: ${JSON.stringify(ref)} (version is a number from 1, or 'latest')`);
+  }
+  return { name, version: Number(sel) };
+}
+
+/**
+ * A reference as one URL path segment: `/` in a package name as `%2F`, `@`
+ * raw (`pkg/a@2` → `pkg%2Fa@2`).
+ */
+export function agentRefPath(ref: string): string {
+  const at = ref.indexOf('@');
+  if (at < 0) return encodeURIComponent(ref);
+  return `${encodeURIComponent(ref.slice(0, at))}@${encodeURIComponent(ref.slice(at + 1))}`;
+}
+
+// ---------------------------------------------------------------------------
 // Enums and timestamps
 // ---------------------------------------------------------------------------
 
