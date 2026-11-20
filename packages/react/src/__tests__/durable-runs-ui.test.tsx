@@ -89,7 +89,7 @@ describe('useChat after a reload', () => {
       }),
     }
     const externalTools = [tool]
-    renderHook(() => useChat({ threadId: 'th-1', agent: agent as never, externalTools: externalTools as never }))
+    renderHook(() => useChat({ threadId: 'th-1', agent: agent as never, externalTools: externalTools as never, threadKnown: true }))
 
     await waitFor(() => expect(completeTool).toHaveBeenCalledTimes(1))
     expect(agent.listPendingCalls).toHaveBeenCalledWith({ threadId: 'th-1' })
@@ -104,7 +104,7 @@ describe('useChat after a reload', () => {
       supportsDurableRuns: vi.fn(async () => false),
       listPendingCalls: vi.fn(async () => []),
     }
-    renderHook(() => useChat({ threadId: 'th-1', agent: agent as never }))
+    renderHook(() => useChat({ threadId: 'th-1', agent: agent as never, threadKnown: true }))
     await waitFor(() => expect(agent.supportsDurableRuns).toHaveBeenCalled())
     expect(agent.listPendingCalls).not.toHaveBeenCalled()
   })
