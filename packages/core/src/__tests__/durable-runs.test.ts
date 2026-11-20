@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DistriClient } from '../distri-client'
-import { ToolCallClosedError, cardHasDurableRuns, parseCapabilitiesHeader } from '../durable-runs'
+import { DURABLE_RUNS_EXTENSION_URI, ToolCallClosedError, cardHasDurableRuns, parseCapabilitiesHeader } from '../durable-runs'
 import { decodeA2AStreamEvent } from '../encoder'
 import { ApiError, ToolResult } from '../types'
 
@@ -141,9 +141,14 @@ describe('completeTool', () => {
   })
 })
 
+const durableCard = (extra: Record<string, unknown> = {}) => ({
+  ...extra,
+  capabilities: { streaming: true, extensions: [{ uri: DURABLE_RUNS_EXTENSION_URI, required: false }] },
+})
+
 describe('durable runs capability', () => {
   it('reads the agent card and caches the answer per agent', async () => {
-    fetchMock.mockResolvedValueOnce(json({ name: 'a', durable_runs: true }))
+    fetchMock.mockResolvedValueOnce(json(durableCard({ name: 'a' })))
     const client = makeClient()
     expect(await client.supportsDurableRuns('a')).toBe(true)
     expect(await client.supportsDurableRuns('a')).toBe(true)
@@ -167,7 +172,7 @@ describe('durable runs capability', () => {
   })
 
   it('a failed card fetch is not cached', async () => {
-    fetchMock.mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce(json({ durable_runs: true }))
+    fetchMock.mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce(json(durableCard()))
     const client = makeClient()
     expect(await client.supportsDurableRuns('a')).toBe(false)
     expect(await client.supportsDurableRuns('a')).toBe(true)
@@ -176,8 +181,12 @@ describe('durable runs capability', () => {
   it('helpers', () => {
     expect(parseCapabilitiesHeader(' Durable_Runs ,x')).toEqual(['durable_runs', 'x'])
     expect(parseCapabilitiesHeader(null)).toEqual([])
-    expect(cardHasDurableRuns({ capabilities: { durable_runs: true } })).toBe(true)
-    expect(cardHasDurableRuns({ durable_runs: false })).toBe(false)
+    expect(cardHasDurableRuns(durableCard())).toBe(true)
+    expect(cardHasDurableRuns({ capabilities: { extensions: [{ uri: 'https://example.com/other' }] } })).toBe(false)
+    // A custom top-level field is not the standard way to advertise it.
+    expect(cardHasDurableRuns({ durable_runs: true })).toBe(false)
+    expect(cardHasDurableRuns({ capabilities: { durable_runs: true } })).toBe(false)
+    expect(cardHasDurableRuns(null)).toBe(false)
   })
 })
 

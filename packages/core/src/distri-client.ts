@@ -1837,9 +1837,9 @@ export class DistriClient {
   }
 
   /**
-   * Whether the server runs this agent durably (`durable_runs`): from the
-   * capabilities header when seen, else from the agent card (`durable_runs:
-   * true`). Cached per client and agent; a failed card fetch is not cached.
+   * Whether the server runs this agent durably: from the `x-distri-capabilities`
+   * header (`durable_runs`) when seen, else from the agent card's durable-runs
+   * A2A extension (`capabilities.extensions[].uri`). Cached per client and agent; a failed card fetch is not cached.
    */
   async supportsDurableRuns(agentId?: string): Promise<boolean> {
     if (this.hasCapability(DURABLE_RUNS_CAPABILITY)) return true;
