@@ -53,15 +53,9 @@ export function useAgent({
     setError(null);
 
     try {
-      let newAgent: Agent;
-      if (typeof agentIdOrDef === 'string') {
-        // Fetch agent config from server and create Agent instance
-        const agentConfig = await client.getAgent(agentIdOrDef);
-        newAgent = new Agent(agentConfig, client);
-      } else {
-        // AgentDefinition passed directly - create Agent instance
-        newAgent = new Agent(agentIdOrDef, client);
-      }
+      // An id is resolved from the agent's A2A card (readable with an
+      // end-user token); a definition passed in is used as is.
+      const newAgent = await Agent.create(agentIdOrDef, client);
 
       agentRef.current = newAgent;
       currentAgentIdRef.current = agentIdOrDef;

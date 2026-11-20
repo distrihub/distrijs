@@ -25,7 +25,9 @@ export interface UseAgentsResult {
   getAgentCards: () => Promise<AgentCard[]>;
   /**
    * Fetch the full, heavy {@link AgentDefinition} for a single agent (system
-   * prompt, tools, model settings). Use this when editing or running the agent.
+   * prompt, tools, model settings). A developer API (`GET /agents/{id}` needs
+   * the developer permission; end users get 403) for editing surfaces —
+   * running an agent uses its card (`useAgent` / `Agent.create`).
    */
   getAgent: (agentId: string) => Promise<AgentDefinition>;
   /**

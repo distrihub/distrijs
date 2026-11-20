@@ -118,7 +118,11 @@ async function generatePayloadWithAgent(
   isCancelled?: () => boolean
 ): Promise<Record<string, unknown>> {
   const agent = await Agent.create(agentDefinition ?? DEFAULT_SIMULATION_AGENT_ID, client);
-  const effectiveAgentDefinition = buildAgentContextSnapshot(agentDefinition ?? agent.getDefinition());
+  // Developer surface: the definition is read explicitly (it may be 403 for
+  // tokens without the developer permission; then the snapshot is empty).
+  const effectiveAgentDefinition = buildAgentContextSnapshot(
+    agentDefinition ?? await agent.getDefinition().catch(() => null),
+  );
   const simulationThreadId = `${threadId}:tool-simulation:${tool.name}`;
   const simulateOutputTool = {
     type: 'function' as const,

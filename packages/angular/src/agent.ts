@@ -15,15 +15,14 @@ export interface AgentService {
 }
 
 /**
- * Resolves an `Agent` from an id (fetched via `DistriClient.getAgent`) or an
+ * Resolves an `Agent` from an id (built from its A2A card, readable with an
+ * end-user token — never `GET /agents/{id}`) or an
  * already-known `AgentDefinition`. Mirrors `@distri/react`'s `useAgent` —
  * that hook's actual resolution logic is this same handful of lines; the
  * rest of the hook is React lifecycle glue with nothing to share.
  */
 export async function resolveAgentOnce(client: DistriClient, agentIdOrDef: string | AgentDefinition): Promise<Agent> {
-  return typeof agentIdOrDef === 'string'
-    ? new Agent(await client.getAgent(agentIdOrDef), client)
-    : new Agent(agentIdOrDef, client);
+  return Agent.create(agentIdOrDef, client);
 }
 
 export function createAgentService(initial: AgentServiceOptions): AgentService {
