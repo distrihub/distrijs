@@ -11,7 +11,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { AgentDefinition, DistriBaseTool, DistriClient, DistriMessage } from '@distri/core';
+import { AgentDefinition, AgentVersion, DistriBaseTool, DistriClient, DistriMessage } from '@distri/core';
 import type { ToolCallState } from '@distri/state';
 import { ChatService, createChatService } from '../chat';
 import { resolveAgentOnce } from '../agent';
@@ -107,6 +107,11 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
    */
   @Input() client?: DistriClient;
   @Input({ required: true }) agentIdOrDef!: string | AgentDefinition;
+  /**
+   * Run a saved version of the agent (a number, or `'latest'`, the default).
+   * Changing it reconnects on the same thread.
+   */
+  @Input() version?: AgentVersion;
   @Input({ required: true }) threadId!: string;
   /**
    * Frontend-executed tools the agent can call. Expected to be stable for
@@ -130,6 +135,7 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
   /** Inputs mirrored into signals so `effect()` below can react to them. */
   private readonly clientInput = signal<DistriClient | null>(null);
   private readonly agentInput = signal<string | AgentDefinition | null>(null);
+  private readonly versionInput = signal<AgentVersion | undefined>(undefined);
   private readonly threadInput = signal<string | null>(null);
 
   /** Explicit `[client]` wins; otherwise take the one from `provideDistri`. */
@@ -184,9 +190,10 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
     // `allowSignalWrites`: this effect intentionally drives the chat/error
     // signals — that IS its job, not an accidental write during computation.
     effect(() => {
-      // These three are the ONLY dependencies this effect should have.
+      // These four are the ONLY dependencies this effect should have.
       const client = this.activeClient();
       const agentIdOrDef = this.agentInput();
+      const version = this.versionInput();
       const threadId = this.threadInput();
 
       // `untracked`: the effect also *writes* `chat`, so reading it in the
@@ -200,13 +207,14 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
 
       if (!client || !agentIdOrDef || !threadId) return;
 
-      resolveAgentOnce(client, agentIdOrDef)
+      resolveAgentOnce(client, agentIdOrDef, version)
         .then((agent) => {
           untracked(() => {
             // Bail if a newer run superseded this one while it was in flight.
             if (
               this.activeClient() !== client ||
               this.agentInput() !== agentIdOrDef ||
+              this.versionInput() !== version ||
               this.threadInput() !== threadId
             ) {
               return;
@@ -232,6 +240,7 @@ export class DistriChatComponent implements OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['client']) this.clientInput.set(this.client ?? null);
     if (changes['agentIdOrDef']) this.agentInput.set(this.agentIdOrDef ?? null);
+    if (changes['version']) this.versionInput.set(this.version);
     if (changes['threadId']) this.threadInput.set(this.threadId ?? null);
   }
 
