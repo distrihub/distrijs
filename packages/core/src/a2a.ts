@@ -353,6 +353,24 @@ export function parseA2ATimestamp(value: unknown): number | undefined {
   return Number.isFinite(ms) ? ms : undefined;
 }
 
+/**
+ * `metadata` key with the time a 1.0 `Message` or `TaskArtifactUpdateEvent`
+ * was created (ISO-8601): A2A 1.0 messages have no timestamp of their own.
+ * Set with `event-stream` active, and always on `GET /threads/{id}/messages`.
+ */
+export const CREATED_AT_KEY = 'distri/created_at';
+
+/** `metadata["distri/created_at"]` of the first object that has one, as epoch ms. */
+export function createdAtOf(...objects: unknown[]): number | undefined {
+  for (const o of objects) {
+    const meta = o && typeof o === 'object' ? (o as { metadata?: unknown }).metadata : undefined;
+    if (!meta || typeof meta !== 'object') continue;
+    const ms = parseA2ATimestamp((meta as Record<string, unknown>)[CREATED_AT_KEY]);
+    if (ms !== undefined) return ms;
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Parts
 // ---------------------------------------------------------------------------

@@ -96,6 +96,12 @@ export interface A2ACallOptions {
   onActivated?: (uris: string[]) => void;
 }
 
+/** One answer to a pending client-tool call, for {@link DistriClient.respondToTask}. */
+export interface TaskToolAnswer {
+  tool_call_id: string;
+  result: unknown;
+}
+
 export type ChatCompletionRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export interface ChatCompletionMessage {
@@ -1153,6 +1159,19 @@ export class DistriClient {
     return headers;
   }
 
+  /**
+   * `A2A-Version` and `A2A-Extensions` for distri's own REST routes that
+   * return A2A objects or event envelopes (`GET /tasks/{id}/events`,
+   * `GET /threads/{id}/messages`): envelopes of an extension are only sent
+   * when the request activates it, the same as on an A2A stream.
+   */
+  private restA2AHeaders(accept: string, extensions?: readonly string[]): Record<string, string> {
+    const uris = resolveExtensions(extensions ?? this.config.a2aExtensions);
+    const headers: Record<string, string> = { Accept: accept, [A2A_VERSION_HEADER]: A2A_VERSION };
+    if (uris.length > 0) headers[A2A_EXTENSIONS_HEADER] = uris.join(', ');
+    return headers;
+  }
+
   private recordActivation(agentId: string, response: Response, requested: string[], options?: A2ACallOptions): string[] {
     const echoed = response.headers?.get?.(A2A_EXTENSIONS_HEADER);
     // A server that does not echo the header is taken to have activated what
@@ -1574,13 +1593,15 @@ export class DistriClient {
   async subscribeTaskEvents(
     taskId: string,
     onEvent: (event: DistriEvent) => void,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal; extensions?: readonly string[] }
   ): Promise<void> {
+    // Replay is `event-stream`'s own method; the other extensions' envelopes
+    // (`client-tools`, `durable-runs`) follow this request's `A2A-Extensions`.
     const response = await this.fetch(`/tasks/${encodeURIComponent(taskId)}/events`, {
       method: 'GET',
       headers: {
-        Accept: 'text/event-stream',
         ...this.config.headers,
+        ...this.restA2AHeaders('text/event-stream', options?.extensions),
       },
     });
     if (!response.ok) {
@@ -1748,7 +1769,9 @@ export class DistriClient {
    */
   async getThreadMessages(threadId: string): Promise<Message[]> {
     try {
-      const response = await this.fetch(`/threads/${threadId}/messages`);
+      const response = await this.fetch(`/threads/${threadId}/messages`, {
+        headers: this.restA2AHeaders('application/json'),
+      });
       if (!response.ok) {
         if (response.status === 404) {
           return []; // Thread not found, return empty messages
@@ -2003,6 +2026,39 @@ export class DistriClient {
       throw lastError;
     }
     throw lastError;
+  }
+
+  /**
+   * Answer a task parked in `INPUT_REQUIRED` the plain-A2A way: a new
+   * `SendMessage` on the same task. Each answer is a DataPart
+   * `{tool_call_id, result}` completing that call; a string is a text reply,
+   * which the server applies when exactly one call is pending.
+   *
+   * For integrators speaking plain A2A. distri's own chat keeps using
+   * {@link completeTool} (`client-tools`). The server applies the same rules:
+   * the first answer wins, a duplicate is fine, an expired or conflicting one
+   * is a JSON-RPC `-32602` ({@link A2AProtocolError}). Resolves with the task
+   * at its next terminal state or park (a blocking `SendMessage`).
+   */
+  async respondToTask(
+    agentId: string,
+    taskId: string,
+    answers: TaskToolAnswer[] | string,
+    options?: A2ACallOptions & { contextId?: string },
+  ): Promise<Message | Task> {
+    const parts: Part[] = typeof answers === 'string'
+      ? [{ kind: 'text', text: answers }]
+      : answers.map((a) => ({ kind: 'data', data: { tool_call_id: a.tool_call_id, result: a.result ?? null } }) as Part);
+    const message: Message = {
+      kind: 'message',
+      messageId: uuid(),
+      role: 'user',
+      taskId,
+      ...(options?.contextId ? { contextId: options.contextId } : {}),
+      parts,
+    };
+    const result = await this.a2aCall(agentId, A2A_METHODS.SEND_MESSAGE, toWireSendParams({ message }), options);
+    return fromWireSendResult(result);
   }
 
   // ========== Durable runs ==========

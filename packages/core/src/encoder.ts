@@ -2,7 +2,7 @@ import { Message, Part, FileWithBytes, FileWithUri } from '@a2a-js/sdk';
 import { DistriMessage, DistriMessageMetadata, PartMetadata, DistriPart, MessageRole, InvokeContext, ToolCall, ToolResult, FileUrl, FileBytes, DistriChatMessage } from './types';
 import { DistriEvent, RunStartedEvent, RunFinishedEvent, PlanStartedEvent, PlanFinishedEvent, ToolExecutionStartEvent, ToolExecutionEndEvent, TextMessageStartEvent, TextMessageContentEvent, TextMessageEndEvent, ToolCallsEvent, ToolResultsEvent, RunErrorEvent, InlineHookRequestedEvent, BrowserSessionStartedEvent, TodosUpdatedEvent, TodoItem, TodoStatus, LiveViewEvent } from './events';
 import type { RunParkedEvent } from './durable-runs';
-import { PART_TYPE_KEY, fromWire, normalizeRole, normalizeTaskState, parseA2ATimestamp } from './a2a';
+import { PART_TYPE_KEY, createdAtOf, fromWire, normalizeRole, normalizeTaskState, parseA2ATimestamp } from './a2a';
 
 /**
  * Converts an A2A Message to a DistriMessage
@@ -41,7 +41,8 @@ export function convertA2AMessageToDistri(a2aMessage: Message): DistriMessage {
     id: a2aMessage.messageId,
     role,
     parts: (a2aMessage.parts ?? []).map(convertA2APartToDistri),
-    created_at: (a2aMessage as any).createdAt,
+    // A2A 1.0 messages carry their time in `metadata["distri/created_at"]`.
+    created_at: createdAtOf(a2aMessage) ?? (a2aMessage as any).createdAt,
     ...(isFinal ? { is_final: true } : {}),
     ...(metadata ? { metadata } : {}),
     agent_id,
@@ -428,7 +429,7 @@ function artifactFilesMessage(update: any): DistriMessage | null {
     id: String(artifact?.artifactId ?? ''),
     role: 'assistant',
     parts: files.map(convertA2APartToDistri),
-    created_at: Date.now(),
+    created_at: createdAtOf(update, artifact) ?? Date.now(),
     ...(metadata?.parent_task_id ? { parentTaskId: metadata.parent_task_id } : {}),
     taskId: update?.taskId,
   };
@@ -559,7 +560,9 @@ export class A2AStreamDecoder {
     const text = artifactText(frame);
     if (text === null) return [];
     const messageId = String(frame?.artifact?.artifactId ?? '');
-    const stamp = <T extends DistriEvent>(e: T): T => ({ ...e, taskId: frame?.taskId } as T);
+    const timestamp = createdAtOf(frame, frame?.artifact);
+    const stamp = <T extends DistriEvent>(e: T): T =>
+      ({ ...e, taskId: frame?.taskId, ...(timestamp !== undefined ? { timestamp } : {}) } as T);
     const out: DistriChatMessage[] = [];
     if (frame.append !== true || !this.openText.has(messageId)) {
       this.openText.add(messageId);
