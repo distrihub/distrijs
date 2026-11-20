@@ -13,8 +13,14 @@
  */
 import { ApiError } from './types';
 
-/** Capability name, on the agent card (`durable_runs: true`) and in the header. */
+/** Capability name in the `x-distri-capabilities` response header. */
 export const DURABLE_RUNS_CAPABILITY = 'durable_runs';
+
+/**
+ * A2A extension URI advertising durable runs on the agent card
+ * (`capabilities.extensions[].uri`). The card itself stays standard A2A.
+ */
+export const DURABLE_RUNS_EXTENSION_URI = 'https://distri.dev/a2a/extensions/durable-runs/v1';
 
 /** Response header listing server capabilities, comma separated. */
 export const CAPABILITIES_HEADER = 'x-distri-capabilities';
@@ -112,11 +118,16 @@ export function parseCapabilitiesHeader(value: string | null | undefined): strin
     .filter(Boolean);
 }
 
-/** Whether an agent card advertises durable runs (top level or under `capabilities`). */
+/**
+ * Whether an agent card advertises durable runs: an entry in
+ * `capabilities.extensions` with uri {@link DURABLE_RUNS_EXTENSION_URI}.
+ */
 export function cardHasDurableRuns(card: unknown): boolean {
   if (!card || typeof card !== 'object') return false;
-  const c = card as Record<string, unknown>;
-  if (c[DURABLE_RUNS_CAPABILITY] === true) return true;
-  const caps = c.capabilities as Record<string, unknown> | undefined;
-  return !!caps && typeof caps === 'object' && caps[DURABLE_RUNS_CAPABILITY] === true;
+  const caps = (card as Record<string, unknown>).capabilities as Record<string, unknown> | undefined;
+  const extensions = caps && typeof caps === 'object' ? caps.extensions : undefined;
+  if (!Array.isArray(extensions)) return false;
+  return extensions.some(
+    (e) => !!e && typeof e === 'object' && (e as Record<string, unknown>).uri === DURABLE_RUNS_EXTENSION_URI,
+  );
 }
