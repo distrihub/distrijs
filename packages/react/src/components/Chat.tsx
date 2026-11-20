@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, AgentDefinition, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
+import { Agent, AgentDefinition, AgentVersion, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
 import { ChatMessageList } from './ChatMessageList';
@@ -126,6 +126,11 @@ export interface ChatProps extends TranscriptRenderingProps {
   className?: string;
   // Agent loading
   agentId?: string;
+  /**
+   * Run a saved version of `agentId`: its number, or `'latest'` (the
+   * default). Changing it reloads the agent and keeps the thread.
+   */
+  version?: AgentVersion;
   // History loading
   enableHistory?: boolean;
   /**
@@ -1372,7 +1377,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>((props, ref) => {
 });
 
 const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function ChatContainer(
-  { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, enableFeedback, ...props },
+  { agent: agentProp, agentId, version, enableHistory, threadId, initialMessages: initialMessagesProp, theme, enableFeedback, ...props },
   ref
 ) {
   const { isLoading: clientLoading } = useDistri();
@@ -1381,6 +1386,7 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   // Fetch agent if agentId is provided but agentProp is not
   const { agent: fetchedAgent, loading: agentLoading } = useAgent({
     agentIdOrDef: agentId || '',
+    version,
     enabled: !agentProp && !!agentId
   });
 
@@ -1396,7 +1402,9 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   const initialMessages = initialMessagesProp || fetchedMessages;
 
   // Loading state - client, agent or history is initializing
-  if (clientLoading || agentLoading || (enableHistory && historyLoading)) {
+  // A version change keeps the current agent while the new one loads, so the
+  // chat (and its thread) stays mounted.
+  if (clientLoading || (agentLoading && !agent) || (enableHistory && historyLoading)) {
     return (
       <div className={`distri-chat flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
