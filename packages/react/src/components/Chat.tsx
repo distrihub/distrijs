@@ -77,11 +77,10 @@ export interface ChatProps extends TranscriptRenderingProps {
   // Initial messages to use instead of fetching
   initialMessages?: (DistriChatMessage)[];
   /**
-   * Whether the server has `threadId` (it was loaded from there). Default:
-   * known when `initialMessages` holds history; a thread id you minted is not,
-   * and the chat fetches nothing about it (thread, history, pending calls)
-   * before its first send. Pass `false` with your own new id and
-   * `enableHistory` to skip the history fetch.
+   * Whether the server has `threadId`. Default `true`. Pass `false` for a
+   * thread id you just minted (a new chat): the chat fetches nothing about it
+   * (thread, history, pending calls) before its first send. A chat with no
+   * `threadId` mints its own and treats it as new.
    */
   threadKnown?: boolean;
   // Theme
@@ -564,8 +563,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Initial fetch for existing threads
   useEffect(() => {
-    const known = threadKnown ?? (initialMessages?.length ?? 0) > 0;
-    if (distriClient && threadIdProp && known) {
+    if (distriClient && threadIdProp && threadKnown !== false && initialMessages && initialMessages.length > 0) {
       refreshThreadDetails();
     }
   }, [distriClient, threadId]); // intentionally only on mount/threadId change

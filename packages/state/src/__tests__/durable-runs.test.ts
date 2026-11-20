@@ -83,7 +83,7 @@ function setup(agent: Agent, tools: unknown[], threadId = 'th-1') {
   const store = createChatStore();
   store.getState().setAgent(agent);
   store.getState().setExternalTools(tools as never);
-  const controller = new ChatController(store, threadId, { threadKnown: true });
+  const controller = new ChatController(store, threadId);
   controller.setAgent(agent);
   controller.setExternalTools(tools as never);
   controller.resubscribeDelay = async () => {};

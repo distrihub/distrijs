@@ -82,9 +82,10 @@ export class ChatController {
   private externalTools: DistriBaseTool[] | undefined;
   private threadId: string;
   /**
-   * The server has this thread: it was loaded from the server, or this chat
-   * sent on it. A thread id the client minted is unknown until its first
-   * send, and nothing asks the server about it before then (no 404 probes).
+   * The server has this thread. Known by default (a thread being reopened);
+   * a thread id the client just minted is marked new (`threadKnown: false`)
+   * and becomes known with its first send. Nothing asks the server about a
+   * new thread before then (no pending-calls probe).
    */
   private threadKnown: boolean;
   private callbacks: ChatControllerCallbacks = {};
@@ -95,12 +96,12 @@ export class ChatController {
     new Promise((r) => setTimeout(r, 500 * attempt));
 
   /**
-   * @param options.threadKnown the thread exists on the server (it was loaded
-   *   from there). Default `false`: a new thread id, known after its first send.
+   * @param options.threadKnown `false` for a thread id the client just minted
+   *   (known after its first send). Default `true`.
    */
   constructor(private readonly store: ChatStore, threadId: string, options: { threadKnown?: boolean } = {}) {
     this.threadId = threadId;
-    this.threadKnown = options.threadKnown === true;
+    this.threadKnown = options.threadKnown !== false;
   }
 
   setAgent(agent: Agent | null): void {
@@ -112,18 +113,20 @@ export class ChatController {
   }
 
   /**
-   * Switch thread. A different id is unknown to the server unless
-   * `options.known` says it was loaded from there.
+   * Switch thread. The new id is known to the server unless
+   * `options.known` is `false` (a thread id the client just minted). For the
+   * current id only `known: true` applies: a sent-on thread stays known.
    */
   setThreadId(threadId: string, options: { known?: boolean } = {}): void {
     if (threadId !== this.threadId) {
       this.threadId = threadId;
-      this.threadKnown = false;
+      this.threadKnown = options.known !== false;
+    } else if (options.known === true) {
+      this.threadKnown = true;
     }
-    if (options.known === true) this.threadKnown = true;
   }
 
-  /** The thread was loaded from the server (it has history there). */
+  /** The server has the thread (e.g. a new thread was created elsewhere). */
   markThreadKnown(): void {
     this.threadKnown = true;
   }
@@ -320,8 +323,8 @@ export class ChatController {
    * client-tool calls and run the ones this chat has a tool for — each claimed
    * first and run at most once. When nothing else is streaming, follow the
    * parked task (`tasks/resubscribe`) so its next segment shows up live.
-   * A server without durable runs, or a thread the server does not have yet
-   * (minted here, not sent on): does nothing and returns [].
+   * A server without durable runs, or a new thread not sent on yet
+   * (`threadKnown: false`): does nothing and returns [].
    */
   async recoverPendingCalls(options: { follow?: boolean } = {}): Promise<PendingCall[]> {
     const { agent } = this;
