@@ -76,6 +76,14 @@ export interface ChatProps extends TranscriptRenderingProps {
   executionOptions?: ToolExecutionOptions;
   // Initial messages to use instead of fetching
   initialMessages?: (DistriChatMessage)[];
+  /**
+   * Whether the server has `threadId` (it was loaded from there). Default:
+   * known when `initialMessages` holds history; a thread id you minted is not,
+   * and the chat fetches nothing about it (thread, history, pending calls)
+   * before its first send. Pass `false` with your own new id and
+   * `enableHistory` to skip the history fetch.
+   */
+  threadKnown?: boolean;
   // Theme
   theme?: 'light' | 'dark' | 'auto';
   // Model dropdown options
@@ -245,6 +253,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   externalTools,
   executionOptions,
   initialMessages,
+  threadKnown,
   theme = 'auto',
   models,
   selectedModelId,
@@ -419,6 +428,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     externalTools: externalTools as any,
     executionOptions,
     initialMessages,
+    threadKnown: threadIdProp ? threadKnown : false,
     beforeSendMessage,
     store: chatStore,
   });
@@ -554,7 +564,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Initial fetch for existing threads
   useEffect(() => {
-    if (distriClient && threadId && initialMessages && initialMessages.length > 0) {
+    const known = threadKnown ?? (initialMessages?.length ?? 0) > 0;
+    if (distriClient && threadIdProp && known) {
       refreshThreadDetails();
     }
   }, [distriClient, threadId]); // intentionally only on mount/threadId change
@@ -1380,7 +1391,8 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   // Fetch history if enableHistory is true
   const { messages: fetchedMessages, isLoading: historyLoading } = useChatMessages({
     threadId,
-    enabled: !!enableHistory && !initialMessagesProp && !!threadId
+    // A thread id the caller minted (threadKnown false) has no history yet.
+    enabled: !!enableHistory && !initialMessagesProp && !!threadId && props.threadKnown !== false
   });
 
   const initialMessages = initialMessagesProp || fetchedMessages;
