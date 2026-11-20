@@ -1,0 +1,13 @@
+{
+  "about": "A2A 1.0 SendStreamingMessage frames with no extensions active (standard A2A), as distri feat/durable-runs @ 3e2318b emits them: {task} SUBMITTED, {statusUpdate} WORKING, the streamed text as {artifactUpdate} (artifactId = message id, name response, append false then true, lastChunk true at the end), produced files as {artifactUpdate}, terminal {statusUpdate} with the answer as status.message, final {task}.",
+  "frames": [
+    {"jsonrpc":"2.0","id":"r2","result":{"task":{"id":"t-root","contextId":"th-1","status":{"state":"TASK_STATE_SUBMITTED","timestamp":"2026-11-20T12:00:00.000Z"}}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"statusUpdate":{"taskId":"t-root","contextId":"th-1","status":{"state":"TASK_STATE_WORKING","timestamp":"2026-11-20T12:00:00.050Z"}}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"artifactUpdate":{"taskId":"t-root","contextId":"th-1","artifact":{"artifactId":"m1","name":"response","parts":[{"text":"Hel"}]},"append":false,"lastChunk":false}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"artifactUpdate":{"taskId":"t-root","contextId":"th-1","artifact":{"artifactId":"m1","name":"response","parts":[{"text":"lo"}]},"append":true,"lastChunk":false}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"artifactUpdate":{"taskId":"t-root","contextId":"th-1","artifact":{"artifactId":"m1","name":"response","parts":[{"text":""}]},"append":true,"lastChunk":true}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"artifactUpdate":{"taskId":"t-root","contextId":"th-1","artifact":{"artifactId":"f1","name":"report.md","parts":[{"data":{"file_id":"f1","relative_path":"out/report.md","size":4,"content_type":"text/markdown","original_filename":null,"preview":"# hi"},"filename":"report.md","mediaType":"text/markdown","metadata":{"distri/part_type":"artifact"}},{"text":"# hi"}]},"append":false,"lastChunk":true}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"statusUpdate":{"taskId":"t-root","contextId":"th-1","status":{"state":"TASK_STATE_COMPLETED","message":{"messageId":"t-root-final","contextId":"th-1","taskId":"t-root","role":"ROLE_AGENT","parts":[{"text":"Hello"}],"metadata":{"message_type":"text","is_final":true}},"timestamp":"2026-11-20T12:00:02.000Z"}}}},
+    {"jsonrpc":"2.0","id":"r2","result":{"task":{"id":"t-root","contextId":"th-1","status":{"state":"TASK_STATE_COMPLETED","message":{"messageId":"t-root-final","contextId":"th-1","taskId":"t-root","role":"ROLE_AGENT","parts":[{"text":"Hello"}],"metadata":{"message_type":"text","is_final":true}},"timestamp":"2026-11-20T12:00:02.000Z"},"artifacts":[{"artifactId":"f1","name":"report.md","parts":[{"data":{"file_id":"f1"},"metadata":{"distri/part_type":"artifact"}}]}]}}}
+  ]
+}

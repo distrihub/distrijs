@@ -3,9 +3,11 @@ export * from './types';
 export type { LLMResponse } from './types';
 export * from './events';
 export * from './durable-runs';
+export * from './a2a';
 export * from './distri-client';
 export * from './agent';
 export * from './tool-registry';
+export type { A2AStreamDecoderOptions } from './encoder';
 export {
   convertA2AMessageToDistri,
   convertA2AStatusUpdateToDistri,
@@ -16,6 +18,7 @@ export {
   extractToolCallsFromDistriMessage,
   extractToolResultsFromDistriMessage,
   decodeA2AStreamEvent,
+  A2AStreamDecoder,
   processA2AMessagesData,
   processA2AStreamData,
 } from './encoder';

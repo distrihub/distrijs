@@ -30,7 +30,6 @@ import {
   PendingCall,
   ToolCallClosedError,
   ApiError,
-  DURABLE_RUNS_CAPABILITY,
   uuid,
 } from '@distri/core';
 import { DistriAnyTool, DistriUiToolLike, ToolCallStatus, RenderingMode, ChatSessionSettings, StreamingIndicator } from './types';
@@ -320,7 +319,7 @@ export interface ChatStateStore extends ChatState {
   setResumeWithToolResult: (fn: ((parts: DistriPart[]) => Promise<void>) | undefined) => void;
   /** Durable runs: set whether the server parks runs (see `durableRuns`). */
   setDurableRuns: (durable: boolean) => void;
-  /** `durableRuns`, or the capability header the agent's client has seen. */
+  /** `durableRuns`: the agent card declares the durable-runs extension. */
   isDurable: () => boolean;
   /**
    * Durable runs: run pending client-tool calls this client has a tool for.
@@ -1347,11 +1346,8 @@ export function createChatStore(options: CreateChatStoreOptions = {}): ChatStore
 
   setDurableRuns: (durable: boolean) => set({ durableRuns: durable }),
 
-  isDurable: () => {
-    if (get().durableRuns) return true;
-    const client = get().agent?.client as { hasCapability?: (name: string) => boolean } | undefined;
-    return typeof client?.hasCapability === 'function' && client.hasCapability(DURABLE_RUNS_CAPABILITY);
-  },
+  // Set from the agent card's durable-runs extension (ChatController).
+  isDurable: () => get().durableRuns,
 
   runPendingCalls: async (calls: PendingCall[]) => {
     const externalTools = get().externalTools || [];

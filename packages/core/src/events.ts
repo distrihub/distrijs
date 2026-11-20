@@ -311,6 +311,11 @@ export interface DistriEventEnvelope {
   attempt?: number;
   /** The step the event belongs to (`metadata.step_id`), when the server says so. */
   stepId?: string;
+  /**
+   * `true` on the root run's end (`run_finished` / `run_error`) only — the
+   * event-stream envelope's `final`, or a standard stream's terminal state.
+   */
+  final?: boolean;
 }
 
 // Each concrete event interface gets the envelope merged in via

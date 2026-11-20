@@ -13,17 +13,13 @@
  */
 import { ApiError } from './types';
 
-/** Capability name in the `x-distri-capabilities` response header. */
-export const DURABLE_RUNS_CAPABILITY = 'durable_runs';
-
 /**
  * A2A extension URI advertising durable runs on the agent card
- * (`capabilities.extensions[].uri`). The card itself stays standard A2A.
+ * (`capabilities.extensions[].uri`) — the only place a client learns that the
+ * server runs an agent durably. The client activates it (`A2A-Extensions`)
+ * together with `client-tools`.
  */
 export const DURABLE_RUNS_EXTENSION_URI = 'https://distri.dev/a2a/extensions/durable-runs/v1';
-
-/** Response header listing server capabilities, comma separated. */
-export const CAPABILITIES_HEADER = 'x-distri-capabilities';
 
 export type PendingCallKind = 'client_tool' | 'approval' | 'process' | 'sub_agent';
 
@@ -107,15 +103,6 @@ export interface RunParkedEvent {
     pending: string[];
     deadline?: string;
   };
-}
-
-/** Parse the capabilities header value into names. */
-export function parseCapabilitiesHeader(value: string | null | undefined): string[] {
-  if (!value) return [];
-  return value
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
 }
 
 /**
