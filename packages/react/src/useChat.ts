@@ -19,10 +19,9 @@ export interface UseChatOptions {
   executionOptions?: ToolExecutionOptions;
   initialMessages?: (DistriChatMessage)[];
   /**
-   * Whether the server has this thread (it was loaded from there). Default:
-   * known when `initialMessages` holds history, otherwise a new thread id the
-   * client minted, which the server learns of with its first send. Nothing
-   * asks the server about an unknown thread (no pending-calls probe).
+   * Whether the server has this thread. Default `true`. Pass `false` for a
+   * thread id you just minted: nothing asks the server about it (no
+   * pending-calls probe) until its first send makes it known.
    */
   threadKnown?: boolean;
   beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
@@ -86,7 +85,7 @@ export function useChat({
   // ChatController (framework-agnostic). This hook owns only the
   // mutable-context sync (agent/threadId/tools/callbacks can change across
   // renders) and React lifecycle.
-  const loadedFromServer = threadKnown ?? (initialMessages?.length ?? 0) > 0;
+  const loadedFromServer = threadKnown !== false;
   const [controller] = useState(() => new ChatController(store, threadId, { threadKnown: loadedFromServer }));
 
   useEffect(() => {
@@ -169,8 +168,8 @@ export function useChat({
   // Durable runs: after a load (and whenever the agent, thread or tools
   // change), find the thread's pending client-tool calls and answer the ones
   // this chat has a tool for — claimed first, run once. A server without
-  // durable runs, or a thread not on the server yet, answers nothing and this
-  // is a no-op (re-run once history makes the thread known).
+  // durable runs, or a new thread not sent on yet, answers nothing and this
+  // is a no-op.
   // Keyed on tool names, not the array: callers often pass a fresh array per render.
   const externalToolNames = (externalTools ?? []).map((t) => t.name).join(',');
   useEffect(() => {

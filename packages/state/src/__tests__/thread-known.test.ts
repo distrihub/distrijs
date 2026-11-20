@@ -44,17 +44,27 @@ function setup(threadId: string, options?: { threadKnown?: boolean }) {
 }
 
 describe('a thread the client just minted (G4)', () => {
-  it('is not known to the server, so recovery asks nothing', async () => {
-    const { agent, controller } = setup('th-new');
+  it('a thread is known by default (reopened), so recovery lists its pending calls', async () => {
+    const { agent, controller } = setup('th-old');
+    expect(controller.isThreadKnown()).toBe(true);
+    await controller.recoverPendingCalls({ follow: false });
+    expect(agent.listPendingCalls).toHaveBeenCalledWith({ threadId: 'th-old' });
+  });
+
+  it('a new thread (threadKnown: false) is not probed', async () => {
+    const { agent, controller } = setup('th-new', { threadKnown: false });
     expect(controller.isThreadKnown()).toBe(false);
     await expect(controller.recoverPendingCalls({ follow: false })).resolves.toEqual([]);
     expect(agent.listPendingCalls).not.toHaveBeenCalled();
   });
 
   it('becomes known after its first send; then recovery lists its pending calls', async () => {
-    const { agent, controller } = setup('th-new');
+    const { agent, controller } = setup('th-new', { threadKnown: false });
     await controller.sendMessage('hello');
     expect(agent.invokeStream).toHaveBeenCalledTimes(1);
+    expect(controller.isThreadKnown()).toBe(true);
+    // Re-asserting "new" for the same id does not forget the send.
+    controller.setThreadId('th-new', { known: false });
     expect(controller.isThreadKnown()).toBe(true);
 
     agent.listPendingCalls.mockResolvedValueOnce([pending]);
@@ -63,26 +73,20 @@ describe('a thread the client just minted (G4)', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('a thread loaded from the server is known (constructor option or markThreadKnown)', async () => {
-    const loaded = setup('th-old', { threadKnown: true });
-    await loaded.controller.recoverPendingCalls({ follow: false });
-    expect(loaded.agent.listPendingCalls).toHaveBeenCalledWith({ threadId: 'th-old' });
-
-    const marked = setup('th-old');
-    marked.controller.markThreadKnown();
-    await marked.controller.recoverPendingCalls({ follow: false });
-    expect(marked.agent.listPendingCalls).toHaveBeenCalledTimes(1);
+  it('markThreadKnown makes a new thread known', async () => {
+    const { agent, controller } = setup('th-new', { threadKnown: false });
+    controller.markThreadKnown();
+    await controller.recoverPendingCalls({ follow: false });
+    expect(agent.listPendingCalls).toHaveBeenCalledTimes(1);
   });
 
-  it('switching to another thread id forgets it, unless told the new one is known', async () => {
-    const { agent, controller } = setup('th-a', { threadKnown: true });
-    controller.setThreadId('th-a');
-    expect(controller.isThreadKnown()).toBe(true);
-    controller.setThreadId('th-b');
+  it('switching thread: known by default, new with { known: false }', async () => {
+    const { agent, controller } = setup('th-a');
+    controller.setThreadId('th-b', { known: false });
     expect(controller.isThreadKnown()).toBe(false);
     await controller.recoverPendingCalls({ follow: false });
     expect(agent.listPendingCalls).not.toHaveBeenCalled();
-    controller.setThreadId('th-c', { known: true });
+    controller.setThreadId('th-c');
     expect(controller.isThreadKnown()).toBe(true);
   });
 });
