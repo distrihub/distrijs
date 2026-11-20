@@ -67,7 +67,10 @@ export class TaskStreamingController {
           const stream: AsyncGenerator<DistriChatMessage> = agent.resubscribe(taskId, { signal: ac.signal });
           for await (const evt of stream) {
             if (this.cancelled || ac.signal.aborted) break;
-            this.store.getState().processMessage(evt, true);
+            // A follow is observational: its tool calls are replays and never
+            // run here (`isFromStream` false). A durable run's waits are
+            // answered through the pending-calls list by the owning chat.
+            this.store.getState().processMessage(evt, false);
             const type = (evt as { type?: string }).type;
             const evtTaskId = (evt as { taskId?: string }).taskId;
             const code = (evt as { data?: { code?: string } }).data?.code;

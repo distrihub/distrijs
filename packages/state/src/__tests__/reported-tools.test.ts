@@ -43,9 +43,14 @@ describe('reported (non-external) tools', () => {
     store.getState().setExternalTools([{ type: 'function', name: 'ask_user', description: '', parameters: {}, handler: async () => ({}), isExternal: true } as never]);
     // executeTool runs it; the state starts pending until then.
     const run = vi.spyOn(store.getState(), 'executeTool').mockImplementation(async () => {});
-    store.getState().initToolCall({ tool_call_id: 'e', tool_name: 'ask_user', input: {} });
+    store.getState().initToolCall({ tool_call_id: 'e', tool_name: 'ask_user', input: {} }, undefined, true);
     expect(store.getState().toolCalls.get('e')).toMatchObject({ status: 'pending', isExternal: true });
     expect(run).toHaveBeenCalled();
+    // A replayed (non-live) call is shown but never run.
+    run.mockClear();
+    store.getState().initToolCall({ tool_call_id: 'r', tool_name: 'ask_user', input: {} });
+    expect(store.getState().toolCalls.get('r')).toMatchObject({ status: 'pending', isExternal: true });
+    expect(run).not.toHaveBeenCalled();
   });
 });
 

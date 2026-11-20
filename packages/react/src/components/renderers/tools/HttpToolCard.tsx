@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronRight, ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
 import { ToolCall } from '@distri/core';
 import { ToolCallState } from '@/stores/chatStateStore';
+import { RemoteStatusTag } from './RemoteStatusTag';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,8 +198,10 @@ export const HttpToolCard: React.FC<HttpToolCardProps> = ({ toolCall, state, pat
           </span>
         )}
 
+        <RemoteStatusTag state={state} />
+
         {/* Running indicator */}
-        {isRunning && (
+        {isRunning && state?.remoteStatus !== 'running_elsewhere' && (
           <span className="flex items-center gap-1 text-[10px] text-primary">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           </span>

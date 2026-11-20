@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Agent, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
+import { Agent, AgentDefinition, AgentVersion, DistriChatMessage, DistriMessage, DistriPart, DistriThread, ToolCall, ToolExecutionOptions, DistriClient, convertDistriMessageToA2A, uuid } from '@distri/core';
 import { ChatInput, AttachedImage } from './ChatInput';
 import { useChat, type SendMessageOptions } from '../useChat';
 import { ChatMessageList } from './ChatMessageList';
@@ -76,6 +76,13 @@ export interface ChatProps extends TranscriptRenderingProps {
   executionOptions?: ToolExecutionOptions;
   // Initial messages to use instead of fetching
   initialMessages?: (DistriChatMessage)[];
+  /**
+   * Whether the server has `threadId`. Default `true`. Pass `false` for a
+   * thread id you just minted (a new chat): the chat fetches nothing about it
+   * (thread, history, pending calls) before its first send. A chat with no
+   * `threadId` mints its own and treats it as new.
+   */
+  threadKnown?: boolean;
   // Theme
   theme?: 'light' | 'dark' | 'auto';
   // Model dropdown options
@@ -119,6 +126,11 @@ export interface ChatProps extends TranscriptRenderingProps {
   className?: string;
   // Agent loading
   agentId?: string;
+  /**
+   * Run a saved version of `agentId`: its number, or `'latest'` (the
+   * default). Changing it reloads the agent and keeps the thread.
+   */
+  version?: AgentVersion;
   // History loading
   enableHistory?: boolean;
   /**
@@ -245,6 +257,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   externalTools,
   executionOptions,
   initialMessages,
+  threadKnown,
   theme = 'auto',
   models,
   selectedModelId,
@@ -343,14 +356,14 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const toggleHandsfree = useCallback(() => setIsHandsfree(prev => !prev), []);
   const [browserEnabled, setBrowserEnabled] = useState(false);
   const browserViewerUrl = useStore(chatStore, state => state.browserViewerUrl);
-  const agentDefinition = useMemo(() => agent?.getDefinition(), [agent]);
-  const supportsBrowserStreaming = allowBrowserPreview && Boolean(agentDefinition?.browser_config);
+  // Browser streaming comes from the agent card's descriptor (`browser_streaming`).
+  const supportsBrowserStreaming = allowBrowserPreview && Boolean(agent?.browserStreaming);
   const browserAgentIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const agentId = agentDefinition?.name;
+    const agentId = agent?.name;
 
-    if (!agentDefinition || !supportsBrowserStreaming) {
+    if (!agent || !supportsBrowserStreaming) {
       setBrowserEnabled(false);
       browserAgentIdRef.current = agentId;
       return;
@@ -358,11 +371,24 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
     if (browserAgentIdRef.current !== agentId) {
       browserAgentIdRef.current = agentId;
-      const defaultEnabled = agentDefinition.browser_config?.enabled ?? false;
-      setBrowserEnabled(defaultEnabled);
-
+      setBrowserEnabled(agent.browserStreaming);
     }
-  }, [agentDefinition, supportsBrowserStreaming]);
+  }, [agent, supportsBrowserStreaming]);
+
+  // The definition is a developer API (`GET /agents/{id}`): fetched only for
+  // developer mode, never on the runtime path (end users cannot read it).
+  const [agentDefinition, setAgentDefinition] = useState<AgentDefinition | null>(null);
+  useEffect(() => {
+    if (!developerMode || !agent) {
+      setAgentDefinition(null);
+      return;
+    }
+    let cancelled = false;
+    Promise.resolve(agent.getDefinition())
+      .then((def) => { if (!cancelled) setAgentDefinition(def); })
+      .catch(() => { if (!cancelled) setAgentDefinition(null); });
+    return () => { cancelled = true; };
+  }, [agent, developerMode]);
 
   useEffect(() => {
     if (typeof initialInput === 'string' && initialInput !== initialInputRef.current) {
@@ -406,6 +432,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     externalTools: externalTools as any,
     executionOptions,
     initialMessages,
+    threadKnown: threadIdProp ? threadKnown : false,
     beforeSendMessage,
     store: chatStore,
   });
@@ -444,6 +471,8 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
   const compactionEvents = useStore(chatStore, state => state.compactionEvents);
   const storeIsCompacting = useStore(chatStore, state => Boolean(state.isCompacting));
   const hasPendingToolCalls = useStore(chatStore, state => state.hasPendingToolCalls());
+  // Durable runs: the run is parked waiting on the person / this client.
+  const isParked = useStore(chatStore, state => Boolean(state.parkedRun));
   // Cosmetic only: how many external (frontend-handled) tool calls are still
   // awaiting a result. The backend already join_all's the batch with a timeout —
   // this just tells the user we're waiting on outstanding tool calls. If one
@@ -539,7 +568,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
 
   // Initial fetch for existing threads
   useEffect(() => {
-    if (distriClient && threadId && initialMessages && initialMessages.length > 0) {
+    if (distriClient && threadIdProp && threadKnown !== false && initialMessages && initialMessages.length > 0) {
       refreshThreadDetails();
     }
   }, [distriClient, threadId]); // intentionally only on mount/threadId change
@@ -1294,6 +1323,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
               todoChanges={lastTodoChanges}
               isStreaming={isStreaming}
               pendingToolCallCount={showToolWaitStatus ? pendingToolCallCount : 0}
+              waitingForYou={isParked}
               loadingWords={loadingAnimation?.cycleWords}
               contextBudget={showContextUsage ? contextBudget ?? undefined : undefined}
               compactions={compactionEvents}
@@ -1347,7 +1377,7 @@ export const Chat = forwardRef<ChatInstance, ChatProps>((props, ref) => {
 });
 
 const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function ChatContainer(
-  { agent: agentProp, agentId, enableHistory, threadId, initialMessages: initialMessagesProp, theme, enableFeedback, ...props },
+  { agent: agentProp, agentId, version, enableHistory, threadId, initialMessages: initialMessagesProp, theme, enableFeedback, ...props },
   ref
 ) {
   const { isLoading: clientLoading } = useDistri();
@@ -1356,6 +1386,7 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   // Fetch agent if agentId is provided but agentProp is not
   const { agent: fetchedAgent, loading: agentLoading } = useAgent({
     agentIdOrDef: agentId || '',
+    version,
     enabled: !agentProp && !!agentId
   });
 
@@ -1364,13 +1395,16 @@ const ChatContainer = forwardRef<ChatInstance, ChatContainerProps>(function Chat
   // Fetch history if enableHistory is true
   const { messages: fetchedMessages, isLoading: historyLoading } = useChatMessages({
     threadId,
-    enabled: !!enableHistory && !initialMessagesProp && !!threadId
+    // A thread id the caller minted (threadKnown false) has no history yet.
+    enabled: !!enableHistory && !initialMessagesProp && !!threadId && props.threadKnown !== false
   });
 
   const initialMessages = initialMessagesProp || fetchedMessages;
 
   // Loading state - client, agent or history is initializing
-  if (clientLoading || agentLoading || (enableHistory && historyLoading)) {
+  // A version change keeps the current agent while the new one loads, so the
+  // chat (and its thread) stays mounted.
+  if (clientLoading || (agentLoading && !agent) || (enableHistory && historyLoading)) {
     return (
       <div className={`distri-chat flex flex-col items-center justify-center p-8 text-center h-full bg-background ${getThemeClasses(theme || 'auto')}`}>
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />

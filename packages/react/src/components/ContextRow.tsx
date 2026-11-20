@@ -20,6 +20,12 @@ export interface ContextRowProps {
   isStreaming?: boolean;
   /** External (frontend-handled) tool calls still awaiting a result. */
   pendingToolCallCount?: number;
+  /**
+   * The run is parked (durable runs, `run_parked`): it waits on the person or
+   * this client, not on the model. Shown as "Waiting for you" instead of a
+   * thinking indicator.
+   */
+  waitingForYou?: boolean;
   /** Cycle words for the thinking indicator while streaming. */
   loadingWords?: string[];
   /** Context budget; omit (or no window size) to hide the dial. */
@@ -34,6 +40,7 @@ export function ContextRow({
   todoChanges,
   isStreaming = false,
   pendingToolCallCount = 0,
+  waitingForYou = false,
   loadingWords,
   contextBudget,
   compactions,
@@ -44,7 +51,7 @@ export function ContextRow({
 
   const ratio = budgetRatio(contextBudget);
   const hasTodos = Boolean(todos && todos.length > 0);
-  const hasThinking = isStreaming || pendingToolCallCount > 0;
+  const hasThinking = isStreaming || pendingToolCallCount > 0 || waitingForYou;
   if (!hasTodos && !hasThinking && ratio == null) return null;
 
   return (
@@ -59,7 +66,15 @@ export function ContextRow({
       )}
       <div className="flex items-center gap-2 min-w-0">
         <div className="flex-1 min-w-0 overflow-hidden">
-          {pendingToolCallCount > 0 ? (
+          {waitingForYou ? (
+            <span
+              className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground"
+              data-testid="run-waiting-for-you"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+              Waiting for you
+            </span>
+          ) : pendingToolCallCount > 0 ? (
             <LoadingShimmer
               showIcon
               className="text-xs sm:text-sm"

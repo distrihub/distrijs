@@ -60,7 +60,7 @@ afterEach(() => {
 function getInjectedTools(): Array<Record<string, unknown>> {
   // Find the sendMessage/sendStream RPC call (not the agent card fetch)
   const rpcBody = capturedBodies.find(b =>
-    b.method === 'message/send' || b.method === 'message/stream'
+    b.method === 'SendMessage' || b.method === 'SendStreamingMessage'
   )
   if (!rpcBody) return []
   const params = rpcBody.params as Record<string, unknown> | undefined
@@ -193,7 +193,7 @@ describe('DistriClient distri_request injection', () => {
       })
     } catch {}
 
-    const rpcBody = capturedBodies.find(b => b.method === 'message/send')
+    const rpcBody = capturedBodies.find(b => b.method === 'SendMessage')
     const params = rpcBody?.params as Record<string, unknown>
     const meta = params?.metadata as Record<string, unknown>
     expect(meta?.some_other_field).toBe('keep me')

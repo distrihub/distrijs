@@ -1,6 +1,5 @@
 import { uuid } from './uuid';
-import { A2AClient } from '@a2a-js/sdk/client';
-import { Message, MessageSendParams, Task, SendMessageResponse, GetTaskResponse, Part } from '@a2a-js/sdk';
+import { Message, MessageSendParams, Task, Part } from '@a2a-js/sdk';
 import {
   DistriMessage,
   DistriPart,
@@ -46,6 +45,63 @@ import {
 } from './types';
 import { DistriEvent } from './events';
 import { convertA2AMessageToDistri, convertDistriMessageToA2A } from './encoder';
+import {
+  ClaimPendingCallResult,
+  CompleteToolOutcome,
+  CompleteToolRetryOptions,
+  PendingCall,
+  ToolCallClosedError,
+  cardHasDurableRuns,
+} from './durable-runs';
+import {
+  A2A_EXTENSIONS_HEADER,
+  A2A_METHODS,
+  A2A_VERSION,
+  A2A_VERSION_HEADER,
+  A2AStreamFrame,
+  agentRefPath,
+  DEFAULT_CLIENT_EXTENSIONS,
+  fromWire,
+  fromWireSendResult,
+  parseExtensionsHeader,
+  resolveExtensions,
+  toWireSendParams,
+  toWireTaskState,
+} from './a2a';
+
+/** `ListTasks` params (A2A 1.0). */
+export interface A2AListTasksParams {
+  contextId?: string;
+  /** Internal (`working`) or wire (`TASK_STATE_WORKING`) state name. */
+  status?: string;
+  pageSize?: number;
+  pageToken?: string;
+  historyLength?: number;
+  includeArtifacts?: boolean;
+}
+
+/** `ListTasks` result, tasks in the internal shape. */
+export interface A2AListTasksResult {
+  tasks: Task[];
+  nextPageToken: string;
+  pageSize: number;
+  totalSize: number;
+}
+
+/** Options for one A2A call. */
+export interface A2ACallOptions {
+  signal?: AbortSignal;
+  /** Extensions to activate instead of the client's configured set. */
+  extensions?: readonly string[];
+  /** Called with the extensions the server activated (the echoed `A2A-Extensions`). */
+  onActivated?: (uris: string[]) => void;
+}
+
+/** One answer to a pending client-tool call, for {@link DistriClient.respondToTask}. */
+export interface TaskToolAnswer {
+  tool_call_id: string;
+  result: unknown;
+}
 
 export type ChatCompletionRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -215,8 +271,14 @@ export class DistriClient {
   private tokenRefreshSkewMs: number;
   private onTokenRefresh?: () => Promise<string | null>;
   private refreshPromise?: Promise<void>;
-  private agentClients = new Map<string, { url: string; card: Promise<AgentCard>; client: Promise<A2AClient> }>();
+  /** Agent cards by agent id (a failed fetch is not cached). */
+  private cardCache = new Map<string, Promise<AgentCard>>();
+  /** What the server activated on the last A2A call per agent (echoed `A2A-Extensions`). */
+  private activatedByAgent = new Map<string, string[]>();
   private registeredTools: DynamicToolFactory[] = [];
+  /** Per-agent durable-runs answer from the agent card. */
+  private durableRunsByAgent = new Map<string, Promise<boolean>>();
+  private a2aRequestId = 0;
 
   constructor(config: DistriClientConfig) {
     const headers: Record<string, string> = { ...config.headers };
@@ -241,9 +303,15 @@ export class DistriClient {
       fetchImpl: config.fetchImpl ?? globalThis.fetch.bind(globalThis),
       headers,
       interceptor: config.interceptor ?? (async (init?: RequestInit) => Promise.resolve(init)),
+      completeToolRetry: {
+        attempts: config.completeToolRetry?.attempts ?? 5,
+        baseDelayMs: config.completeToolRetry?.baseDelayMs ?? 300,
+        maxDelayMs: config.completeToolRetry?.maxDelayMs ?? 5000,
+      },
       onTokenRefresh: config.onTokenRefresh,
       clientId: config.clientId,
-      workspaceId: config.workspaceId
+      workspaceId: config.workspaceId,
+      a2aExtensions: config.a2aExtensions ?? DEFAULT_CLIENT_EXTENSIONS,
     };
 
     // Auto-register distri_request so agents can call the platform API
@@ -759,7 +827,10 @@ export class DistriClient {
   }
 
   /**
-   * Get specific agent by name
+   * The agent's definition (`GET /agents/{id}`): instructions, tools, model
+   * settings. A developer API — it needs the developer permission
+   * (`Agent:Write`); end-user and embed tokens get 403. Runtime paths
+   * (`Agent.create`, `useAgent`, `Agent.list`) use the A2A card instead.
    */
   async getAgent(agentId: string): Promise<AgentConfigWithTools> {
     try {
@@ -789,13 +860,15 @@ export class DistriClient {
    * Returns only the public metadata the A2A protocol exposes
    * (name, description, version, icon, skills, capabilities) — it does NOT
    * include the full {@link AgentDefinition} (system prompt, tools, model
-   * settings). Use this for listings, pickers, and anywhere only metadata is
-   * needed; use {@link getAgent} when the full, heavy definition is required
-   * (editing or running an agent through our own interface).
+   * settings). The card's `agent` extension carries what a client needs to
+   * run it (see `agentDescriptorFromCard`). Served at
+   * `GET /agents/{ref}/.well-known/agent-card.json` (A2A 1.0); readable with
+   * an end-user token. `agentId` is a reference: `name` or `name@N` (a saved
+   * version, or `latest`) — the pinned card for `name@N`.
    */
   async getAgentCard(agentId: string): Promise<AgentCard> {
     try {
-      const response = await this.fetch(`/agents/${agentId}/.well-known/agent.json`, {
+      const response = await this.fetch(`/agents/${agentRefPath(agentId)}/.well-known/agent-card.json`, {
         headers: {
           ...this.config.headers,
         }
@@ -1039,49 +1112,189 @@ export class DistriClient {
   }
 
   /**
-   * Get or create A2AClient for an agent.
-   *
-   * The A2A SDK sends JSON-RPC to the agent card's `url`, which is whatever the
-   * server believes its public address is. When this client reaches the server
-   * through a different base URL (proxy, tunnel, custom domain) that address may
-   * be unreachable, so the card's `url` is always replaced with
-   * `${baseUrl}/agents/{agentId}` before handing it to the SDK.
+   * The agent card, fetched once per agent reference (`name`, `name@3` and
+   * `name@latest` are separate cards) and reused (the durable-runs answer and
+   * `Agent.create` read the same card). A failed fetch is not cached.
    */
-  private async getA2AClient(agentId: string, signal?: AbortSignal): Promise<A2AClient> {
-    // Compute the current expected URL for this agent
-    const agentUrl = `${this.config.baseUrl}/agents/${agentId}`;
-    let existing = this.agentClients.get(agentId);
-
-    if (!existing || existing.url !== agentUrl) {
-      const card = this.getAgentCard(agentId).then((c) => ({ ...c, url: agentUrl }));
-      // Don't cache a failed card fetch; the next call retries.
-      card.catch(() => {
-        if (this.agentClients.get(agentId)?.card === card) this.agentClients.delete(agentId);
+  async getCachedAgentCard(agentId: string): Promise<AgentCard> {
+    let card = this.cardCache.get(agentId);
+    if (!card) {
+      card = this.getAgentCard(agentId);
+      this.cardCache.set(agentId, card);
+      const pending = card;
+      pending.catch(() => {
+        if (this.cardCache.get(agentId) === pending) this.cardCache.delete(agentId);
       });
-      this.debug(
-        existing
-          ? `Recreated A2AClient for agent ${agentId} with new URL ${agentUrl}`
-          : `Created A2AClient for agent ${agentId} at ${agentUrl}`
-      );
-      const client = card.then((c) => new A2AClient(c, { fetchImpl: this.fetchAbsolute.bind(this) }));
-      // Callers on the signal path only await `card`; the error surfaces there.
-      client.catch(() => {});
-      existing = { url: agentUrl, card, client };
-      this.agentClients.set(agentId, existing);
+    }
+    return card;
+  }
+
+  /**
+   * The extensions the server activated on the last A2A call to `agentId`
+   * (the echoed `A2A-Extensions` header); empty before any call.
+   */
+  activatedExtensions(agentId: string): string[] {
+    return [...(this.activatedByAgent.get(agentId) ?? [])];
+  }
+
+  /** The extensions configured for every A2A call (short names or URIs). */
+  get a2aExtensions(): readonly string[] {
+    return this.config.a2aExtensions;
+  }
+
+  /**
+   * JSON-RPC endpoint of an agent: always `${baseUrl}/agents/{ref}`, never the
+   * card's advertised URL (the server may only know its internal address).
+   * `agentId` is a reference (`name` or `name@N`); see `agentRefPath`.
+   */
+  private a2aUrl(agentId: string): string {
+    return `${this.config.baseUrl}/agents/${agentRefPath(agentId)}`;
+  }
+
+  /** `A2A-Version` and `A2A-Extensions` for one call. */
+  private a2aHeaders(extensions: string[], accept: string): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: accept,
+      [A2A_VERSION_HEADER]: A2A_VERSION,
+    };
+    if (extensions.length > 0) headers[A2A_EXTENSIONS_HEADER] = extensions.join(', ');
+    return headers;
+  }
+
+  /**
+   * `A2A-Version` and `A2A-Extensions` for distri's own REST routes that
+   * return A2A objects or event envelopes (`GET /tasks/{id}/events`,
+   * `GET /threads/{id}/messages`): envelopes of an extension are only sent
+   * when the request activates it, the same as on an A2A stream.
+   */
+  private restA2AHeaders(accept: string, extensions?: readonly string[]): Record<string, string> {
+    const uris = resolveExtensions(extensions ?? this.config.a2aExtensions);
+    const headers: Record<string, string> = { Accept: accept, [A2A_VERSION_HEADER]: A2A_VERSION };
+    if (uris.length > 0) headers[A2A_EXTENSIONS_HEADER] = uris.join(', ');
+    return headers;
+  }
+
+  private recordActivation(agentId: string, response: Response, requested: string[], options?: A2ACallOptions): string[] {
+    const echoed = response.headers?.get?.(A2A_EXTENSIONS_HEADER);
+    // A server that does not echo the header is taken to have activated what
+    // it was asked for (it honours them, or ignores the unknown ones).
+    const activated = echoed === null || echoed === undefined ? requested : parseExtensionsHeader(echoed);
+    this.activatedByAgent.set(agentId, activated);
+    options?.onActivated?.(activated);
+    return activated;
+  }
+
+  private rpcBody(method: string, params: unknown): string {
+    this.a2aRequestId += 1;
+    return JSON.stringify({ jsonrpc: '2.0', id: `${Date.now().toString(36)}-${this.a2aRequestId}`, method, params });
+  }
+
+  private async rpcError(response: Response, method: string): Promise<never> {
+    const payload = await this.readJson(response) as { error?: { message?: string; code?: number } } | undefined;
+    if (payload?.error) throw new A2AProtocolError(payload.error.message ?? `${method} failed`, payload.error);
+    throw new ApiError(`${method} failed: ${response.statusText || response.status}`, response.status, payload);
+  }
+
+  /** One A2A JSON-RPC call; returns the raw `result`. */
+  async a2aCall(
+    agentId: string,
+    method: string,
+    params: unknown,
+    options?: A2ACallOptions & { metadata?: Record<string, unknown> | null },
+  ): Promise<unknown> {
+    const extensions = resolveExtensions(options?.extensions ?? this.config.a2aExtensions, options?.metadata);
+    const response = await this.fetchAbsolute(this.a2aUrl(agentId), {
+      method: 'POST',
+      headers: this.a2aHeaders(extensions, 'application/json'),
+      body: this.rpcBody(method, params),
+    }, { signal: options?.signal });
+    this.recordActivation(agentId, response, extensions, options);
+    if (!response.ok) await this.rpcError(response, method);
+    const payload = await this.readJson(response) as { result?: unknown; error?: { message?: string; code?: number } } | undefined;
+    if (payload?.error) throw new A2AProtocolError(payload.error.message ?? `${method} failed`, payload.error);
+    if (!payload || !('result' in payload)) throw new DistriError('Invalid response format', 'INVALID_RESPONSE', payload);
+    return payload.result;
+  }
+
+  /**
+   * One streaming A2A JSON-RPC call (SSE); yields each frame's `result`
+   * normalized to the internal shape. A JSON-RPC error frame throws.
+   */
+  async *a2aStream(
+    agentId: string,
+    method: string,
+    params: unknown,
+    options?: A2ACallOptions & { metadata?: Record<string, unknown> | null },
+  ): AsyncGenerator<A2AStreamFrame> {
+    const extensions = resolveExtensions(options?.extensions ?? this.config.a2aExtensions, options?.metadata);
+    const response = await this.fetchAbsolute(this.a2aUrl(agentId), {
+      method: 'POST',
+      headers: this.a2aHeaders(extensions, 'text/event-stream'),
+      body: this.rpcBody(method, params),
+    }, { signal: options?.signal });
+    this.recordActivation(agentId, response, extensions, options);
+    if (!response.ok) await this.rpcError(response, method);
+
+    const contentType = response.headers?.get?.('content-type') ?? '';
+    if (!response.body || contentType.includes('application/json')) {
+      // A single JSON-RPC response (an early error, or a runtime without
+      // streaming bodies).
+      const text = await response.text();
+      for (const data of text.includes('data:') ? sseDataBlocks(text) : [text]) {
+        const frame = this.parseRpcFrame(data, method);
+        if (frame) yield frame;
+      }
+      return;
     }
 
-    // The pinned A2AClient streaming methods don't expose RequestOptions.signal.
-    // Bind a per-stream signal into the fetch adapter instead of sharing this
-    // client with concurrent requests.
-    if (signal) {
-      const card = await existing.card;
-      const fetchFn = (input: RequestInfo | URL, init?: RequestInit) => (
-        this.fetchAbsolute(input, init, { signal })
-      );
-      return new A2AClient(card, { fetchImpl: fetchFn });
+    const reader = response.body.getReader();
+    const signal = options?.signal;
+    const onAbort = () => { reader.cancel().catch(() => { /* already closed */ }); };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      for (;;) {
+        if (signal?.aborted) throw signal.reason ?? new Error('Aborted');
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+        let idx: number;
+        while ((idx = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          for (const data of sseDataBlocks(block)) {
+            const frame = this.parseRpcFrame(data, method);
+            if (frame) yield frame;
+          }
+        }
+      }
+      buffer += decoder.decode();
+      for (const data of sseDataBlocks(buffer)) {
+        const frame = this.parseRpcFrame(data, method);
+        if (frame) yield frame;
+      }
+    } finally {
+      signal?.removeEventListener('abort', onAbort);
+      reader.cancel().catch(() => { /* already closed */ });
     }
+  }
 
-    return existing.client;
+  private parseRpcFrame(data: string, method: string): A2AStreamFrame | null {
+    const trimmed = data.trim();
+    if (!trimmed || trimmed === '[DONE]') return null;
+    let payload: { result?: unknown; error?: { message?: string; code?: number } };
+    try {
+      payload = JSON.parse(trimmed);
+    } catch {
+      this.debug('Skipping non-JSON SSE data:', trimmed);
+      return null;
+    }
+    if (payload?.error) {
+      throw new A2AProtocolError(payload.error.message ?? `${method} failed`, payload.error);
+    }
+    return fromWire(payload && 'result' in payload ? payload.result : payload);
   }
 
   /**
@@ -1116,26 +1329,19 @@ export class DistriClient {
   }
 
   /**
-   * Send a message to an agent
+   * Send a message to an agent (A2A `SendMessage`). Returns the result Task
+   * (or Message) in the internal shape.
    */
-  async sendMessage(agentId: string, params: MessageSendParams): Promise<Message | Task> {
+  async sendMessage(agentId: string, params: MessageSendParams, options?: A2ACallOptions): Promise<Message | Task> {
     try {
-      const client = await this.getA2AClient(agentId);
       params = this.mergeRegisteredTools(params);
-
-      const response: SendMessageResponse = await client.sendMessage(params);
-
-      if ('error' in response && response.error) {
-        throw new A2AProtocolError(response.error.message, response.error);
-      }
-
-      if ('result' in response) {
-        const result = response.result;
-        this.debug(`Message sent to ${agentId}, got ${result.kind}:`, result);
-        return result;
-      }
-
-      throw new DistriError('Invalid response format', 'INVALID_RESPONSE');
+      const result = await this.a2aCall(agentId, A2A_METHODS.SEND_MESSAGE, toWireSendParams(params), {
+        ...options,
+        metadata: params.metadata,
+      });
+      const out = fromWireSendResult(result);
+      this.debug(`Message sent to ${agentId}, got ${out.kind}:`, out);
+      return out;
     } catch (error) {
       if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
       throw new DistriError(`Failed to send message to agent ${agentId}`, 'SEND_MESSAGE_ERROR', error);
@@ -1143,21 +1349,23 @@ export class DistriClient {
   }
 
   /**
-   * Send a streaming message to an agent
+   * Send a streaming message to an agent (A2A `SendStreamingMessage`). Yields
+   * the frames in the internal shape; decode with `A2AStreamDecoder` (or use
+   * `Agent.invokeStream`). `options.onActivated` gets the extensions the
+   * server activated, which decide the stream mode.
    */
   async * sendMessageStream(
     agentId: string,
     params: MessageSendParams,
-    options?: { signal?: AbortSignal },
+    options?: A2ACallOptions,
   ): AsyncGenerator<A2AStreamEventData> {
-    console.log('sendMessageStream', agentId, params);
     try {
-      const client = await this.getA2AClient(agentId, options?.signal);
       params = this.mergeRegisteredTools(params);
-      yield* await client.sendMessageStream(params);
+      yield* this.a2aStream(agentId, A2A_METHODS.SEND_STREAMING_MESSAGE, toWireSendParams(params), {
+        ...options,
+        metadata: params.metadata,
+      });
     } catch (error) {
-      console.error(error);
-      // Extract the actual error message from nested errors
       const errorMessage = this.extractErrorMessage(error);
       throw new DistriError(errorMessage, 'STREAM_MESSAGE_ERROR', error);
     }
@@ -1223,24 +1431,16 @@ export class DistriClient {
   }
 
   /**
-   * Get task details
+   * Get a task (A2A `GetTask`), in the internal shape.
    */
-  async getTask(agentId: string, taskId: string): Promise<Task> {
+  async getTask(agentId: string, taskId: string, options?: A2ACallOptions & { historyLength?: number }): Promise<Task> {
     try {
-      const client = await this.getA2AClient(agentId);
-      const response: GetTaskResponse = await client.getTask({ id: taskId });
-
-      if ('error' in response && response.error) {
-        throw new A2AProtocolError(response.error.message, response.error);
-      }
-
-      if ('result' in response) {
-        const result = response.result;
-        this.debug(`Got task ${taskId} from ${agentId}:`, result);
-        return result;
-      }
-
-      throw new DistriError('Invalid response format', 'INVALID_RESPONSE');
+      const params: Record<string, unknown> = { id: taskId };
+      if (typeof options?.historyLength === 'number') params.historyLength = options.historyLength;
+      const result = await this.a2aCall(agentId, A2A_METHODS.GET_TASK, params, options);
+      const task = fromWireSendResult(result) as Task;
+      this.debug(`Got task ${taskId} from ${agentId}:`, task);
+      return task;
     } catch (error) {
       if (error instanceof A2AProtocolError || error instanceof DistriError) throw error;
       throw new DistriError(`Failed to get task ${taskId} from agent ${agentId}`, 'GET_TASK_ERROR', error);
@@ -1248,21 +1448,36 @@ export class DistriClient {
   }
 
   /**
-   * Re-attach to a task's event stream over A2A `tasks/resubscribe` (SSE).
+   * List an agent's tasks (A2A `ListTasks`). For the server's enriched task
+   * summaries use {@link listTasks} (`GET /tasks`).
+   */
+  async listAgentTasks(agentId: string, params: A2AListTasksParams = {}, options?: A2ACallOptions): Promise<A2AListTasksResult> {
+    const wire: Record<string, unknown> = { ...params };
+    if (typeof params.status === 'string') wire.status = toWireTaskState(params.status);
+    for (const key of Object.keys(wire)) if (wire[key] === undefined) delete wire[key];
+    const result = (await this.a2aCall(agentId, A2A_METHODS.LIST_TASKS, wire, options)) as Record<string, unknown> | undefined;
+    const list = Array.isArray(result?.tasks) ? (result!.tasks as unknown[]) : [];
+    const tasks = list.map((t) => fromWireSendResult({ task: t }) as Task);
+    return {
+      tasks,
+      nextPageToken: typeof result?.nextPageToken === 'string' ? result.nextPageToken : '',
+      pageSize: typeof result?.pageSize === 'number' ? result.pageSize : tasks.length,
+      totalSize: typeof result?.totalSize === 'number' ? result.totalSize : tasks.length,
+    };
+  }
+
+  /**
+   * Re-attach to a task's stream (A2A `SubscribeToTask`, SSE).
    *
    * Read-only twin of {@link sendMessageStream}: instead of starting a new turn
    * it replays the task's server-side event log, then follows the live tail,
    * then (for an already-terminal task) receives a synthesized final status.
-   * Yields the raw A2A stream frames — decode with `decodeA2AStreamEvent`
+   * Yields the frames in the internal shape — decode with `A2AStreamDecoder`
    * (or use {@link Agent.resubscribe}, which decodes for you).
-   *
-   * `agentId` is required because A2A clients are per-agent-URL; the caller
-   * following a task always holds the owning agent.
    */
-  async *resubscribeTask(agentId: string, taskId: string, opts?: { signal?: AbortSignal }): AsyncGenerator<A2AStreamEventData> {
+  async *resubscribeTask(agentId: string, taskId: string, opts?: A2ACallOptions): AsyncGenerator<A2AStreamEventData> {
     try {
-      const client = opts?.signal ? await this.getA2AClient(agentId, opts.signal) : await this.getA2AClient(agentId);
-      yield* await client.resubscribeTask({ id: taskId });
+      yield* this.a2aStream(agentId, A2A_METHODS.SUBSCRIBE_TO_TASK, { id: taskId }, opts);
     } catch (error) {
       const errorMessage = this.extractErrorMessage(error);
       throw new DistriError(errorMessage, 'RESUBSCRIBE_TASK_ERROR', error);
@@ -1270,12 +1485,11 @@ export class DistriClient {
   }
 
   /**
-   * Cancel a task
+   * Cancel a task (A2A `CancelTask`).
    */
   async cancelTask(agentId: string, taskId: string): Promise<void> {
     try {
-      const client = await this.getA2AClient(agentId);
-      await client.cancelTask({ id: taskId });
+      await this.a2aCall(agentId, A2A_METHODS.CANCEL_TASK, { id: taskId });
       this.debug(`Cancelled task ${taskId} on agent ${agentId}`);
     } catch (error) {
       throw new DistriError(`Failed to cancel task ${taskId} on agent ${agentId}`, 'CANCEL_TASK_ERROR', error);
@@ -1382,13 +1596,15 @@ export class DistriClient {
   async subscribeTaskEvents(
     taskId: string,
     onEvent: (event: DistriEvent) => void,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal; extensions?: readonly string[] }
   ): Promise<void> {
+    // Replay is `event-stream`'s own method; the other extensions' envelopes
+    // (`client-tools`, `durable-runs`) follow this request's `A2A-Extensions`.
     const response = await this.fetch(`/tasks/${encodeURIComponent(taskId)}/events`, {
       method: 'GET',
       headers: {
-        Accept: 'text/event-stream',
         ...this.config.headers,
+        ...this.restA2AHeaders('text/event-stream', options?.extensions),
       },
     });
     if (!response.ok) {
@@ -1549,11 +1765,16 @@ export class DistriClient {
   }
 
   /**
-   * Get thread messages
+   * Thread history (`GET /threads/{id}/messages`): the server returns A2A 1.0
+   * `{message}` / `{statusUpdate}` objects; they come back in the internal
+   * `kind`-tagged shape (messages, and status updates carrying event
+   * envelopes) — decode each with `decodeA2AStreamEvent`.
    */
   async getThreadMessages(threadId: string): Promise<Message[]> {
     try {
-      const response = await this.fetch(`/threads/${threadId}/messages`);
+      const response = await this.fetch(`/threads/${threadId}/messages`, {
+        headers: this.restA2AHeaders('application/json'),
+      });
       if (!response.ok) {
         if (response.status === 404) {
           return []; // Thread not found, return empty messages
@@ -1561,7 +1782,11 @@ export class DistriClient {
         throw new ApiError(`Failed to fetch thread messages: ${response.statusText}`, response.status);
       }
 
-      return await response.json();
+      const items: unknown = await response.json();
+      if (!Array.isArray(items)) return [];
+      return items
+        .map((item) => fromWire(item))
+        .filter((item): item is A2AStreamFrame => item !== null) as unknown as Message[];
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError(`Failed to fetch messages for thread ${threadId}`, 'FETCH_ERROR', error);
@@ -1735,36 +1960,186 @@ export class DistriClient {
   }
 
   /**
-   * Complete an external tool call
+   * Complete an external tool call.
+   *
+   * Durable runs make this the one write a client must not lose, so it:
+   *  - retries with exponential backoff on network errors and 5xx;
+   *  - treats `200 {status:"duplicate"}` (the same answer was already stored) as success;
+   *  - throws {@link ToolCallClosedError} on 409 (`expired` or `conflict`), so callers
+   *    can show the call as expired instead of failing the run;
+   *  - throws {@link ApiError} 400 when the server knows no such pending call (as before).
    */
-  async completeTool(agentId: string, result: ToolResult): Promise<void> {
-    try {
-      // Send parts in Distri format (part_type/data) - backend expects this format
-      const response = await this.fetch(`/agents/${agentId}/complete-tool`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.config.headers,
-        },
-        body: JSON.stringify({
-          tool_call_id: result.tool_call_id,
-          tool_response: {
-            tool_call_id: result.tool_call_id,
-            tool_name: result.tool_name,
-            parts: result.parts,
-            parts_metadata: result.parts_metadata
-          }
-        })
-      });
+  async completeTool(agentId: string, result: ToolResult): Promise<CompleteToolOutcome> {
+    const body = JSON.stringify({
+      tool_call_id: result.tool_call_id,
+      tool_response: {
+        tool_call_id: result.tool_call_id,
+        tool_name: result.tool_name,
+        parts: result.parts,
+        parts_metadata: result.parts_metadata
+      }
+    });
+    const { attempts, baseDelayMs, maxDelayMs } = this.config.completeToolRetry as Required<CompleteToolRetryOptions>;
+    const url = `${this.config.baseUrl}/agents/${agentRefPath(agentId)}/complete-tool`;
+    let lastError: unknown;
 
-      if (!response.ok) {
-        throw new ApiError(`Failed to complete tool: ${response.statusText}`, response.status);
+    for (let attempt = 1; attempt <= Math.max(1, attempts); attempt++) {
+      let response: Response;
+      try {
+        // Send parts in Distri format (part_type/data) - backend expects this format
+        response = await this.fetchAbsolute(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.config.headers,
+          },
+          body,
+        }, { retryAttempts: 0 });
+      } catch (error) {
+        lastError = new DistriError(
+          `Failed to complete tool ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`,
+          'COMPLETE_TOOL_ERROR',
+          error,
+        );
+        if (attempt < attempts) {
+          await this.delay(Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1)));
+          continue;
+        }
+        throw lastError;
       }
 
-      this.debug(`Tool completed: ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`);
-    } catch (error) {
-      if (error instanceof ApiError) throw error;
-      throw new DistriError(`Failed to complete tool ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`, 'COMPLETE_TOOL_ERROR', error);
+      if (response.ok) {
+        const payload = await this.readJson(response);
+        const duplicate = payload && typeof payload === 'object' && (payload as { status?: unknown }).status === 'duplicate';
+        this.debug(`Tool ${duplicate ? 'already completed' : 'completed'}: ${result.tool_name} (${result.tool_call_id}) for agent ${agentId}`);
+        return { status: duplicate ? 'duplicate' : 'completed' };
+      }
+
+      if (response.status === 409) {
+        const payload = await this.readJson(response);
+        const reason = (payload as { status?: unknown } | undefined)?.status === 'expired' ? 'expired' : 'conflict';
+        throw new ToolCallClosedError(result.tool_call_id, reason, payload);
+      }
+
+      lastError = new ApiError(`Failed to complete tool: ${response.statusText || response.status}`, response.status);
+      if (response.status >= 500 && attempt < attempts) {
+        await this.delay(Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1)));
+        continue;
+      }
+      throw lastError;
+    }
+    throw lastError;
+  }
+
+  /**
+   * Answer a task parked in `INPUT_REQUIRED` the plain-A2A way: a new
+   * `SendMessage` on the same task. Each answer is a DataPart
+   * `{tool_call_id, result}` completing that call; a string is a text reply,
+   * which the server applies when exactly one call is pending.
+   *
+   * For integrators speaking plain A2A. distri's own chat keeps using
+   * {@link completeTool} (`client-tools`). The server applies the same rules:
+   * the first answer wins, a duplicate is fine, an expired or conflicting one
+   * is a JSON-RPC `-32602` ({@link A2AProtocolError}). Resolves with the task
+   * at its next terminal state or park (a blocking `SendMessage`).
+   */
+  async respondToTask(
+    agentId: string,
+    taskId: string,
+    answers: TaskToolAnswer[] | string,
+    options?: A2ACallOptions & { contextId?: string },
+  ): Promise<Message | Task> {
+    const parts: Part[] = typeof answers === 'string'
+      ? [{ kind: 'text', text: answers }]
+      : answers.map((a) => ({ kind: 'data', data: { tool_call_id: a.tool_call_id, result: a.result ?? null } }) as Part);
+    const message: Message = {
+      kind: 'message',
+      messageId: uuid(),
+      role: 'user',
+      taskId,
+      ...(options?.contextId ? { contextId: options.contextId } : {}),
+      parts,
+    };
+    const result = await this.a2aCall(agentId, A2A_METHODS.SEND_MESSAGE, toWireSendParams({ message }), options);
+    return fromWireSendResult(result);
+  }
+
+  // ========== Durable runs ==========
+
+  /**
+   * Whether the server runs this agent durably: the agent card declares the
+   * durable-runs A2A extension (`capabilities.extensions[].uri`). Cached per
+   * client and agent; a failed card fetch is not cached and answers `false`.
+   */
+  async supportsDurableRuns(agentId?: string): Promise<boolean> {
+    if (!agentId) return false;
+    let answer = this.durableRunsByAgent.get(agentId);
+    if (!answer) {
+      const pending: Promise<boolean> = this.getCachedAgentCard(agentId).then(cardHasDurableRuns);
+      answer = pending;
+      this.durableRunsByAgent.set(agentId, pending);
+      pending.catch(() => {
+        if (this.durableRunsByAgent.get(agentId) === pending) this.durableRunsByAgent.delete(agentId);
+      });
+    }
+    try {
+      return await answer;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * List the pending calls (waits) of a thread's or a task's parked runs:
+   * `GET /threads/{id}/pending-calls` or `GET /tasks/{id}/pending-calls`.
+   * A server without durable runs (404) has none.
+   */
+  async listPendingCalls(target: { threadId: string } | { taskId: string }): Promise<PendingCall[]> {
+    const path = 'threadId' in target
+      ? `/threads/${encodeURIComponent(target.threadId)}/pending-calls`
+      : `/tasks/${encodeURIComponent(target.taskId)}/pending-calls`;
+    const response = await this.fetch(path);
+    if (response.status === 404) return [];
+    if (!response.ok) {
+      throw new ApiError(`Failed to list pending calls: ${response.statusText || response.status}`, response.status);
+    }
+    const payload = await this.readJson(response);
+    if (Array.isArray(payload)) return payload as PendingCall[];
+    const wrapped = (payload as { pending_calls?: unknown } | undefined)?.pending_calls;
+    return Array.isArray(wrapped) ? (wrapped as PendingCall[]) : [];
+  }
+
+  /**
+   * Claim a pending call before running it, so two windows never both run a
+   * tool: `POST /pending-calls/{id}/claim {instance_id}`. A 409 means another
+   * instance holds the claim (`claimed: false`).
+   */
+  async claimPendingCall(id: string, instanceId: string): Promise<ClaimPendingCallResult> {
+    const response = await this.fetch(`/pending-calls/${encodeURIComponent(id)}/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instance_id: instanceId }),
+    });
+    const payload = (await this.readJson(response)) as Record<string, unknown> | undefined;
+    if (response.status === 409) {
+      return {
+        claimed: false,
+        ...(typeof payload?.claimed_by === 'string' ? { claimed_by: payload.claimed_by } : {}),
+        ...(typeof payload?.until === 'string' ? { until: payload.until } : {}),
+      };
+    }
+    if (!response.ok) {
+      throw new ApiError(`Failed to claim pending call ${id}: ${response.statusText || response.status}`, response.status, payload);
+    }
+    return { claimed: true, ...(typeof payload?.until === 'string' ? { until: payload.until } : {}) };
+  }
+
+  private async readJson(response: Response): Promise<unknown> {
+    try {
+      const text = await response.text();
+      return text ? JSON.parse(text) : undefined;
+    } catch {
+      return undefined;
     }
   }
 
@@ -1954,9 +2329,10 @@ export class DistriClient {
   private async fetchAbsolute(
     url: RequestInfo | URL,
     initialInit?: RequestInit,
-    options?: { skipAuth?: boolean; retryOnAuth?: boolean; signal?: AbortSignal }
+    options?: { skipAuth?: boolean; retryOnAuth?: boolean; signal?: AbortSignal; retryAttempts?: number }
   ): Promise<Response> {
     const { skipAuth = false, retryOnAuth = true } = options ?? {};
+    const retryAttempts = options?.retryAttempts ?? this.config.retryAttempts;
     const init = await this.config.interceptor(initialInit);
     // Construct the full URL using baseUrl
     let lastError: Error | undefined;
@@ -1995,7 +2371,7 @@ export class DistriClient {
       this.applyAuthHeader(headers);
     }
 
-    for (let attempt = 0; attempt <= this.config.retryAttempts; attempt++) {
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
       try {
         const controller = new AbortController();
         const signal = options?.signal ?? init?.signal ?? undefined;
@@ -2019,7 +2395,7 @@ export class DistriClient {
         if (!skipAuth && retryOnAuth && response.status === 401 && (this.refreshToken || this.onTokenRefresh)) {
           const refreshed = await this.refreshTokens().then(() => true).catch(() => false);
           if (refreshed) {
-            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false, signal });
+            return this.fetchAbsolute(url, initialInit, { skipAuth, retryOnAuth: false, signal, retryAttempts });
           }
         }
         return response;
@@ -2028,7 +2404,7 @@ export class DistriClient {
 
         if ((options?.signal ?? init?.signal)?.aborted) throw lastError;
 
-        if (attempt < this.config.retryAttempts) {
+        if (attempt < retryAttempts) {
           this.debug(`Request failed (attempt ${attempt + 1}), retrying in ${this.config.retryDelay}ms...`);
           await this.delay(this.config.retryDelay);
         }
@@ -2217,4 +2593,14 @@ export class DistriClient {
       metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : contextMetadata,
     };
   }
+}
+
+/** The `data:` payload of each SSE event in `text` (events end at a blank line). */
+function sseDataBlocks(text: string): string[] {
+  const out: string[] = [];
+  for (const block of text.replace(/\r\n/g, '\n').split('\n\n')) {
+    const lines = block.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).replace(/^ /, ''));
+    if (lines.length > 0) out.push(lines.join('\n'));
+  }
+  return out;
 }

@@ -4,6 +4,7 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { ToolCallState } from '@/stores/chatStateStore';
 import { ToolSummary } from '@/types';
 import { DistriPart, ToolResult } from '@distri/core';
+import { RemoteStatusTag } from './RemoteStatusTag';
 
 interface MinimalToolRowProps {
   summary: ToolSummary;
@@ -156,7 +157,8 @@ export const MinimalToolRow: React.FC<MinimalToolRowProps> = ({ summary, state, 
             {summary.detail}
           </span>
         )}
-        <Timing state={state} />
+        <RemoteStatusTag state={state} />
+        {state.remoteStatus !== 'running_elsewhere' && <Timing state={state} />}
         {expandable && (
           expanded
             ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />

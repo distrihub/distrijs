@@ -18,6 +18,12 @@ export interface UseChatOptions {
   externalTools?: DistriBaseTool[];
   executionOptions?: ToolExecutionOptions;
   initialMessages?: (DistriChatMessage)[];
+  /**
+   * Whether the server has this thread. Default `true`. Pass `false` for a
+   * thread id you just minted: nothing asks the server about it (no
+   * pending-calls probe) until its first send makes it known.
+   */
+  threadKnown?: boolean;
   beforeSendMessage?: (msg: DistriMessage) => Promise<DistriMessage>;
   /**
    * Optional externally-owned store. `<Chat>` creates the store itself (it
@@ -65,6 +71,7 @@ export function useChat({
   externalTools,
   beforeSendMessage,
   initialMessages,
+  threadKnown,
   store: providedStore,
 }: UseChatOptions): UseChatReturn {
   // Per-instance store: created once and owned by this hook (unless the caller
@@ -78,11 +85,12 @@ export function useChat({
   // ChatController (framework-agnostic). This hook owns only the
   // mutable-context sync (agent/threadId/tools/callbacks can change across
   // renders) and React lifecycle.
-  const [controller] = useState(() => new ChatController(store, threadId));
+  const loadedFromServer = threadKnown !== false;
+  const [controller] = useState(() => new ChatController(store, threadId, { threadKnown: loadedFromServer }));
 
   useEffect(() => {
-    controller.setThreadId(threadId);
-  }, [controller, threadId]);
+    controller.setThreadId(threadId, { known: loadedFromServer });
+  }, [controller, threadId, loadedFromServer]);
 
   useEffect(() => {
     controller.setAgent(agent);
@@ -156,6 +164,20 @@ export function useChat({
       setAgent(agent);
     }
   }, [agent, setAgent]);
+
+  // Durable runs: after a load (and whenever the agent, thread or tools
+  // change), find the thread's pending client-tool calls and answer the ones
+  // this chat has a tool for — claimed first, run once. A server without
+  // durable runs, or a new thread not sent on yet, answers nothing and this
+  // is a no-op.
+  // Keyed on tool names, not the array: callers often pass a fresh array per render.
+  const externalToolNames = (externalTools ?? []).map((t) => t.name).join(',');
+  useEffect(() => {
+    if (!agent) return;
+    controller.recoverPendingCalls().catch((err) => {
+      console.warn('[useChat] could not recover pending tool calls', err);
+    });
+  }, [controller, agent, threadId, externalToolNames, loadedFromServer]);
 
   // Store cleanup functions in refs to avoid dependency changes
   const cleanupRef = useRef<(() => void) | undefined>(undefined);

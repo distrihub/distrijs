@@ -1128,6 +1128,12 @@ export interface DistriClientConfig {
   headers?: Record<string, string>;
 
   /**
+   * Retry policy for `complete-tool` (network errors and 5xx). A tool result
+   * is the one write a durable run cannot lose, so it retries with backoff.
+   */
+  completeToolRetry?: import('./durable-runs').CompleteToolRetryOptions;
+
+  /**
    * Request interceptor for modifying requests before sending
    */
   interceptor?: (init?: RequestInit) => Promise<RequestInit | undefined>;
@@ -1163,6 +1169,17 @@ export interface DistriClientConfig {
    * When provided, all requests will include X-Workspace-Id header.
    */
   workspaceId?: string;
+
+  /**
+   * A2A extensions this client activates on every A2A call (`A2A-Extensions`
+   * header): distri short names (`'event-stream'`, …) or full URIs. Default
+   * {@link DEFAULT_CLIENT_EXTENSIONS}. Extensions a request's metadata needs
+   * (`run-config` for `env_vars` / `definition_overrides`, `observability`
+   * for `tags` / `trace_context`, …) are added per request; `durable-runs`
+   * pulls in `client-tools`. `[]` speaks plain A2A (no distri events: text
+   * arrives as artifacts and is decoded as such).
+   */
+  a2aExtensions?: readonly string[];
 }
 
 export interface TokenUsage {
@@ -1252,8 +1269,9 @@ export class ConnectionError extends DistriError {
   }
 }
 
-// Re-export A2A types for convenience
-export type { AgentCard, Message, Task, TaskStatus, MessageSendParams, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from '@a2a-js/sdk';
+// Re-export A2A types for convenience. The card is the A2A 1.0 card (see ./a2a).
+export type { Message, Task, TaskStatus, MessageSendParams, TaskStatusUpdateEvent, TaskArtifactUpdateEvent } from '@a2a-js/sdk';
+export type { AgentCard } from './a2a';
 
 export type A2AStreamEventData = Message | TaskStatusUpdateEvent | TaskArtifactUpdateEvent | Task;
 

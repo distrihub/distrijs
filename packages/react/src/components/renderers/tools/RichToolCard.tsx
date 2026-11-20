@@ -5,6 +5,7 @@ import { ToolCallState } from '@/stores/chatStateStore';
 import { ToolSummary } from '@/types';
 import { ToolCardBody } from './ToolCardBody';
 import { looksLikeDiff } from './DiffView';
+import { RemoteStatusTag } from './RemoteStatusTag';
 
 interface RichToolCardProps {
   summary: ToolSummary;
@@ -73,8 +74,9 @@ export const RichToolCard: React.FC<RichToolCardProps> = ({ summary, state }) =>
             {summary.detail}
           </span>
         )}
-        <StatusBadge state={state} />
-        {timing && <span className="text-[10px] text-muted-foreground flex-shrink-0">{timing}</span>}
+        <RemoteStatusTag state={state} />
+        {state.remoteStatus !== 'running_elsewhere' && <StatusBadge state={state} />}
+        {timing && state.remoteStatus !== 'running_elsewhere' && <span className="text-[10px] text-muted-foreground flex-shrink-0">{timing}</span>}
         {expanded
           ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
           : <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Agent, DistriChatMessage } from '@distri/core';
 import { createChatService } from '../chat';
-import { createAgentService } from '../agent';
+import { createAgentService, resolveAgentOnce } from '../agent';
+import { AGENT_EXTENSION_URI, DistriClient } from '@distri/core';
 
 function fakeAgent(events: DistriChatMessage[]): Agent {
   async function* stream(): AsyncGenerator<DistriChatMessage> {
@@ -74,5 +75,49 @@ describe('createAgentService', () => {
     expect(service.agent()?.name).toBe('my-agent');
     expect(service.loading()).toBe(false);
     expect(service.error()).toBeNull();
+  });
+});
+
+describe('agent versions (spec 2026-11-20-agent-versions V4)', () => {
+  function versionedClient() {
+    const urls: string[] = [];
+    const client = new DistriClient({
+      baseUrl: 'http://localhost:1341/v1',
+      accessToken: 't',
+      retryAttempts: 0,
+      fetchImpl: async (input: RequestInfo | URL) => {
+        const url = String(input);
+        urls.push(url);
+        const sel = decodeURIComponent(url.match(/\/agents\/([^/]+)\/\.well-known/)![1]).split('@')[1];
+        return new Response(JSON.stringify({
+          name: 'helper',
+          capabilities: {
+            streaming: true,
+            extensions: [{ uri: AGENT_EXTENSION_URI, params: { agent_type: 'standard_agent', external_tools: [], any_tool: false, browser_streaming: false, version_no: sel ? Number(sel) : 9 } }],
+          },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      },
+    });
+    return { client, urls };
+  }
+
+  it('resolveAgentOnce loads the pinned card', async () => {
+    const { client, urls } = versionedClient();
+    const agent = await resolveAgentOnce(client, 'helper', 3);
+    expect(agent.version).toBe(3);
+    expect(agent.name).toBe('helper');
+    expect(urls).toEqual(['http://localhost:1341/v1/agents/helper@3/.well-known/agent-card.json']);
+  });
+
+  it('createAgentService takes a version and refresh({ version }) reloads', async () => {
+    const { client, urls } = versionedClient();
+    const service = createAgentService({ client, agentIdOrDef: 'helper', version: 3 });
+    await vi.waitFor(() => expect(service.agent()?.version).toBe(3));
+    await service.refresh({ version: 4 });
+    expect(service.agent()?.version).toBe(4);
+    expect(urls).toEqual([
+      'http://localhost:1341/v1/agents/helper@3/.well-known/agent-card.json',
+      'http://localhost:1341/v1/agents/helper@4/.well-known/agent-card.json',
+    ]);
   });
 });
