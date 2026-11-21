@@ -2,9 +2,9 @@
 
 [![npm](https://img.shields.io/npm/v/@distri/react?label=%40distri%2Freact&color=3b82f6)](https://www.npmjs.com/package/@distri/react)
 
-The client SDKs for [Distri](https://github.com/distrihub/distri): AI Agents that live natively in your product. Put a chat UI in your web or mobile app and let the agent call your app's own functions, in the signed-in user's session.
+The client SDKs for [Distri](https://github.com/distrihub/distri): embed AI agents in your product. Put a chat UI in your web or mobile app and let the agent call your app's own functions, in the signed-in user's session.
 
-Distri's motto is *Embed AI experiences or build in your product*. This repository is the embed half; the agent server, the CLI and the [samples gallery](https://distri.dev/samples/) live in [distrihub/distri](https://github.com/distrihub/distri).
+The agent server, the CLI and the [samples gallery](https://distri.dev/samples/) live in [distrihub/distri](https://github.com/distrihub/distri).
 
 ## Packages
 
