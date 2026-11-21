@@ -23,7 +23,7 @@ export {
   processA2AStreamData,
 } from './encoder';
 
-export { uuid } from './uuid';
+export { uuid, uuidv4 } from './uuid';
 
 // Workflow types and runner
 export * from './workflow';
