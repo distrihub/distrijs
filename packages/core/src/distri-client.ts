@@ -24,7 +24,6 @@ import {
   ThreadListParams,
   ThreadListResponse,
   AgentUsageInfo,
-  BrowserSession,
   MessageReadStatus,
   MessageVote,
   MessageVoteSummary,
@@ -1729,25 +1728,6 @@ export class DistriClient {
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new DistriError('Failed to fetch agents by usage', 'FETCH_ERROR', error);
-    }
-  }
-
-  /**
-   * Create a new browser session
-   * Returns session info including viewer_url and stream_url from browsr
-   */
-  async createBrowserSession(): Promise<BrowserSession> {
-    try {
-      const response = await this.fetch('/browser/session', {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        throw new ApiError(`Failed to create browser session: ${response.statusText}`, response.status);
-      }
-      return await response.json();
-    } catch (error) {
-      if (error instanceof ApiError) throw error;
-      throw new DistriError('Failed to create browser session', 'FETCH_ERROR', error);
     }
   }
 
