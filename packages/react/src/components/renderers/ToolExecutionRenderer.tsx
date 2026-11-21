@@ -244,7 +244,8 @@ export const formatStatusText = (toolName: string, input: any): string => {
       return `${method} ${truncate(path, 40)}...`;
     }
     case 'search': return `Searching: ${truncate(str('query'), 50)}`;
-    case 'browsr_scrape': {
+    case 'browser__open':
+    case 'browser__navigate': {
       const url = str('url');
       const host = url.replace(/^https?:\/\//, '').split('/')[0];
       return `Browsing ${host}`;
