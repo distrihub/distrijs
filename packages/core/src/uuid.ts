@@ -25,3 +25,9 @@ export function uuid(): string {
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+/**
+ * @deprecated Use {@link uuid}. Kept because `@distri/core` <= 0.4.6 exported
+ * it and apps import it (heyzippy/platform did); remove in 0.6.
+ */
+export const uuidv4 = uuid;
