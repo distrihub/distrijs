@@ -1046,16 +1046,6 @@ export interface AgentUsageInfo {
   thread_count: number;
 }
 
-/**
- * Browser session info returned when creating a session
- */
-export interface BrowserSession {
-  session_id: string;
-  viewer_url?: string;
-  stream_url?: string;
-  frame_token?: string;
-}
-
 export interface ChatProps {
   thread: Thread;
   agent: AgentDefinition;

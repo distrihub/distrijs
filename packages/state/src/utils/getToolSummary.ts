@@ -149,8 +149,8 @@ export function getToolSummary(
     };
   }
 
-  // Browsr / scraping
-  if (name === 'browsr_scrape') {
+  // The browser MCP app (obscura in the thread's sandbox)
+  if (name === 'browser__open' || name === 'browser__navigate') {
     const url = (input.url as string) ?? '';
     const host = url ? url.replace(/^https?:\/\//, '').split('/')[0] : undefined;
     return { verb: 'Browse', subject: host, detail: undefined };
