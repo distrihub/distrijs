@@ -315,7 +315,7 @@ export function ConfigurationPanel({ className, title = 'Agent Settings' }: Conf
                 <Input
                   value={draft.name}
                   onChange={(e) => setDraft((curr) => (curr ? { ...curr, name: e.target.value } : curr))}
-                  placeholder="browsr"
+                  placeholder="my_agent"
                 />
               </div>
               <div className="space-y-2">

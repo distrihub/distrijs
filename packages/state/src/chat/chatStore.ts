@@ -203,7 +203,7 @@ export interface ChatState {
   externalTools?: DistriAnyTool[];
   wrapOptions?: { autoExecute?: boolean };
 
-  // Browser session state (iframe connects directly to browsr)
+  // Browser session state (the live view's iframe URL)
   browserSessionId?: string;
   browserViewerUrl?: string;
   browserStreamUrl?: string;

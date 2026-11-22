@@ -411,7 +411,7 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     return {
       ...baseMetadata,
       definition_overrides: overrides,
-      // Include browser_session_id if we have one so browsr reuses the same session
+      // Include browser_session_id if we have one so the run reuses the same session
       ...(browserSessionId ? { browser_session_id: browserSessionId } : {}),
     };
   }, [browserEnabled, browserSessionId, getMetadataProp, supportsBrowserStreaming]);
@@ -573,20 +573,10 @@ export const ChatInner = forwardRef<ChatInstance, ChatProps>(function ChatInner(
     }
   }, [distriClient, threadId]); // intentionally only on mount/threadId change
 
-  const handleToggleBrowser = useCallback(async (enabled: boolean) => {
+  const handleToggleBrowser = useCallback((enabled: boolean) => {
     if (!supportsBrowserStreaming) return;
     setBrowserEnabled(enabled);
-
-    // When enabling browser, create a session immediately
-    if (enabled && !browserSessionId && distriClient) {
-      try {
-        const session = await distriClient.createBrowserSession();
-        chatStore.getState().setBrowserSession(session.session_id, session.viewer_url);
-      } catch (err) {
-        console.error('Failed to create browser session:', err);
-      }
-    }
-  }, [supportsBrowserStreaming, browserSessionId, distriClient]);
+  }, [supportsBrowserStreaming]);
 
 
   // Image upload functions moved from ChatInput
