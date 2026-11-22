@@ -2,8 +2,9 @@ name: Publish Packages
 
 # Publishes @distri/core, @distri/state, @distri/react and @distri/react-native
 # at the version already in their package.json files (one version for all
-# four; bump it in a PR first), after their tests pass. `pnpm publish` turns
-# `workspace:*` into that version. With `tag: latest` it also pushes the git
+# four; bump it in a PR first), after their tests pass. `pnpm pack` turns
+# `workspace:*` into that version; npm publishes those tarballs through
+# trusted publishing (OIDC, no token). With `tag: latest` it also pushes the git
 # tag v<version>. Started by distri-cloud's `canopy run release-distrijs`
 # (scripts/release/distrijs.sh there), or by hand.
 
@@ -28,6 +29,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write   # npm trusted publishing (OIDC): no token secret
 
 env:
   PACKAGES: core state react react-native
@@ -47,6 +49,9 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
+
+      - name: npm 11.5.1+ (trusted publishing)
+        run: npm install -g npm@^11.5.1 && npm --version
 
       - name: Every package is at the version asked for
         run: |
@@ -76,11 +81,13 @@ jobs:
 
       - name: Publish
         if: ${{ !inputs.dry_run }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Trusted publishing: npm exchanges this workflow's OIDC token for a
+        # publish token. Each package lists distrihub/distrijs, publish.yml as
+        # its trusted publisher on npmjs.com. The tarballs are the ones
+        # `pnpm pack` made above (workspace:* already replaced).
         run: |
-          for p in $PACKAGES; do
-            (cd packages/$p && pnpm publish --access public --tag "${{ inputs.tag }}" --no-git-checks)
+          for p in core state react react-native; do
+            npm publish "packed/distri-$p-${{ inputs.version }}.tgz" --access public --tag "${{ inputs.tag }}"
           done
 
       - name: Tag v<version>
