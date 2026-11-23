@@ -1,35 +1,29 @@
 name: Publish Packages
 
 # Publishes @distri/core, @distri/state, @distri/react and @distri/react-native
-# at the version already in their package.json files (one version for all
-# four; bump it in a PR first), after their tests pass. `pnpm pack` turns
-# `workspace:*` into that version; npm publishes those tarballs through
-# trusted publishing (OIDC, no token). With `tag: latest` it also pushes the git
-# tag v<version>. Started by distri-cloud's `canopy run release-distrijs`
-# (scripts/release/distrijs.sh there), or by hand.
+# to npm when a tag v<version> is pushed. The tag's commit must have all four
+# package.json files at <version>; the build and tests run before anything is
+# published. A version with a prerelease part (0.5.0-rc.1) goes to the npm
+# dist-tag `next`, any other to `latest`. A package already on npm at
+# <version> is skipped, so a re-run after a partial failure finishes the rest.
+#
+# Pushed by distri-cloud's `canopy run release-distrijs -- <version>`
+# (scripts/release/distrijs.sh there). workflow_dispatch is a dry run on any
+# ref: build, test, pack and `npm publish --dry-run`.
+#
+# Auth: npm trusted publishing (OIDC) when the package names this repository
+# and publish.yml as its trusted publisher on npmjs.com; otherwise the
+# NPM_TOKEN secret. Either way npm records provenance.
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'The version in the four package.json files (e.g. 0.5.0)'
-        required: true
-        type: string
-      tag:
-        description: 'npm dist-tag'
-        required: true
-        default: 'latest'
-        type: choice
-        options: [latest, next, beta, alpha]
-      dry_run:
-        description: 'Dry run: build, test and pack, publish nothing'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
-  contents: write
-  id-token: write   # npm trusted publishing (OIDC): no token secret
+  contents: read
+  id-token: write   # trusted publishing and provenance
 
 env:
   PACKAGES: core state react react-native
@@ -39,8 +33,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -53,12 +45,25 @@ jobs:
       - name: npm 11.5.1+ (trusted publishing)
         run: npm install -g npm@^11.5.1 && npm --version
 
-      - name: Every package is at the version asked for
+      - name: Version and dist-tag
+        id: v
         run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            VERSION=${GITHUB_REF_NAME#v}
+            DRY=false
+          else
+            VERSION=$(node -p "require('./packages/core/package.json').version")
+            DRY=true
+          fi
           for p in $PACKAGES; do
             v=$(node -p "require('./packages/$p/package.json').version")
-            [ "$v" = "${{ inputs.version }}" ] || { echo "packages/$p is $v, not ${{ inputs.version }}"; exit 1; }
+            [ "$v" = "$VERSION" ] || { echo "::error::packages/$p is $v, not $VERSION"; exit 1; }
           done
+          case "$VERSION" in *-*) TAG=next ;; *) TAG=latest ;; esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "dry=$DRY" >> "$GITHUB_OUTPUT"
+          echo "@distri $VERSION -> npm dist-tag $TAG (dry run: $DRY)"
 
       - run: pnpm install --frozen-lockfile
 
@@ -73,33 +78,34 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Pack (what would be published)
+      - name: Pack
+        # `pnpm pack` replaces workspace:* with the version.
         run: |
           mkdir -p packed
           for p in $PACKAGES; do (cd packages/$p && pnpm pack --pack-destination ../../packed); done
           ls -la packed
 
       - name: Publish
-        if: ${{ !inputs.dry_run }}
-        # Trusted publishing: npm exchanges this workflow's OIDC token for a
-        # publish token. Each package lists distrihub/distrijs, publish.yml as
-        # its trusted publisher on npmjs.com. The tarballs are the ones
-        # `pnpm pack` made above (workspace:* already replaced).
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          TAG: ${{ steps.v.outputs.tag }}
+          DRY: ${{ steps.v.outputs.dry }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for p in core state react react-native; do
-            npm publish "packed/distri-$p-${{ inputs.version }}.tgz" --access public --tag "${{ inputs.tag }}"
+          for p in $PACKAGES; do
+            tgz="./packed/distri-$p-$VERSION.tgz"
+            if [ "$DRY" = true ]; then
+              npm publish "$tgz" --access public --tag "$TAG" --dry-run
+            elif NPM_CONFIG_USERCONFIG=/dev/null npm view "@distri/$p@$VERSION" version >/dev/null 2>&1; then
+              echo "@distri/$p@$VERSION is already on npm: skipped"
+            else
+              npm publish "$tgz" --access public --tag "$TAG" --provenance
+            fi
           done
-
-      - name: Tag v<version>
-        if: ${{ !inputs.dry_run && inputs.tag == 'latest' }}
-        run: |
-          git tag "v${{ inputs.version }}"
-          git push origin "v${{ inputs.version }}"
 
       - name: Summary
         run: |
           {
-            echo "## @distri ${{ inputs.version }} (${{ inputs.tag }})"
-            echo "Dry run: ${{ inputs.dry_run }}"
-            for p in $PACKAGES; do echo "- @distri/$p"; done
+            echo "## @distri ${{ steps.v.outputs.version }} (npm ${{ steps.v.outputs.tag }}, dry run: ${{ steps.v.outputs.dry }})"
+            for p in $PACKAGES; do echo "- https://www.npmjs.com/package/@distri/$p/v/${{ steps.v.outputs.version }}"; done
           } >> "$GITHUB_STEP_SUMMARY"
