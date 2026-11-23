@@ -1,6 +1,6 @@
 {
   "name": "@distri/core",
-  "version": "0.5.0",
+  "version": "0.5.0-rc.1",
   "description": "A2A client for Distri agents: streaming, tasks, client-side tools and durable runs",
   "exports": {
     ".": {

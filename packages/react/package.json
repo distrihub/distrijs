@@ -1,6 +1,6 @@
 {
   "name": "@distri/react",
-  "version": "0.5.0",
+  "version": "0.5.0-rc.1",
   "description": "React chat UI and hooks for Distri: embed AI agents in your product that call its functions",
   "type": "module",
   "main": "dist/index.cjs",
