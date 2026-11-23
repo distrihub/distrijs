@@ -44,5 +44,10 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/distrihub/distrijs.git",
+    "directory": "packages/react-native"
   }
 }
