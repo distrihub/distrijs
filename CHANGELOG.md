@@ -10,6 +10,7 @@ Packages: `@distri/core`, `@distri/state`, `@distri/react`, `@distri/react-nativ
 - `showToolWaitStatus` prop, `clientId` apps name their embed host and origin, a `Chat` with no `threadId` starts its own conversation, composer placeholder and optional context dial.
 
 ### @distri/core
+- `uuidv4` is exported again as a deprecated alias of `uuid` (0.4.6 exported it; apps import it). Removed in 0.6 (#98).
 - Typed decisions: `DistriClient.decide` and the System One types (#82).
 - Namespaced client tool registry and `registerBrowserTools`.
 - One `uuid()` helper that works on plain-http origins.
