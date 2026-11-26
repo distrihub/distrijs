@@ -1,0 +1,22 @@
+# gitleaks config: the default rules plus distri's own key shapes.
+# Run locally: gitleaks git --config .gitleaks.toml  (or `gitleaks protect --staged` in a pre-commit hook)
+title = "distrijs"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "distri-api-key"
+description = "distri.dev API key (dak_ + 48 alphanumerics)"
+regex = '''dak_[A-Za-z0-9]{48}'''
+keywords = ["dak_"]
+
+[[rules]]
+id = "distri-public-client"
+description = "distri.dev public client id committed with a secret next to it"
+regex = '''dpc_[A-Za-z0-9]{24,}'''
+keywords = ["dpc_"]
+
+[allowlist]
+description = "placeholders in docs and examples"
+regexes = ['''dak_XXXX''', '''your-distri-api-key''', '''sk-your-''']
